@@ -1,0 +1,11 @@
+#!/bin/bash
+cd frontend
+rm package-lock.json
+rm -r node_modules
+npm i
+cd ..
+helper/bash/$1rebuild
+# run it form root
+# run it helper/bash/raspi-build
+# run it helper/bash/raspi-build full_
+# when you wnat to KILL THE DATABASE

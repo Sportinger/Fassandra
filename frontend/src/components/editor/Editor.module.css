@@ -1,0 +1,1133 @@
+/* Editor.module.css */
+
+/* Floating Toolbar Styles */
+.floatingToolbar {
+  position: fixed;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--color-background, white);
+  border: 1px solid var(--color-border-light, #e5e7eb);
+  border-radius: 12px;
+  padding: 12px 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(10px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: visible; /* Allow dropdowns to extend beyond toolbar */
+}
+
+/* Enhanced Morphing Toolbar */
+.morphingToolbar {
+  transition: 
+    height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: height;
+}
+
+.floatingToolbar:hover {
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15), 0 6px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-50%) translateX(2px) scale(1.02);
+}
+
+.toolbarButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-text-secondary, #6b7280);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  opacity: 0;
+  animation: buttonEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  transform: translateX(-20px);
+}
+
+/* Morphing Button States */
+.morphingButton {
+  opacity: 0;
+  transform: translateX(-30px) scale(0.8);
+  transition: 
+    opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity, transform;
+}
+
+.morphingButton.visible {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+
+.morphingButton.hidden {
+  opacity: 0;
+  transform: translateX(-30px) scale(0.8);
+  pointer-events: none;
+}
+
+.toolbarButton:nth-child(1) { animation-delay: 0ms; }
+.toolbarButton:nth-child(2) { animation-delay: 50ms; }
+.toolbarButton:nth-child(3) { animation-delay: 100ms; }
+.toolbarButton:nth-child(4) { animation-delay: 150ms; }
+.toolbarButton:nth-child(5) { animation-delay: 200ms; }
+.toolbarButton:nth-child(6) { animation-delay: 250ms; }
+.toolbarButton:nth-child(7) { animation-delay: 300ms; }
+.toolbarButton:nth-child(8) { animation-delay: 350ms; }
+
+.toolbarButton:hover {
+  background: var(--color-accent, #3b82f6);
+  color: white;
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.toolbarButton:active {
+  transform: scale(0.95);
+  transition: all 0.1s ease;
+}
+
+.toolbarButton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.toolbarButton:hover::before {
+  left: 100%;
+}
+
+.alignIcon {
+  font-size: 22px;
+  font-weight: 600;
+  pointer-events: none;
+  transition: all 0.2s ease;
+  font-family: 'Courier New', monospace;
+  line-height: 1;
+}
+
+.toolbarButton:hover .alignIcon {
+  transform: scale(1.1);
+}
+
+.toolbarButton.active {
+  background: var(--color-accent, #3b82f6);
+  color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.toolbarSeparator {
+  width: 48px;
+  height: 1px;
+  background: var(--color-border-light, #e5e7eb);
+  margin: 4px 0;
+  opacity: 0;
+  animation: separatorEnter 0.3s ease-out 0.2s forwards;
+  transform: scaleX(0);
+}
+
+/* Morphing Separator States */
+.morphingSeparator {
+  opacity: 0;
+  transform: scaleX(0);
+  transition: 
+    opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: opacity, transform;
+}
+
+.morphingSeparator.visible {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.morphingSeparator.hidden {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+/* Button entrance animation */
+@keyframes buttonEnter {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Separator entrance animation */
+@keyframes separatorEnter {
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+/* Context-specific toolbar styling with smooth transitions */
+.floatingToolbar.context-text-selection {
+  border-left: 3px solid var(--color-accent, #3b82f6);
+  background: var(--color-background, white);
+  animation: contextPulse 1s ease-out;
+}
+
+.floatingToolbar.context-speaker-name {
+  border-left: 3px solid var(--color-accent, #3b82f6);
+  background: var(--color-background, white);
+  animation: contextPulse 1s ease-out;
+}
+
+.floatingToolbar.context-empty-page {
+  border-left: 3px solid var(--color-accent, #3b82f6);
+  background: var(--color-background, white);
+  animation: contextPulse 1s ease-out;
+}
+
+.floatingToolbar.context-default {
+  border-left: 3px solid var(--color-border, #e5e7eb);
+  background: var(--color-background, white);
+}
+
+/* Context change pulse animation */
+@keyframes contextPulse {
+  0% {
+    transform: translateY(-50%) scale(1);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+  }
+  50% {
+    transform: translateY(-50%) scale(1.05);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15), 0 6px 12px rgba(0, 0, 0, 0.08);
+  }
+  100% {
+    transform: translateY(-50%) scale(1);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+  }
+}
+
+/* Smooth morphing between contexts */
+.floatingToolbar * {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced glow effects using consistent accent color */
+.floatingToolbar .toolbarButton:hover {
+  box-shadow: 0 4px 12px rgba(var(--color-accent-rgb, 59, 130, 246), 0.3);
+}
+
+/* Dark theme support for floating toolbar */
+:root[data-theme="dark"] .floatingToolbar {
+  background: var(--color-background-secondary, #1f2937);
+  border-color: var(--color-border, #374151);
+}
+
+:root[data-theme="dark"] .toolbarButton {
+  color: var(--color-text-secondary, #9ca3af);
+}
+
+:root[data-theme="dark"] .toolbarButton:hover {
+  background: var(--color-accent, #3b82f6);
+  color: white;
+}
+
+:root[data-theme="dark"] .toolbarButton::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+}
+
+
+
+/* Font Size Dropdown Styles */
+.fontSizeDropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.fontSizeButton {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  width: 70px !important;
+  padding: 0 10px !important;
+  gap: 6px;
+}
+
+.fontSizeDisplay {
+  font-size: 16px;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+  color: inherit;
+  line-height: 1;
+}
+
+.dropdownArrow {
+  font-size: 12px;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: inherit;
+  opacity: 0.7;
+}
+
+.dropdownArrow.open {
+  transform: rotate(180deg);
+}
+
+.fontSizeMenu {
+  position: absolute;
+  top: 0;
+  width: 80px;
+  background: var(--color-background, white);
+  border: 1px solid var(--color-border-light, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15), 0 4px 6px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  z-index: 2000;
+  max-height: 200px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.fontSizeList {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.fontSizeOption {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--color-text, #1f2937);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  font-family: 'Courier New', monospace;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.fontSizeOption:hover {
+  background: var(--color-accent, #3b82f6);
+  color: white;
+  transform: translateX(2px);
+}
+
+.fontSizeOption.selected {
+  background: var(--color-accent, #3b82f6);
+  color: white;
+  font-weight: 600;
+}
+
+.fontSizeOption.selected:hover {
+  background: var(--color-accent-dark, #2563eb);
+}
+
+/* Dropdown entrance animation */
+@keyframes dropdownEnter {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Side dropdown entrance animation */
+@keyframes dropdownEnterSide {
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Smart positioning for dropdown */
+.fontSizeMenu.position-right {
+  left: 100%;
+  margin-left: 12px;
+  transform: translateX(-10px) scale(0.95);
+  animation: dropdownEnterSide 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.fontSizeMenu.position-left {
+  right: 100%;
+  margin-right: 12px;
+  transform: translateX(10px) scale(0.95);
+  animation: dropdownEnterSideLeft 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* Left side entrance animation */
+@keyframes dropdownEnterSideLeft {
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Visual connection indicator */
+.fontSizeDropdown::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -4px;
+  width: 4px;
+  height: 2px;
+  background: var(--color-accent, #3b82f6);
+  border-radius: 1px;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.fontSizeDropdown:hover::after,
+.fontSizeButton.active + .fontSizeDropdown::after {
+  opacity: 0.6;
+}
+
+/* Dark theme support for font size dropdown */
+:root[data-theme="dark"] .fontSizeMenu {
+  background: var(--color-background-secondary, #1f2937);
+  border-color: var(--color-border, #374151);
+}
+
+:root[data-theme="dark"] .fontSizeOption {
+  color: var(--color-text, #f9fafb);
+}
+
+:root[data-theme="dark"] .fontSizeOption:hover {
+  background: var(--color-accent, #3b82f6);
+  color: white;
+}
+
+/* Custom scrollbar for font size list */
+.fontSizeList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.fontSizeList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.fontSizeList::-webkit-scrollbar-thumb {
+  background: var(--color-border-light, #e5e7eb);
+  border-radius: 2px;
+}
+
+.fontSizeList::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border, #d1d5db);
+}
+
+/* Mobile responsive - hide on small screens */
+@media (max-width: 768px) {
+  .floatingToolbar {
+    display: none;
+  }
+}
+
+/* Keyframes for editor entrance animation (bottom to top) */
+@keyframes slideInFromBottom {
+  0% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Keyframes for editor exit animation (top to bottom) */
+@keyframes slideOutToBottom {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+/* Full-screen editor container changed to a page view container */
+.editorPageContainer {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* Align pages to the top */
+  padding: 1.5rem; /* Increased padding for better spacing */
+  background-color: var(--color-background-secondary, #f0f2f5); /* Neutral background */
+  overflow-y: auto; /* Allow scrolling the container */
+  min-height: calc(100vh - 110px); /* Adjusted for 50px app padding + header */
+  
+  /* No animation on container - only the page animates */
+}
+
+/* The DIN A4 Page itself */
+.dinA4Page {
+  width: 100%;
+  max-width: 800px; /* Good width for readability */
+  aspect-ratio: 210 / 297; /* A4 aspect ratio */
+  background-color: var(--color-background, white);
+  padding: 2cm 1.5cm; /* Standard page margins */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text);
+  
+  /* DIN A4 page entrance animation - flies in from bottom */
+  animation: slideInFromBottom 400ms ease-out forwards;
+}
+
+.dinA4Page.exiting {
+  animation: slideOutToBottom 400ms ease-out forwards;
+}
+
+/* Multiple Pages View Styles */
+.multiplePagesContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem; /* Space between pages */
+  width: 100%;
+  max-width: 800px;
+}
+
+.multiplePage {
+  width: 100%;
+  max-width: 800px;
+  min-height: 1123px; /* A4 height at 96 DPI (297mm / 25.4 * 96) */
+  aspect-ratio: 210 / 297;
+  background-color: var(--color-background, white);
+  padding: 2cm 1.5cm;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text);
+  position: relative;
+  
+  /* Staggered animation for multiple pages */
+  animation: slideInFromBottom 400ms ease-out forwards;
+}
+
+.multiplePage:nth-child(2) { animation-delay: 100ms; }
+.multiplePage:nth-child(3) { animation-delay: 200ms; }
+.multiplePage:nth-child(4) { animation-delay: 300ms; }
+.multiplePage:nth-child(5) { animation-delay: 400ms; }
+
+.multiplePage.exiting {
+  animation: slideOutToBottom 400ms ease-out forwards;
+}
+
+.pageNumber {
+  position: absolute;
+  top: 1cm;
+  right: 1.5cm;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.pageHeader {
+  border-bottom: 1px solid var(--color-border-light, #eee);
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.pageTitle {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.pageDate {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin-top: 0.5rem;
+}
+
+/* Editor content wrapper to take remaining space */
+.editorContentWrapper {
+  flex-grow: 1; /* Makes the editor fill the available space */
+  overflow-y: auto; /* Allows the content inside the page to scroll */
+}
+
+/* Editor content styling */
+.editorContent {
+  height: 100%;
+  width: 100%;
+  padding: 0; /* Padding is now on the page */
+  color: var(--color-text);
+  line-height: 1.6;
+  outline: none;
+  font-size: 1rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.pageFooter {
+  padding-top: 1rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--color-border-light, #eee);
+  text-align: right;
+}
+
+.pageButton {
+  background-color: var(--color-accent);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+}
+
+.pageButton:hover {
+  background-color: var(--color-accent-hover);
+}
+
+/* Make paragraphs look clean */
+.editorContent p {
+  margin-bottom: 1em;
+  position: relative;
+}
+
+/* Headings styling - Removed font-size to allow inline styles to work */
+.editorContent h1 {
+  /* font-size: 2rem; -- DISABLED TO TEST INLINE STYLES */
+  font-weight: 700;
+  margin: 1.5em 0 0.5em 0;
+  color: var(--color-text);
+}
+
+.editorContent h2 {
+  /* font-size: 1.5rem; -- DISABLED TO TEST INLINE STYLES */
+  font-weight: 600;
+  margin: 1.2em 0 0.4em 0;
+  color: var(--color-text);
+}
+
+.editorContent h3 {
+  /* font-size: 1.2rem; -- DISABLED TO TEST INLINE STYLES */
+  font-weight: 600;
+  margin: 1em 0 0.3em 0;
+  color: var(--color-text);
+}
+
+/* Loading state */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 1.2rem;
+  color: var(--color-text-secondary);
+}
+
+/* Connection status indicator */
+.connectionStatus {
+  position: fixed;
+  top: 60px; /* Attach directly to the bottom of the header */
+  left: 0;
+  right: 0;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  z-index: 1001;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.connectionInfo {
+  background-color: rgba(100, 108, 255, 0.9);
+  color: white;
+  border: 1px solid rgba(100, 108, 255, 0.3);
+}
+
+.connectionError {
+  background-color: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Error state */
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 1.2rem;
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* Context Menu Styles */
+.contextMenu {
+  position: fixed;
+  background-color: var(--color-background-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+  padding: 0.5rem 0;
+  min-width: 180px;
+}
+
+.contextMenuItem {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.contextMenuItem:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+  color: white;
+}
+
+.contextMenuItem:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.contextMenuItem.active {
+  background-color: var(--color-accent);
+  color: white;
+}
+
+.contextMenuSeparator {
+  height: 1px;
+  background-color: var(--color-border);
+  margin: 0.5rem 0;
+}
+
+/* Collaboration Cursor Styles */
+.collaborationCursor {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  height: 1.2em;
+  width: 2px;
+  border-left-style: solid;
+  border-left-width: 2px;
+  word-break: normal;
+  white-space: nowrap;
+  margin-left: -1px;
+  margin-top: 0.1em;
+  z-index: 10;
+}
+
+.collaborationCursorLabel {
+  position: absolute;
+  top: -1.4em;
+  left: -1px;
+  font-size: 0.75em;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  user-select: none;
+  white-space: nowrap;
+  color: white;
+  padding: 0.1em 0.3em;
+  border-radius: 3px 3px 3px 0;
+  width: max-content;
+  display: inline-block;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 20;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  transform: translateY(-2px);
+}
+
+/* Text alignment styles */
+.ProseMirror p[style*="text-align: center"],
+.ProseMirror h1[style*="text-align: center"],
+.ProseMirror h2[style*="text-align: center"],
+.ProseMirror h3[style*="text-align: center"] {
+  text-align: center;
+}
+
+.ProseMirror p[style*="text-align: right"],
+.ProseMirror h1[style*="text-align: right"],
+.ProseMirror h2[style*="text-align: right"],
+.ProseMirror h3[style*="text-align: right"] {
+  text-align: right;
+}
+
+.ProseMirror p[style*="text-align: left"],
+.ProseMirror h1[style*="text-align: left"],
+.ProseMirror h2[style*="text-align: left"],
+.ProseMirror h3[style*="text-align: left"] {
+  text-align: left;
+}
+
+/* Ensure ProseMirror content fills available space */
+.ProseMirror {
+  height: 100%;
+  outline: none;
+  position: relative;
+  text-align: left; /* Default text alignment to left */
+}
+
+/* NOTE: Headings font-size disabled above to allow TipTap inline styles to work */
+
+/* Focus styles for better UX */
+.ProseMirror:focus {
+  outline: none !important;
+}
+
+/* Ensure no focus outlines on any editor elements */
+.ProseMirror *:focus {
+  outline: none !important;
+}
+
+/* Prevent any elements from showing focus indicators */
+.dinA4Page *:focus,
+.editorContent *:focus,
+.editorContentWrapper *:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Selection styling */
+.ProseMirror ::selection {
+  background-color: var(--color-accent);
+  color: white;
+}
+
+/* Default paragraph alignment */
+.ProseMirror p {
+  text-align: left; /* Ensure paragraphs default to left alignment */
+}
+
+/* Ensure strong tags (speaker names) are properly styled */
+.ProseMirror strong {
+  font-weight: bold;
+  color: var(--color-text); /* Maintain text color consistency */
+}
+
+/* Speaker Layout Styles using CSS pseudo-elements and data attributes */
+
+/* Base speaker block styling */
+.ProseMirror .speaker-block {
+  margin: 16px 0;
+  position: relative;
+}
+
+/* Default layout: Traditional speaker name with colon */
+.ProseMirror .speaker-block.speaker-layout-default::before {
+  content: attr(data-speaker-name) ": " !important;
+  font-weight: bold !important;
+  color: var(--color-accent, #3b82f6) !important;
+  display: block !important;
+  margin-bottom: 4px !important;
+}
+
+/* Side-by-side layout: Speaker name on left, text content on right */
+.ProseMirror .speaker-block.speaker-layout-sidebyside {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 16px !important;
+}
+
+.ProseMirror .speaker-block.speaker-layout-sidebyside::before {
+  content: attr(data-speaker-name) !important;
+  flex: 0 0 120px !important; /* Fixed width for speaker column */
+  font-weight: bold !important;
+  color: var(--color-accent, #3b82f6) !important;
+  padding: 4px 8px !important;
+  border-right: 2px solid var(--color-border-light, #e5e7eb) !important;
+  text-align: right !important;
+  min-height: 1.5em !important;
+  line-height: 1.6 !important;
+}
+
+/* Text wrapping layout: Text flows around floating speaker name */
+.ProseMirror .speaker-block.speaker-layout-wrap {
+  padding-left: 140px !important; /* Space for floating speaker name */
+  min-height: 2em !important;
+}
+
+.ProseMirror .speaker-block.speaker-layout-wrap::before {
+  content: attr(data-speaker-name) !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 120px !important;
+  font-weight: bold !important;
+  color: var(--color-accent, #3b82f6) !important;
+  padding: 4px 8px !important;
+  background: var(--color-background, white) !important;
+  border: 1px solid var(--color-border-light, #e5e7eb) !important;
+  border-radius: 6px !important;
+  text-align: center !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  line-height: 1.4 !important;
+}
+
+/* Content styling for all layouts */
+.ProseMirror .speaker-block {
+  line-height: 1.6;
+}
+
+/* Dark theme support for speaker layouts */
+:root[data-theme="dark"] .ProseMirror .speaker-block.speaker-layout-default::before,
+:root[data-theme="dark"] .ProseMirror .speaker-block.speaker-layout-sidebyside::before {
+  color: var(--color-accent-light, #60a5fa) !important;
+}
+
+:root[data-theme="dark"] .ProseMirror .speaker-block.speaker-layout-sidebyside::before {
+  border-right-color: var(--color-border-dark, #374151) !important;
+}
+
+:root[data-theme="dark"] .ProseMirror .speaker-block.speaker-layout-wrap::before {
+  background: var(--color-background-dark, #1f2937) !important;
+  border-color: var(--color-border-dark, #374151) !important;
+  color: var(--color-accent-light, #60a5fa) !important;
+}
+
+/* Responsive adjustments for speaker layouts */
+@media (max-width: 768px) {
+  .ProseMirror .speaker-layout-sidebyside {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .ProseMirror .speaker-layout-sidebyside::before {
+    flex: none;
+    width: 100%;
+    text-align: left;
+    border-right: none;
+    border-bottom: 2px solid var(--color-border-light, #e5e7eb);
+    padding-bottom: 8px;
+  }
+  
+  .ProseMirror .speaker-layout-wrap {
+    padding-left: 0;
+    padding-top: 40px;
+  }
+  
+  .ProseMirror .speaker-layout-wrap::before {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+  }
+
+  :root[data-theme="dark"] .ProseMirror .speaker-layout-sidebyside::before {
+    border-bottom-color: var(--color-border-dark, #374151);
+  }
+}
+
+/* Dark theme adjustments */
+:root[data-theme="dark"] .contextMenu {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* Light theme adjustments */
+:root[data-theme="light"] .contextMenu {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* Editor Header Styles */
+.editorHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background-color: #252526; /* Slightly different background */
+    border-bottom: 1px solid #444;
+    color: #ccc;
+}
+
+.scriptTitle {
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.backButton {
+    background-color: #555;
+    color: #eee;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.backButton:hover {
+    background-color: #777;
+}
+
+.statusBar {
+    padding: 8px 12px;
+    background-color: #2d2d2d;
+    color: #ccc;
+    font-size: 0.9em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #444;
+}
+
+.connected {
+    color: #8ade8a; /* Light green for connected */
+}
+
+.disconnected {
+    color: #f39c12; /* Orange for disconnected */
+}
+
+.retryButton {
+    background-color: #555;
+    color: #eee;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.9em;
+    margin-left: 10px;
+}
+
+.retryButton:hover {
+    background-color: #777;
+}
+
+.editorWrapper {
+    flex-grow: 1;
+    overflow-y: auto; /* Allow editor content to scroll */
+    position: relative; /* Needed for absolute positioning of cursors */
+}
+
+/* Additional styling for the editor to ensure proper cursor positioning */
+.editorContentContainer {
+    position: relative; /* Position context for floating elements */
+}
+
+/* Toolbar Styles */
+.toolbar {
+    padding: 8px 12px;
+    background-color: #2d2d2d;
+    border-bottom: 1px solid #444;
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Spacing between toolbar items */
+}
+
+.toolbar button,
+.toolbar select {
+    background-color: #555;
+    color: #eee;
+    border: 1px solid #666;
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.toolbar button:hover,
+.toolbar select:hover {
+    background-color: #777;
+}
+
+.toolbar button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.toolbar button.isActive {
+    background-color: #3a8dff; /* Example active color */
+    color: white;
+}
+
+/* Style for the color picker input in the toolbar */
+.colorInput {
+  width: 30px; /* Small square */
+  height: 30px;
+  padding: 2px; /* Minimal padding */
+  border: 1px solid #666;
+  background-color: #555; /* Match other buttons */
+  cursor: pointer;
+  border-radius: 3px;
+  vertical-align: middle; /* Align nicely with buttons */
+}
+
+.colorInput:hover {
+  border-color: #888;
+}
+
+.colorInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Dropdown Menu Styles */
+.dropdown {
+  position: absolute; /* Changed from relative for positioning */
+  top: 10px; /* Position from the top */
+  left: 10px; /* Position from the left */
+  display: inline-block;
+  z-index: 10; /* Ensure it's above other elements if needed */
+}
+
+.dropdownButton {
+  background-color: #4CAF50; /* Green */
+  color: white;
+  padding: 8px 16px;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+}
+
+.dropdownContent {
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1;
+}
+
+.dropdownContent a {
+  color: black;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+}
+
+.dropdownContent a:hover {background-color: #f1f1f1}
+
+/* Show the dropdown menu on hover */
+.dropdown:hover .dropdownContent {
+  display: block;
+}
+
+/* Change the background color of the dropdown button when the dropdown content is shown */
+.dropdown:hover .dropdownButton {
+  background-color: #3e8e41;
+} 

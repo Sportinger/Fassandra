@@ -1,0 +1,11 @@
+#!/bin/bash
+# Run pgAdmin container connected to your network
+docker run --name pgadmin \
+  -p 5050:80 \
+  -e "PGADMIN_DEFAULT_EMAIL=admin@example.com" \
+  -e "PGADMIN_DEFAULT_PASSWORD=admin" \
+  --network=default \
+  -d dpage/pgadmin4
+# Look at localhost:5050 and enter the above things and connect to
+# pessoa_db with pessoa_user and theater
+# and browse its content

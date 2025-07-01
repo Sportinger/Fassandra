@@ -1,0 +1,178 @@
+/* Keyframes for login page entrance animation (top to center) */
+@keyframes slideInFromTop {
+  0% {
+    transform: translateY(-100vh);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.3;
+  }
+  60% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Keyframes for login page exit animation (center to bottom) */
+@keyframes slideOutToBottom {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.7;
+  }
+  70% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+.authContainer {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 2rem;
+  
+  /* Default entrance animation with smooth opacity fade */
+  animation: slideInFromTop 300ms ease-in-out forwards;
+}
+
+.authContainer.exiting {
+  animation: slideOutToBottom 300ms ease-in-out forwards;
+}
+
+.authForm {
+  background-color: var(--color-background-secondary);
+  padding: 2.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.authTitle {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2rem;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+.formGroup {
+  margin-bottom: 1.5rem;
+}
+
+.formLabel {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.3px;
+}
+
+.formInput {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  background-color: var(--color-background);
+  border: 1.5px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  background-color: var(--color-background);
+  box-shadow: 0 0 0 3px rgba(100, 108, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.formInput:hover {
+  border-color: var(--color-text-secondary);
+}
+
+.formInput::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+}
+
+.submitButton {
+  width: 100%;
+  padding: 0.875rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-hover));
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
+  margin-top: 0.5rem;
+}
+
+.submitButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(100, 108, 255, 0.3);
+}
+
+.submitButton:active {
+  transform: translateY(0);
+}
+
+.errorMessage {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+/* Dark theme specific adjustments */
+:root[data-theme="dark"] .formInput {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+:root[data-theme="dark"] .formInput:focus {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: var(--color-accent);
+}
+
+:root[data-theme="dark"] .formInput:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Light theme specific adjustments */
+:root[data-theme="light"] .formInput {
+  background-color: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+:root[data-theme="light"] .formInput:focus {
+  background-color: rgba(0, 0, 0, 0.03);
+  border-color: var(--color-accent);
+}
+
+:root[data-theme="light"] .formInput:hover {
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+:root[data-theme="light"] .authForm {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+} 

@@ -1,0 +1,99 @@
+# docker-compose.yml with HTTPS support
+
+services:
+  db:
+    image: postgres:15 # Use a specific Postgres version
+    container_name: ${CONTAINER_PREFIX}pessoa_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # Loaded from .env
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pessoa_pgdata:/var/lib/postgresql/data # Persist database data
+    ports:
+      - "127.0.0.1:${DB_PORT}:${DB_INTERNAL_PORT}" # Expose port for potential direct access (optional)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    container_name: ${CONTAINER_PREFIX}pessoa_backend
+    build:
+      context: ./backend # Using backend directory as context
+      dockerfile: Dockerfile
+      target: builder # Use the builder stage for development with cargo watch
+    environment:
+      DATABASE_URL: ${DATABASE_URL} # Loaded from .env
+      # Pass JWT secret via env
+      JWT_SECRET: ${JWT_SECRET} # Loaded from .env
+      # Pass Gemini API keys
+      GEMINI_API_KEY: ${GEMINI_API_KEY} # Loaded from .env
+      GEMINI_API_URL: ${GEMINI_API_URL} # Loaded from .env
+      # Pass other backend config via env
+      BACKEND_PORT: ${BACKEND_INTERNAL_PORT:-3001} # Default if not set in .env
+      APP_DOMAIN: ${APP_DOMAIN}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-10}
+      # RUST_LOG: ${RUST_LOG:-info,backend=debug,tower_http=debug} # Added for logging config
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_INTERNAL_PORT}" # Map host port from .env to container port
+    depends_on:
+      db:
+        condition: service_healthy # Wait for db to be ready
+    # If you need hot-reloading for development, you might add a volume:
+    volumes:
+      - ./backend:/app # Mount local code
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/app/target
+    command: ["sh", "-c", "cargo-watch -q -x 'run --bin backend'"] # Corrected cargo-watch invocation
+
+  frontend:
+    container_name: ${CONTAINER_PREFIX}pessoa_frontend
+    build:
+      context: ./frontend # Path to frontend Dockerfile context
+      dockerfile: Dockerfile.https
+      args:
+          VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+          VITE_WS_BASE_URL: ${VITE_WS_BASE_URL}
+    volumes:
+      - ./frontend:/app:cached
+      - /app/node_modules # Anonymous volume for node_modules
+      # Mount SSL certificates
+      - ./frontend/ssl/certs:/etc/ssl/certs:ro
+      - ./frontend/ssl/private:/etc/ssl/private:ro
+    working_dir: /app
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"       # HTTP port (for redirect)
+      - "${FRONTEND_HTTPS_PORT:-8443}:443" # HTTPS port
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - backend # Optional: ensure backend starts first, though frontend usually handles unavailable API
+
+  pgadmin: # New pgAdmin service
+    image: dpage/pgadmin4:latest
+    container_name: ${CONTAINER_PREFIX}pessoa_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_LISTEN_PORT: ${PGADMIN_INTERNAL_PORT:-80} # Internal port for pgAdmin
+    ports:
+      - "${PGADMIN_PORT:-5050}:${PGADMIN_INTERNAL_PORT:-80}" # Map host port to pgAdmin container port
+    volumes:
+      - pessoa_pgadmin_data:/var/lib/pgadmin # Persist pgAdmin data (servers, settings)
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pessoa_pgdata:
+    name: ${CONTAINER_PREFIX}pessoa_pgdata
+  cargo-cache:
+    name: ${CONTAINER_PREFIX}cargo-cache
+  target-cache:
+    name: ${CONTAINER_PREFIX}target-cache
+  pessoa_pgadmin_data: # New volume for pgAdmin 

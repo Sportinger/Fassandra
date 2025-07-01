@@ -1,0 +1,695 @@
+@keyframes slideInFromTop {
+  0% {
+    transform: translateY(-100px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToTop {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+}
+
+.scriptGrid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2rem; /* Increased gap for better spacing between pages */
+  padding: 1.5rem; /* Increased padding for better spacing */
+  background-color: var(--color-background-secondary, #f0f2f5);
+  min-height: calc(100vh - 110px); /* Adjusted for 50px app padding + header */
+}
+
+.scriptGrid.exiting .scriptPage {
+  animation: slideOutToTop 0.2s ease-in forwards;
+}
+
+/* Script page - normale Größe, Thumbnail ist 9:16 */
+.scriptPage {
+  width: 250px; /* Fixed width */
+  height: 380px; /* Etwas höher für das 9:16 Thumbnail */
+  background-color: var(--color-background);
+  border-radius: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden; /* Hide overflowing content */
+  
+  /* Animation */
+  animation: slideInFromTop 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.scriptPage.withThumbnail {
+  background-size: cover;
+  background-position: top;
+  background-repeat: no-repeat;
+}
+
+/* Fade-out entfernt - transparente Thumbnails brauchen keinen Fade */
+
+.scriptPage:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+/* Badge container positioned in top-left */
+.badgeContainer {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  z-index: 3; /* Above everything else */
+}
+
+.pageTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  /* Truncate long titles */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0 0 0.25rem 0; /* Small margin bottom to separate from date */
+  max-width: calc(100% - 2.5rem); /* Leave space for burger menu */
+  padding-right: 0.5rem; /* Extra padding to ensure no overlap */
+}
+
+.pageBody {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  /* Remove background when thumbnail fills the whole card */
+}
+
+.thumbnailImage {
+  /* Hide the thumbnail image as it will be used as background */
+  display: none;
+}
+
+.noThumbnail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-secondary);
+  text-align: center;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  padding: 1rem;
+  backdrop-filter: blur(5px);
+}
+
+.noThumbnailIcon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.6;
+}
+
+.noThumbnailText {
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.pageDate {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.pageFooter {
+  padding: 0.5rem;
+  margin: 0.5rem -1rem -1rem -1rem; /* Extend to edges */
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(5px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  border-radius: 0 0 3px 3px;
+  position: relative;
+  z-index: 2; /* Ensure footer is above fade-out overlay */
+}
+
+/* Container for date and menu button on same line */
+.pageFooter .pageDate {
+  width: 100%;
+}
+
+.pageFooter .menuContainer {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+.menuContainer {
+  position: relative;
+  display: inline-block;
+}
+
+.burgerButton {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0.25rem;
+  font-size: 1.2rem;
+  line-height: 1;
+  border-radius: 4px;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.burgerButton:hover {
+  color: var(--color-accent);
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.burgerIcon {
+  display: block;
+  font-weight: bold;
+}
+
+.dropdownMenu {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  margin-bottom: 0.5rem;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 120px;
+  z-index: 1000;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: left;
+  transition: background-color 0.2s;
+}
+
+.menuItem:hover:not(:disabled) {
+  background-color: var(--color-background-secondary);
+}
+
+.menuItem:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.menuItem:not(:last-child) {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+/* Stagger the animation delays */
+.scriptPage:nth-child(1) { animation-delay: 0.1s; }
+.scriptPage:nth-child(2) { animation-delay: 0.2s; }
+.scriptPage:nth-child(3) { animation-delay: 0.3s; }
+.scriptPage:nth-child(4) { animation-delay: 0.4s; }
+/* ...and so on */
+
+/* 'Add New' slot styling */
+.addSlot {
+  /* Use scriptPage styles as a base */
+  composes: scriptPage; 
+  justify-content: center;
+  align-items: center;
+  background-color: transparent;
+  border: 2px dashed var(--color-border);
+  box-shadow: none;
+}
+
+.addSlot:hover {
+  background-color: var(--color-background-secondary);
+  border-color: var(--color-accent);
+}
+
+.addIcon {
+  font-size: 4rem;
+  font-weight: 200;
+  color: var(--color-text-secondary);
+  line-height: 1;
+}
+
+.optionsContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.optionsContainer button {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-button-bg);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+  text-align: center;
+}
+
+.optionsContainer button:hover {
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+  color: white;
+}
+
+.createForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.createForm input {
+  width: 100%;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-button-bg);
+  color: var(--color-text);
+}
+
+.createForm button {
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: none;
+  background-color: var(--color-accent);
+  color: white;
+  cursor: pointer;
+}
+
+.loadingIcon {
+  color: var(--color-text-secondary);
+}
+
+/* Custom Confirmation Modal */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  animation: fadeIn 300ms ease-in-out forwards;
+}
+
+.modalOverlay.exiting {
+  animation: fadeOut 300ms ease-in-out forwards;
+}
+
+.confirmModal {
+  background-color: var(--color-background-secondary);
+  padding: 2rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  width: 90%;
+  max-width: 450px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  text-align: left;
+  animation: slideIn 300ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.confirmModal.exiting {
+  animation: slideOut 300ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+}
+
+.modalHeader {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.modalHeader h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.modalBody {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+.modalBody p {
+  margin: 0 0 0.75rem 0;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.modalBody p:last-child {
+  margin-bottom: 0;
+}
+
+.warningText {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.modalActions {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.cancelButton {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-button-bg);
+  color: var(--color-text);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.cancelButton:hover {
+  background-color: var(--color-button-bg-hover);
+}
+
+.deleteConfirmButton {
+  padding: 0.5rem 1rem;
+  border: 1px solid #dc3545;
+  background-color: #dc3545;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.deleteConfirmButton:hover {
+  background-color: #c82333;
+  border-color: #c82333;
+}
+
+.shareOption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.shareInput {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: 0.5rem;
+  border-radius: 4px;
+  width: 50%;
+}
+
+.publicToggle {
+  background-color: var(--color-accent);
+  color: white;
+  padding: 0.5rem 1rem;
+}
+
+.publicToggle:hover {
+  background-color: var(--color-accent-hover);
+}
+
+.errorMessage {
+  background-color: rgba(220, 53, 69, 0.1);
+  border: 1px solid #dc3545;
+  color: #dc3545;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.shareSection {
+  margin-top: 1.5rem;
+}
+
+.shareSection h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.addShareForm {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.permissionSelect {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.addButton {
+  background-color: var(--color-accent);
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.addButton:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+}
+
+.addButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loadingText {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 1rem;
+}
+
+.sharesList {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.shareItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.shareItem:last-child {
+  border-bottom: none;
+}
+
+.shareUsername {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.sharePermission {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+
+.removeButton {
+  background-color: transparent;
+  color: #dc3545;
+  border: 1px solid #dc3545;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.removeButton:hover:not(:disabled) {
+  background-color: #dc3545;
+  color: white;
+}
+
+.removeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.noShares {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 1rem;
+  font-style: italic;
+}
+
+.publicBadge {
+  background-color: var(--color-accent);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(3px);
+}
+
+.sharedBadge {
+  background-color: #28a745;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(3px);
+}
+
+.publicToggle.active {
+  background-color: #28a745;
+}
+
+.publicToggle.active:hover {
+  background-color: #218838;
+}
+
+.renameForm {
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+.renameInput {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: inherit;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  border-bottom: 2px solid var(--color-accent);
+}
+
+/* Dark Mode Adjustments */
+:root[data-theme="dark"] .scriptPage {
+  background-color: #333; /* Graue Karten statt weiß */
+  border: 1px solid #444;
+}
+
+/* Invert only the thumbnail background image in dark mode */
+:root[data-theme="dark"] .scriptPage.withThumbnail::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: inherit;
+  background-size: inherit;
+  background-position: inherit;
+  background-repeat: inherit;
+  filter: invert(1);
+  z-index: 1;
+  border-radius: inherit;
+}
+
+/* Ensure footer and badges stay above the inverted thumbnail */
+:root[data-theme="dark"] .pageFooter {
+  position: relative;
+  z-index: 3;
+}
+
+/* Keep badges absolutely positioned but ensure they're above the inverted thumbnail */
+:root[data-theme="dark"] .badgeContainer {
+  z-index: 4; /* Higher than the inverted thumbnail (z-index: 1) */
+}
+
+:root[data-theme="dark"] .pageFooter {
+  background: rgba(51, 51, 51, 0.2); /* Grauer Header/Footer - 20% transparent */
+  border-color: #444;
+}
+
+:root[data-theme="dark"] .noThumbnail {
+  background: rgba(51, 51, 51, 0.8); /* Grauer No-Thumbnail Bereich */
+} 

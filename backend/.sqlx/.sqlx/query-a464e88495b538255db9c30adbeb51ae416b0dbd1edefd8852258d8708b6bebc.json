@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM script_shares WHERE id = $1 AND script_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a464e88495b538255db9c30adbeb51ae416b0dbd1edefd8852258d8708b6bebc"
+}

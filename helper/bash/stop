@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Ensure .env exists in the project root, and thus we load it
+if [ ! -f ".env" ]; then
+    echo "Error: .env is missing in the project root. Please create it and add the required secrets, including DATABASE_URL."
+    exit 1
+fi
+set -o allexport
+source .env
+set +o allexport
+
+
+docker stop ${CONTAINER_PREFIX}pessoa_backend
+docker stop ${CONTAINER_PREFIX}pessoa_frontend
+docker stop ${CONTAINER_PREFIX}pessoa_db
+docker ps

@@ -1,0 +1,30 @@
+#!/bin/bash
+# Ensure .env exists in the project root and source it for DATABASE_URL
+if [ ! -f ".env" ]; then
+    echo "Error: .env is missing in the project root. Please create it and add the required secrets, including DATABASE_URL."
+    exit 1
+fi
+set -o allexport
+source .env
+set +o allexport
+
+if [ -z "$DATABASE_URL" ]; then
+    echo "Error: DATABASE_URL is not set in .env . Please add it."
+    exit 1
+fi
+
+# make sure we have sqlx
+cargo install sqlx-cli --no-default-features --features native-tls,postgres
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Ensure your local .env points DATABASE_URL to your local/dev DB
+DATABASE_URL=${LOCALHOST_DATABASE_URL}
+cd backend
+cargo sqlx database setup # This creates the DB and runs migrations
+# OR if DB exists:
+# sqlx migrate run
+
+# Then generate the prepare file:
+cargo sqlx prepare --workspace -- --all-targets 
+# This creates/updates sqlx-data.json in each crate's directory (e.g. backend/sqlx-data.json)
+cd ..

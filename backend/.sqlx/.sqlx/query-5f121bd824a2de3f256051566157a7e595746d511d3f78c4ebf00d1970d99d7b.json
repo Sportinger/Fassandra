@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE scripts \n        SET is_public = NOT is_public \n        WHERE id = $1 AND created_by = $2\n        RETURNING is_public\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "is_public",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "5f121bd824a2de3f256051566157a7e595746d511d3f78c4ebf00d1970d99d7b"
+}

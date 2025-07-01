@@ -1,0 +1,57 @@
+pessoa/                   # → Git root (Monorepo)
+├── README.md                     # Projekt-Kurzdoku & Setup-Schritte
+├── LICENSE                       # OSS-Lizenz oder proprietär
+├── .gitignore
+│
+├── backend/                      # Rust / Axum API-Service
+│   ├── Cargo.toml
+│   ├── Dockerfile
+│   ├── migrations/               # SQLx-Migrations
+│   │   └── 2025-01-01-create_tables.sql
+│   └── src/
+│       ├── main.rs               # Server-Entry
+│       ├── routes/
+│       │   ├── mod.rs
+│       │   ├── health.rs
+│       │   └── scripts.rs
+│       ├── models/
+│       │   └── script.rs
+│       └── db.rs
+│
+├── frontend/                     # React-PWA (Vite + TS)
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── vite.config.ts
+│   ├── Dockerfile
+│   └── src/
+│       ├── main.tsx
+│       ├── App.tsx
+│       ├── routes/
+│       │   └── ScriptRoom.tsx
+│       ├── components/
+│       │   ├── Editor.tsx        # Tiptap + Yjs
+│       │   └── HistoryPanel.tsx
+│       └── styles/
+│           └── theme.ts
+│
+└── infra/
+    ├── docker/                   # Runtime for local / any Compose host
+    │   ├── docker-compose.yml
+    │   ├── docker-compose.override.yml  # *(optional host-specific)*
+    │   └── .env.example
+    │
+    ├── k8s/                      # (Platzhalter) Helm / kustomize
+    │   ├── README.md
+    │   └── base/
+    │       └── values.yaml
+    │
+    └── terraform/                # IaC für Cloud-Provisioning
+        └── hetzner/
+            ├── main.tf
+            ├── variables.tf
+            └── outputs.tf
+│
+└── .github/
+    └── workflows/
+        ├── build.yml             # Multi-arch Docker-Build & Push → GHCR
+        └── deploy.yml            # SSH-Deploy (local / Hetzner / Fly …)

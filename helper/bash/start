@@ -1,0 +1,65 @@
+#!/bin/bash
+# fix the sqlx migration stuff
+helper/bash/sqlx_prepare
+
+# Command line parameters will be passed to docker compose build
+
+# Ensure .env exists in the project root and source it for DATABASE_URL
+if [ ! -f ".env" ]; then
+    echo "Error: .env is missing in the project root. Please create it and add the required secrets, including DATABASE_URL."
+    exit 1
+fi
+set -o allexport
+source .env
+set +o allexport
+
+if [ -z "$DATABASE_URL" ]; then
+    echo "Error: DATABASE_URL is not set in .env. Please add it."
+    exit 1
+fi
+
+# Prepare db service (pull and build if needed) for fastest startup
+#DB_SERVICE="db"
+#DB_CONTAINER="pessoa_db"
+# docker compose pull $DB_SERVICE &
+# docker compose build $DB_SERVICE &
+# wait
+
+# Start the db service and check Docker permissions early
+if ! docker info >/dev/null 2>&1; then
+    echo "Error: Cannot access Docker daemon. Please ensure you have permission to use Docker (are you in the 'docker' group?)"
+    exit 1
+fi
+
+#docker compose up -d $DB_SERVICE
+
+# Wait for the database to be healthy using Docker healthcheck
+#MAX_TRIES=30
+#TRIES=0
+#until [ "$(docker inspect --format='{{.State.Health.Status}}' $DB_CONTAINER 2>/dev/null)" == "healthy" ]; do
+#    if [ $TRIES -ge $MAX_TRIES ]; then
+#        echo "Database container did not become healthy in time."
+#        exit 1
+#    fi
+#    echo "Waiting for database to be healthy..."
+#    sleep 2
+#    TRIES=$((TRIES+1))
+#done
+
+# Ensure backend/Cargo.lock exists before Docker build
+if [ ! -f backend/Cargo.lock ]; then
+  echo "Generating backend/Cargo.lock..."
+  (cd backend && cargo generate-lockfile)
+fi
+
+# Ensure frontend/package-lock.json exists before Docker build
+if [ ! -f frontend/package-lock.json ]; then
+  echo "Generating frontend/package-lock.json..."
+  (cd frontend && npm install --package-lock-only)
+fi
+
+# Start the rest of the services
+# (backend and frontend)
+docker compose pull && docker compose build $@ && docker compose up -d && echo "Docker Containers should be up!" && sleep 5 && docker ps
+#docker logs -f pessoa_backend
+
