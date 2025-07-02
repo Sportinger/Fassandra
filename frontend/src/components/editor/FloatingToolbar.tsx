@@ -137,6 +137,18 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       contexts: ['dialogue-block'],
       order: 2,
     },
+    {
+      id: 'exit-dialogue',
+      icon: '↩',
+      title: 'Exit Dialogue Block (Create Normal Text)',
+      action: () => {
+        console.log('Exiting dialogue block');
+        const result = editor?.chain().focus().exitDialogueBlock().run();
+        console.log('Exit result:', result);
+      },
+      contexts: ['dialogue-block'],
+      order: 3,
+    },
 
     // Page interaction buttons (empty-page context)
     {
