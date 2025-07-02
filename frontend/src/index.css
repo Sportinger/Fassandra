@@ -108,7 +108,7 @@ button:focus-visible {
 .ProseMirror::before {
   content: '';
   position: absolute;
-  left: 0;
+  left: -20px; /* Move the line further to the left */
   top: 0;
   bottom: 0;
   width: 3px;
