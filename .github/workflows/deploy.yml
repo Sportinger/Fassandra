@@ -9,9 +9,9 @@ on:
     branches: [dev, main, production]
   workflow_dispatch: # Allow manual deployment
 
-# Prevent concurrent builds - cancel previous runs
+# Prevent ALL concurrent builds - only one build at a time globally
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}
   cancel-in-progress: true
 
 env:
