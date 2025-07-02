@@ -93,3 +93,61 @@ button:focus-visible {
 .read-the-docs {
   color: var(--color-text-secondary);
 }
+
+/* ===== DIALOGUE BLOCK STYLES (GLOBAL) ===== */
+/* These styles must be global to work with TipTap's rendered HTML */
+
+/* Base dialogue block styling */
+.ProseMirror [data-type="dialogue-block"] {
+  margin: 1em 0;
+  position: relative;
+  border-left: 3px solid transparent;
+  padding-left: 10px;
+  transition: border-color 0.3s ease;
+}
+
+.ProseMirror [data-type="dialogue-block"]:hover {
+  border-left-color: var(--color-border, #444);
+}
+
+/* Default (stacked) layout */
+.ProseMirror [data-type="dialogue-block"][data-layout="default"] [data-type="speaker"] p {
+  font-weight: bold;
+  margin-bottom: 0.25em;
+  text-align: left !important;
+}
+
+/* Side-by-side layout - DEBUG VERSION with visible styling */
+.ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 1.5em !important;
+  text-align: initial !important;
+  background-color: rgba(255, 0, 0, 0.1) !important; /* DEBUG: Red background */
+  border: 2px solid red !important; /* DEBUG: Red border */
+}
+
+.ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
+  flex-basis: 120px !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  text-align: right !important;
+}
+
+.ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] p {
+  font-weight: bold !important;
+  margin: 0 !important;
+  text-align: right !important;
+}
+
+.ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="dialogue-text"] {
+  flex-grow: 1 !important;
+  flex-shrink: 1 !important;
+  text-align: left !important;
+}
+
+.ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="dialogue-text"] p {
+  margin: 0 !important;
+  text-align: left !important;
+}
