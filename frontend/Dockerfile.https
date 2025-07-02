@@ -36,17 +36,11 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy HTTPS nginx configuration
 COPY nginx-https.conf /etc/nginx/conf.d/default.conf
 
-# Create SSL directories
+# Create SSL directories (certificates will be mounted at runtime)
 RUN mkdir -p /etc/ssl/certs /etc/ssl/private
 
-# Copy SSL certificates (these should be mounted or generated)
-# Note: In production, these should be properly managed certificates
-COPY ssl/certs/server.crt /etc/ssl/certs/
-COPY ssl/private/server.key /etc/ssl/private/
-
-# Set proper permissions for SSL files
-RUN chmod 644 /etc/ssl/certs/server.crt && \
-    chmod 600 /etc/ssl/private/server.key
+# Note: SSL certificates are mounted at runtime from the host server
+# They are not copied during build to support different environments
 
 # Expose both HTTP (for redirect) and HTTPS ports
 EXPOSE 80 443
