@@ -12,9 +12,7 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { saveContentToServer } from '../../../api';
 import { extractSpeakerNames } from '../utils/contentConverters';
-import { SpeakerNameExtension } from '../../SpeakerNameExtension';
 import { FontSize } from '../FontSizeExtension';
-import { SpeakerBlockExtension } from '../SpeakerBlockExtension';
 import {
   DialogueBlock,
   DialogueText,
@@ -104,10 +102,6 @@ export const useEditorInstance = ({
       FontSize.configure({
         types: ['textStyle'], // Allow font size changes on textStyle marks
       }),
-      // Add custom speaker name formatting extension
-      SpeakerNameExtension,
-      // Add custom speaker block extension
-      SpeakerBlockExtension,
       // Custom extensions
       DialogueBlock,
       DialogueText,
@@ -159,10 +153,6 @@ export const useEditorInstance = ({
       FontSize.configure({
         types: ['textStyle'],
       }),
-      // Add custom speaker name formatting extension
-      SpeakerNameExtension,
-      // Add custom speaker block extension
-      SpeakerBlockExtension,
       // Custom extensions
       DialogueBlock,
       DialogueText,

@@ -247,8 +247,6 @@
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
 
-
-
 /* Font Size Dropdown Styles */
 .fontSizeDropdown {
   position: relative;
@@ -835,128 +833,9 @@
   color: var(--color-text); /* Maintain text color consistency */
 }
 
-/* Speaker Layout Styles using CSS pseudo-elements and data attributes */
-
-/* Base speaker block styling */
-.ProseMirror .speaker-block {
-  margin: 16px 0;
-  position: relative;
-}
-
-/* Default layout: Traditional speaker name with colon */
-.ProseMirror .speaker-block.speaker-layout-default::before {
-  content: attr(data-speaker-name) ": " !important;
-  font-weight: bold !important;
-  color: var(--color-accent, #3b82f6) !important;
-  display: block !important;
-  margin-bottom: 4px !important;
-}
-
-/* Side-by-side layout: Speaker name on left, text content on right */
-.ProseMirror .speaker-block.speaker-layout-sidebyside {
-  display: flex !important;
-  align-items: flex-start !important;
-  gap: 16px !important;
-}
-
-.ProseMirror .speaker-block.speaker-layout-sidebyside::before {
-  content: attr(data-speaker-name) !important;
-  flex: 0 0 120px !important; /* Fixed width for speaker column */
-  font-weight: bold !important;
-  color: var(--color-accent, #3b82f6) !important;
-  padding: 4px 8px !important;
-  border-right: 2px solid var(--color-border-light, #e5e7eb) !important;
-  text-align: right !important;
-  min-height: 1.5em !important;
-  line-height: 1.6 !important;
-}
-
-/* Text wrapping layout: Text flows around floating speaker name */
-.ProseMirror .speaker-block.speaker-layout-wrap {
-  padding-left: 140px !important; /* Space for floating speaker name */
-  min-height: 2em !important;
-}
-
-.ProseMirror .speaker-block.speaker-layout-wrap::before {
-  content: attr(data-speaker-name) !important;
-  position: absolute !important;
-  left: 0 !important;
-  top: 0 !important;
-  width: 120px !important;
-  font-weight: bold !important;
-  color: var(--color-accent, #3b82f6) !important;
-  padding: 4px 8px !important;
-  background: var(--color-background, white) !important;
-  border: 1px solid var(--color-border-light, #e5e7eb) !important;
-  border-radius: 6px !important;
-  text-align: center !important;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-  line-height: 1.4 !important;
-}
-
-/* Content styling for all layouts */
-.ProseMirror .speaker-block {
-  line-height: 1.6;
-}
-
-/* Dark theme support for speaker layouts */
-:root[data-theme="dark"] .ProseMirror .speaker-block.speaker-layout-default::before,
-:root[data-theme="dark"] .ProseMirror .speaker-block.speaker-layout-sidebyside::before {
-  color: var(--color-accent-light, #60a5fa) !important;
-}
-
-:root[data-theme="dark"] .ProseMirror .speaker-block.speaker-layout-sidebyside::before {
-  border-right-color: var(--color-border-dark, #374151) !important;
-}
-
-:root[data-theme="dark"] .ProseMirror .speaker-block.speaker-layout-wrap::before {
-  background: var(--color-background-dark, #1f2937) !important;
-  border-color: var(--color-border-dark, #374151) !important;
-  color: var(--color-accent-light, #60a5fa) !important;
-}
-
-/* Responsive adjustments for speaker layouts */
-@media (max-width: 768px) {
-  .ProseMirror .speaker-layout-sidebyside {
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .ProseMirror .speaker-layout-sidebyside::before {
-    flex: none;
-    width: 100%;
-    text-align: left;
-    border-right: none;
-    border-bottom: 2px solid var(--color-border-light, #e5e7eb);
-    padding-bottom: 8px;
-  }
-  
-  .ProseMirror .speaker-layout-wrap {
-    padding-left: 0;
-    padding-top: 40px;
-  }
-  
-  .ProseMirror .speaker-layout-wrap::before {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: auto;
-  }
-
-  :root[data-theme="dark"] .ProseMirror .speaker-layout-sidebyside::before {
-    border-bottom-color: var(--color-border-dark, #374151);
-  }
-}
-
 /* Dark theme adjustments */
 :root[data-theme="dark"] .contextMenu {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-}
-
-/* Light theme adjustments */
-:root[data-theme="light"] .contextMenu {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
 /* Editor Header Styles */
