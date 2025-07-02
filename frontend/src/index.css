@@ -108,7 +108,7 @@ button:focus-visible {
   transition: all 0.3s ease;
   max-width: 100%;
   text-align: left;
-  transform: translateX(-15px) !important; /* Move slightly left but stay within bounds */
+  /* No default transform - let each layout handle its own positioning */
 }
 
 /* SUBTLE HOVER BOXES FOR SPEAKER AND DIALOGUE TEXT */
@@ -139,6 +139,7 @@ button:focus-visible {
   display: block !important; /* Ensure block layout, not flex */
   flex-direction: column !important; /* If flex is inherited, make it vertical */
   text-align: left !important;
+  transform: translateX(-5px) !important; /* Minimal left offset for stacked view */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="default"] [data-type="speaker"] {
@@ -176,9 +177,9 @@ button:focus-visible {
   align-items: flex-start !important;
   gap: 0.5em !important;
   text-align: initial !important;
-  padding-left: 0 !important; /* No space needed for hover line */
+  padding-left: 5px !important; /* Small padding to prevent hover box cutoff */
   justify-content: flex-start !important;
-  transform: translateX(-15px) !important; /* Move slightly left but stay within bounds */
+  transform: translateX(-10px) !important; /* Moderate left offset, accounting for padding */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
