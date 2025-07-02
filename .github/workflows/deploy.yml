@@ -1,5 +1,8 @@
 # GitHub Actions workflow disabled - using local build + push workflow only
 # To re-enable, uncomment the sections below
+#
+# NOTE: This file is intentionally disabled to prevent automatic builds on GitHub.
+# All deployments are managed via the local script: ./scripts/deploy.sh
 
 # name: Build Images (Dev Branch Only)
 # 
