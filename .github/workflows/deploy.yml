@@ -2,7 +2,7 @@ name: Deploy to Hetzner Server
 
 on:
   push:
-    branches: [main, production]
+    branches: [main, production, dev]
   workflow_dispatch: # Allow manual deployment
 
 env:
@@ -83,7 +83,7 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production' || github.ref == 'refs/heads/dev'
 
     steps:
       - name: Deploy to Hetzner Server
@@ -93,7 +93,7 @@ jobs:
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH }}
+            cd /opt/pessoa
             
             # Set image tag to the commit SHA
             export IMAGE_TAG=sha-${{ github.sha }}
