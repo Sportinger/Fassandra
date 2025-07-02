@@ -101,14 +101,14 @@ button:focus-visible {
 /* ===== DIALOGUE BLOCK STYLES (GLOBAL) ===== */
 /* These styles must be global to work with TipTap's rendered HTML */
 
-/* Independent floating hover line - TRULY INDEPENDENT FROM CONTAINERS */
+/* Independent floating hover line - POSITIONED LIKE DIN A4 MARGIN INDICATOR */
 body::before {
   content: '';
   position: fixed; /* Fixed to viewport, completely independent */
-  left: 20px; /* Move closer to the left, near dialogue blocks */
-  top: 100px; /* Start below the header area */
-  height: 400px; /* Fixed height instead of full viewport */
-  width: 3px;
+  left: 120px; /* Position like margin line on DIN A4 - between page border and text start */
+  top: 180px; /* Start where dialogue blocks typically appear */
+  height: 150px; /* Shorter height matching typical dialogue block size */
+  width: 2px; /* Thinner line like margin indicator */
   background-color: transparent;
   transition: background-color 0.3s ease;
   z-index: 9999; /* Above everything */
@@ -122,12 +122,7 @@ body:has(.ProseMirror [data-type="dialogue-block"]:hover)::before {
   opacity: 1; /* Make visible */
 }
 
-/* Remove the old container-bound line */
-.ProseMirror {
-  position: relative;
-}
-
-/* Old line removed - now using body::before instead */
+/* Remove the dynamic positioning attempt - keep it simple */
 
 /* Base dialogue block styling - POSITION WORKING, REMOVED HOVER LINE */
 .ProseMirror [data-type="dialogue-block"] {
