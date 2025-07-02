@@ -100,15 +100,15 @@ button:focus-visible {
 /* ===== DIALOGUE BLOCK STYLES (GLOBAL) ===== */
 /* These styles must be global to work with TipTap's rendered HTML */
 
-/* Base dialogue block styling - NO HOVER LINES */
+/* Base dialogue block styling - DOCUMENT FLOW POSITIONING */
 .ProseMirror [data-type="dialogue-block"] {
   margin: 1em 0 1em 0 !important;
   position: relative;
-  padding-left: 0 !important; /* No space needed for hover line */
   transition: all 0.3s ease;
   max-width: 100%;
   text-align: left;
-  /* No default transform - let each layout handle its own positioning */
+  /* Use margin-left instead of transform for export safety */
+  margin-left: 0 !important;
 }
 
 /* SUBTLE HOVER BOXES FOR SPEAKER AND DIALOGUE TEXT */
@@ -139,7 +139,7 @@ button:focus-visible {
   display: block !important; /* Ensure block layout, not flex */
   flex-direction: column !important; /* If flex is inherited, make it vertical */
   text-align: left !important;
-  transform: translateX(-5px) !important; /* Minimal left offset for stacked view */
+  /* No special positioning - use natural document flow for export safety */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="default"] [data-type="speaker"] {
@@ -170,16 +170,16 @@ button:focus-visible {
   hyphens: auto !important;
 }
 
-/* Side-by-side layout - NO HOVER LINES */
+/* Side-by-side layout - DOCUMENT FLOW POSITIONING */
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] {
   display: flex !important;
   flex-direction: row !important;
   align-items: flex-start !important;
   gap: 0.5em !important;
   text-align: initial !important;
-  padding-left: 5px !important; /* Small padding to prevent hover box cutoff */
   justify-content: flex-start !important;
-  transform: translateX(-10px) !important; /* Moderate left offset, accounting for padding */
+  /* Use natural document flow positioning for export safety */
+  padding-left: 0 !important;
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
