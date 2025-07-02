@@ -16,15 +16,6 @@ export const SinglePageView: React.FC<ViewModeProps> = ({
       className={`${styles.dinA4Page} ${isExiting ? styles.exiting : ''}`}
       onContextMenu={handlePageContextMenu}
     >
-      {/* Page Header */}
-      {scriptCreationDate && (
-        <div className={styles.pageHeader}>
-          <p className={styles.pageDate}>
-            Created on: {new Date(scriptCreationDate).toLocaleDateString()}
-          </p>
-        </div>
-      )}
-
       {/* Editor Content */}
       <div 
         className={styles.editorContentWrapper}

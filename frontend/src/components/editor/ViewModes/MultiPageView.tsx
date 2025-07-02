@@ -29,13 +29,9 @@ export const MultiPageView: React.FC<ViewModeProps> = ({
           onContextMenu={handlePageContextMenu}
         >
           {/* Page Header */}
-          {scriptCreationDate && index === 0 && (
-            <div className={styles.pageHeader}>
-              <p className={styles.pageDate}>
-                Created on: {new Date(scriptCreationDate).toLocaleDateString()}
-              </p>
-            </div>
-          )}
+          <div className={styles.pageHeader}>
+            <div className={styles.pageNumber}>Page {index + 1}</div>
+          </div>
 
           {/* Page number indicator */}
           <div className={styles.pageNumber}>
