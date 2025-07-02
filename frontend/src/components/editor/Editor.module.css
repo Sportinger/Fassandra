@@ -1160,13 +1160,14 @@
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] {
   display: flex;
   flex-direction: row;
+  align-items: baseline; /* Better vertical alignment for text */
   gap: 1.5em;
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
-  flex-basis: 140px;
+  flex-basis: 120px; /* Slightly narrower column */
   flex-shrink: 0;
-  text-align: right;
+  text-align: left; /* More standard alignment */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] p {
