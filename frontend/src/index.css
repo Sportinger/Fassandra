@@ -108,7 +108,7 @@ button:focus-visible {
   transition: all 0.3s ease;
   max-width: 100%;
   text-align: left;
-  transform: translateX(-40px) !important; /* Move further left */
+  transform: translateX(-15px) !important; /* Move slightly left but stay within bounds */
 }
 
 /* SUBTLE HOVER BOXES FOR SPEAKER AND DIALOGUE TEXT */
@@ -178,7 +178,7 @@ button:focus-visible {
   text-align: initial !important;
   padding-left: 0 !important; /* No space needed for hover line */
   justify-content: flex-start !important;
-  transform: translateX(-40px) !important; /* Move further left */
+  transform: translateX(-15px) !important; /* Move slightly left but stay within bounds */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
