@@ -11,12 +11,12 @@ const API_BASE_URL: string =
     ? import.meta.env.VITE_API_BASE_URL
     : (typeof process !== 'undefined' && process.env && process.env.VITE_API_BASE_URL)
       ? process.env.VITE_API_BASE_URL
-      : 'http://localhost:3001';
+      : '';
 
 if (
   typeof import.meta !== 'undefined' && import.meta.env && !import.meta.env.VITE_API_BASE_URL
 ) {
-  console.warn('VITE_API_BASE_URL environment variable is not set. Using default:', API_BASE_URL);
+  console.log('VITE_API_BASE_URL not set. Using relative URLs for API requests.');
 }
 
 /**

@@ -66,15 +66,10 @@ export const useYjsConnection = ({
     
     setYdoc(currentDoc);
 
-    const wsBaseUrl = import.meta.env.VITE_WS_BASE_URL;
+    const wsBaseUrl = import.meta.env.VITE_WS_BASE_URL || 
+      `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`;
     logDebugInfo('Editor', `WebSocket Base URL: ${wsBaseUrl}`);
-    if (!wsBaseUrl) {
-      console.error("VITE_WS_BASE_URL is not defined.");
-      logDebugInfo('Editor', "VITE_WS_BASE_URL is not defined");
-      setStatus('error');
-      setErrorMessage("WebSocket URL configuration is missing.");
-      return;
-    }
+    console.log(`WebSocket Base URL: ${wsBaseUrl}`);
 
     console.log(`Setting up IndexedDB persistence for ${scriptId}...`);
     const persistence = new IndexeddbPersistence(`theater-script-${scriptId}`, currentDoc);

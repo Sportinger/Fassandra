@@ -46,8 +46,8 @@ docker build \
 # Build frontend  
 echo "  🎨 Building frontend..."
 docker build \
-    --build-arg VITE_API_BASE_URL="https://mylayer.org:8443" \
-    --build-arg VITE_WS_BASE_URL="wss://mylayer.org:8443/api/collab" \
+    --build-arg VITE_API_BASE_URL="" \
+    --build-arg VITE_WS_BASE_URL="" \
     -t ghcr.io/sportinger/pessoa-frontend:${IMAGE_TAG} \
     -f ./frontend/Dockerfile.https \
     ./frontend
