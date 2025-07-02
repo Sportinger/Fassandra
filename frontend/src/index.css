@@ -100,60 +100,38 @@ button:focus-visible {
 /* ===== DIALOGUE BLOCK STYLES (GLOBAL) ===== */
 /* These styles must be global to work with TipTap's rendered HTML */
 
-/* Base dialogue block styling - SCROLLING HOVER LINES */
+/* Base dialogue block styling - NO HOVER LINES */
 .ProseMirror [data-type="dialogue-block"] {
   margin: 1em 0 1em 0 !important;
   position: relative;
-  padding-left: 15px !important; /* Space for the hover line */
+  padding-left: 0 !important; /* No space needed for hover line */
   transition: all 0.3s ease;
   max-width: 100%;
   text-align: left;
-  transform: translateX(-30px) !important; /* Use transform instead of negative margin */
-}
-
-/* DYNAMIC HOVER LINE - Sticks to block and adjusts to height */
-.ProseMirror [data-type="dialogue-block"]::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0; /* Extends to full height of block */
-  width: 3px;
-  background-color: transparent;
-  transition: background-color 0.3s ease;
-  border-radius: 2px;
-  z-index: 1;
-}
-
-.ProseMirror [data-type="dialogue-block"]:hover::before {
-  background-color: var(--color-border, #444);
+  transform: translateX(-40px) !important; /* Move further left */
 }
 
 /* SUBTLE HOVER BOXES FOR SPEAKER AND DIALOGUE TEXT */
 .ProseMirror [data-type="speaker"] {
-  transition: all 0.2s ease;
+  transition: border-color 150ms ease, opacity 150ms ease;
   border-radius: 4px;
+  border: 1px solid transparent; /* Always has border to prevent layout shift */
   padding: 2px 4px;
-  margin: -2px -4px; /* Negative margin to prevent layout shift */
 }
 
 .ProseMirror [data-type="speaker"]:hover {
-  border: 1px solid var(--color-border-light, #e5e7eb);
-  background-color: transparent;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-color: rgba(229, 231, 235, 0.1); /* 10% opacity */
 }
 
 .ProseMirror [data-type="dialogue-text"] {
-  transition: all 0.2s ease;
+  transition: border-color 150ms ease, opacity 150ms ease;
   border-radius: 4px;
+  border: 1px solid transparent; /* Always has border to prevent layout shift */
   padding: 2px 4px;
-  margin: -2px -4px; /* Negative margin to prevent layout shift */
 }
 
 .ProseMirror [data-type="dialogue-text"]:hover {
-  border: 1px solid var(--color-border-light, #e5e7eb);
-  background-color: transparent;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-color: rgba(229, 231, 235, 0.1); /* 10% opacity */
 }
 
 /* Default (stacked) layout - CLEAN VERTICAL STACK */
@@ -191,16 +169,16 @@ button:focus-visible {
   hyphens: auto !important;
 }
 
-/* Side-by-side layout - SCROLLING HOVER LINES */
+/* Side-by-side layout - NO HOVER LINES */
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] {
   display: flex !important;
   flex-direction: row !important;
   align-items: flex-start !important;
   gap: 0.5em !important;
   text-align: initial !important;
-  padding-left: 15px !important; /* Space for hover line */
+  padding-left: 0 !important; /* No space needed for hover line */
   justify-content: flex-start !important;
-  transform: translateX(-30px) !important; /* Move 30px to the left */
+  transform: translateX(-40px) !important; /* Move further left */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
