@@ -1,5 +1,6 @@
 name: Deploy to Hetzner Server
 
+# Force fresh build - local Docker build test successful
 on:
   push:
     branches: [main, production, dev]
