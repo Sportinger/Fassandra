@@ -1056,9 +1056,11 @@
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] {
   display: flex !important;
   flex-direction: row !important;
-  align-items: flex-start !important; /* Align to top for better text flow */
+  align-items: flex-start !important;
   gap: 1.5em !important;
-  text-align: initial !important; /* Reset any inherited text-align */
+  text-align: initial !important;
+  background-color: rgba(255, 0, 0, 0.1) !important; /* DEBUG: Red background to see if rule applies */
+  border: 2px solid red !important; /* DEBUG: Red border to make it obvious */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
