@@ -105,9 +105,9 @@ button:focus-visible {
 body::before {
   content: '';
   position: fixed; /* Fixed to viewport, completely independent */
-  left: 50px; /* Position from left edge of viewport */
-  top: 0;
-  bottom: 0;
+  left: 20px; /* Move closer to the left, near dialogue blocks */
+  top: 100px; /* Start below the header area */
+  height: 400px; /* Fixed height instead of full viewport */
   width: 3px;
   background-color: transparent;
   transition: background-color 0.3s ease;
