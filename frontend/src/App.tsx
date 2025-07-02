@@ -7,7 +7,7 @@ import { ScriptList } from './components/ScriptList'
 import { Editor } from './components/editor'
 import ScriptUploader from './components/ScriptUploader'
 import { Header } from './components/Header';
-import { MobileDebugPanel } from './components/MobileDebug';
+
 import './App.css'
 
 /**
@@ -225,9 +225,6 @@ function App(): JSX.Element {
           />
         )}
       </main>
-      
-      {/* Mobile Debug Panel - only shows on mobile */}
-      <MobileDebugPanel />
     </div>
   )
 }
