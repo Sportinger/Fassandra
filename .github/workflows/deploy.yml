@@ -1,6 +1,8 @@
-name: Deploy to Hetzner Server
+name: Build Images and Deploy to Hetzner Server
 
-# Force fresh build - local Docker build test successful
+# Deployment strategy:
+# - dev branch: Builds and pushes Docker images for testing (no deployment)
+# - main/production branches: Builds images AND deploys to Hetzner server
 on:
   push:
     branches: [main, production, dev]
@@ -84,7 +86,8 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production' || github.ref == 'refs/heads/dev'
+    # Only deploy from main and production branches, not dev
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production'
 
     steps:
       - name: Deploy to Hetzner Server
