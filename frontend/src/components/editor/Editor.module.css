@@ -1134,5 +1134,45 @@
 
 /* Change the background color of the dropdown button when the dropdown content is shown */
 .dropdown:hover .dropdownButton {
-  background-color: #3e8e41;
+  background-color: var(--color-accent-hover);
+}
+
+/* New Dialogue Block Styles */
+.ProseMirror [data-type="dialogue-block"] {
+  margin: 1em 0;
+  position: relative;
+  border-left: 3px solid transparent;
+  padding-left: 10px;
+  transition: border-color 0.3s ease;
+}
+
+.ProseMirror [data-type="dialogue-block"]:hover {
+  border-left-color: var(--color-border-light, #e5e7eb);
+}
+
+/* Default (stacked) layout */
+.ProseMirror [data-type="dialogue-block"][data-layout="default"] [data-type="speaker"] p {
+  font-weight: bold;
+  margin-bottom: 0.25em;
+}
+
+/* Side-by-side layout */
+.ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] {
+  display: flex;
+  flex-direction: row;
+  gap: 1.5em;
+}
+
+.ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
+  flex-basis: 140px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] p {
+  font-weight: bold;
+}
+
+.ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="dialogue-text"] {
+  flex-grow: 1;
 } 

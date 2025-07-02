@@ -108,6 +108,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   };
 
   const getContext = (): ToolbarContext => {
+    if (editor?.isActive('dialogueBlock')) return 'dialogue-block';
     if (hasTextSelection) return 'text-selection';
     return clickContext as ToolbarContext;
   };
@@ -200,12 +201,20 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
 
     // Page action buttons (empty-page context)
     {
+      id: 'insert-dialogue',
+      icon: '💬',
+      title: 'Insert Dialogue Block',
+      action: () => editor?.chain().focus().insertDialogueBlock().run(),
+      contexts: ['empty-page'],
+      order: 1
+    },
+    {
       id: 'split-page',
       icon: '⎘',
       title: 'Split Page',
       action: () => console.log('Split page'),
       contexts: ['empty-page'],
-      order: 1
+      order: 2
     },
 
     // View mode buttons (default context)
@@ -234,7 +243,27 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       action: () => window.print(),
       contexts: ['default'],
       order: 3
-    }
+    },
+
+    // Dialogue Block layout buttons
+    {
+      id: 'dialogue-default',
+      icon: '≡',
+      title: 'Default Layout',
+      action: () => editor?.chain().focus().setDialogueLayout('default').run(),
+      isActive: editor?.isActive('dialogueBlock', { layout: 'default' }),
+      contexts: ['dialogue-block'],
+      order: 1
+    },
+    {
+      id: 'dialogue-sidebyside',
+      icon: '⇥',
+      title: 'Side-by-Side Layout',
+      action: () => editor?.chain().focus().setDialogueLayout('side-by-side').run(),
+      isActive: editor?.isActive('dialogueBlock', { layout: 'side-by-side' }),
+      contexts: ['dialogue-block'],
+      order: 2
+    },
   ], [editor, viewMode, onSetViewMode]);
 
   // Get buttons for current context, sorted by order

@@ -4,12 +4,12 @@ import { ScriptLayout } from '../../types';
 export interface FloatingToolbarProps {
   editor: EditorInstance | null;
   hasTextSelection: boolean;
-  context: 'default' | 'speaker-name' | 'empty-page';
+  context: 'default' | 'speaker-name' | 'empty-page' | 'dialogue-block';
   viewMode: ViewMode;
   onSetViewMode: (mode: ViewMode) => void;
 }
 
-export type ToolbarContext = 'text-selection' | 'speaker-name' | 'empty-page' | 'default';
+export type ToolbarContext = 'text-selection' | 'speaker-name' | 'empty-page' | 'default' | 'dialogue-block';
 
 export interface EditorProps {
   scriptId: string;

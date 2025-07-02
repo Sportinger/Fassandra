@@ -15,6 +15,11 @@ import { extractSpeakerNames } from '../utils/contentConverters';
 import { SpeakerNameExtension } from '../../SpeakerNameExtension';
 import { FontSize } from '../FontSizeExtension';
 import { SpeakerBlockExtension } from '../SpeakerBlockExtension';
+import {
+  DialogueBlock,
+  DialogueText,
+  Speaker,
+} from '../extensions';
 
 interface UseEditorInstanceProps {
   ydoc: Y.Doc | null;
@@ -103,6 +108,10 @@ export const useEditorInstance = ({
       SpeakerNameExtension,
       // Add custom speaker block extension
       SpeakerBlockExtension,
+      // Custom extensions
+      DialogueBlock,
+      DialogueText,
+      Speaker,
       Collaboration.configure({
         document: ydoc,
       }),
@@ -154,6 +163,10 @@ export const useEditorInstance = ({
       SpeakerNameExtension,
       // Add custom speaker block extension
       SpeakerBlockExtension,
+      // Custom extensions
+      DialogueBlock,
+      DialogueText,
+      Speaker,
     ], // More complete fallback setup
     content: '', // Content will be managed by Yjs
     editorProps: {
