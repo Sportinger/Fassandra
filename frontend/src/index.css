@@ -58,7 +58,6 @@ body {
   min-height: 100vh;
   background-color: var(--color-background);
   color: var(--color-text);
-  position: relative; /* Ensure body can contain absolute positioning */
 }
 
 #root {
@@ -101,39 +100,33 @@ button:focus-visible {
 /* ===== DIALOGUE BLOCK STYLES (GLOBAL) ===== */
 /* These styles must be global to work with TipTap's rendered HTML */
 
-/* Independent floating hover line - POSITIONED LIKE DIN A4 MARGIN INDICATOR */
-body::before {
-  content: '';
-  position: fixed; /* Fixed to viewport, completely independent */
-  left: 120px; /* Position like margin line on DIN A4 - between page border and text start */
-  top: 180px; /* Start where dialogue blocks typically appear */
-  height: 150px; /* Shorter height matching typical dialogue block size */
-  width: 2px; /* Thinner line like margin indicator */
-  background-color: transparent;
-  transition: background-color 0.3s ease;
-  z-index: 9999; /* Above everything */
-  pointer-events: none; /* Don't interfere with anything */
-  opacity: 0; /* Hidden by default */
-}
-
-/* Show the floating line when hovering over dialogue blocks */
-body:has(.ProseMirror [data-type="dialogue-block"]:hover)::before {
-  background-color: var(--color-border, #444);
-  opacity: 1; /* Make visible */
-}
-
-/* Remove the dynamic positioning attempt - keep it simple */
-
-/* Base dialogue block styling - POSITION WORKING, REMOVED HOVER LINE */
+/* Base dialogue block styling - SCROLLING HOVER LINES */
 .ProseMirror [data-type="dialogue-block"] {
   margin: 1em 0 1em 0 !important;
   position: relative;
-  /* Removed border-left since we have the floating line now */
-  padding-left: 10px !important;
-  transition: border-color 0.3s ease;
+  padding-left: 15px !important; /* Space for the hover line */
+  transition: all 0.3s ease;
   max-width: 100%;
   text-align: left;
-  transform: translateX(-30px) !important; /* This is working! */
+  transform: translateX(-30px) !important; /* Use transform instead of negative margin */
+}
+
+/* DYNAMIC HOVER LINE - Sticks to block and adjusts to height */
+.ProseMirror [data-type="dialogue-block"]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0; /* Extends to full height of block */
+  width: 3px;
+  background-color: transparent;
+  transition: background-color 0.3s ease;
+  border-radius: 2px;
+  z-index: 1;
+}
+
+.ProseMirror [data-type="dialogue-block"]:hover::before {
+  background-color: var(--color-border, #444);
 }
 
 /* Default (stacked) layout */
@@ -143,16 +136,16 @@ body:has(.ProseMirror [data-type="dialogue-block"]:hover)::before {
   text-align: left !important;
 }
 
-/* Side-by-side layout - USING TRANSFORM FOR POSITIONING */
+/* Side-by-side layout - SCROLLING HOVER LINES */
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] {
   display: flex !important;
   flex-direction: row !important;
   align-items: flex-start !important;
   gap: 0.5em !important;
   text-align: initial !important;
-  padding-left: 10px !important;
+  padding-left: 15px !important; /* Space for hover line */
   justify-content: flex-start !important;
-  transform: translateX(-30px) !important; /* Keep this working approach */
+  transform: translateX(-30px) !important; /* Move 30px to the left */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {

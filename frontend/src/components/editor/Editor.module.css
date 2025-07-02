@@ -1,6 +1,6 @@
 /* Editor.module.css */
 
-/* Floating Toolbar Styles */
+/* Floating Toolbar Styles - ALWAYS VISIBLE */
 .floatingToolbar {
   position: fixed;
   left: 20px;
@@ -18,6 +18,11 @@
   backdrop-filter: blur(10px);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: visible; /* Allow dropdowns to extend beyond toolbar */
+  
+  /* ALWAYS VISIBLE - Override responsive hiding */
+  min-width: 80px !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 /* Enhanced Morphing Toolbar */
@@ -426,10 +431,28 @@
   background: var(--color-border, #d1d5db);
 }
 
-/* Mobile responsive - hide on small screens */
+/* Ensure toolbar is always visible on all screen sizes */
 @media (max-width: 768px) {
   .floatingToolbar {
-    display: none;
+    left: 10px; /* Slightly closer to edge on mobile */
+    padding: 8px 6px; /* Slightly smaller padding */
+    border-radius: 8px; /* Slightly smaller radius */
+  }
+  
+  .toolbarButton {
+    width: 48px; /* Slightly smaller buttons */
+    height: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  .floatingToolbar {
+    left: 5px; /* Even closer on very small screens */
+  }
+  
+  .toolbarButton {
+    width: 44px; /* Even smaller buttons */
+    height: 44px;
   }
 }
 
@@ -457,7 +480,7 @@
   }
 }
 
-/* Full-screen editor container changed to a page view container */
+/* ASPECT RATIO PRESERVATION FOR DIN A4 PAGES */
 .editorPageContainer {
   flex-grow: 1;
   display: flex;
@@ -468,14 +491,20 @@
   overflow: auto;
   position: relative;
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Ensure proper spacing for always-visible toolbar */
+  padding-left: 120px; /* Space for toolbar */
 }
 
-/* The DIN A4 Page itself */
+/* DIN A4 Page with PRESERVED ASPECT RATIO */
 .dinA4Page {
-  width: 21cm;
-  height: 29.7cm;
+  /* Use aspect-ratio for automatic scaling while preserving proportions */
+  aspect-ratio: 210 / 297; /* DIN A4 ratio: 21cm / 29.7cm */
+  width: min(80vw, 21cm); /* Scale with viewport but max at actual A4 size */
+  max-width: 21cm;
   min-width: 320px;
-  min-height: calc(320px * 1.414);
+  
+  /* Height is automatically calculated by aspect-ratio */
   background-color: var(--color-background, white);
   padding: 2cm 1.5cm;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
@@ -496,21 +525,26 @@
   animation: slideOutToBottom 400ms ease-out forwards;
 }
 
-/* Multiple Pages View Styles */
+/* Multiple Pages View Styles with ASPECT RATIO */
 .multiplePagesContainer {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2rem; /* Space between pages */
   width: 100%;
-  max-width: 800px;
+  max-width: 100%;
+  
+  /* Ensure container doesn't interfere with aspect ratio */
+  container-type: inline-size;
 }
 
 .multiplePage {
-  width: 100%;
-  max-width: 800px;
-  min-height: 1123px; /* A4 height at 96 DPI (297mm / 25.4 * 96) */
+  /* Use same aspect ratio preservation as single page */
   aspect-ratio: 210 / 297;
+  width: min(80vw, 800px);
+  max-width: 800px;
+  min-width: 320px;
+  
   background-color: var(--color-background, white);
   padding: 2cm 1.5cm;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
@@ -1030,5 +1064,40 @@
 /* Change the background color of the dropdown button when the dropdown content is shown */
 .dropdown:hover .dropdownButton {
   background-color: var(--color-accent-hover);
+}
+
+/* Responsive adjustments for aspect ratio preservation */
+@media (max-width: 1024px) {
+  .dinA4Page, .multiplePage {
+    width: min(85vw, 21cm);
+  }
+  
+  .editorPageContainer {
+    padding-left: 100px; /* Adjust for smaller toolbar */
+  }
+}
+
+@media (max-width: 768px) {
+  .dinA4Page, .multiplePage {
+    width: min(90vw, 21cm);
+    padding: 1.5cm 1cm; /* Slightly smaller padding on mobile */
+  }
+  
+  .editorPageContainer {
+    padding: 20px;
+    padding-left: 80px; /* Adjust for smaller toolbar */
+  }
+}
+
+@media (max-width: 480px) {
+  .dinA4Page, .multiplePage {
+    width: min(95vw, 21cm);
+    padding: 1cm 0.8cm; /* Even smaller padding on very small screens */
+  }
+  
+  .editorPageContainer {
+    padding: 15px;
+    padding-left: 70px; /* Adjust for smaller toolbar */
+  }
 }
 
