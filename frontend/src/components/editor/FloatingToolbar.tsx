@@ -19,7 +19,9 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   hasTextSelection, 
   context: clickContext,
   viewMode,
-  onSetViewMode
+  onSetViewMode,
+  showRuler,
+  onToggleRuler
 }) => {
   const [visibleButtons, setVisibleButtons] = useState<Set<string>>(new Set());
   const [previousContext, setPreviousContext] = useState<ToolbarContext>('default');
@@ -188,14 +190,23 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       order: 2
     },
     {
+      id: 'show-ruler',
+      icon: '📏',
+      title: showRuler ? 'Hide Ruler' : 'Show Ruler',
+      action: onToggleRuler,
+      isActive: showRuler,
+      contexts: ['default'],
+      order: 3
+    },
+    {
       id: 'print',
       icon: '⎙',
       title: 'Print / Export PDF',
       action: () => window.print(),
       contexts: ['default'],
-      order: 3
+      order: 4
     },
-  ], [editor, viewMode, onSetViewMode]);
+  ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler]);
 
   // Get buttons for current context, sorted by order
   const contextButtons = useMemo(() => {

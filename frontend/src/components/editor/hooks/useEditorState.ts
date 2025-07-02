@@ -24,6 +24,7 @@ export const useEditorState = (initialTitle?: string) => {
     onPageBackground: false 
   });
   const [viewMode, setViewMode] = useState<ViewMode>('single-page');
+  const [showRuler, setShowRuler] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
   // Floating toolbar state
@@ -63,6 +64,8 @@ export const useEditorState = (initialTitle?: string) => {
     setContextMenu,
     viewMode,
     setViewMode,
+    showRuler,
+    setShowRuler,
     isExiting,
     setIsExiting,
 

@@ -7,6 +7,8 @@ export interface FloatingToolbarProps {
   context: 'default' | 'speaker-name' | 'empty-page' | 'dialogue-block';
   viewMode: ViewMode;
   onSetViewMode: (mode: ViewMode) => void;
+  showRuler: boolean;
+  onToggleRuler: () => void;
 }
 
 export type ToolbarContext = 'text-selection' | 'speaker-name' | 'empty-page' | 'default' | 'dialogue-block';
@@ -43,6 +45,8 @@ export interface ViewModeProps {
   handlePageContextMenu: (e: React.MouseEvent) => void;
   handleContextMenu: (e: React.MouseEvent) => void;
   handleEditorClick: (e: React.MouseEvent) => void;
+  showRuler: boolean;
+  onToggleRuler: () => void;
 }
 
 export interface LayoutManagementProps {

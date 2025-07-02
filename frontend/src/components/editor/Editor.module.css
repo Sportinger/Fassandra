@@ -1091,3 +1091,183 @@
   }
 }
 
+/* Dark theme adjustments */
+
+
+/* ===== RULER SYSTEM STYLES ===== */
+
+/* Horizontal Ruler (Top) */
+.horizontalRuler {
+  position: fixed;
+  top: 60px; /* Below header */
+  left: 120px; /* After sidebar/toolbar */
+  right: 0;
+  height: 30px;
+  background-color: var(--color-background-secondary);
+  border-bottom: 1px solid var(--color-border);
+  z-index: 100;
+  overflow: hidden;
+}
+
+/* Vertical Ruler (Left) */
+.verticalRuler {
+  position: fixed;
+  top: 90px; /* Below header + horizontal ruler */
+  left: 90px; /* Before toolbar */
+  width: 30px;
+  bottom: 0;
+  background-color: var(--color-background-secondary);
+  border-right: 1px solid var(--color-border);
+  z-index: 100;
+  overflow: hidden;
+}
+
+/* Corner where rulers meet */
+.rulerCorner {
+  position: fixed;
+  top: 60px;
+  left: 90px;
+  width: 30px;
+  height: 30px;
+  background-color: var(--color-background-secondary);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  z-index: 101;
+}
+
+/* Ruler background container */
+.rulerBackground {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Base ruler mark styles */
+.rulerMark {
+  position: absolute;
+  background-color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+/* Horizontal ruler marks */
+.rulerMark:not(.rulerMarkVertical) {
+  width: 1px;
+  top: 0;
+  transform: translateX(-0.5px);
+}
+
+/* Vertical ruler marks */
+.rulerMarkVertical {
+  height: 1px;
+  left: 0;
+  transform: translateY(-0.5px);
+}
+
+/* Major marks (every 5cm) */
+.rulerMarkMajor:not(.rulerMarkVertical) {
+  height: 20px; /* Longer marks for major divisions */
+  background-color: var(--color-text);
+}
+
+.rulerMarkMajor.rulerMarkVertical {
+  width: 20px; /* Longer marks for major divisions */
+  background-color: var(--color-text);
+}
+
+/* Minor marks (every 1cm) */
+.rulerMarkMinor:not(.rulerMarkVertical) {
+  height: 12px; /* Shorter marks for minor divisions */
+  top: 8px;
+}
+
+.rulerMarkMinor.rulerMarkVertical {
+  width: 12px; /* Shorter marks for minor divisions */
+  left: 8px;
+}
+
+/* Ruler labels (numbers) */
+.rulerLabel {
+  position: absolute;
+  font-size: 10px;
+  color: var(--color-text);
+  pointer-events: none;
+  user-select: none;
+  font-family: 'Courier New', monospace;
+}
+
+/* Horizontal ruler labels */
+.rulerMark:not(.rulerMarkVertical) .rulerLabel {
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Vertical ruler labels */
+.rulerMarkVertical .rulerLabel {
+  left: 22px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: center;
+}
+
+/* Adjust page container when ruler is visible */
+.editorPageContainer.withRuler {
+  padding-top: 30px; /* Space for horizontal ruler */
+  padding-left: 150px; /* Space for vertical ruler + toolbar */
+}
+
+/* Responsive adjustments for rulers */
+@media (max-width: 1024px) {
+  .horizontalRuler {
+    left: 100px; /* Adjust for smaller toolbar */
+  }
+  
+  .verticalRuler {
+    left: 70px;
+  }
+  
+  .rulerCorner {
+    left: 70px;
+  }
+  
+  .editorPageContainer.withRuler {
+    padding-left: 130px;
+  }
+}
+
+@media (max-width: 768px) {
+  .horizontalRuler {
+    left: 80px;
+  }
+  
+  .verticalRuler {
+    left: 50px;
+  }
+  
+  .rulerCorner {
+    left: 50px;
+  }
+  
+  .editorPageContainer.withRuler {
+    padding-left: 110px;
+  }
+}
+
+@media (max-width: 480px) {
+  .horizontalRuler {
+    left: 70px;
+  }
+  
+  .verticalRuler {
+    left: 40px;
+  }
+  
+  .rulerCorner {
+    left: 40px;
+  }
+  
+  .editorPageContainer.withRuler {
+    padding-left: 100px;
+  }
+}
+

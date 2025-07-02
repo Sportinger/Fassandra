@@ -5,7 +5,8 @@ import {
   FloatingToolbar, 
   ContextMenu as ContextMenuComponent, 
   SinglePageView, 
-  MultiPageView
+  MultiPageView,
+  Ruler
 } from './';
 import { 
   useEditorState, 
@@ -144,6 +145,11 @@ export const Editor: React.FC<EditorProps> = ({ scriptId, initialTitle, onNaviga
     editorState.setViewMode(prev => prev === 'single-page' ? 'multiple-pages' : 'single-page');
     editorState.setContextMenu(prev => ({ ...prev, visible: false }));
   }, [editorState.setViewMode, editorState.setContextMenu]);
+
+  // Toggle ruler function
+  const toggleRuler = useCallback(() => {
+    editorState.setShowRuler(prev => !prev);
+  }, [editorState.setShowRuler]);
 
   // Speaker name formatting functions
   const formatAllSpeakerNames = useCallback((format: 'bold' | 'italic' | 'normal') => {
@@ -317,7 +323,7 @@ export const Editor: React.FC<EditorProps> = ({ scriptId, initialTitle, onNaviga
       
       {/* Page-based editor layout */}
       <div 
-        className={styles.editorPageContainer}
+        className={`${styles.editorPageContainer} ${editorState.showRuler ? styles.withRuler : ''}`}
         onContextMenu={handlePageContextMenu}
         onClick={handleEditorClick}
       >
@@ -329,6 +335,8 @@ export const Editor: React.FC<EditorProps> = ({ scriptId, initialTitle, onNaviga
             context={editorState.toolbarContext}
             viewMode={editorState.viewMode}
             onSetViewMode={editorState.setViewMode}
+            showRuler={editorState.showRuler}
+            onToggleRuler={toggleRuler}
           />
         )}
         
@@ -348,6 +356,8 @@ export const Editor: React.FC<EditorProps> = ({ scriptId, initialTitle, onNaviga
             handlePageContextMenu={handlePageContextMenu}
             handleContextMenu={handleContextMenu}
             handleEditorClick={handleEditorClick}
+            showRuler={editorState.showRuler}
+            onToggleRuler={toggleRuler}
           />
         ) : (
           <SinglePageView 
@@ -357,6 +367,8 @@ export const Editor: React.FC<EditorProps> = ({ scriptId, initialTitle, onNaviga
             handlePageContextMenu={handlePageContextMenu}
             handleContextMenu={handleContextMenu}
             handleEditorClick={handleEditorClick}
+            showRuler={editorState.showRuler}
+            onToggleRuler={toggleRuler}
           />
         )}
 
