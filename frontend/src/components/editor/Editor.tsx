@@ -118,7 +118,15 @@ export const Editor: React.FC<EditorProps> = ({ scriptId, initialTitle, onNaviga
     const target = e.target as HTMLElement;
     const clickedText = target.textContent || '';
     
-    // Check if clicked on speaker name
+    // Check if clicked on a speaker element within a dialogue block
+    const speakerElement = target.closest('[data-type="speaker"]');
+    if (speakerElement) {
+      console.log('[Editor] Clicked on speaker element:', speakerElement);
+      editorState.setToolbarContext('speaker-selection');
+      return;
+    }
+    
+    // Check if clicked on speaker name (legacy detection)
     if (editorState.speakerNames.has(clickedText.replace(':', '').trim())) {
       editorState.setToolbarContext('speaker-name');
     } else if (!clickedText.trim()) {
@@ -337,6 +345,7 @@ export const Editor: React.FC<EditorProps> = ({ scriptId, initialTitle, onNaviga
             onSetViewMode={editorState.setViewMode}
             showRuler={editorState.showRuler}
             onToggleRuler={toggleRuler}
+            speakerNames={editorState.speakerNames}
           />
         )}
         

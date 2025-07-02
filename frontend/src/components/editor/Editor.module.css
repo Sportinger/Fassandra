@@ -1271,3 +1271,151 @@
   }
 }
 
+/* ===== SPEAKER DROPDOWN STYLES ===== */
+
+/* Speaker Dropdown Container */
+.speakerDropdownContainer {
+  position: relative;
+  display: inline-block;
+}
+
+/* Speaker Dropdown Button */
+.speakerDropdownContainer .toolbarButton {
+  min-width: 120px;
+  text-align: left;
+  justify-content: flex-start;
+  padding: 8px 12px;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Speaker Dropdown Menu */
+.speakerDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 200px;
+  max-width: 300px;
+  background: var(--color-background, white);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+  animation: dropdownEnter 0.2s ease-out;
+}
+
+/* Dropdown entrance animation */
+@keyframes dropdownEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Speaker Dropdown Header */
+.speakerDropdownHeader {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #6b7280);
+  border-bottom: 1px solid var(--color-border-light, #f3f4f6);
+  background: var(--color-background-secondary, #f9fafb);
+  border-radius: 8px 8px 0 0;
+}
+
+/* Speaker Dropdown Items */
+.speakerDropdownItem {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  color: var(--color-text, #111827);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.speakerDropdownItem:hover {
+  background: var(--color-background-hover, #f3f4f6);
+  color: var(--color-accent, #3b82f6);
+}
+
+.speakerDropdownItem.active {
+  background: var(--color-accent-light, #eff6ff);
+  color: var(--color-accent, #3b82f6);
+  font-weight: 500;
+}
+
+.speakerDropdownItem.active:hover {
+  background: var(--color-accent-light, #eff6ff);
+}
+
+/* New Speaker Item */
+.speakerDropdownItem.newSpeaker {
+  border-top: 1px solid var(--color-border-light, #f3f4f6);
+  color: var(--color-success, #059669);
+  font-weight: 500;
+}
+
+.speakerDropdownItem.newSpeaker:hover {
+  background: var(--color-success-light, #ecfdf5);
+  color: var(--color-success, #059669);
+}
+
+/* Empty State */
+.speakerDropdownEmpty {
+  padding: 12px;
+  text-align: center;
+  color: var(--color-text-secondary, #6b7280);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* Dark theme adjustments for speaker dropdown */
+@media (prefers-color-scheme: dark) {
+  .speakerDropdown {
+    background: var(--color-background-dark, #1f2937);
+    border-color: var(--color-border-dark, #374151);
+  }
+  
+  .speakerDropdownHeader {
+    background: var(--color-background-secondary-dark, #111827);
+    border-bottom-color: var(--color-border-dark, #374151);
+    color: var(--color-text-secondary-dark, #9ca3af);
+  }
+  
+  .speakerDropdownItem {
+    color: var(--color-text-dark, #f9fafb);
+  }
+  
+  .speakerDropdownItem:hover {
+    background: var(--color-background-hover-dark, #374151);
+    color: var(--color-accent-dark, #60a5fa);
+  }
+  
+  .speakerDropdownItem.active {
+    background: var(--color-accent-dark-light, #1e3a8a);
+    color: var(--color-accent-dark, #60a5fa);
+  }
+  
+  .speakerDropdownItem.newSpeaker:hover {
+    background: var(--color-success-dark-light, #064e3b);
+    color: var(--color-success-dark, #34d399);
+  }
+}
+

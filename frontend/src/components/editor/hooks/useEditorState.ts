@@ -28,7 +28,7 @@ export const useEditorState = (initialTitle?: string) => {
   const [isExiting, setIsExiting] = useState(false);
 
   // Floating toolbar state
-  const [toolbarContext, setToolbarContext] = useState<'default' | 'speaker-name' | 'empty-page'>('default');
+  const [toolbarContext, setToolbarContext] = useState<'default' | 'speaker-name' | 'empty-page' | 'speaker-selection'>('default');
   const [speakerNames, setSpeakerNames] = useState<Set<string>>(new Set());
 
   // Layout management state

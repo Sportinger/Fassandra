@@ -5,6 +5,7 @@ export { Editor } from './Editor';
 export { FloatingToolbar } from './FloatingToolbar';
 export { FontSizeDropdown } from './FontSizeDropdown';
 export { ContextMenu } from './ContextMenu';
+export { SpeakerDropdown } from './SpeakerDropdown';
 export { Ruler } from './Ruler';
 export { SinglePageView, MultiPageView } from './ViewModes';
 

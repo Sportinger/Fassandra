@@ -4,14 +4,15 @@ import { ScriptLayout } from '../../types';
 export interface FloatingToolbarProps {
   editor: EditorInstance | null;
   hasTextSelection: boolean;
-  context: 'default' | 'speaker-name' | 'empty-page' | 'dialogue-block';
+  context: 'default' | 'speaker-name' | 'empty-page' | 'dialogue-block' | 'speaker-selection';
   viewMode: ViewMode;
   onSetViewMode: (mode: ViewMode) => void;
   showRuler: boolean;
   onToggleRuler: () => void;
+  speakerNames: Set<string>;
 }
 
-export type ToolbarContext = 'text-selection' | 'speaker-name' | 'empty-page' | 'default' | 'dialogue-block';
+export type ToolbarContext = 'text-selection' | 'speaker-name' | 'empty-page' | 'default' | 'dialogue-block' | 'speaker-selection';
 
 export interface EditorProps {
   scriptId: string;

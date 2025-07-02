@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Editor as EditorInstance } from '@tiptap/react';
 import { FloatingToolbarProps, ToolbarContext } from './types';
 import { FontSizeDropdown } from './FontSizeDropdown';
+import { SpeakerDropdown } from './SpeakerDropdown';
 import styles from './Editor.module.css';
 
 interface ToolbarButton {
@@ -21,7 +23,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   viewMode,
   onSetViewMode,
   showRuler,
-  onToggleRuler
+  onToggleRuler,
+  speakerNames
 }) => {
   const [visibleButtons, setVisibleButtons] = useState<Set<string>>(new Set());
   const [previousContext, setPreviousContext] = useState<ToolbarContext>('default');
@@ -376,6 +379,15 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           </React.Fragment>
         );
       })}
+      
+      {/* Speaker Dropdown for speaker-selection context */}
+      {currentContext === 'speaker-selection' && (
+        <SpeakerDropdown
+          editor={editor}
+          speakerNames={speakerNames}
+          isVisible={true}
+        />
+      )}
     </div>
   );
-}; 
+};
