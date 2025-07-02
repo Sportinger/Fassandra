@@ -117,15 +117,13 @@ button:focus-visible {
   text-align: left !important;
 }
 
-/* Side-by-side layout - DEBUG VERSION with visible styling */
+/* Side-by-side layout - FINAL VERSION */
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] {
   display: flex !important;
   flex-direction: row !important;
   align-items: flex-start !important;
   gap: 1.5em !important;
   text-align: initial !important;
-  background-color: rgba(255, 0, 0, 0.1) !important; /* DEBUG: Red background */
-  border: 2px solid red !important; /* DEBUG: Red border */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
