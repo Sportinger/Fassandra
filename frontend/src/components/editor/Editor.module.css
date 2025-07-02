@@ -1154,7 +1154,7 @@
 .ProseMirror [data-type="dialogue-block"][data-layout="default"] [data-type="speaker"] p {
   font-weight: bold;
   margin-bottom: 0.25em;
-  text-align: left; /* Ensure speaker is not centered */
+  text-align: left !important; /* Force alignment for speaker */
 }
 
 /* Side-by-side layout */
@@ -1168,7 +1168,7 @@
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
   flex-basis: 120px; /* Slightly narrower column */
   flex-shrink: 0;
-  text-align: left; /* More standard alignment */
+  text-align: left !important; /* Force alignment for speaker */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] p {
