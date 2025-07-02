@@ -1,11 +1,12 @@
 name: Build Images and Deploy to Hetzner Server
 
 # Deployment strategy:
-# - dev branch: Builds and pushes Docker images for testing (no deployment)
+# - dev branch: Pure development, no builds, no deployment
 # - main/production branches: Builds images AND deploys to Hetzner server
+# This saves GitHub Actions minutes and keeps container registry clean
 on:
   push:
-    branches: [main, production, dev]
+    branches: [main, production]
   workflow_dispatch: # Allow manual deployment
 
 env:
@@ -86,7 +87,7 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    # Only deploy from main and production branches, not dev
+    # Deploy to Hetzner server (only main/production branches trigger this workflow)
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production'
 
     steps:
