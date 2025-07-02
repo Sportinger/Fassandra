@@ -5,7 +5,6 @@ import styles from '../Editor.module.css';
 
 export const SinglePageView: React.FC<ViewModeProps> = ({
   editor,
-  scriptCreationDate,
   isExiting,
   handlePageContextMenu,
   handleContextMenu,

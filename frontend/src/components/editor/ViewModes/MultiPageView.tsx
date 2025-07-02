@@ -5,7 +5,6 @@ import styles from '../Editor.module.css';
 
 export const MultiPageView: React.FC<ViewModeProps> = ({
   editor,
-  scriptCreationDate,
   isExiting,
   handlePageContextMenu,
   handleContextMenu,
