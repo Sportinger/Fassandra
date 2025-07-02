@@ -2,66 +2,43 @@
 set -e
 
 # 🚀 Universal Deployment Script for Pessoa
-# Handles different deployment strategies based on arguments
+# Local build + push workflow (no GitHub Actions)
 
 DEPLOYMENT_TYPE=${1:-"help"}
 
 show_help() {
-    echo "🚀 Pessoa Deployment Script"
+    echo "🚀 Pessoa Local Deployment Script"
     echo ""
     echo "Usage: ./scripts/deploy.sh [OPTION]"
     echo ""
     echo "Options:"
-    echo "  dev         🔧 Deploy current code with fast local build"
-    echo "  dev-images  📦 Deploy pre-built dev branch images from GitHub Actions"
-    echo "  production  🌐 Trigger production deployment via GitHub Actions"
-    echo "  status      📊 Show current deployment status"
-    echo "  help        ❓ Show this help message"
+    echo "  build-and-push   🏗️  Build locally + push + deploy (complete workflow)"
+    echo "  push-current     📦 Push already-built images + deploy (no rebuild)"
+    echo "  status          📊 Show current deployment status"
+    echo "  help            ❓ Show this help message"
     echo ""
     echo "Examples:"
-    echo "  ./scripts/deploy.sh dev         # Fast local build + deploy"
-    echo "  ./scripts/deploy.sh dev-images  # Use GitHub Actions dev images"
-    echo "  ./scripts/deploy.sh production  # Full production deployment"
+    echo "  ./scripts/deploy.sh build-and-push    # Full build + deploy workflow"
+    echo "  ./scripts/deploy.sh push-current      # Deploy already-built images"
+    echo "  ./scripts/deploy.sh status            # Check current status"
+    echo ""
+    echo "💡 Local workflow benefits:"
+    echo "  ✅ No GitHub Actions concurrency issues"
+    echo "  ✅ Full control over build process"
+    echo "  ✅ Faster builds (local hardware)"
+    echo "  ✅ No CI/CD minutes consumed"
     echo ""
 }
 
 case $DEPLOYMENT_TYPE in
-    "dev")
-        echo "🔧 Starting fast local development deployment..."
-        ./scripts/dev_deploy.sh
+    "build-and-push")
+        echo "🏗️  Starting complete build + push + deploy workflow..."
+        ./scripts/build_and_push.sh
         ;;
     
-    "dev-images")
-        echo "📦 Deploying pre-built dev branch images..."
-        ./scripts/deploy_dev_images.sh
-        ;;
-    
-    "production")
-        echo "🌐 Triggering production deployment via GitHub Actions..."
-        
-        CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-        if [ "$CURRENT_BRANCH" != "main" ]; then
-            echo "⚠️  You're on branch: $CURRENT_BRANCH"
-            echo "   Production deploys from 'main' branch only."
-            echo ""
-            echo "Options:"
-            echo "1. Switch to main and merge your changes:"
-            echo "   git checkout main && git merge $CURRENT_BRANCH && git push origin main"
-            echo ""
-            echo "2. Push current branch to dev for GitHub Actions build:"
-            echo "   git push origin $CURRENT_BRANCH"
-            echo "   Then use: ./scripts/deploy.sh dev-images"
-            echo ""
-            exit 1
-        fi
-        
-        echo "📤 Pushing to main branch (triggers GitHub Actions)..."
-        git push origin main
-        echo ""
-        echo "✅ Production deployment started!"
-        echo "   Monitor progress: https://github.com/Sportinger/pessoa/actions"
-        echo "   Deployment will complete in ~15 minutes"
-        echo ""
+    "push-current")
+        echo "📦 Pushing already-built images + deploy..."
+        ./scripts/push_current_build.sh
         ;;
     
     "status")
@@ -72,6 +49,14 @@ case $DEPLOYMENT_TYPE in
         echo "  Branch: $(git rev-parse --abbrev-ref HEAD)"
         echo "  Commit: $(git rev-parse --short HEAD)"
         echo "  Status: $(git status --porcelain | wc -l) uncommitted changes"
+        echo ""
+        
+        echo "🐳 Local Docker images:"
+        echo "Backend images:"
+        docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.CreatedAt}}" | grep "pessoa-backend" | head -5 || echo "  No backend images found"
+        echo ""
+        echo "Frontend images:"
+        docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.CreatedAt}}" | grep "pessoa-frontend" | head -5 || echo "  No frontend images found"
         echo ""
         
         echo "🌐 Production server status:"
