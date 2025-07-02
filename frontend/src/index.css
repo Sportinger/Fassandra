@@ -186,7 +186,7 @@ button:focus-visible {
   flex-basis: 80px !important;
   flex-shrink: 0 !important;
   flex-grow: 0 !important;
-  text-align: right !important;
+  text-align: left !important;
   min-width: 80px !important;
   padding-left: 0 !important;
 }
@@ -194,7 +194,7 @@ button:focus-visible {
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] p {
   font-weight: bold !important;
   margin: 0 !important;
-  text-align: right !important;
+  text-align: left !important;
   word-wrap: break-word !important;
 }
 
