@@ -100,13 +100,13 @@ button:focus-visible {
 
 /* Base dialogue block styling */
 .ProseMirror [data-type="dialogue-block"] {
-  margin: 1em 0;
+  margin: 1em 0 1em 0 !important; /* Remove left margin completely */
   position: relative;
   border-left: 3px solid transparent;
-  padding-left: 10px;
+  padding-left: 5px !important; /* Reduce left padding significantly */
   transition: border-color 0.3s ease;
-  max-width: 100%; /* Ensure it doesn't exceed container */
-  text-align: left; /* Force left alignment */
+  max-width: 100%;
+  text-align: left;
 }
 
 .ProseMirror [data-type="dialogue-block"]:hover {
@@ -120,46 +120,51 @@ button:focus-visible {
   text-align: left !important;
 }
 
-/* Side-by-side layout - FINAL VERSION */
+/* Side-by-side layout - MOVED TO LEFT */
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] {
   display: flex !important;
   flex-direction: row !important;
   align-items: flex-start !important;
-  gap: 1.5em !important;
+  gap: 1em !important; /* Reduce gap slightly */
   text-align: initial !important;
-  margin-left: 0 !important; /* Ensure left alignment */
-  justify-content: flex-start !important; /* Start from left */
+  margin-left: 0 !important;
+  padding-left: 0 !important; /* Remove all left padding */
+  justify-content: flex-start !important;
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
-  flex-basis: 120px !important;
+  flex-basis: 100px !important; /* Reduce speaker column width */
   flex-shrink: 0 !important;
   flex-grow: 0 !important;
   text-align: right !important;
-  min-width: 120px !important; /* Ensure minimum width */
+  min-width: 100px !important;
+  margin-left: 0 !important; /* Ensure no left margin */
+  padding-left: 0 !important; /* Ensure no left padding */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] p {
   font-weight: bold !important;
   margin: 0 !important;
   text-align: right !important;
-  word-wrap: break-word !important; /* Handle long speaker names */
+  word-wrap: break-word !important;
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="dialogue-text"] {
   flex-grow: 1 !important;
   flex-shrink: 1 !important;
   text-align: left !important;
-  max-width: calc(100% - 140px) !important; /* Ensure it doesn't overflow A4 width */
-  overflow-wrap: break-word !important; /* Force word breaking */
-  word-wrap: break-word !important; /* Fallback for older browsers */
-  hyphens: auto !important; /* Enable hyphenation */
+  max-width: calc(100% - 120px) !important;
+  overflow-wrap: break-word !important;
+  word-wrap: break-word !important;
+  hyphens: auto !important;
+  margin-left: 0 !important; /* Ensure no left margin */
+  padding-left: 0 !important; /* Ensure no left padding */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="dialogue-text"] p {
   margin: 0 !important;
   text-align: left !important;
-  overflow-wrap: break-word !important; /* Force word breaking in paragraphs */
+  overflow-wrap: break-word !important;
   word-wrap: break-word !important;
   hyphens: auto !important;
 }
@@ -169,12 +174,16 @@ button:focus-visible {
   text-align: left !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
+  margin-left: 0 !important; /* Remove any left margin */
+  padding-left: 0 !important; /* Remove any left padding */
 }
 
-/* Ensure all editor paragraphs respect word wrapping */
+/* Ensure all editor paragraphs respect word wrapping and start from left */
 .ProseMirror p {
   overflow-wrap: break-word !important;
   word-wrap: break-word !important;
   hyphens: auto !important;
   max-width: 100% !important;
+  margin-left: 0 !important; /* Remove any left margin */
+  padding-left: 0 !important; /* Remove any left padding */
 }
