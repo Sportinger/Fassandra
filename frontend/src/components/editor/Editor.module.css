@@ -797,15 +797,23 @@
 
 /* Override global text-align: center from #root for all editor content */
 .editorPageContainer,
-.editorPageContainer *,
 .dinA4Page,
-.dinA4Page *,
-.ProseMirror,
-.ProseMirror * {
+.ProseMirror {
   text-align: left !important;
 }
 
-/* NOTE: Headings font-size disabled above to allow TipTap inline styles to work */
+/* Ensure all paragraphs in editor default to left alignment */
+.ProseMirror p,
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3 {
+  text-align: left !important;
+}
+
+/* Exception: Allow dialogue blocks to control their own layout */
+.ProseMirror [data-type="dialogue-block"] {
+  text-align: initial !important; /* Reset text-align for dialogue blocks */
+}
 
 /* Focus styles for better UX */
 .ProseMirror:focus {
@@ -1048,22 +1056,33 @@
 
 /* Side-by-side layout */
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] {
-  display: flex;
-  flex-direction: row;
-  align-items: baseline; /* Better vertical alignment for text */
-  gap: 1.5em;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important; /* Align to top for better text flow */
+  gap: 1.5em !important;
+  text-align: initial !important; /* Reset any inherited text-align */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
-  flex-basis: 120px; /* Slightly narrower column */
-  flex-shrink: 0;
-  text-align: left !important; /* Force alignment for speaker */
+  flex-basis: 120px !important; /* Fixed width for speaker column */
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  text-align: right !important; /* Right-align speaker names */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] p {
-  font-weight: bold;
+  font-weight: bold !important;
+  margin: 0 !important; /* Remove default paragraph margins */
+  text-align: right !important; /* Ensure speaker text is right-aligned */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="dialogue-text"] {
-  flex-grow: 1;
-} 
+  flex-grow: 1 !important;
+  flex-shrink: 1 !important;
+  text-align: left !important; /* Left-align dialogue text */
+}
+
+.ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="dialogue-text"] p {
+  margin: 0 !important; /* Remove default paragraph margins */
+  text-align: left !important; /* Ensure dialogue text is left-aligned */
+}
