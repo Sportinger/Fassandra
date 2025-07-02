@@ -25,72 +25,6 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   const [previousContext, setPreviousContext] = useState<ToolbarContext>('default');
   const timeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
-  // Function to apply speaker layout using TipTap commands
-  const applySpeakerLayout = (layoutType: 'default' | 'sidebyside' | 'wrap') => {
-    if (!editor) return;
-    
-    // Use TipTap command to set speaker layout
-    const success = editor.chain().focus().setSpeakerLayout(layoutType).run();
-    
-    if (success) {
-      console.log(`[Speaker Layout] Applied ${layoutType} layout`);
-    } else {
-      console.log(`[Speaker Layout] No speaker blocks found in selection - trying to convert paragraphs`);
-      
-      // Try to convert current paragraph to speaker block if it has speaker pattern
-      const { state } = editor;
-      const { selection } = state;
-      const { $from } = selection;
-      
-      if ($from.parent.type.name === 'paragraph') {
-        const text = $from.parent.textContent;
-        const speakerMatch = text.match(/^([^:]+):\s*(.*)$/);
-        
-        if (speakerMatch) {
-          const speaker = speakerMatch[1].trim();
-          const content = speakerMatch[2].trim();
-          
-          // Get the position of the current paragraph
-          const pos = $from.start();
-          const endPos = $from.end();
-          
-          // Replace the entire paragraph with a speaker block
-          try {
-            const success = editor.chain()
-              .focus()
-              .command(({ tr, state }) => {
-                try {
-                  // Delete the current paragraph content and replace with speaker block
-                  tr.delete(pos, endPos);
-                  
-                  // Insert the speaker block
-                  const speakerBlock = state.schema.nodes.speakerBlock.create({
-                    speaker: speaker,
-                    layout: layoutType,
-                  }, state.schema.text(content));
-                  
-                  tr.insert(pos, speakerBlock);
-                  return true;
-                } catch (error) {
-                  console.error('[Speaker Layout] Error in transaction:', error);
-                  return false;
-                }
-              })
-              .run();
-            
-            if (!success) {
-              console.error('[Speaker Layout] Failed to execute speaker block conversion');
-            }
-          } catch (error) {
-            console.error('[Speaker Layout] Error during speaker block conversion:', error);
-          }
-            
-          console.log(`[Speaker Layout] Converted paragraph "${speaker}: ${content}" to speaker block with ${layoutType} layout`);
-        }
-      }
-    }
-  };
-
   // Clear all pending timeouts
   const clearAllTimeouts = () => {
     timeoutsRef.current.forEach(timeout => clearTimeout(timeout));
@@ -173,33 +107,27 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       order: 8
     },
 
-    // Speaker layout buttons (speaker-name context)
+    // Dialogue block layout switchers
     {
-      id: 'speaker-default',
-      icon: '□',
-      title: 'Default Layout',
-      action: () => applySpeakerLayout('default'),
-      contexts: ['speaker-name'],
-      order: 1
+      id: 'layout-default',
+      icon: '≡',
+      title: 'Stacked Layout',
+      action: () => editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'default' }).run(),
+      isActive: editor?.isActive('dialogueBlock', { layout: 'default' }),
+      contexts: ['dialogue-block'],
+      order: 1,
     },
     {
-      id: 'speaker-sidebyside',
-      icon: '⊡',
+      id: 'layout-side-by-side',
+      icon: '⇥',
       title: 'Side-by-Side Layout',
-      action: () => applySpeakerLayout('sidebyside'),
-      contexts: ['speaker-name'],
-      order: 2
-    },
-    {
-      id: 'speaker-wrap',
-      icon: '◐',
-      title: 'Text Wrapping Layout',
-      action: () => applySpeakerLayout('wrap'),
-      contexts: ['speaker-name'],
-      order: 3
+      action: () => editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'side-by-side' }).run(),
+      isActive: editor?.isActive('dialogueBlock', { layout: 'side-by-side' }),
+      contexts: ['dialogue-block'],
+      order: 2,
     },
 
-    // Page action buttons (empty-page context)
+    // Page interaction buttons (empty-page context)
     {
       id: 'insert-dialogue',
       icon: '💬',
@@ -243,26 +171,6 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       action: () => window.print(),
       contexts: ['default'],
       order: 3
-    },
-
-    // Dialogue Block layout buttons
-    {
-      id: 'dialogue-default',
-      icon: '≡',
-      title: 'Default Layout',
-      action: () => editor?.chain().focus().setDialogueLayout('default').run(),
-      isActive: editor?.isActive('dialogueBlock', { layout: 'default' }),
-      contexts: ['dialogue-block'],
-      order: 1
-    },
-    {
-      id: 'dialogue-sidebyside',
-      icon: '⇥',
-      title: 'Side-by-Side Layout',
-      action: () => editor?.chain().focus().setDialogueLayout('side-by-side').run(),
-      isActive: editor?.isActive('dialogueBlock', { layout: 'side-by-side' }),
-      contexts: ['dialogue-block'],
-      order: 2
     },
   ], [editor, viewMode, onSetViewMode]);
 
