@@ -29,7 +29,7 @@ export const DialogueBlock = Node.create<DialogueBlockOptions>({
   addAttributes() {
     return {
       layout: {
-        default: 'default',
+        default: 'side-by-side',
         parseHTML: element => element.getAttribute('data-layout'),
         renderHTML: attributes => {
           return { 'data-layout': attributes.layout };

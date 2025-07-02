@@ -1154,6 +1154,7 @@
 .ProseMirror [data-type="dialogue-block"][data-layout="default"] [data-type="speaker"] p {
   font-weight: bold;
   margin-bottom: 0.25em;
+  text-align: left; /* Ensure speaker is not centered */
 }
 
 /* Side-by-side layout */
