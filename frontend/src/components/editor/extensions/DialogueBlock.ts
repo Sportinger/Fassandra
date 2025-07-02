@@ -62,7 +62,7 @@ export const DialogueBlock = Node.create<DialogueBlockOptions>({
       setDialogueLayout: (layout: string) => ({ commands }) => {
         return commands.updateAttributes(this.name, { layout });
       },
-      exitDialogueBlock: () => ({ commands, state, dispatch }) => {
+      exitDialogueBlock: () => ({ state, dispatch }) => {
         // Insert a new paragraph after the current dialogue block
         const { selection } = state;
         const { $from } = selection;
