@@ -42,7 +42,10 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   };
 
   const getContext = (): ToolbarContext => {
-    if (editor?.isActive('dialogueBlock')) return 'dialogue-block';
+    const isInDialogueBlock = editor?.isActive('dialogueBlock');
+    console.log('Context check - isInDialogueBlock:', isInDialogueBlock, 'hasTextSelection:', hasTextSelection);
+    
+    if (isInDialogueBlock) return 'dialogue-block';
     if (hasTextSelection) return 'text-selection';
     return clickContext as ToolbarContext;
   };
@@ -112,7 +115,11 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       id: 'layout-default',
       icon: '≡',
       title: 'Stacked Layout',
-      action: () => editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'default' }).run(),
+      action: () => {
+        console.log('Setting layout to default');
+        const result = editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'default' }).run();
+        console.log('Update result:', result);
+      },
       isActive: editor?.isActive('dialogueBlock', { layout: 'default' }),
       contexts: ['dialogue-block'],
       order: 1,
@@ -121,7 +128,11 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       id: 'layout-side-by-side',
       icon: '⇥',
       title: 'Side-by-Side Layout',
-      action: () => editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'side-by-side' }).run(),
+      action: () => {
+        console.log('Setting layout to side-by-side');
+        const result = editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'side-by-side' }).run();
+        console.log('Update result:', result);
+      },
       isActive: editor?.isActive('dialogueBlock', { layout: 'side-by-side' }),
       contexts: ['dialogue-block'],
       order: 2,
