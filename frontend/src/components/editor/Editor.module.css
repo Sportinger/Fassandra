@@ -792,7 +792,17 @@
   height: 100%;
   outline: none;
   position: relative;
-  text-align: left; /* Default text alignment to left */
+  text-align: left !important; /* Override global center alignment from App.css */
+}
+
+/* Override global text-align: center from #root for all editor content */
+.editorPageContainer,
+.editorPageContainer *,
+.dinA4Page,
+.dinA4Page *,
+.ProseMirror,
+.ProseMirror * {
+  text-align: left !important;
 }
 
 /* NOTE: Headings font-size disabled above to allow TipTap inline styles to work */
