@@ -63,6 +63,8 @@ body {
 #root {
   width: 100%;
   text-align: left; /* Override any centering for editor content */
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 h1 {
@@ -98,13 +100,13 @@ button:focus-visible {
 /* ===== DIALOGUE BLOCK STYLES (GLOBAL) ===== */
 /* These styles must be global to work with TipTap's rendered HTML */
 
-/* Base dialogue block styling */
+/* Base dialogue block styling - AGGRESSIVE LEFT POSITIONING */
 .ProseMirror [data-type="dialogue-block"] {
   margin: 1em 0 1em 0 !important;
   position: relative;
   border-left: 3px solid transparent;
-  padding-left: 0px !important; /* Remove ALL padding - content starts at the line */
-  margin-left: -8px !important; /* Move the entire block slightly left of normal text */
+  padding-left: 0px !important;
+  margin-left: -20px !important; /* Much more aggressive negative margin */
   transition: border-color 0.3s ease;
   max-width: 100%;
   text-align: left;
@@ -119,28 +121,28 @@ button:focus-visible {
   font-weight: bold;
   margin-bottom: 0.25em;
   text-align: left !important;
-  margin-left: 8px !important; /* Offset the negative margin for proper text alignment */
+  margin-left: 20px !important; /* Offset the aggressive negative margin */
 }
 
-/* Side-by-side layout - ALIGNED WITH HOVER LINE */
+/* Side-by-side layout - EXTREME LEFT ALIGNMENT */
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] {
   display: flex !important;
   flex-direction: row !important;
   align-items: flex-start !important;
-  gap: 0.8em !important; /* Reduce gap even more */
+  gap: 0.5em !important; /* Even smaller gap */
   text-align: initial !important;
-  margin-left: -8px !important; /* Start at the hover line position */
+  margin-left: -20px !important; /* Extreme negative margin */
   padding-left: 0 !important;
   justify-content: flex-start !important;
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
-  flex-basis: 90px !important; /* Make speaker column even more compact */
+  flex-basis: 80px !important; /* Even smaller speaker column */
   flex-shrink: 0 !important;
   flex-grow: 0 !important;
   text-align: right !important;
-  min-width: 90px !important;
-  margin-left: 8px !important; /* Offset the negative margin */
+  min-width: 80px !important;
+  margin-left: 20px !important; /* Offset the extreme negative margin */
   padding-left: 0 !important;
 }
 
@@ -155,7 +157,7 @@ button:focus-visible {
   flex-grow: 1 !important;
   flex-shrink: 1 !important;
   text-align: left !important;
-  max-width: calc(100% - 100px) !important;
+  max-width: calc(100% - 90px) !important;
   overflow-wrap: break-word !important;
   word-wrap: break-word !important;
   hyphens: auto !important;
@@ -176,8 +178,11 @@ button:focus-visible {
   text-align: left !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
-  margin-left: 0 !important; /* Remove any left margin */
-  padding-left: 0 !important; /* Remove any left padding */
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  /* Remove any inherited margins that might push content right */
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 /* Ensure all editor paragraphs respect word wrapping and start from left */
@@ -186,6 +191,15 @@ button:focus-visible {
   word-wrap: break-word !important;
   hyphens: auto !important;
   max-width: 100% !important;
-  margin-left: 0 !important; /* Remove any left margin */
-  padding-left: 0 !important; /* Remove any left padding */
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* Remove margins from editor page containers */
+.editorPageContainer,
+.dinA4Page,
+.editorContentWrapper,
+.editorContent {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
 }
