@@ -100,16 +100,16 @@ button:focus-visible {
 /* ===== DIALOGUE BLOCK STYLES (GLOBAL) ===== */
 /* These styles must be global to work with TipTap's rendered HTML */
 
-/* Base dialogue block styling - AGGRESSIVE LEFT POSITIONING */
+/* Base dialogue block styling - TRYING TRANSFORM APPROACH */
 .ProseMirror [data-type="dialogue-block"] {
   margin: 1em 0 1em 0 !important;
   position: relative;
   border-left: 3px solid transparent;
-  padding-left: 0px !important;
-  margin-left: -20px !important; /* Much more aggressive negative margin */
+  padding-left: 10px !important; /* Restore some padding for the hover line */
   transition: border-color 0.3s ease;
   max-width: 100%;
   text-align: left;
+  transform: translateX(-30px) !important; /* Use transform instead of negative margin */
 }
 
 .ProseMirror [data-type="dialogue-block"]:hover {
@@ -121,28 +121,26 @@ button:focus-visible {
   font-weight: bold;
   margin-bottom: 0.25em;
   text-align: left !important;
-  margin-left: 20px !important; /* Offset the aggressive negative margin */
 }
 
-/* Side-by-side layout - EXTREME LEFT ALIGNMENT */
+/* Side-by-side layout - USING TRANSFORM FOR POSITIONING */
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] {
   display: flex !important;
   flex-direction: row !important;
   align-items: flex-start !important;
-  gap: 0.5em !important; /* Even smaller gap */
+  gap: 0.5em !important;
   text-align: initial !important;
-  margin-left: -20px !important; /* Extreme negative margin */
-  padding-left: 0 !important;
+  padding-left: 10px !important; /* Restore padding for hover line */
   justify-content: flex-start !important;
+  transform: translateX(-30px) !important; /* Move 30px to the left */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
-  flex-basis: 80px !important; /* Even smaller speaker column */
+  flex-basis: 80px !important;
   flex-shrink: 0 !important;
   flex-grow: 0 !important;
   text-align: right !important;
   min-width: 80px !important;
-  margin-left: 20px !important; /* Offset the extreme negative margin */
   padding-left: 0 !important;
 }
 
