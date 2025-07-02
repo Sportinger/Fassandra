@@ -62,6 +62,7 @@ body {
 
 #root {
   width: 100%;
+  text-align: left; /* Override any centering for editor content */
 }
 
 h1 {
@@ -104,6 +105,8 @@ button:focus-visible {
   border-left: 3px solid transparent;
   padding-left: 10px;
   transition: border-color 0.3s ease;
+  max-width: 100%; /* Ensure it doesn't exceed container */
+  text-align: left; /* Force left alignment */
 }
 
 .ProseMirror [data-type="dialogue-block"]:hover {
@@ -124,6 +127,8 @@ button:focus-visible {
   align-items: flex-start !important;
   gap: 1.5em !important;
   text-align: initial !important;
+  margin-left: 0 !important; /* Ensure left alignment */
+  justify-content: flex-start !important; /* Start from left */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] {
@@ -131,21 +136,45 @@ button:focus-visible {
   flex-shrink: 0 !important;
   flex-grow: 0 !important;
   text-align: right !important;
+  min-width: 120px !important; /* Ensure minimum width */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] p {
   font-weight: bold !important;
   margin: 0 !important;
   text-align: right !important;
+  word-wrap: break-word !important; /* Handle long speaker names */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="dialogue-text"] {
   flex-grow: 1 !important;
   flex-shrink: 1 !important;
   text-align: left !important;
+  max-width: calc(100% - 140px) !important; /* Ensure it doesn't overflow A4 width */
+  overflow-wrap: break-word !important; /* Force word breaking */
+  word-wrap: break-word !important; /* Fallback for older browsers */
+  hyphens: auto !important; /* Enable hyphenation */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="dialogue-text"] p {
   margin: 0 !important;
   text-align: left !important;
+  overflow-wrap: break-word !important; /* Force word breaking in paragraphs */
+  word-wrap: break-word !important;
+  hyphens: auto !important;
+}
+
+/* Ensure editor content is left-aligned and respects A4 boundaries */
+.ProseMirror {
+  text-align: left !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all editor paragraphs respect word wrapping */
+.ProseMirror p {
+  overflow-wrap: break-word !important;
+  word-wrap: break-word !important;
+  hyphens: auto !important;
+  max-width: 100% !important;
 }
