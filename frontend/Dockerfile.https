@@ -33,11 +33,11 @@ RUN apk add --no-cache openssl
 # Copy built assets from the builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy HTTPS nginx configuration
-COPY nginx-https.conf /etc/nginx/conf.d/default.conf
+# Copy multi-domain HTTPS nginx configuration
+COPY nginx-https-multi-domain.conf /etc/nginx/conf.d/default.conf
 
 # Create SSL directories (certificates will be mounted at runtime)
-RUN mkdir -p /etc/ssl/certs /etc/ssl/private
+RUN mkdir -p /etc/ssl/certs /etc/ssl/private /etc/letsencrypt/live/pessoa.com.de
 
 # Note: SSL certificates are mounted at runtime from the host server
 # They are not copied during build to support different environments
