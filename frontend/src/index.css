@@ -129,11 +129,39 @@ button:focus-visible {
   background-color: var(--color-border, #444);
 }
 
-/* Default (stacked) layout */
-.ProseMirror [data-type="dialogue-block"][data-layout="default"] [data-type="speaker"] p {
-  font-weight: bold;
-  margin-bottom: 0.25em;
+/* Default (stacked) layout - CLEAN VERTICAL STACK */
+.ProseMirror [data-type="dialogue-block"][data-layout="default"] {
+  display: block !important; /* Ensure block layout, not flex */
+  flex-direction: column !important; /* If flex is inherited, make it vertical */
   text-align: left !important;
+}
+
+.ProseMirror [data-type="dialogue-block"][data-layout="default"] [data-type="speaker"] {
+  display: block !important;
+  margin-bottom: 0.25em !important;
+  text-align: left !important;
+}
+
+.ProseMirror [data-type="dialogue-block"][data-layout="default"] [data-type="speaker"] p {
+  font-weight: bold !important;
+  margin: 0 0 0.25em 0 !important;
+  text-align: left !important;
+  display: block !important;
+}
+
+.ProseMirror [data-type="dialogue-block"][data-layout="default"] [data-type="dialogue-text"] {
+  display: block !important;
+  text-align: left !important;
+  margin-top: 0 !important;
+}
+
+.ProseMirror [data-type="dialogue-block"][data-layout="default"] [data-type="dialogue-text"] p {
+  margin: 0 !important;
+  text-align: left !important;
+  display: block !important;
+  overflow-wrap: break-word !important;
+  word-wrap: break-word !important;
+  hyphens: auto !important;
 }
 
 /* Side-by-side layout - SCROLLING HOVER LINES */
