@@ -461,29 +461,34 @@
 
 /* Full-screen editor container changed to a page view container */
 .editorPageContainer {
+  flex-grow: 1;
   display: flex;
   justify-content: center;
-  align-items: flex-start; /* Align pages to the top */
-  padding: 1.5rem; /* Increased padding for better spacing */
-  background-color: var(--color-background-secondary, #f0f2f5); /* Neutral background */
-  overflow-y: auto; /* Allow scrolling the container */
-  min-height: calc(100vh - 110px); /* Adjusted for 50px app padding + header */
-  
-  /* No animation on container - only the page animates */
+  align-items: flex-start;
+  padding: 40px;
+  background-color: var(--color-background-secondary, #f3f4f6);
+  overflow: auto;
+  position: relative;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* The DIN A4 Page itself */
 .dinA4Page {
-  width: 100%;
-  max-width: 800px; /* Good width for readability */
-  aspect-ratio: 210 / 297; /* A4 aspect ratio */
+  width: 21cm;
+  height: 29.7cm;
+  min-width: 320px;
+  min-height: calc(320px * 1.414);
   background-color: var(--color-background, white);
-  padding: 2cm 1.5cm; /* Standard page margins */
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  padding: 2cm 1.5cm;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   border-radius: 3px;
   display: flex;
   flex-direction: column;
   color: var(--color-text);
+  overflow: hidden;
+  position: relative;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: top center;
   
   /* DIN A4 page entrance animation - flies in from bottom */
   animation: slideInFromBottom 400ms ease-out forwards;
