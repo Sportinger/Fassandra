@@ -58,6 +58,7 @@ body {
   min-height: 100vh;
   background-color: var(--color-background);
   color: var(--color-text);
+  position: relative; /* Ensure body can contain absolute positioning */
 }
 
 #root {
@@ -100,28 +101,33 @@ button:focus-visible {
 /* ===== DIALOGUE BLOCK STYLES (GLOBAL) ===== */
 /* These styles must be global to work with TipTap's rendered HTML */
 
-/* Independent floating hover line - appears above everything */
-.ProseMirror {
-  position: relative;
-}
-
-.ProseMirror::before {
+/* Independent floating hover line - TRULY INDEPENDENT FROM CONTAINERS */
+body::before {
   content: '';
-  position: absolute;
-  left: -20px; /* Move the line further to the left */
+  position: fixed; /* Fixed to viewport, completely independent */
+  left: 50px; /* Position from left edge of viewport */
   top: 0;
   bottom: 0;
   width: 3px;
   background-color: transparent;
   transition: background-color 0.3s ease;
-  z-index: 1000; /* Float above everything */
-  pointer-events: none; /* Don't interfere with editing */
+  z-index: 9999; /* Above everything */
+  pointer-events: none; /* Don't interfere with anything */
+  opacity: 0; /* Hidden by default */
 }
 
 /* Show the floating line when hovering over dialogue blocks */
-.ProseMirror:has([data-type="dialogue-block"]:hover)::before {
+body:has(.ProseMirror [data-type="dialogue-block"]:hover)::before {
   background-color: var(--color-border, #444);
+  opacity: 1; /* Make visible */
 }
+
+/* Remove the old container-bound line */
+.ProseMirror {
+  position: relative;
+}
+
+/* Old line removed - now using body::before instead */
 
 /* Base dialogue block styling - POSITION WORKING, REMOVED HOVER LINE */
 .ProseMirror [data-type="dialogue-block"] {
@@ -134,11 +140,6 @@ button:focus-visible {
   text-align: left;
   transform: translateX(-30px) !important; /* This is working! */
 }
-
-/* Remove the old hover effect since we have the floating line */
-/* .ProseMirror [data-type="dialogue-block"]:hover {
-  border-left-color: var(--color-border, #444);
-} */
 
 /* Default (stacked) layout */
 .ProseMirror [data-type="dialogue-block"][data-layout="default"] [data-type="speaker"] p {
