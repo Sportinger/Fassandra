@@ -1,12 +1,12 @@
 name: Build Images and Deploy to Hetzner Server
 
 # Deployment strategy:
-# - dev branch: Pure development, no builds, no deployment
-# - main/production branches: Builds images AND deploys to Hetzner server
-# This saves GitHub Actions minutes and keeps container registry clean
+# - dev branch: Builds images for manual deployment (fast development cycle)
+# - main/production branches: Builds images AND auto-deploys to Hetzner server
+# This allows flexible development while keeping production stable
 on:
   push:
-    branches: [main, production]
+    branches: [dev, main, production]
   workflow_dispatch: # Allow manual deployment
 
 env:
@@ -87,7 +87,8 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    # Deploy to Hetzner server (only main/production branches trigger this workflow)
+    # Auto-deploy only for main/production branches
+    # Dev branch: Images are built and available for manual deployment
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production'
 
     steps:
@@ -123,3 +124,28 @@ jobs:
             docker compose -f docker-compose.hetzner-github-actions.yml logs --tail=10 backend
             echo "=== Frontend Logs ==="
             docker compose -f docker-compose.hetzner-github-actions.yml logs --tail=10 frontend 
+
+  dev-branch-info:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    # Provide deployment instructions for dev branch
+    if: github.ref == 'refs/heads/dev'
+    
+    steps:
+      - name: Dev Branch - Manual Deployment Instructions
+        run: |
+          echo "🚀 Dev branch images built successfully!"
+          echo ""
+          echo "📦 Images available:"
+          echo "  - ghcr.io/sportinger/pessoa-backend:dev"
+          echo "  - ghcr.io/sportinger/pessoa-frontend:dev"
+          echo ""
+          echo "🔧 To deploy manually:"
+          echo "  ssh roman@mylayer.org"
+          echo "  cd /opt/pessoa"
+          echo "  sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=dev/' .env"
+          echo "  docker compose -f docker-compose.hetzner-github-actions.yml pull"
+          echo "  docker compose -f docker-compose.hetzner-github-actions.yml up -d"
+          echo ""
+          echo "⚡ Or use local fast deployment:"
+          echo "  ./scripts/dev_deploy.sh"
