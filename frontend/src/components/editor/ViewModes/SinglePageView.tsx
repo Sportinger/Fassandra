@@ -10,8 +10,7 @@ export const SinglePageView: React.FC<ViewModeProps> = ({
   handlePageContextMenu,
   handleContextMenu,
   handleEditorClick,
-  showRuler,
-  onToggleRuler
+  showRuler
 }) => {
   return (
     <>

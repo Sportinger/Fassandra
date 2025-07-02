@@ -10,8 +10,7 @@ export const MultiPageView: React.FC<ViewModeProps> = ({
   handlePageContextMenu,
   handleContextMenu,
   handleEditorClick,
-  showRuler,
-  onToggleRuler
+  showRuler
 }) => {
   if (!editor) return null;
 

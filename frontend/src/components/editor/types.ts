@@ -46,7 +46,6 @@ export interface ViewModeProps {
   handleContextMenu: (e: React.MouseEvent) => void;
   handleEditorClick: (e: React.MouseEvent) => void;
   showRuler: boolean;
-  onToggleRuler: () => void;
 }
 
 export interface LayoutManagementProps {

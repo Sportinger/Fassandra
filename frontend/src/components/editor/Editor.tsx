@@ -357,7 +357,6 @@ export const Editor: React.FC<EditorProps> = ({ scriptId, initialTitle, onNaviga
             handleContextMenu={handleContextMenu}
             handleEditorClick={handleEditorClick}
             showRuler={editorState.showRuler}
-            onToggleRuler={toggleRuler}
           />
         ) : (
           <SinglePageView 
@@ -368,7 +367,6 @@ export const Editor: React.FC<EditorProps> = ({ scriptId, initialTitle, onNaviga
             handleContextMenu={handleContextMenu}
             handleEditorClick={handleEditorClick}
             showRuler={editorState.showRuler}
-            onToggleRuler={toggleRuler}
           />
         )}
 
