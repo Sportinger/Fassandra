@@ -237,6 +237,9 @@ where
             &params.token
         };
         
+        // Trim any trailing whitespace or slash from the token (fixes Chrome WebSocket issue)
+        let token = token.trim().trim_end_matches('/');
+        
         tracing::debug!("WS Auth: Verifying token: {}...", &token.chars().take(10).collect::<String>());
         
         let claims = match verify_token(token) {

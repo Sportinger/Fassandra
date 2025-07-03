@@ -33,6 +33,22 @@ export const Editor: React.FC<EditorProps> = ({ scriptId, initialTitle, onNaviga
   // Use custom hooks for state management
   const editorState = useEditorState(initialTitle);
   
+  // Debug logging for Chrome issues
+  useEffect(() => {
+    const browserInfo = {
+      userAgent: navigator.userAgent,
+      isChrome: /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent),
+      isSafari: /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent),
+      isFirefox: /Firefox/.test(navigator.userAgent),
+    };
+    
+    console.log('[Editor Debug] Browser info:', browserInfo);
+    console.log('[Editor Debug] Script ID:', scriptId);
+    console.log('[Editor Debug] User:', user);
+    console.log('[Editor Debug] Token available:', !!token);
+    console.log('[Editor Debug] Editor state - ydoc:', !!editorState.ydoc, 'provider:', !!editorState.provider, 'status:', editorState.status);
+  }, [scriptId, user, token, editorState.ydoc, editorState.provider, editorState.status]);
+  
   // Initialize Yjs connection
   useYjsConnection({
     scriptId,

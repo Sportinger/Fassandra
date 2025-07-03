@@ -8,14 +8,20 @@ import { convertBlocksToTiptapContent } from '../utils/contentConverters';
 import { logDebugInfo, isMobile } from '../../../utils/debug';
 import { ConnectionStatus } from '../types';
 
-// Helper function to detect Chrome browser
+// Helper function to detect Chrome browser (including Brave)
 const isChrome = () => {
-  return /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
+  return (/Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent)) || 
+         /Brave/.test(navigator.userAgent);
 };
 
 // Helper function to detect Firefox browser
 const isFirefox = () => {
   return /Firefox/.test(navigator.userAgent);
+};
+
+// Helper function to detect Safari browser
+const isSafari = () => {
+  return /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
 };
 
 interface UseYjsConnectionProps {
@@ -65,12 +71,13 @@ export const useYjsConnection = ({
     const browserInfo = {
       isChrome: isChrome(),
       isFirefox: isFirefox(),
+      isSafari: isSafari(),
       userAgent: navigator.userAgent,
     };
 
     console.log(`Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id})`);
     console.log('Browser info:', browserInfo);
-    logDebugInfo('Editor', `Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id}), browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : 'Other'}`);
+    logDebugInfo('Editor', `Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id}), browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : browserInfo.isSafari ? 'Safari' : 'Other'}`);
     setStatus('connecting');
     setErrorMessage(null);
 
@@ -81,12 +88,20 @@ export const useYjsConnection = ({
       currentDoc.getXmlFragment('default'); // This creates it if it doesn't exist
     }, 'initializeDefaultFragment');
     
+    console.log('[YJS Debug] Y.Doc created and default fragment initialized');
     setYdoc(currentDoc);
 
-    const wsBaseUrl = import.meta.env.VITE_WS_BASE_URL || 
-      `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`;
+    // Use host-accessible URL for browser WebSocket connections
+    const envWsUrl = import.meta.env.VITE_WS_BASE_URL;
+    const fallbackWsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`;
+    const localBackendUrl = `ws://localhost:3001/api/collab`; // Use host-accessible URL
+    const wsBaseUrl = envWsUrl || localBackendUrl; // Use env or fallback to localhost
+    
+    console.log(`Environment WS URL: ${envWsUrl}`);
+    console.log(`Fallback WS URL: ${fallbackWsUrl}`);
+    console.log(`Local Backend URL: ${localBackendUrl}`);
+    console.log(`Final WebSocket Base URL: ${wsBaseUrl}`);
     logDebugInfo('Editor', `WebSocket Base URL: ${wsBaseUrl}`);
-    console.log(`WebSocket Base URL: ${wsBaseUrl}`);
 
     console.log(`Setting up IndexedDB persistence for ${scriptId}...`);
     const persistence = new IndexeddbPersistence(`theater-script-${scriptId}`, currentDoc);
@@ -124,53 +139,55 @@ export const useYjsConnection = ({
     });
 
     // Set up WebSocket provider with auth and mobile fallback
-    const wsUrl = wsBaseUrl;
     const roomName = scriptId;
-    const wsParams = { token };
     
-    console.log(`Connecting to WebSocket: ${wsUrl}/${roomName} with params:`, wsParams);
-    logDebugInfo('Editor', `Connecting to WebSocket: ${wsUrl}/${roomName} - Mobile: ${isMobile()}, Chrome: ${browserInfo.isChrome}`);
-    
-    // Create WebSocket provider with browser-specific handling
-    const providerConfig = {
-      connect: true,
-      params: wsParams,
-      maxBackoffTime: isMobile() ? 5000 : 10000,
-      resyncInterval: 15000, // 15 seconds instead of 20-30s
-    };
-
-    // Chrome-specific WebSocket configuration
-    if (browserInfo.isChrome) {
-      console.log('Applying Chrome-specific WebSocket configuration');
-      logDebugInfo('Editor', 'Applying Chrome-specific WebSocket configuration');
+    // Chrome/Safari/Mobile-specific WebSocket configuration with manual URL construction
+    if (browserInfo.isChrome || browserInfo.isSafari || isMobile()) {
+      console.log('Applying Chrome/Safari/Mobile-specific WebSocket configuration');
+      logDebugInfo('Editor', 'Applying Chrome/Safari/Mobile-specific WebSocket configuration');
       
-      // Chrome sometimes has issues with protocol negotiation
-      // Try without explicit protocol first, then fall back to protocol if needed
+      // Manually construct WebSocket URL with token as query parameter for Chrome/Safari compatibility
+      const cleanToken = token.trim(); // Remove any trailing whitespace/slash
+      const wsUrlWithToken = `${wsBaseUrl}/${roomName}?token=${encodeURIComponent(cleanToken)}`;
+      console.log(`Chrome/Safari: Connecting to WebSocket: ${wsUrlWithToken.replace(cleanToken, 'TOKEN_HIDDEN')}`);
+      logDebugInfo('Editor', `Chrome/Safari: Connecting to WebSocket with manual token in URL`);
+      
+      const providerConfig = {
+        connect: true,
+        // Don't use params for Chrome - we put the token directly in the URL
+        maxBackoffTime: isMobile() ? 5000 : 8000,
+        resyncInterval: 12000, // More frequent for mobile/Chrome
+      };
+
       try {
-        const currentProvider = new WebsocketProvider(wsUrl, roomName, currentDoc, providerConfig);
-        console.log('Chrome: WebSocket provider created without explicit protocol');
+        const currentProvider = new WebsocketProvider(wsUrlWithToken, '', currentDoc, providerConfig);
+        console.log('Chrome/Safari: WebSocket provider created with token in URL');
         setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
         setProvider(currentProvider);
       } catch (error) {
-        console.warn('Chrome: Failed to create WebSocket provider without protocol, trying with protocol:', error);
-        try {
-          const currentProvider = new WebsocketProvider(wsUrl, roomName, currentDoc, {
-            ...providerConfig,
-            protocols: ['yjs-ws'],
-          });
-          console.log('Chrome: WebSocket provider created with yjs-ws protocol');
-          setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
-          setProvider(currentProvider);
-        } catch (protocolError) {
-          console.error('Chrome: Failed to create WebSocket provider with protocol:', protocolError);
-          setErrorMessage('Failed to create WebSocket connection. Chrome compatibility issue.');
-          setStatus('error');
-        }
+        console.error('Chrome/Safari: Failed to create WebSocket provider with token in URL:', error);
+        setErrorMessage(`${browserInfo.isChrome ? 'Chrome' : browserInfo.isSafari ? 'Safari' : 'Browser'} WebSocket connection failed. You can still edit locally.`);
+        setStatus('disconnected');
+        // Don't set provider to null - let editor work in local mode
+        setProvider(null);
       }
     } else {
-      // Firefox and other browsers - use standard configuration
-      console.log('Using standard WebSocket configuration for non-Chrome browser');
-      const currentProvider = new WebsocketProvider(wsUrl, roomName, currentDoc, providerConfig);
+      // Firefox and other browsers - use standard configuration with params
+      console.log('Using standard WebSocket configuration for Firefox/other browsers');
+      const cleanToken = token.trim(); // Remove any trailing whitespace/slash
+      const wsParams = { token: cleanToken };
+      
+      console.log(`Connecting to WebSocket: ${wsBaseUrl}/${roomName} with params:`, wsParams);
+      logDebugInfo('Editor', `Connecting to WebSocket: ${wsBaseUrl}/${roomName} - Firefox/other`);
+      
+      const providerConfig = {
+        connect: true,
+        params: wsParams,
+        maxBackoffTime: 10000,
+        resyncInterval: 15000,
+      };
+
+      const currentProvider = new WebsocketProvider(wsBaseUrl, roomName, currentDoc, providerConfig);
       setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
       setProvider(currentProvider);
     }
@@ -200,7 +217,7 @@ export const useYjsConnection = ({
 // Helper function to set up WebSocket provider event handlers
 const setupWebSocketProviderHandlers = (
   provider: WebsocketProvider,
-  browserInfo: { isChrome: boolean; isFirefox: boolean; userAgent: string },
+  browserInfo: { isChrome: boolean; isFirefox: boolean; isSafari: boolean; userAgent: string },
   setStatus: (status: ConnectionStatus | ((prev: ConnectionStatus) => ConnectionStatus)) => void,
   setErrorMessage: (message: string | null) => void,
   setIsMobileFallback: (fallback: boolean) => void
@@ -211,7 +228,7 @@ const setupWebSocketProviderHandlers = (
 
   provider.on('status', (event: { status: string }) => {
     console.log(`WebSocket status: ${event.status}`);
-    logDebugInfo('Editor', `WebSocket status: ${event.status} (attempt: ${connectionAttempts}), Browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : 'Other'}`);
+    logDebugInfo('Editor', `WebSocket status: ${event.status} (attempt: ${connectionAttempts}), Browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : browserInfo.isSafari ? 'Safari' : 'Other'}`);
     const newStatus = event.status as ConnectionStatus;
     
     if (newStatus === 'connecting') {
@@ -242,7 +259,7 @@ const setupWebSocketProviderHandlers = (
   // Handle WebSocket errors
   provider.on('connection-error', (event: Event) => {
     console.error(`WebSocket error (attempt ${connectionAttempts}):`, event);
-    logDebugInfo('Editor', `WebSocket error (attempt ${connectionAttempts}): ${event.type}, Browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : 'Other'}`);
+    logDebugInfo('Editor', `WebSocket error (attempt ${connectionAttempts}): ${event.type}, Browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : browserInfo.isSafari ? 'Safari' : 'Other'}`);
     
     // Browser-specific error handling
     if (browserInfo.isChrome) {
@@ -251,6 +268,13 @@ const setupWebSocketProviderHandlers = (
         setErrorMessage('Chrome WebSocket connection failed. Try refreshing the page or switching to Firefox.');
       } else {
         setErrorMessage('Chrome WebSocket connection issue. Retrying...');
+      }
+    } else if (browserInfo.isSafari) {
+      console.log('Safari-specific error handling');
+      if (connectionAttempts >= 2) {
+        setErrorMessage('Safari WebSocket connection failed. Try refreshing the page or switching to Firefox/Chrome.');
+      } else {
+        setErrorMessage('Safari WebSocket connection issue. Retrying...');
       }
     } else if (browserInfo.isFirefox) {
       console.log('Firefox-specific error handling');

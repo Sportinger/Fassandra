@@ -76,6 +76,19 @@ export const useEditorInstance = ({
     debouncedSaveRef.current = debouncedSave;
   }, [debouncedSave, debouncedSaveRef]);
 
+  // Debug Chrome WebSocket issues
+  useEffect(() => {
+    const browserInfo = {
+      userAgent: navigator.userAgent,
+      isChrome: /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent),
+    };
+    
+    console.log('[Editor Instance Debug] Browser:', browserInfo.isChrome ? 'Chrome' : 'Other');
+    console.log('[Editor Instance Debug] ydoc available:', !!ydoc);
+    console.log('[Editor Instance Debug] provider available:', !!provider);
+    console.log('[Editor Instance Debug] Will use collaborative mode:', !!(ydoc && provider));
+  }, [ydoc, provider]);
+
   // Initialize TipTap Editor
   const editor = useEditor({
     extensions: ydoc && provider ? [
@@ -161,6 +174,7 @@ export const useEditorInstance = ({
         Speaker,
     ], // More complete fallback setup
     content: '', // Content will be managed by Yjs
+    editable: true, // Ensure editor is always editable
     editorProps: {
       attributes: {
         class: 'editor-content',

@@ -14,25 +14,26 @@ export default defineConfig({
       interval: 500,     // optional: Polling-Intervall (ms)
     },
     // Proxy API requests to backend in development mode
+    // Use network IP for backend when available to support network access
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: process.env.VITE_BACKEND_URL || 'http://192.168.2.111:3001',
         changeOrigin: true,
         secure: false,
         ws: true, // Enable WebSocket proxying
       },
       '/login': {
-        target: 'http://localhost:3001',
+        target: process.env.VITE_BACKEND_URL || 'http://192.168.2.111:3001',
         changeOrigin: true,
         secure: false,
       },
       '/register': {
-        target: 'http://localhost:3001',
+        target: process.env.VITE_BACKEND_URL || 'http://192.168.2.111:3001',
         changeOrigin: true,
         secure: false,
       },
       '/health': {
-        target: 'http://localhost:3001',
+        target: process.env.VITE_BACKEND_URL || 'http://192.168.2.111:3001',
         changeOrigin: true,
         secure: false,
       },
