@@ -1,5 +1,5 @@
-// Main Editor component
-export { Editor } from './Editor';
+// Main Editor component - NEW REFACTORED VERSION
+export { Editor } from './components/Editor';
 
 // Sub-components
 export { FloatingToolbar } from './FloatingToolbar';

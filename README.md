@@ -658,6 +658,80 @@ Here's a summary of the currently implemented features:
 *   [x] Mobile-Optimized WebSocket Configuration
 *   [x] Advanced Mobile Debugging Test Page
 
+### 🆕 **Recent Editor Refactoring (2024)**
+*   [x] **Modular Editor Architecture**: Complete refactoring of the editor into organized, maintainable modules
+*   [x] **Responsive Design System**: DIN A4 proportional scaling that maintains consistent line breaks across all devices
+*   [x] **Mobile-First Optimization**: Proper responsive design that eliminates horizontal scrolling on mobile devices
+*   [x] **Consolidated CSS Architecture**: Single source of truth for styles with CSS custom properties and design tokens
+*   [x] **TypeScript Type Safety**: Comprehensive type definitions for all editor components and hooks
+*   [x] **Custom React Hooks**: Modular hooks for responsive design, editor core, and collaboration management
+*   [x] **Component-Based UI**: Reusable UI components with proper prop typing and documentation
+*   [x] **Best Practices Implementation**: Clean code architecture following React and TypeScript best practices
+
+## 📐 **Editor Architecture & Mobile Optimization**
+
+### **The DIN A4 Mobile Challenge**
+The Pessoa editor faced a critical challenge: maintaining consistent line breaks between desktop and mobile while preserving DIN A4 formatting proportions. Previous solutions with aggressive CSS word-breaking destroyed the scriptwriting format integrity.
+
+### **Refactored Architecture Solution**
+The 2024 refactoring solved this through a comprehensive responsive design system:
+
+```
+frontend/src/components/editor/
+├── components/           # UI Components
+│   ├── Editor.tsx       # Main orchestrator component
+│   ├── page/            # Page layout components
+│   ├── toolbar/         # Floating toolbar system
+│   └── ui/              # Reusable UI components
+├── hooks/               # Custom React hooks
+│   ├── useResponsiveDesign.ts    # Viewport & device detection
+│   ├── useEditorCore.ts          # Core editor with Yjs/TipTap
+│   └── useEditorInstance.ts      # Editor instance management
+├── styles/              # Consolidated CSS system
+│   ├── variables.css    # Design tokens & CSS custom properties
+│   ├── responsive.css   # DIN A4 proportional scaling
+│   └── toolbar.css      # Floating toolbar styles
+├── types/               # Comprehensive TypeScript definitions
+├── config/              # Configuration constants
+└── extensions/          # TipTap extensions
+```
+
+### **Key Responsive Design Features**
+
+**DIN A4 Proportional Scaling:**
+- Maintains 1:1.414 aspect ratio across all screen sizes
+- Uses `clamp()` functions for fluid typography and spacing
+- Preserves line break consistency through proportional font scaling
+
+**Mobile-First Breakpoint System:**
+- **Mobile (0-767px)**: Full viewport utilization, touch-optimized
+- **Tablet (768-1023px)**: Scaled DIN A4 with optimized padding
+- **Desktop (1024px+)**: Full DIN A4 dimensions (21cm × 29.7cm)
+
+**CSS Custom Properties:**
+```css
+:root {
+  --page-width: clamp(300px, 85vw, 21cm);
+  --page-height: calc(var(--page-width) * 1.414);
+  --font-size-base: clamp(15px, 2.2vw, 16px);
+  --content-padding-x: clamp(12px, 4vw, 1.5cm);
+}
+```
+
+**TypeScript Type Safety:**
+- Comprehensive type definitions for all components
+- Proper integration with existing Pessoa infrastructure
+- Type-safe responsive configuration and dimension management
+
+### **Integration with Existing Pessoa Systems**
+The refactoring maintains full compatibility with:
+- **Authentication**: Uses existing `AuthContext` for user management
+- **Collaboration**: Integrates with established Yjs/WebSocket infrastructure  
+- **API Layer**: Maintains existing script management endpoints
+- **Component System**: Works with existing `Header` and layout components
+
+This architectural approach solved the mobile line break issue while establishing a maintainable, scalable foundation for future editor enhancements.
+
 ## Contributing
 
 Pull requests are welcome! Please open an issue first to discuss significant changes.

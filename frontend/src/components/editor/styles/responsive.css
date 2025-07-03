@@ -1,0 +1,387 @@
+/*
+ * Responsive Editor Styles
+ * Single source of truth for DIN A4 proportional scaling
+ * Maintains identical line breaks across all devices
+ */
+
+@import './variables.css';
+
+/* ===== RESET AND BASE STYLES ===== */
+
+* {
+  box-sizing: border-box;
+}
+
+/* Prevent horizontal scrolling at all costs */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* ===== EDITOR CONTAINER ===== */
+
+.editorContainer {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-background-secondary, #f8fafc);
+}
+
+/* ===== PAGE CANVAS - DIN A4 RESPONSIVE CONTAINER ===== */
+
+.pageCanvas {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: var(--content-padding-y) var(--content-padding-x);
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  
+  /* Adjust for toolbar on desktop */
+  padding-left: calc(var(--content-padding-x) + var(--toolbar-width) + var(--space-lg));
+}
+
+/* ===== DIN A4 PAGE ===== */
+
+.dinA4Page {
+  /* Responsive DIN A4 dimensions */
+  width: var(--page-width);
+  min-height: var(--page-height);
+  
+  /* Page styling */
+  background: var(--color-background, white);
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-sm);
+  position: relative;
+  
+  /* Content padding - proportional to page size */
+  padding: var(--content-padding-y) var(--content-padding-x);
+  
+  /* Typography base */
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  color: var(--color-text, #1f2937);
+  
+  /* Ensure clean text rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  
+  /* Animation */
+  animation: slideInFromBottom 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center bottom;
+}
+
+.dinA4Page.exiting {
+  animation: slideOutToBottom 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== PROSEMIRROR EDITOR ===== */
+
+.ProseMirror {
+  width: 100%;
+  height: 100%;
+  outline: none;
+  
+  /* Typography inheritance */
+  font-size: inherit;
+  line-height: inherit;
+  font-family: inherit;
+  color: inherit;
+  
+  /* Text behavior - CRITICAL for consistent line breaks */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  -moz-hyphens: auto;
+  
+  /* NO aggressive word breaking - maintains desktop consistency */
+  word-break: normal !important;
+  
+  /* Remove spell check decorations */
+  -webkit-text-decorations-in-effect: none;
+  text-decoration: none;
+}
+
+/* ===== PARAGRAPH STYLES ===== */
+
+.ProseMirror p {
+  margin: 0.5em 0;
+  
+  /* Text flow matching desktop exactly */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: normal; /* Key: normal word breaking like desktop */
+  hyphens: auto;
+  
+  /* Typography */
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+}
+
+/* ===== DIALOGUE BLOCKS ===== */
+
+.ProseMirror [data-type="dialogue-block"] {
+  margin: 1em 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  
+  /* Consistent text behavior */
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+.ProseMirror [data-type="speaker"] {
+  font-weight: bold;
+  color: var(--color-accent, #3b82f6);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-tight);
+  
+  /* Text consistency */
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+.ProseMirror [data-type="dialogue-text"] {
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  
+  /* Text consistency */
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* ===== HEADINGS ===== */
+
+.ProseMirror h1 {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  line-height: var(--line-height-tight);
+  margin: 1.5em 0 0.5em 0;
+}
+
+.ProseMirror h2 {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  line-height: var(--line-height-tight);
+  margin: 1.2em 0 0.4em 0;
+}
+
+.ProseMirror h3 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  line-height: var(--line-height-normal);
+  margin: 1em 0 0.3em 0;
+}
+
+/* ===== MOBILE RESPONSIVE ADJUSTMENTS ===== */
+
+@media (max-width: 767px) {
+  .pageCanvas {
+    /* Remove toolbar padding on mobile */
+    padding-left: var(--content-padding-x);
+    
+    /* Minimal padding for edge-to-edge feel */
+    padding: var(--space-md);
+  }
+  
+  .dinA4Page {
+    /* Full width on mobile but maintain proportional content */
+    width: 100%;
+    min-height: 100vh;
+    
+    /* Remove page-like styling for mobile */
+    box-shadow: none;
+    border-radius: 0;
+    
+    /* Adjust padding for mobile */
+    padding: var(--space-lg) var(--space-md);
+  }
+  
+  /* Ensure content stays properly wrapped on mobile */
+  .ProseMirror {
+    /* Slightly tighter line height for mobile */
+    line-height: var(--line-height-normal);
+  }
+  
+  .ProseMirror p {
+    /* Maintain consistent spacing on mobile */
+    margin: 0.4em 0;
+  }
+  
+  /* Stack dialogue blocks on mobile */
+  .ProseMirror [data-type="dialogue-block"] {
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+}
+
+/* ===== TABLET RESPONSIVE ADJUSTMENTS ===== */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .pageCanvas {
+    /* Balanced padding for tablet */
+    padding-left: calc(var(--content-padding-x) + var(--toolbar-width) + var(--space-md));
+  }
+  
+  .dinA4Page {
+    /* Tablet-optimized page size */
+    margin: var(--space-xl) auto;
+  }
+}
+
+/* ===== DESKTOP STYLES ===== */
+
+@media (min-width: 1024px) {
+  .dinA4Page {
+    /* Full DIN A4 experience on desktop */
+    margin: var(--space-2xl) auto;
+  }
+  
+  /* Side-by-side dialogue layout on desktop */
+  .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] {
+    flex-direction: row;
+    gap: var(--space-lg);
+  }
+  
+  .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] [data-type="speaker"] {
+    flex: 0 0 25%;
+  }
+  
+  .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] [data-type="dialogue-text"] {
+    flex: 1;
+  }
+}
+
+/* ===== ANIMATIONS ===== */
+
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToBottom {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+/* ===== SELECTION STYLES ===== */
+
+.ProseMirror ::selection {
+  background: var(--color-accent, #3b82f6);
+  color: white;
+}
+
+/* ===== FOCUS STYLES ===== */
+
+.ProseMirror:focus {
+  outline: none;
+}
+
+/* Remove focus outlines that interfere with editing */
+.ProseMirror *:focus {
+  outline: none !important;
+}
+
+/* ===== COLLABORATION CURSOR ===== */
+
+.collaboration-cursor {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  height: 1.2em;
+  width: 2px;
+  border-left: 2px solid;
+  margin-left: -1px;
+  margin-top: 0.1em;
+  z-index: var(--z-index-base);
+}
+
+.collaboration-cursor-label {
+  position: absolute;
+  top: -1.4em;
+  left: -1px;
+  font-size: 0.75em;
+  font-weight: 600;
+  color: white;
+  padding: 0.1em 0.3em;
+  border-radius: 3px 3px 3px 0;
+  white-space: nowrap;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: var(--z-index-popover);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ===== LOADING AND ERROR STATES ===== */
+
+.editorLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.editorError {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--space-xl);
+  text-align: center;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+  border-radius: var(--radius-lg);
+}
+
+/* ===== PRINT STYLES ===== */
+
+@media print {
+  .pageCanvas {
+    padding: 0;
+    overflow: visible;
+  }
+  
+  .dinA4Page {
+    width: 21cm;
+    height: 29.7cm;
+    margin: 0;
+    padding: 2cm 1.5cm;
+    box-shadow: none;
+    border-radius: 0;
+    page-break-after: always;
+  }
+  
+  .ProseMirror {
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+} 
