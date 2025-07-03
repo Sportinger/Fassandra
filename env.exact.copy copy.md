@@ -75,7 +75,7 @@ GEMINI_API_URL=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.
 PGADMIN_DEFAULT_EMAIL=admin@pessoa.dev
 PGADMIN_DEFAULT_PASSWORD=admin123
 PGADMIN_INTERNAL_PORT=80
-PGADMIN_PORT=5050
+PGADMIN_PORT=5050 
 
 # Logging configuration
 RUST_LOG=info,backend=debug,tower_http=debug  # For development

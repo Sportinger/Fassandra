@@ -390,4 +390,4 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       )}
     </div>
   );
-};
+}; 

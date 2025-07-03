@@ -23,7 +23,9 @@ services:
       - pessoa_network
 
   backend:
-    image: ${DOCKER_REGISTRY}/pessoa-backend:${IMAGE_TAG:-latest}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: ${CONTAINER_PREFIX}pessoa_backend
     environment:
       DATABASE_URL: ${DATABASE_URL}
@@ -45,7 +47,12 @@ services:
       - pessoa_network
 
   frontend:
-    image: ${DOCKER_REGISTRY}/pessoa-frontend:${IMAGE_TAG:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_WS_BASE_URL: ${VITE_WS_BASE_URL}
     container_name: ${CONTAINER_PREFIX}pessoa_frontend
     volumes:
       # Mount SSL certificates from host
@@ -85,4 +92,5 @@ volumes:
 
 networks:
   pessoa_network:
+    name: ${CONTAINER_PREFIX}pessoa_network
     driver: bridge 

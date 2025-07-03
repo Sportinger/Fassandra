@@ -134,32 +134,32 @@ export const useEditorInstance = ({
     ] :
       // More complete fallback setup
       [
-        StarterKit.configure({ 
-          history: false, 
-          heading: false 
-        }),
-        // Include basic extensions even without collaboration
-        Heading.configure({
-          levels: [1, 2, 3],
-        }),
-        TextAlign.configure({
-          types: ['heading', 'paragraph'],
-          alignments: ['left', 'center', 'right'],
-          defaultAlignment: 'left',
-        } as TextAlignOptions),
-        TextStyle,
-        Color.configure({
-          types: ['textStyle'],
-        }),
-        // Add custom font size extension
-        FontSize.configure({
-          types: ['textStyle'],
-        }),
+      StarterKit.configure({ 
+        history: false, 
+        heading: false 
+      }),
+      // Include basic extensions even without collaboration
+      Heading.configure({
+        levels: [1, 2, 3],
+      }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+        alignments: ['left', 'center', 'right'],
+        defaultAlignment: 'left',
+      } as TextAlignOptions),
+      TextStyle,
+      Color.configure({
+        types: ['textStyle'],
+      }),
+      // Add custom font size extension
+      FontSize.configure({
+        types: ['textStyle'],
+      }),
         // Custom extensions
         DialogueBlock,
         DialogueText,
         Speaker,
-      ], // More complete fallback setup
+    ], // More complete fallback setup
     content: '', // Content will be managed by Yjs
     editorProps: {
       attributes: {
