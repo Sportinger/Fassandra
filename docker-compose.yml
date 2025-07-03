@@ -57,7 +57,7 @@ services:
       dockerfile: Dockerfile.dev
       args:
           VITE_API_BASE_URL: ${VITE_API_BASE_URL}
-          VITE_WS_BASE_URL: ${VITE_WS_BASE_URL}
+          VITE_WS_BASE_URL: "ws://${APP_HOSTNAME}:${FRONTEND_PORT}/api/collab" # Use IP address for mobile compatibility
     volumes:
       - ./frontend:/app:cached
       - /app/node_modules # Anonymous volume for node_modules

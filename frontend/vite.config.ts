@@ -14,26 +14,35 @@ export default defineConfig({
       interval: 500,     // optional: Polling-Intervall (ms)
     },
     // Proxy API requests to backend in development mode
-    // Use network IP for backend when available to support network access
+    // Use Docker service name for container-to-container communication
+    // Fallback to network IP for development outside Docker
     proxy: {
       '/api': {
-        target: process.env.VITE_BACKEND_URL || 'http://192.168.2.111:3001',
+        target: process.env.VITE_BACKEND_URL || 'http://backend:3001',
         changeOrigin: true,
         secure: false,
-        ws: true, // Enable WebSocket proxying
+        ws: true, // Enable WebSocket proxying for real-time collaboration
+        configure: (proxy, options) => {
+          proxy.on('proxyReqWs', (proxyReq, req, socket) => {
+            console.log('WebSocket proxy request:', req.url);
+          });
+          proxy.on('error', (err, req, res) => {
+            console.log('Proxy error:', err);
+          });
+        },
       },
       '/login': {
-        target: process.env.VITE_BACKEND_URL || 'http://192.168.2.111:3001',
+        target: process.env.VITE_BACKEND_URL || 'http://backend:3001',
         changeOrigin: true,
         secure: false,
       },
       '/register': {
-        target: process.env.VITE_BACKEND_URL || 'http://192.168.2.111:3001',
+        target: process.env.VITE_BACKEND_URL || 'http://backend:3001',
         changeOrigin: true,
         secure: false,
       },
       '/health': {
-        target: process.env.VITE_BACKEND_URL || 'http://192.168.2.111:3001',
+        target: process.env.VITE_BACKEND_URL || 'http://backend:3001',
         changeOrigin: true,
         secure: false,
       },

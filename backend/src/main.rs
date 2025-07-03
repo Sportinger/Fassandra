@@ -339,6 +339,24 @@ struct UpdateScriptContentPayload {
     content: String // HTML content from TipTap editor
 }
 
+/// Payload for console log forwarding from mobile browsers.
+#[derive(Deserialize)]
+struct ConsoleLogEntry {
+    timestamp: String,
+    level: String,
+    message: String,
+    user_agent: String,
+    url: String,
+    script_id: Option<String>,
+    user_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ConsoleLogPayload {
+    logs: Vec<ConsoleLogEntry>,
+    device_info: serde_json::Value,
+}
+
 /// Endpoint to update a script's content from the TipTap editor.
 ///
 /// This endpoint receives HTML content from the TipTap editor and converts it
@@ -441,6 +459,27 @@ async fn delete_script_layout_endpoint(
 ) -> Result<axum::http::StatusCode, AppError> {
     delete_script_layout(pool.as_ref(), layout_id).await?;
     Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+/// Endpoint to receive console logs from mobile browsers for debugging.
+async fn receive_console_logs(
+    Json(payload): Json<ConsoleLogPayload>,
+) -> Result<axum::http::StatusCode, AppError> {
+    // Log the received console logs from mobile browsers
+    for log_entry in payload.logs {
+        match log_entry.level.as_str() {
+            "error" => tracing::error!("[Mobile Console] {}: {}", log_entry.timestamp, log_entry.message),
+            "warn" => tracing::warn!("[Mobile Console] {}: {}", log_entry.timestamp, log_entry.message),
+            "info" => tracing::info!("[Mobile Console] {}: {}", log_entry.timestamp, log_entry.message),
+            "debug" => tracing::debug!("[Mobile Console] {}: {}", log_entry.timestamp, log_entry.message),
+            _ => tracing::info!("[Mobile Console] {}: {}", log_entry.timestamp, log_entry.message),
+        }
+    }
+    
+    // Log device info
+    tracing::info!("[Mobile Debug] Device info: {}", serde_json::to_string_pretty(&payload.device_info).unwrap_or_default());
+    
+    Ok(axum::http::StatusCode::OK)
 }
 
 /// Define a constant for the body limit (e.g., 20 MB)
@@ -599,6 +638,7 @@ fn api_routes_arc_state(persistence_event_tx: mpsc::Sender<YjsPersistenceEvent>)
         .route("/scripts/:script_id/layouts/:layout_id", patch(update_script_layout_endpoint).delete(delete_script_layout_endpoint))
         .route("/blocks/:id", patch(update_block_endpoint))
         .route("/blocks/:id/history", get(block_history_endpoint))
+        .route("/debug/console-logs", post(receive_console_logs))
         .merge(ws::ws_routes(persistence_event_tx.clone()))
         // Note: script_routes is now handled separately in main() due to its PgPool state requirement
 }

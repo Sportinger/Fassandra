@@ -7,11 +7,16 @@ import { isYDocEmpty } from '../utils/formatters';
 import { convertBlocksToTiptapContent } from '../utils/contentConverters';
 import { logDebugInfo, isMobile } from '../../../utils/debug';
 import { ConnectionStatus } from '../types';
+// Import mobile debug utilities for mobile browser troubleshooting
+import '../../../utils/mobile-debug';
+// Import console forwarder for mobile debugging
+import { consoleForwarder } from '../../../utils/console-forwarder';
 
 // Helper function to detect Chrome browser (including Brave)
 const isChrome = () => {
   return (/Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent)) || 
-         /Brave/.test(navigator.userAgent);
+         /Brave/.test(navigator.userAgent) || 
+         /CriOS/.test(navigator.userAgent); // Chrome on iOS
 };
 
 // Helper function to detect Firefox browser
@@ -72,12 +77,27 @@ export const useYjsConnection = ({
       isChrome: isChrome(),
       isFirefox: isFirefox(),
       isSafari: isSafari(),
+      isMobile: isMobile(),
       userAgent: navigator.userAgent,
     };
 
-    console.log(`Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id})`);
-    console.log('Browser info:', browserInfo);
-    logDebugInfo('Editor', `Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id}), browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : browserInfo.isSafari ? 'Safari' : 'Other'}`);
+    console.log(`[YJS] Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id})`);
+    console.log('[YJS] Browser info:', browserInfo);
+    console.log('[YJS] Mobile detection:', {
+      isMobile: isMobile(),
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
+      hostname: window.location.hostname,
+      host: window.location.host,
+    });
+    
+    // Enable console forwarder for mobile debugging
+    if (isMobile()) {
+      console.log('[YJS] Mobile device detected - enabling console forwarder...');
+      consoleForwarder.enable(scriptId, user.id);
+    }
+    
+    logDebugInfo('Editor', `Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id}), browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : browserInfo.isSafari ? 'Safari' : 'Other'}, mobile: ${browserInfo.isMobile}`);
     setStatus('connecting');
     setErrorMessage(null);
 
@@ -94,21 +114,41 @@ export const useYjsConnection = ({
     // Use host-accessible URL for browser WebSocket connections
     const envWsUrl = import.meta.env.VITE_WS_BASE_URL;
     const fallbackWsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`;
-    const localBackendUrl = `ws://localhost:3001/api/collab`; // Use host-accessible URL
-    const wsBaseUrl = envWsUrl || localBackendUrl; // Use env or fallback to localhost
     
-    console.log(`Environment WS URL: ${envWsUrl}`);
-    console.log(`Fallback WS URL: ${fallbackWsUrl}`);
-    console.log(`Local Backend URL: ${localBackendUrl}`);
-    console.log(`Final WebSocket Base URL: ${wsBaseUrl}`);
+    // ALL browsers (including mobile) should use the frontend proxy to avoid CORS issues
+    // Mobile browsers connecting directly to :3001 can cause network/firewall problems
+    const wsBaseUrl = envWsUrl || fallbackWsUrl; // Always use proxy route through frontend
+    
+    console.log(`[YJS] Environment WS URL: ${envWsUrl}`);
+    console.log(`[YJS] Fallback WS URL: ${fallbackWsUrl}`);
+    console.log(`[YJS] Final WebSocket Base URL: ${wsBaseUrl}`);
     logDebugInfo('Editor', `WebSocket Base URL: ${wsBaseUrl}`);
 
-    console.log(`Setting up IndexedDB persistence for ${scriptId}...`);
+    console.log(`[YJS] Setting up IndexedDB persistence for ${scriptId}...`);
     const persistence = new IndexeddbPersistence(`theater-script-${scriptId}`, currentDoc);
     persistenceRef.current = persistence;
 
+    // Add YJS document event logging for mobile debugging
+    currentDoc.on('update', (update: Uint8Array, origin: any) => {
+      console.log(`[YJS] Document update received:`, {
+        updateSize: update.length,
+        origin: origin?.constructor?.name || 'unknown',
+        isMobile: isMobile(),
+        timestamp: new Date().toISOString(),
+      });
+      logDebugInfo('Editor', `YJS document update: ${update.length} bytes, origin: ${origin?.constructor?.name || 'unknown'}`);
+    });
+
+    currentDoc.on('subdocs', (event: { loaded: Set<Y.Doc>; added: Set<Y.Doc>; removed: Set<Y.Doc>; }) => {
+      console.log(`[YJS] Subdocs changed:`, {
+        loaded: event.loaded.size,
+        added: event.added.size,
+        removed: event.removed.size,
+      });
+    });
+
     persistence.on('synced', (isSynced: boolean) => {
-      console.log(`IndexedDB sync status: ${isSynced}`);
+      console.log(`[YJS] IndexedDB sync status: ${isSynced}`);
       if (isSynced && status !== 'connected') {
         // Check if content needs fetching AFTER sync
         if (isYDocEmpty(currentDoc) && token) {
@@ -143,30 +183,37 @@ export const useYjsConnection = ({
     
     // Chrome/Safari/Mobile-specific WebSocket configuration with manual URL construction
     if (browserInfo.isChrome || browserInfo.isSafari || isMobile()) {
-      console.log('Applying Chrome/Safari/Mobile-specific WebSocket configuration');
-      logDebugInfo('Editor', 'Applying Chrome/Safari/Mobile-specific WebSocket configuration');
+      const browserType = isMobile() ? 'Mobile' : (browserInfo.isChrome ? 'Chrome' : 'Safari');
+      console.log(`[YJS] Applying ${browserType}-specific WebSocket configuration`);
+      logDebugInfo('Editor', `Applying ${browserType}-specific WebSocket configuration`);
       
-      // Manually construct WebSocket URL with token as query parameter for Chrome/Safari compatibility
+      // Manually construct WebSocket URL with token as query parameter for compatibility
       const cleanToken = token.trim(); // Remove any trailing whitespace/slash
       const wsUrlWithToken = `${wsBaseUrl}/${roomName}?token=${encodeURIComponent(cleanToken)}`;
-      console.log(`Chrome/Safari: Connecting to WebSocket: ${wsUrlWithToken.replace(cleanToken, 'TOKEN_HIDDEN')}`);
-      logDebugInfo('Editor', `Chrome/Safari: Connecting to WebSocket with manual token in URL`);
+      console.log(`${browserType}: Connecting to WebSocket: ${wsUrlWithToken.replace(cleanToken, 'TOKEN_HIDDEN')}`);
+      console.log(`${browserType}: Full WebSocket URL construction:`, {
+        baseUrl: wsBaseUrl,
+        roomName,
+        isMobile: isMobile(),
+        hostname: window.location.hostname,
+      });
+      logDebugInfo('Editor', `${browserType}: Connecting to WebSocket with manual token in URL`);
       
       const providerConfig = {
         connect: true,
-        // Don't use params for Chrome - we put the token directly in the URL
-        maxBackoffTime: isMobile() ? 5000 : 8000,
-        resyncInterval: 12000, // More frequent for mobile/Chrome
+        // Don't use params for Chrome/Safari/Mobile - we put the token directly in the URL
+        maxBackoffTime: isMobile() ? 3000 : 8000, // Shorter timeout for mobile
+        resyncInterval: isMobile() ? 8000 : 12000, // More frequent for mobile
       };
 
       try {
         const currentProvider = new WebsocketProvider(wsUrlWithToken, '', currentDoc, providerConfig);
-        console.log('Chrome/Safari: WebSocket provider created with token in URL');
+        console.log(`${browserType}: WebSocket provider created with token in URL`);
         setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
         setProvider(currentProvider);
       } catch (error) {
-        console.error('Chrome/Safari: Failed to create WebSocket provider with token in URL:', error);
-        setErrorMessage(`${browserInfo.isChrome ? 'Chrome' : browserInfo.isSafari ? 'Safari' : 'Browser'} WebSocket connection failed. You can still edit locally.`);
+        console.error(`${browserType}: Failed to create WebSocket provider with token in URL:`, error);
+        setErrorMessage(`${browserType} WebSocket connection failed. You can still edit locally.`);
         setStatus('disconnected');
         // Don't set provider to null - let editor work in local mode
         setProvider(null);
@@ -217,7 +264,7 @@ export const useYjsConnection = ({
 // Helper function to set up WebSocket provider event handlers
 const setupWebSocketProviderHandlers = (
   provider: WebsocketProvider,
-  browserInfo: { isChrome: boolean; isFirefox: boolean; isSafari: boolean; userAgent: string },
+  browserInfo: { isChrome: boolean; isFirefox: boolean; isSafari: boolean; isMobile: boolean; userAgent: string },
   setStatus: (status: ConnectionStatus | ((prev: ConnectionStatus) => ConnectionStatus)) => void,
   setErrorMessage: (message: string | null) => void,
   setIsMobileFallback: (fallback: boolean) => void
@@ -228,29 +275,44 @@ const setupWebSocketProviderHandlers = (
 
   provider.on('status', (event: { status: string }) => {
     console.log(`WebSocket status: ${event.status}`);
-    logDebugInfo('Editor', `WebSocket status: ${event.status} (attempt: ${connectionAttempts}), Browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : browserInfo.isSafari ? 'Safari' : 'Other'}`);
+    const browserType = browserInfo.isMobile ? 'Mobile' : (browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : browserInfo.isSafari ? 'Safari' : 'Other');
+    logDebugInfo('Editor', `WebSocket status: ${event.status} (attempt: ${connectionAttempts}), Browser: ${browserType}`);
     const newStatus = event.status as ConnectionStatus;
     
     if (newStatus === 'connecting') {
       connectionAttempts++;
+      // Show connecting status for mobile users
+      if (browserInfo.isMobile) {
+        setErrorMessage(`Connecting... (attempt ${connectionAttempts})`);
+      }
     } else if (newStatus === 'connected') {
       hasConnectedOnce = true;
       connectionAttempts = 0;
       setIsMobileFallback(false);
+      // Show success message briefly for mobile users
+      if (browserInfo.isMobile) {
+        setErrorMessage('Mobile connection established!');
+        setTimeout(() => setErrorMessage(null), 2000);
+      }
+    } else if (newStatus === 'disconnected') {
+      // Handle disconnection - important for mobile debugging
+      if (browserInfo.isMobile) {
+        setErrorMessage('Mobile connection lost. Retrying...');
+      }
     }
     
     // Only update status if it's actually different to prevent unnecessary re-renders
     setStatus(prevStatus => {
       if (prevStatus !== newStatus) {
         console.log(`Status changed from ${prevStatus} to ${newStatus}`);
-        logDebugInfo('Editor', `Status changed from ${prevStatus} to ${newStatus}`);
+        logDebugInfo('Editor', `Status changed from ${prevStatus} to ${newStatus} (Mobile: ${browserInfo.isMobile})`);
         return newStatus;
       }
       return prevStatus;
     });
     
-    // Clear error message when connected
-    if (newStatus === 'connected') {
+    // Clear error message when connected (except for mobile success message)
+    if (newStatus === 'connected' && !browserInfo.isMobile) {
       setErrorMessage(null);
       logDebugInfo('Editor', 'WebSocket connected - cleared error message');
     }
@@ -285,9 +347,18 @@ const setupWebSocketProviderHandlers = (
       }
     } else {
       // Generic error handling
-      if (isMobile() || connectionAttempts >= 3) {
-        console.log('Enabling mobile fallback mode for unreliable connection');
-        logDebugInfo('Editor', 'Enabling mobile fallback mode');
+      if (isMobile()) {
+        console.log('Mobile browser WebSocket error - providing mobile-specific guidance');
+        logDebugInfo('Editor', 'Mobile browser WebSocket error');
+        if (connectionAttempts >= 2) {
+          setIsMobileFallback(true);
+          setErrorMessage('Mobile connection unstable. Working in offline mode. Try refreshing or switching to WiFi.');
+        } else {
+          setErrorMessage('Mobile connection issue. Retrying...');
+        }
+      } else if (connectionAttempts >= 3) {
+        console.log('Enabling fallback mode for unreliable connection');
+        logDebugInfo('Editor', 'Enabling fallback mode');
         setIsMobileFallback(true);
         setErrorMessage('Connection unstable. Working in offline mode.');
       } else {

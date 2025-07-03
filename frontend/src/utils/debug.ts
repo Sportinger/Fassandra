@@ -1,7 +1,9 @@
 // Debug utilities for mobile browser troubleshooting
 
 export const isMobile = (): boolean => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i.test(navigator.userAgent) ||
+         /Mobi|Android/i.test(navigator.userAgent) ||
+         (window.innerWidth <= 768); // Fallback for devices that might not match user agent patterns
 };
 
 export const getNetworkInfo = () => {

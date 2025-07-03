@@ -10,6 +10,9 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './AuthContext'
 
+// Import console forwarder for mobile debugging
+import './utils/console-forwarder'
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
