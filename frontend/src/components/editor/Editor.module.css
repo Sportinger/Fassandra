@@ -820,12 +820,64 @@
   text-align: left;
 }
 
+/* Comprehensive spell check and autocorrect disable */
+.ProseMirror *,
+.ProseMirror *::before,
+.ProseMirror *::after,
+.editorContent *,
+.editorContentWrapper * {
+  /* Disable spell check attributes */
+  -webkit-user-modify: inherit;
+  -webkit-tap-highlight-color: transparent;
+  
+  /* Remove any spell check decorations */
+  text-decoration: none !important;
+  -webkit-text-decoration-line: none !important;
+  -webkit-text-decoration-style: none !important;
+  -webkit-text-decoration-color: transparent !important;
+  text-decoration-line: none !important;
+  text-decoration-style: none !important;
+  text-decoration-color: transparent !important;
+  
+  /* Disable browser spell check squiggles */
+  -webkit-text-decorations-in-effect: none !important;
+  text-underline-offset: 0 !important;
+}
+
+/* Specifically target spell check elements */
+.ProseMirror [spellcheck],
+.ProseMirror [data-gramm],
+.ProseMirror [data-enable-grammarly] {
+  text-decoration: none !important;
+  -webkit-text-decoration: none !important;
+  background-image: none !important;
+  border-bottom: none !important;
+}
+
+/* Remove any red squiggly lines */
+.ProseMirror ::spelling-error,
+.ProseMirror ::grammar-error {
+  text-decoration: none !important;
+  background: transparent !important;
+  border-bottom: none !important;
+}
+
 /* Ensure ProseMirror content fills available space */
 .ProseMirror {
   height: 100%;
   outline: none;
   position: relative;
   text-align: left !important; /* Override global center alignment from App.css */
+  
+  /* Disable spell check and autocorrect features */
+  -webkit-user-modify: read-write-plaintext-only;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-appearance: none;
+  
+  /* Disable spell check indicators */
+  -webkit-text-decorations-in-effect: none;
+  -webkit-text-stroke: initial;
 }
 
 /* Override global text-align: center from #root for all editor content */

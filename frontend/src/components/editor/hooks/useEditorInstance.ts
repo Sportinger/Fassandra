@@ -131,37 +131,45 @@ export const useEditorInstance = ({
           return cursor;
         },
       }),
-    ] : [
-      StarterKit.configure({ 
-        history: false, 
-        heading: false 
-      }),
-      // Include basic extensions even without collaboration
-      Heading.configure({
-        levels: [1, 2, 3],
-      }),
-      TextAlign.configure({
-        types: ['heading', 'paragraph'],
-        alignments: ['left', 'center', 'right'],
-        defaultAlignment: 'left',
-      } as TextAlignOptions),
-      TextStyle,
-      Color.configure({
-        types: ['textStyle'],
-      }),
-      // Add custom font size extension
-      FontSize.configure({
-        types: ['textStyle'],
-      }),
-      // Custom extensions
-      DialogueBlock,
-      DialogueText,
-      Speaker,
-    ], // More complete fallback setup
+    ] :
+      // More complete fallback setup
+      [
+        StarterKit.configure({ 
+          history: false, 
+          heading: false 
+        }),
+        // Include basic extensions even without collaboration
+        Heading.configure({
+          levels: [1, 2, 3],
+        }),
+        TextAlign.configure({
+          types: ['heading', 'paragraph'],
+          alignments: ['left', 'center', 'right'],
+          defaultAlignment: 'left',
+        } as TextAlignOptions),
+        TextStyle,
+        Color.configure({
+          types: ['textStyle'],
+        }),
+        // Add custom font size extension
+        FontSize.configure({
+          types: ['textStyle'],
+        }),
+        // Custom extensions
+        DialogueBlock,
+        DialogueText,
+        Speaker,
+      ], // More complete fallback setup
     content: '', // Content will be managed by Yjs
     editorProps: {
       attributes: {
         class: 'editor-content',
+        spellcheck: 'false',
+        autocorrect: 'off',
+        autocomplete: 'off',
+        autocapitalize: 'off',
+        'data-gramm': 'false', // Disable Grammarly
+        'data-enable-grammarly': 'false', // Additional Grammarly disable
       },
     },
     onCreate: () => {
