@@ -5,7 +5,7 @@ set -e
 # Creates a separate development environment on the server
 
 echo "🧪 Setting up development environment..."
-echo "🎯 This will create a separate development environment on port 8444"
+echo "🎯 This will create a separate development environment on mylayer.org"
 echo ""
 
 # Setup development directory and configuration on server
@@ -18,7 +18,7 @@ ssh roman@mylayer.org << 'EOF'
     echo "📋 Creating development environment file..."
     cat > .env << 'STAGING_ENV'
 # Development Environment Configuration
-# Port 8444 for testing experimental features
+# mylayer.org for testing experimental features
 
 # Container Registry
 DOCKER_REGISTRY=ghcr.io/sportinger
@@ -41,10 +41,10 @@ GEMINI_API_KEY=your-gemini-api-key-here
 GEMINI_API_URL=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent
 
 # Frontend Configuration
-FRONTEND_PORT=8080
-FRONTEND_HTTPS_PORT=8444
-APP_DOMAIN=mylayer.org:8444
-ALLOWED_ORIGINS=https://mylayer.org:8444,http://localhost:5173,http://127.0.0.1:5173
+FRONTEND_PORT=80
+FRONTEND_HTTPS_PORT=443
+APP_DOMAIN=mylayer.org
+ALLOWED_ORIGINS=https://mylayer.org,http://localhost:5173,http://127.0.0.1:5173
 
 # SSL Configuration
 SSL_CERT_PATH=/etc/ssl/certs/mylayer.org.crt
@@ -61,7 +61,7 @@ STAGING_ENV
     
     echo "✅ Development environment created!"
     echo "📍 Location: /opt/pessoa-staging"
-    echo "🌐 Will be accessible at: https://mylayer.org:8444"
+    echo "🌐 Will be accessible at: https://mylayer.org"
     echo ""
 EOF
 
@@ -70,6 +70,6 @@ echo ""
 echo "📋 Next steps:"
 echo "   1. Update the development .env file with your actual secrets"
 echo "   2. Use ./scripts/deploy_staging.sh to deploy to development"
-echo "   3. Test your changes on https://mylayer.org:8444"
+echo "   3. Test your changes on https://mylayer.org"
 echo "   4. Use ./scripts/build_and_push.sh for production deployment"
 echo "" 

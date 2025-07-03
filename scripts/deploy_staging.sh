@@ -20,7 +20,7 @@ echo "  Branch: ${BRANCH}"
 echo "  Commit: ${COMMIT_SHA}"
 echo "  Image Tag: ${IMAGE_TAG}"
 echo "  Timestamp: ${TIMESTAMP}"
-echo "  Target: https://mylayer.org:8444 (Dev Environment)"
+echo "  Target: https://mylayer.org (Dev Environment)"
 echo ""
 
 # Check if we have uncommitted changes
@@ -72,7 +72,7 @@ ssh roman@mylayer.org << EOF
     
     echo ""
     echo "✅ Development deployment complete!"
-    echo "🧪 Development Site: https://mylayer.org:8444"
+    echo "🧪 Development Site: https://mylayer.org"
     echo "🌐 Production Site: https://pessoa.theater"
     echo ""
     
@@ -82,7 +82,7 @@ EOF
 
 echo ""
 echo "🎉 Development build + push + deploy completed!"
-echo "   🧪 Development: https://mylayer.org:8444"
+echo "   🧪 Development: https://mylayer.org"
 echo "   🌐 Production: https://pessoa.theater"
 echo "   Image tag: ${IMAGE_TAG}"
 echo ""

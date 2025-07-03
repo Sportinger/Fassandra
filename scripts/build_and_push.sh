@@ -72,7 +72,7 @@ ssh roman@pessoa.theater << EOF
     echo ""
     echo "✅ Deployment complete!"
     echo "🌐 Production Site: https://pessoa.theater"
-    echo "🧪 Dev Site: https://mylayer.org:8444"
+    echo "🧪 Dev Site: https://mylayer.org"
     echo ""
     
     # Show status
@@ -82,6 +82,6 @@ EOF
 echo ""
 echo "🎉 Local build + push + deploy completed!"
 echo "   🌐 Production: https://pessoa.theater"
-echo "   🧪 Dev: https://mylayer.org:8444"
+echo "   🧪 Dev: https://mylayer.org"
 echo "   Image tag: ${IMAGE_TAG}"
 echo "" 

@@ -5,7 +5,7 @@
 We now have a **dual-environment setup** to safely test experimental features:
 
 - **🌐 Production**: `https://pessoa.theater` - Stable, user-facing
-- **🧪 Development**: `https://mylayer.org:8444` - Testing, experimental features
+- **🧪 Development**: `https://mylayer.org` - Testing, experimental features
 
 ## 🚀 Quick Start
 
@@ -37,7 +37,7 @@ We now have a **dual-environment setup** to safely test experimental features:
 - **Purpose**: Stable, user-facing application
 
 ### Development Environment
-- **URL**: https://mylayer.org:8444
+- **URL**: https://mylayer.org
 - **Backend**: Port 3002
 - **Database**: Port 5434
 - **PgAdmin**: Port 5051
@@ -49,7 +49,7 @@ We now have a **dual-environment setup** to safely test experimental features:
 
 1. **Make changes** in your code
 2. **Test development**: `./scripts/deploy_staging.sh`
-3. **Verify** at https://mylayer.org:8444
+3. **Verify** at https://mylayer.org
 4. **If good**: `./scripts/build_and_push.sh` for production
 5. **If bad**: Fix issues, repeat from step 1
 
