@@ -13,6 +13,25 @@
   box-sizing: border-box;
 }
 
+/* === MOBILE FULL-WIDTH OVERRIDE === */
+@media (max-width: 768px) {
+  #root {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden !important;
+  }
+  
+  .appContent {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;

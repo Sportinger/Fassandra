@@ -1,0 +1,319 @@
+/* NUCLEAR MOBILE CSS - ELIMINATE HORIZONTAL SCROLLING AT ALL COSTS */
+
+@media (max-width: 768px) {
+  /* === NUCLEAR RESET FOR MOBILE === */
+  
+  /* Reset EVERYTHING */
+  html {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+  
+  body {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+  
+  #root {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* === NUCLEAR CONTAINER RESET === */
+  
+  .editorPageContainer {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
+  
+  .dinA4Page {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 auto !important; /* Center the page */
+    padding: 0 !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    display: flex !important; /* Use flexbox for centering */
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: center !important; /* Center content horizontally */
+  }
+  
+  .editorContentWrapper {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 auto !important; /* Center the content */
+    padding: 12px 20px !important; /* More comfortable padding */
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    height: calc(100vh - 40px) !important;
+  }
+  
+  /* === NUCLEAR PROSEMIRROR RESET === */
+  
+  .ProseMirror {
+    width: calc(100vw - 40px) !important; /* Account for 20px padding on each side */
+    max-width: calc(100vw - 40px) !important;
+    min-width: calc(100vw - 40px) !important;
+    margin: 0 auto !important; /* Center the editor */
+    padding: 12px !important; /* Better internal padding */
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    
+    /* Match desktop line breaks - less aggressive wrapping */
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important; /* Normal word breaking like desktop */
+    hyphens: auto !important;
+    white-space: pre-wrap !important;
+    
+    /* Mobile typography matching desktop proportions */
+    font-size: 16px !important; /* Slightly larger for mobile readability */
+    line-height: 1.5 !important; /* Match desktop line height */
+    font-family: system-ui, -apple-system, sans-serif !important;
+  }
+  
+  /* === DESKTOP-LIKE TEXT ELEMENT RESET === */
+  
+  .ProseMirror *,
+  .ProseMirror p,
+  .ProseMirror div,
+  .ProseMirror span,
+  .ProseMirror strong,
+  .ProseMirror em,
+  .ProseMirror [data-type="dialogue-block"],
+  .ProseMirror [data-type="speaker"],
+  .ProseMirror [data-type="dialogue-text"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    
+    /* Desktop-like text wrapping */
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important; /* Normal word breaking like desktop */
+    hyphens: auto !important;
+    white-space: pre-wrap !important;
+    
+    /* Box model */
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    
+    /* Typography matching desktop */
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+  }
+  
+  /* === DESKTOP-LIKE PARAGRAPH RESET === */
+  
+  .ProseMirror p {
+    margin: 0.2em 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    
+    /* Desktop-like text wrapping */
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important; /* Normal word breaking like desktop */
+    hyphens: auto !important;
+    white-space: pre-wrap !important;
+    text-align: left !important;
+    
+    /* Typography matching desktop */
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+  }
+  
+  /* === DESKTOP-LIKE DIALOGUE BLOCK RESET === */
+  
+  .ProseMirror [data-type="dialogue-block"] {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0.3em 0 !important;
+    padding: 0 !important;
+    
+    /* Force stacked layout */
+    flex-direction: column !important;
+    
+    /* Desktop-like text constraints */
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important; /* Normal word breaking like desktop */
+  }
+  
+  .ProseMirror [data-type="speaker"] {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 0.1em 0 !important;
+    padding: 0 !important;
+    
+    /* Typography matching desktop */
+    font-weight: bold !important;
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+    
+    /* Desktop-like text wrapping */
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important; /* Normal word breaking like desktop */
+    hyphens: auto !important;
+    white-space: pre-wrap !important;
+  }
+  
+  .ProseMirror [data-type="dialogue-text"] {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    
+    /* Typography matching desktop */
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+    
+    /* Desktop-like text wrapping */
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important; /* Normal word breaking like desktop */
+    hyphens: auto !important;
+    white-space: pre-wrap !important;
+  }
+  
+  /* === NUCLEAR HEADER RESET === */
+  
+  .editorHeader {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding: 4px !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1000 !important;
+    height: 36px !important;
+  }
+  
+  /* === NUCLEAR TOOLBAR RESET === */
+  
+  .floatingToolbar {
+    position: fixed !important;
+    bottom: 8px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    max-width: calc(100vw - 16px) !important;
+    overflow-x: hidden !important;
+    z-index: 2000 !important;
+    flex-direction: row !important;
+    padding: 4px 6px !important;
+  }
+  
+  .toolbarButton {
+    width: 36px !important;
+    height: 36px !important;
+    margin: 0 1px !important;
+    font-size: 14px !important;
+    min-width: 36px !important;
+  }
+  
+  /* === NUCLEAR VIEWPORT FIX === */
+  
+  html {
+    -webkit-text-size-adjust: none !important;
+    text-size-adjust: none !important;
+  }
+  
+  /* === UNIVERSAL WIDTH CONSTRAINT === */
+  
+  * {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* === DESKTOP-LIKE WORD BREAKING === */
+  
+  .ProseMirror * {
+    word-break: normal !important; /* Normal word breaking like desktop */
+    overflow-wrap: break-word !important;
+    hyphens: auto !important;
+    -webkit-hyphens: auto !important;
+    -moz-hyphens: auto !important;
+    -ms-hyphens: auto !important;
+  }
+  
+  /* === MOBILE-SPECIFIC CLASSES === */
+  
+  body.mobile-device * {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    word-break: normal !important; /* Normal word breaking like desktop */
+  }
+  
+  .mobile-page,
+  .mobile-editor-content {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  
+  /* === HIDE POTENTIALLY PROBLEMATIC ELEMENTS === */
+  
+  .horizontalRuler,
+  .verticalRuler,
+  .rulerCorner {
+    display: none !important;
+  }
+  
+  /* === FINAL DESKTOP-LIKE OPTION === */
+  
+  .ProseMirror {
+    /* Keep desktop-like line breaks */
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: auto !important;
+  }
+  
+  .ProseMirror p,
+  .ProseMirror div,
+  .ProseMirror span {
+    /* Desktop-like word breaking */
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: auto !important;
+    max-width: calc(100vw - 40px) !important; /* Updated for better padding */
+  }
+} 

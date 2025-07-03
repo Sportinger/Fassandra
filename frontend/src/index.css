@@ -248,3 +248,179 @@ button:focus-visible {
   margin-left: 0 !important;
   padding-left: 0 !important;
 }
+
+/* === MOBILE BODY CLASSES === */
+body.mobile-device {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* === MOBILE TEXT CONSTRAINT OVERRIDE === */
+@media (max-width: 768px) {
+  /* Force all text to wrap within screen bounds */
+  * {
+    max-width: 100% !important;
+    overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;
+    hyphens: auto !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Specific ProseMirror mobile constraints */
+  .ProseMirror {
+    width: calc(100% - 8px) !important;
+    max-width: calc(100% - 8px) !important;
+    margin: 0 auto !important;
+    padding: 4px !important;
+    font-size: 15px !important;
+    line-height: 1.4 !important;
+    overflow-x: hidden !important;
+    white-space: pre-wrap !important;
+  }
+  
+  .ProseMirror p {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0.3em 0 !important;
+    font-size: 15px !important;
+    line-height: 1.4 !important;
+    white-space: pre-wrap !important;
+  }
+}
+
+body.mobile-device.landscape {
+  /* Landscape mobile optimizations */
+}
+
+body.mobile-device.portrait {
+  /* Portrait mobile optimizations */
+}
+
+/* === MOBILE CONSISTENT LINE BREAKS === */
+.mobile-page .ProseMirror,
+.mobile-editor-content .ProseMirror {
+  /* Consistent text rendering across all mobile devices */
+  -webkit-text-size-adjust: 100% !important;
+  text-size-adjust: 100% !important;
+  
+  /* Force consistent line height and spacing */
+  line-height: 1.6 !important;
+  
+  /* Optimal reading width for mobile */
+  max-width: 100% !important;
+  width: 100% !important;
+  
+  /* Prevent layout shifts */
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  hyphens: auto !important;
+  
+  /* Mobile font optimization */
+  font-size: 16px !important; /* Prevent zoom on iOS */
+  font-kerning: auto !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+/* === MOBILE PARAGRAPH CONSISTENCY === */
+.mobile-page .ProseMirror p,
+.mobile-editor-content .ProseMirror p {
+  /* Consistent paragraph spacing across devices */
+  margin: 0.5em 0 !important;
+  line-height: 1.6 !important;
+  font-size: 16px !important;
+  
+  /* Text wrapping consistency */
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  hyphens: auto !important;
+  
+  /* Prevent widow/orphan inconsistencies */
+  widows: 2 !important;
+  orphans: 2 !important;
+  
+  /* Mobile text optimization */
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* === MOBILE DIALOGUE CONSISTENCY === */
+.mobile-page .ProseMirror [data-type="dialogue-block"],
+.mobile-editor-content .ProseMirror [data-type="dialogue-block"] {
+  /* Force stacked layout for mobile consistency */
+  display: block !important;
+  flex-direction: column !important;
+  
+  /* Consistent spacing */
+  margin: 1em 0 !important;
+  
+  /* Text wrapping */
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  
+  /* Full width utilization */
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.mobile-page .ProseMirror [data-type="speaker"],
+.mobile-editor-content .ProseMirror [data-type="speaker"] {
+  /* Mobile speaker consistency */
+  display: block !important;
+  width: 100% !important;
+  margin-bottom: 0.25em !important;
+  
+  /* Consistent text properties */
+  font-weight: bold !important;
+  font-size: 16px !important;
+  line-height: 1.4 !important;
+  
+  /* Prevent overflow */
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.mobile-page .ProseMirror [data-type="dialogue-text"],
+.mobile-editor-content .ProseMirror [data-type="dialogue-text"] {
+  /* Mobile dialogue text consistency */
+  display: block !important;
+  width: 100% !important;
+  
+  /* Consistent text properties */
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+  
+  /* Prevent overflow */
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* === MOBILE FOCUS AND SELECTION === */
+.mobile-page .ProseMirror:focus,
+.mobile-editor-content .ProseMirror:focus {
+  outline: none !important;
+  border: none !important;
+}
+
+.mobile-page .ProseMirror ::selection,
+.mobile-editor-content .ProseMirror ::selection {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+  color: inherit !important;
+}
+
+/* === MOBILE TYPOGRAPHY RESET === */
+.mobile-page,
+.mobile-editor-content {
+  /* Reset typography for consistency */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  
+  /* Prevent layout shifts */
+  box-sizing: border-box;
+  
+  /* Smooth scrolling */
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}

@@ -16,7 +16,10 @@ import {
 } from './hooks';
 import { EditorProps, ContextMenuAction } from './types';
 import { extractSpeakerNames } from './utils/contentConverters';
+import { isMobileDevice, optimizeForMobile, getMobilePageDimensions } from '../../utils/mobile';
 import styles from './Editor.module.css';
+import './Editor.mobile.css'; // Import mobile-specific styles
+import './Editor.mobile.nuclear.css'; // Import nuclear mobile fixes
 
 /**
  * Collaborative rich text editor component for scripts.
@@ -33,6 +36,70 @@ export const Editor: React.FC<EditorProps> = ({ scriptId, initialTitle, onNaviga
   // Use custom hooks for state management
   const editorState = useEditorState(initialTitle);
   
+  // Mobile optimization setup
+  useEffect(() => {
+    if (isMobileDevice()) {
+      optimizeForMobile();
+      
+      // Add mobile-specific class to editor container
+      const editorContainer = document.querySelector('.editorPageContainer');
+      if (editorContainer) {
+        editorContainer.classList.add('mobile-optimized');
+      }
+      
+      // Nuclear JavaScript fix for mobile horizontal scrolling
+      const nuclearMobileFix = () => {
+        const proseMirror = document.querySelector('.ProseMirror');
+        const allElements = document.querySelectorAll('.ProseMirror, .ProseMirror *, .editorContentWrapper, .dinA4Page');
+        
+        allElements.forEach(element => {
+          if (element instanceof HTMLElement) {
+            element.style.maxWidth = 'calc(100vw - 40px)'; // Account for 20px padding each side
+            element.style.overflowX = 'hidden';
+            element.style.wordBreak = 'normal'; // Normal word breaking like desktop
+            element.style.overflowWrap = 'break-word';
+            element.style.boxSizing = 'border-box';
+          }
+        });
+        
+        if (proseMirror instanceof HTMLElement) {
+          proseMirror.style.width = 'calc(100vw - 40px)'; // Account for 20px padding each side
+          proseMirror.style.maxWidth = 'calc(100vw - 40px)'; // Account for 20px padding each side
+          proseMirror.style.margin = '0 auto'; // Center the editor
+          proseMirror.style.fontSize = '16px'; // Mobile-friendly size
+          proseMirror.style.lineHeight = '1.5'; // Match desktop line height
+        }
+      };
+      
+      // Apply immediately and on mutations
+      nuclearMobileFix();
+      
+      // Set up observer for dynamic content
+      const observer = new MutationObserver(nuclearMobileFix);
+      const proseMirror = document.querySelector('.ProseMirror');
+      if (proseMirror) {
+        observer.observe(proseMirror, { childList: true, subtree: true });
+      }
+      
+      // Apply on resize
+      const handleResize = () => {
+        setTimeout(nuclearMobileFix, 100);
+      };
+      window.addEventListener('resize', handleResize);
+      window.addEventListener('orientationchange', handleResize);
+      
+      console.log('[Editor Mobile] Mobile device detected - applying NUCLEAR optimizations');
+      console.log('[Editor Mobile] Page dimensions:', getMobilePageDimensions());
+      
+      // Cleanup
+      return () => {
+        observer.disconnect();
+        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('orientationchange', handleResize);
+      };
+    }
+  }, []);
+
   // Debug logging for Chrome issues
   useEffect(() => {
     const browserInfo = {
@@ -40,6 +107,7 @@ export const Editor: React.FC<EditorProps> = ({ scriptId, initialTitle, onNaviga
       isChrome: /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent),
       isSafari: /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent),
       isFirefox: /Firefox/.test(navigator.userAgent),
+      isMobile: isMobileDevice(),
     };
     
     console.log('[Editor Debug] Browser info:', browserInfo);
