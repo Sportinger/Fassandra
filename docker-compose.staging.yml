@@ -1,0 +1,88 @@
+# Staging Docker Compose for Testing Experimental Features
+# Uses port 8444 instead of 8443 for staging environment
+
+services:
+  db:
+    image: postgres:15
+    container_name: staging_pessoa_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pessoa_staging_pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5434:5432"  # Different port for staging DB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - pessoa_staging_network
+
+  backend:
+    image: ${DOCKER_REGISTRY}/pessoa-backend:${IMAGE_TAG:-latest}
+    container_name: staging_pessoa_backend
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_API_URL: ${GEMINI_API_URL}
+      BACKEND_PORT: ${BACKEND_INTERNAL_PORT:-3001}
+      APP_DOMAIN: ${APP_DOMAIN}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-10}
+      RUST_LOG: ${RUST_LOG:-debug}  # More verbose logging for staging
+    ports:
+      - "3002:3001"  # Different port for staging backend
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - pessoa_staging_network
+
+  frontend:
+    image: ${DOCKER_REGISTRY}/pessoa-frontend:${IMAGE_TAG:-latest}
+    container_name: staging_pessoa_frontend
+    volumes:
+      # Mount SSL certificates from host
+      - ${SSL_CERT_PATH}:/etc/ssl/certs/server.crt:ro
+      - ${SSL_KEY_PATH}:/etc/ssl/private/server.key:ro
+    ports:
+      - "8444:443"   # HTTPS on port 8444 for staging
+      - "8080:80"    # HTTP on port 8080 for staging
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - pessoa_staging_network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: staging_pessoa_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5051:80"  # Different port for staging pgadmin
+    volumes:
+      - pessoa_staging_pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - pessoa_staging_network
+
+volumes:
+  pessoa_staging_pgdata:
+    name: staging_pessoa_pgdata
+  pessoa_staging_pgadmin_data:
+    name: staging_pessoa_pgadmin_data
+
+networks:
+  pessoa_staging_network:
+    driver: bridge 
