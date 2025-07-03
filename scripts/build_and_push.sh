@@ -54,7 +54,7 @@ docker push ghcr.io/sportinger/pessoa-frontend:${IMAGE_TAG}
 
 echo ""
 echo "🌐 Deploying to production server..."
-ssh roman@mylayer.org << EOF
+ssh roman@pessoa.theater << EOF
     cd /opt/pessoa
     
     echo "📥 Updating server configuration..."
@@ -71,8 +71,8 @@ ssh roman@mylayer.org << EOF
     
     echo ""
     echo "✅ Deployment complete!"
-    echo "🌐 Site: https://mylayer.org:8443"
-    echo "🧪 Test: https://pessoa.com.de:8443"
+    echo "🌐 Production Site: https://pessoa.theater"
+    echo "🧪 Dev Site: https://mylayer.org:8444"
     echo ""
     
     # Show status
@@ -81,6 +81,7 @@ EOF
 
 echo ""
 echo "🎉 Local build + push + deploy completed!"
-echo "   Your changes are now live at: https://mylayer.org:8443"
+echo "   🌐 Production: https://pessoa.theater"
+echo "   🧪 Dev: https://mylayer.org:8444"
 echo "   Image tag: ${IMAGE_TAG}"
 echo "" 

@@ -1,5 +1,5 @@
-# Staging Docker Compose for Testing Experimental Features
-# Uses port 8444 instead of 8443 for staging environment
+# Development Docker Compose for Testing Experimental Features
+# Uses port 8444 for development environment (mylayer.org)
 
 services:
   db:
@@ -12,7 +12,7 @@ services:
     volumes:
       - pessoa_staging_pgdata:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:5434:5432"  # Different port for staging DB
+      - "127.0.0.1:5434:5432"  # Different port for development DB
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -34,9 +34,9 @@ services:
       APP_DOMAIN: ${APP_DOMAIN}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
       DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-10}
-      RUST_LOG: ${RUST_LOG:-debug}  # More verbose logging for staging
+      RUST_LOG: ${RUST_LOG:-debug}  # More verbose logging for development
     ports:
-      - "3002:3001"  # Different port for staging backend
+      - "3002:3001"  # Different port for development backend
     depends_on:
       db:
         condition: service_healthy
@@ -52,8 +52,8 @@ services:
       - ${SSL_CERT_PATH}:/etc/ssl/certs/server.crt:ro
       - ${SSL_KEY_PATH}:/etc/ssl/private/server.key:ro
     ports:
-      - "8444:443"   # HTTPS on port 8444 for staging
-      - "8080:80"    # HTTP on port 8080 for staging
+      - "8444:443"   # HTTPS on port 8444 for development
+      - "8080:80"    # HTTP on port 8080 for development
     depends_on:
       - backend
     restart: unless-stopped
@@ -67,7 +67,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
-      - "5051:80"  # Different port for staging pgadmin
+      - "5051:80"  # Different port for development pgadmin
     volumes:
       - pessoa_staging_pgadmin_data:/var/lib/pgadmin
     depends_on:

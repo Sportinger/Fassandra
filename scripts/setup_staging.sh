@@ -1,23 +1,23 @@
 #!/bin/bash
 set -e
 
-# 🧪 Setup Staging Environment Script
-# Creates a separate staging environment on the server
+# 🧪 Setup Development Environment Script
+# Creates a separate development environment on the server
 
-echo "🧪 Setting up staging environment..."
-echo "🎯 This will create a separate test environment on port 8444"
+echo "🧪 Setting up development environment..."
+echo "🎯 This will create a separate development environment on port 8444"
 echo ""
 
-# Setup staging directory and configuration on server
+# Setup development directory and configuration on server
 ssh roman@mylayer.org << 'EOF'
-    echo "📁 Creating staging directory..."
+    echo "📁 Creating development directory..."
     sudo mkdir -p /opt/pessoa-staging
     sudo chown roman:roman /opt/pessoa-staging
     cd /opt/pessoa-staging
     
-    echo "📋 Creating staging environment file..."
+    echo "📋 Creating development environment file..."
     cat > .env << 'STAGING_ENV'
-# Staging Environment Configuration
+# Development Environment Configuration
 # Port 8444 for testing experimental features
 
 # Container Registry
@@ -59,17 +59,17 @@ PGADMIN_PORT=5051
 RUST_LOG=debug
 STAGING_ENV
     
-    echo "✅ Staging environment created!"
+    echo "✅ Development environment created!"
     echo "📍 Location: /opt/pessoa-staging"
     echo "🌐 Will be accessible at: https://mylayer.org:8444"
     echo ""
 EOF
 
-echo "🎉 Staging environment setup complete!"
+echo "🎉 Development environment setup complete!"
 echo ""
 echo "📋 Next steps:"
-echo "   1. Update the staging .env file with your actual secrets"
-echo "   2. Use ./scripts/deploy_staging.sh to deploy to staging"
+echo "   1. Update the development .env file with your actual secrets"
+echo "   2. Use ./scripts/deploy_staging.sh to deploy to development"
 echo "   3. Test your changes on https://mylayer.org:8444"
 echo "   4. Use ./scripts/build_and_push.sh for production deployment"
 echo "" 

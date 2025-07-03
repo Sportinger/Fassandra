@@ -1,21 +1,21 @@
-# 🧪 Staging Environment Guide
+# 🧪 Development Environment Guide
 
 ## Overview
 
 We now have a **dual-environment setup** to safely test experimental features:
 
-- **🌐 Production**: `https://mylayer.org:8443` - Stable, user-facing
-- **🧪 Staging**: `https://mylayer.org:8444` - Testing, experimental features
+- **🌐 Production**: `https://pessoa.theater` - Stable, user-facing
+- **🧪 Development**: `https://mylayer.org:8444` - Testing, experimental features
 
 ## 🚀 Quick Start
 
-### 1. Setup Staging Environment (One-time)
+### 1. Setup Development Environment (One-time)
 
 ```bash
 ./scripts/setup_staging.sh
 ```
 
-### 2. Deploy to Staging
+### 2. Deploy to Development
 
 ```bash
 ./scripts/deploy_staging.sh
@@ -30,13 +30,13 @@ We now have a **dual-environment setup** to safely test experimental features:
 ## 📋 Environment Details
 
 ### Production Environment
-- **URL**: https://mylayer.org:8443
+- **URL**: https://pessoa.theater
 - **Backend**: Port 3001
 - **Database**: Port 5433
 - **PgAdmin**: Port 5050
 - **Purpose**: Stable, user-facing application
 
-### Staging Environment
+### Development Environment
 - **URL**: https://mylayer.org:8444
 - **Backend**: Port 3002
 - **Database**: Port 5434
@@ -48,7 +48,7 @@ We now have a **dual-environment setup** to safely test experimental features:
 ### For Experimental Features
 
 1. **Make changes** in your code
-2. **Test staging**: `./scripts/deploy_staging.sh`
+2. **Test development**: `./scripts/deploy_staging.sh`
 3. **Verify** at https://mylayer.org:8444
 4. **If good**: `./scripts/build_and_push.sh` for production
 5. **If bad**: Fix issues, repeat from step 1
@@ -60,27 +60,27 @@ We now have a **dual-environment setup** to safely test experimental features:
 
 ## 🛠️ Advanced Usage
 
-### Update Staging Configuration
+### Update Development Configuration
 
 ```bash
 ssh roman@mylayer.org
-cd /opt/pessoa-staging
+cd ~/pessoa-staging
 nano .env
 ```
 
-### View Staging Logs
+### View Development Logs
 
 ```bash
 ssh roman@mylayer.org
-cd /opt/pessoa-staging
+cd ~/pessoa-staging
 docker compose -f docker-compose.staging.yml logs -f
 ```
 
-### Reset Staging Database
+### Reset Development Database
 
 ```bash
 ssh roman@mylayer.org
-cd /opt/pessoa-staging
+cd ~/pessoa-staging
 docker compose -f docker-compose.staging.yml down -v
 docker compose -f docker-compose.staging.yml up -d
 ```
@@ -91,7 +91,7 @@ docker compose -f docker-compose.staging.yml up -d
 
 ```bash
 ssh roman@mylayer.org
-cd /opt/pessoa-staging
+cd ~/pessoa-staging
 docker compose -f docker-compose.staging.yml ps
 ```
 
@@ -108,12 +108,12 @@ docker compose -f docker-compose.staging.yml logs frontend
 
 ## 🚨 Troubleshooting
 
-### Staging Not Loading
+### Development Not Loading
 
 1. Check if containers are running:
    ```bash
    ssh roman@mylayer.org
-   cd /opt/pessoa-staging
+   cd ~/pessoa-staging
    docker compose -f docker-compose.staging.yml ps
    ```
 
@@ -138,12 +138,12 @@ If you get port conflicts, update the ports in `docker-compose.staging.yml`:
 ## 📁 File Structure
 
 ```
-/opt/pessoa/          # Production environment
+/opt/pessoa/          # Production environment (pessoa.theater)
 ├── .env              # Production config
 └── docker-compose.hetzner-github-actions.yml
 
-/opt/pessoa-staging/  # Staging environment
-├── .env              # Staging config
+~/pessoa-staging/     # Development environment (mylayer.org)
+├── .env              # Development config
 └── docker-compose.staging.yml
 ```
 
