@@ -81,6 +81,141 @@ Traditional script development often involves juggling multiple document version
     -   **Email:** `admin@pessoa.de`
     -   **Password:** `PassoaDevteam`
 
+## Mobile Browser Compatibility & Debugging 📱
+
+Pessoa includes comprehensive mobile browser support with advanced debugging capabilities for troubleshooting real-time collaboration issues.
+
+### Mobile Browser Support
+
+**Supported Mobile Browsers:**
+- Chrome Mobile
+- Safari Mobile (iOS)
+- Samsung Internet
+- Firefox Mobile
+- Brave Mobile
+
+**Key Features:**
+- **Automatic Mobile Detection**: Optimized WebSocket configuration for mobile browsers
+- **Console Forwarding**: Mobile console logs automatically sent to backend for debugging
+- **IP Address Resolution**: Proper network configuration for mobile device access
+- **Touch-Optimized Interface**: Responsive design for mobile editing
+
+### Mobile Development Setup
+
+1. **Find Your Network IP Address:**
+   ```bash
+   # Linux/macOS
+   ip addr show | grep inet
+   # or
+   ifconfig | grep inet
+   
+   # Windows
+   ipconfig
+   ```
+
+2. **Update Environment Configuration:**
+   ```bash
+   # In your .env file, set your network IP:
+   APP_HOSTNAME=192.168.2.111  # Replace with your actual IP
+   ```
+
+3. **Rebuild Frontend Container:**
+   ```bash
+   docker-compose build --no-cache frontend
+   docker-compose restart frontend
+   ```
+
+4. **Access from Mobile:**
+   - **HTTP**: `http://192.168.2.111:8080`
+   - **HTTPS**: `https://192.168.2.111:8443`
+
+### Mobile Debugging System
+
+Pessoa includes an advanced console forwarding system for debugging mobile browser issues:
+
+**Console Forwarding Features:**
+- **Automatic Activation**: Enables automatically on mobile devices
+- **Real-time Logging**: Sends console logs to backend every 5 seconds
+- **Device Detection**: Captures browser type, screen size, and user agent
+- **YJS Integration**: Detailed WebSocket and document synchronization logging
+
+**Using the Mobile Debug Test Page:**
+1. **Access Test Page**: `http://your-ip:8080/mobile-test.html`
+2. **Test Console Forwarding**: Click test buttons to generate logs
+3. **Monitor Backend Logs**: `docker-compose logs backend --tail=20 -f`
+4. **View Forwarded Logs**: See mobile console output in backend logs
+
+**Backend Debug Endpoint:**
+- **URL**: `POST /api/debug/console-logs`
+- **Purpose**: Receives and logs mobile console data
+- **Log Levels**: Error, warn, info, debug, log
+
+### Mobile WebSocket Troubleshooting
+
+**Common Mobile WebSocket Issues:**
+
+1. **"localhost" Connection Errors**
+   - **Problem**: Mobile browsers can't access `localhost` 
+   - **Solution**: Use actual IP address in `VITE_WS_BASE_URL`
+   - **Fix**: Set `APP_HOSTNAME` to your network IP address
+
+2. **Network Policy Restrictions**
+   - **Problem**: Corporate networks blocking WebSocket connections
+   - **Solution**: Test on personal hotspot or different network
+   - **Alternative**: Use HTTPS with proper certificates
+
+3. **Battery Optimization**
+   - **Problem**: Mobile browsers suspending WebSocket connections
+   - **Solution**: Keep browser active during collaboration
+   - **Detection**: Console forwarding shows connection drops
+
+**Environment Variable Configuration for Mobile:**
+```bash
+# Correct for mobile access
+APP_HOSTNAME=192.168.2.111
+VITE_WS_BASE_URL=ws://192.168.2.111:8080/api/collab
+
+# Incorrect - mobile browsers can't access localhost
+VITE_WS_BASE_URL=ws://localhost:8080/api/collab
+```
+
+### Browser-Specific WebSocket Handling
+
+Pessoa automatically detects and handles browser-specific WebSocket requirements:
+
+**Chrome/Safari/Mobile Browsers:**
+- Manual WebSocket URL construction with token in query string
+- Shorter reconnection timeouts (3-8 seconds)
+- Enhanced error handling with browser-specific messages
+
+**Firefox/Other Browsers:**
+- Standard y-websocket parameter-based authentication
+- Longer reconnection timeouts (10-15 seconds)
+- Standard WebSocket provider configuration
+
+**Detection Methods:**
+```javascript
+// Automatic browser detection
+isChrome() // Chrome-specific handling
+isSafari() // Safari-specific handling  
+isMobile() // Mobile-specific optimizations
+```
+
+### Mobile Performance Optimization
+
+**Real-time Collaboration Optimizations:**
+- **Reduced Heartbeat Intervals**: Prevent mobile timeout (15s vs 30s)
+- **Aggressive Reconnection**: Shorter backoff times for mobile
+- **Awareness Update Filtering**: Reduced bandwidth for cursor updates
+- **IndexedDB Caching**: Offline-first approach for mobile reliability
+
+**Mobile-Specific Settings:**
+```javascript
+// Mobile WebSocket configuration
+maxBackoffTime: 3000,    // vs 8000 for desktop
+resyncInterval: 8000,    // vs 12000 for desktop
+```
+
 ## Custom Domain Setup
 
 To use a custom domain (e.g., mylayer.org):
@@ -362,6 +497,7 @@ The backend provides the following endpoint categories:
 - `POST /api/scripts/:id/blocks` - Create new block
 - `PATCH /api/blocks/:id` - Update block content
 - `GET /api/blocks/:id/history` - Get block edit history
+- `POST /api/debug/console-logs` - Mobile console log forwarding (debug)
 
 **WebSocket Endpoints:**
 - `WS /api/collab/:script_id` - Real-time collaboration
@@ -424,9 +560,61 @@ sudo cp /etc/letsencrypt/live/yourdomain.com/privkey.pem frontend/ssl/private/se
 - **Fix**: Update environment variables and rebuild frontend
 
 ### WebSocket Connection Issues
+
+**Common WebSocket Problems:**
+
+1. **Chrome WebSocket Protocol Errors**
+   - **Problem**: Chrome has stricter WebSocket protocol handling than Firefox
+   - **Symptoms**: WebSocket connections work in Firefox but fail in Chrome
+   - **Solution**: Backend removes strict protocol requirements for Chrome compatibility
+   - **Fix**: Use flexible protocol negotiation in WebSocket upgrade handler
+
+2. **Mobile Browser WebSocket Failures**
+   - **Problem**: Mobile browsers can't connect to `localhost` WebSocket URLs
+   - **Symptoms**: Desktop works, mobile shows continuous connection errors
+   - **Solution**: Use actual IP address in `VITE_WS_BASE_URL`
+   - **Fix**: Set `APP_HOSTNAME` to network IP (e.g., `192.168.2.111`)
+
+3. **Authentication Token Issues**
+   - **Problem**: WebSocket authentication fails with "Invalid token" errors
+   - **Symptoms**: Token works for API calls but not WebSocket connections
+   - **Solution**: Ensure token trimming removes trailing whitespace/slashes
+   - **Fix**: Clean token before WebSocket connection: `token.trim().trim_end_matches('/')`
+
+4. **Browser-Specific Connection Handling**
+   - **Chrome/Safari**: Require manual URL construction with token in query string
+   - **Firefox**: Use standard y-websocket parameter-based authentication
+   - **Mobile**: Need IP address access and shorter timeout configurations
+
+**WebSocket Troubleshooting Commands:**
+```bash
+# Check WebSocket endpoint accessibility
+curl -i -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  http://your-ip:8080/api/collab/test-script-id
+
+# Monitor WebSocket connections in backend logs
+docker-compose logs backend --tail=50 -f | grep -i websocket
+
+# Test mobile WebSocket connection
+# Access mobile test page: http://your-ip:8080/mobile-test.html
+```
+
+**Environment Variable Debugging:**
+```bash
+# Check current WebSocket URL in container
+docker-compose exec frontend env | grep VITE_WS_BASE_URL
+
+# Should show your IP address, not localhost:
+# VITE_WS_BASE_URL=ws://192.168.2.111:8080/api/collab
+```
+
+**Advanced WebSocket Debugging:**
 - **Check**: WebSocket endpoint uses `wss://` for HTTPS
-- **Check**: Authentication token is valid
+- **Check**: Authentication token is valid and properly trimmed
 - **Check**: CORS origins include WebSocket upgrade origins
+- **Check**: Mobile browsers use IP address, not localhost
+- **Check**: Browser-specific WebSocket configuration is applied
+- **Check**: Network policies don't block WebSocket connections
 
 ### Container Communication
 - **Internal**: Containers communicate via Docker network (e.g., `backend:3001`)
@@ -463,6 +651,12 @@ Here's a summary of the currently implemented features:
 *   [x] API Endpoint Proxy Configuration
 *   [x] Automated SSL Certificate Generation
 *   [x] Production-Ready Security Configuration
+*   [x] Mobile Browser Compatibility (Chrome, Safari, Firefox, Brave)
+*   [x] Mobile Console Forwarding & Debugging System
+*   [x] Browser-Specific WebSocket Handling (Chrome vs Firefox)
+*   [x] IP Address Resolution for Mobile Access
+*   [x] Mobile-Optimized WebSocket Configuration
+*   [x] Advanced Mobile Debugging Test Page
 
 ## Contributing
 
@@ -473,5 +667,9 @@ For instructions on setting up a local development environment (without Docker, 
 ## License
 
 This project is licensed under the MIT License – see the `LICENSE` file for details.
-# Test comment Wed Jul  2 03:07:54 PM CEST 2025
-# Force cancel all builds Wed Jul  2 03:13:08 PM CEST 2025 1
+
+---
+
+📱 **Mobile Browser Support**: Pessoa now includes comprehensive mobile browser compatibility with advanced debugging capabilities. For mobile development and troubleshooting, see the [Mobile Browser Compatibility & Debugging](#mobile-browser-compatibility--debugging-) section above.
+
+🔧 **Recent Updates**: Enhanced WebSocket handling, Chrome compatibility fixes, and mobile debugging system for improved real-time collaboration across all devices.
