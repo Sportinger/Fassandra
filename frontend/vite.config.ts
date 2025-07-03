@@ -13,5 +13,29 @@ export default defineConfig({
       usePolling: true,  // Docker-sicheres File-Watching
       interval: 500,     // optional: Polling-Intervall (ms)
     },
+    // Proxy API requests to backend in development mode
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+        ws: true, // Enable WebSocket proxying
+      },
+      '/login': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/register': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/health': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 })

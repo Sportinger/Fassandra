@@ -127,12 +127,12 @@ pub async fn ws_handler(
     tracing::info!("WebSocket connection requested for script: {}, user: {}", script_id, user_id);
     
     // Upgrade the connection to a WebSocket
-    // We need to specify the protocol so browsers can connect
-    ws.protocols(["yjs-ws"])
-      .on_upgrade(move |socket| {
-          tracing::info!("WebSocket connection upgraded successfully for script: {}, user: {}", script_id, user_id);
-          handle_socket(socket, script_id, user_id.to_string(), persistence_event_tx)
-      })
+    // Remove protocol requirement for better Chrome compatibility
+    // Chrome sometimes has issues with explicit protocol negotiation
+    ws.on_upgrade(move |socket| {
+        tracing::info!("WebSocket connection upgraded successfully for script: {}, user: {}", script_id, user_id);
+        handle_socket(socket, script_id, user_id.to_string(), persistence_event_tx)
+    })
 }
 
 /// Handle an individual WebSocket connection

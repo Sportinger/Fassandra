@@ -8,6 +8,16 @@ import { convertBlocksToTiptapContent } from '../utils/contentConverters';
 import { logDebugInfo, isMobile } from '../../../utils/debug';
 import { ConnectionStatus } from '../types';
 
+// Helper function to detect Chrome browser
+const isChrome = () => {
+  return /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
+};
+
+// Helper function to detect Firefox browser
+const isFirefox = () => {
+  return /Firefox/.test(navigator.userAgent);
+};
+
 interface UseYjsConnectionProps {
   scriptId: string;
   user: any;
@@ -52,8 +62,15 @@ export const useYjsConnection = ({
       return;
     }
 
+    const browserInfo = {
+      isChrome: isChrome(),
+      isFirefox: isFirefox(),
+      userAgent: navigator.userAgent,
+    };
+
     console.log(`Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id})`);
-    logDebugInfo('Editor', `Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id})`);
+    console.log('Browser info:', browserInfo);
+    logDebugInfo('Editor', `Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id}), browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : 'Other'}`);
     setStatus('connecting');
     setErrorMessage(null);
 
@@ -112,79 +129,58 @@ export const useYjsConnection = ({
     const wsParams = { token };
     
     console.log(`Connecting to WebSocket: ${wsUrl}/${roomName} with params:`, wsParams);
-    logDebugInfo('Editor', `Connecting to WebSocket: ${wsUrl}/${roomName} - Mobile: ${isMobile()}`);
+    logDebugInfo('Editor', `Connecting to WebSocket: ${wsUrl}/${roomName} - Mobile: ${isMobile()}, Chrome: ${browserInfo.isChrome}`);
     
-    // Create WebSocket provider with mobile-specific handling
-    const currentProvider = new WebsocketProvider(wsUrl, roomName, currentDoc, {
+    // Create WebSocket provider with browser-specific handling
+    const providerConfig = {
       connect: true,
       params: wsParams,
       maxBackoffTime: isMobile() ? 5000 : 10000,
       resyncInterval: 15000, // 15 seconds instead of 20-30s
-    });
+    };
 
-    logDebugInfo('Editor', 'WebSocket provider created with mobile options');
-
-    // Track connection attempts and implement fallback
-    let connectionAttempts = 0;
-    let hasConnectedOnce = false;
-
-    currentProvider.on('status', (event: { status: string }) => {
-      console.log(`WebSocket status: ${event.status}`);
-      logDebugInfo('Editor', `WebSocket status: ${event.status} (attempt: ${connectionAttempts})`);
-      const newStatus = event.status as ConnectionStatus;
+    // Chrome-specific WebSocket configuration
+    if (browserInfo.isChrome) {
+      console.log('Applying Chrome-specific WebSocket configuration');
+      logDebugInfo('Editor', 'Applying Chrome-specific WebSocket configuration');
       
-      if (newStatus === 'connecting') {
-        connectionAttempts++;
-      } else if (newStatus === 'connected') {
-        hasConnectedOnce = true;
-        connectionAttempts = 0;
-        setIsMobileFallback(false);
-      }
-      
-      // Only update status if it's actually different to prevent unnecessary re-renders
-      setStatus(prevStatus => {
-        if (prevStatus !== newStatus) {
-          console.log(`Status changed from ${prevStatus} to ${newStatus}`);
-          logDebugInfo('Editor', `Status changed from ${prevStatus} to ${newStatus}`);
-          return newStatus;
+      // Chrome sometimes has issues with protocol negotiation
+      // Try without explicit protocol first, then fall back to protocol if needed
+      try {
+        const currentProvider = new WebsocketProvider(wsUrl, roomName, currentDoc, providerConfig);
+        console.log('Chrome: WebSocket provider created without explicit protocol');
+        setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
+        setProvider(currentProvider);
+      } catch (error) {
+        console.warn('Chrome: Failed to create WebSocket provider without protocol, trying with protocol:', error);
+        try {
+          const currentProvider = new WebsocketProvider(wsUrl, roomName, currentDoc, {
+            ...providerConfig,
+            protocols: ['yjs-ws'],
+          });
+          console.log('Chrome: WebSocket provider created with yjs-ws protocol');
+          setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
+          setProvider(currentProvider);
+        } catch (protocolError) {
+          console.error('Chrome: Failed to create WebSocket provider with protocol:', protocolError);
+          setErrorMessage('Failed to create WebSocket connection. Chrome compatibility issue.');
+          setStatus('error');
         }
-        return prevStatus;
-      });
-      
-      // Clear error message when connected
-      if (newStatus === 'connected') {
-        setErrorMessage(null);
-        logDebugInfo('Editor', 'WebSocket connected - cleared error message');
       }
-    });
+    } else {
+      // Firefox and other browsers - use standard configuration
+      console.log('Using standard WebSocket configuration for non-Chrome browser');
+      const currentProvider = new WebsocketProvider(wsUrl, roomName, currentDoc, providerConfig);
+      setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
+      setProvider(currentProvider);
+    }
 
-    // Handle WebSocket errors
-    currentProvider.on('connection-error', (event: Event) => {
-      console.error(`WebSocket error (attempt ${connectionAttempts}):`, event);
-      logDebugInfo('Editor', `WebSocket error (attempt ${connectionAttempts}): ${event.type}`);
-      
-      // On mobile or after multiple failed attempts, enable fallback mode
-      if (isMobile() || connectionAttempts >= 3) {
-        console.log('Enabling mobile fallback mode for unreliable connection');
-        logDebugInfo('Editor', 'Enabling mobile fallback mode');
-        setIsMobileFallback(true);
-        setErrorMessage('Connection unstable. Working in offline mode.');
-      } else {
-        setErrorMessage(`Connection failed: ${event.type}`);
-      }
-    });
-
-    setProvider(currentProvider);
+    logDebugInfo('Editor', 'WebSocket provider created with browser-specific options');
 
     // Cleanup function
     return () => {
       console.log("Cleaning up WebSocket provider and Yjs doc...");
       logDebugInfo('Editor', 'Cleaning up WebSocket provider and Yjs doc');
-      
-      if (currentProvider) {
-        currentProvider.disconnect();
-        currentProvider.destroy();
-      }
       
       if (persistenceRef.current) {
         persistenceRef.current.destroy();
@@ -199,4 +195,80 @@ export const useYjsConnection = ({
       setYdoc(null);
     };
   }, [scriptId, user, token]); // Only depend on essential auth/routing params
+};
+
+// Helper function to set up WebSocket provider event handlers
+const setupWebSocketProviderHandlers = (
+  provider: WebsocketProvider,
+  browserInfo: { isChrome: boolean; isFirefox: boolean; userAgent: string },
+  setStatus: (status: ConnectionStatus | ((prev: ConnectionStatus) => ConnectionStatus)) => void,
+  setErrorMessage: (message: string | null) => void,
+  setIsMobileFallback: (fallback: boolean) => void
+) => {
+  // Track connection attempts and implement fallback
+  let connectionAttempts = 0;
+  let hasConnectedOnce = false;
+
+  provider.on('status', (event: { status: string }) => {
+    console.log(`WebSocket status: ${event.status}`);
+    logDebugInfo('Editor', `WebSocket status: ${event.status} (attempt: ${connectionAttempts}), Browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : 'Other'}`);
+    const newStatus = event.status as ConnectionStatus;
+    
+    if (newStatus === 'connecting') {
+      connectionAttempts++;
+    } else if (newStatus === 'connected') {
+      hasConnectedOnce = true;
+      connectionAttempts = 0;
+      setIsMobileFallback(false);
+    }
+    
+    // Only update status if it's actually different to prevent unnecessary re-renders
+    setStatus(prevStatus => {
+      if (prevStatus !== newStatus) {
+        console.log(`Status changed from ${prevStatus} to ${newStatus}`);
+        logDebugInfo('Editor', `Status changed from ${prevStatus} to ${newStatus}`);
+        return newStatus;
+      }
+      return prevStatus;
+    });
+    
+    // Clear error message when connected
+    if (newStatus === 'connected') {
+      setErrorMessage(null);
+      logDebugInfo('Editor', 'WebSocket connected - cleared error message');
+    }
+  });
+
+  // Handle WebSocket errors
+  provider.on('connection-error', (event: Event) => {
+    console.error(`WebSocket error (attempt ${connectionAttempts}):`, event);
+    logDebugInfo('Editor', `WebSocket error (attempt ${connectionAttempts}): ${event.type}, Browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : 'Other'}`);
+    
+    // Browser-specific error handling
+    if (browserInfo.isChrome) {
+      console.log('Chrome-specific error handling');
+      if (connectionAttempts >= 2) {
+        setErrorMessage('Chrome WebSocket connection failed. Try refreshing the page or switching to Firefox.');
+      } else {
+        setErrorMessage('Chrome WebSocket connection issue. Retrying...');
+      }
+    } else if (browserInfo.isFirefox) {
+      console.log('Firefox-specific error handling');
+      if (connectionAttempts >= 3) {
+        setErrorMessage('Firefox WebSocket connection failed. Try refreshing the page.');
+      } else {
+        setErrorMessage('Firefox WebSocket connection issue. Retrying...');
+      }
+    } else {
+      // Generic error handling
+      if (isMobile() || connectionAttempts >= 3) {
+        console.log('Enabling mobile fallback mode for unreliable connection');
+        logDebugInfo('Editor', 'Enabling mobile fallback mode');
+        setIsMobileFallback(true);
+        setErrorMessage('Connection unstable. Working in offline mode.');
+      } else {
+        setErrorMessage(`Connection failed: ${event.type}`);
+      }
+    }
+  });
 }; 
