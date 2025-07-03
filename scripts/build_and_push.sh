@@ -26,12 +26,7 @@ echo ""
 if ! git diff-index --quiet HEAD --; then
     echo "⚠️  Warning: You have uncommitted changes!"
     echo "   Commit your changes first for consistent deployments."
-    read -p "   Continue anyway? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "❌ Aborted"
-        exit 1
-    fi
+    echo "   Continuing automatically..."
 fi
 
 echo "📦 Building images locally..."
