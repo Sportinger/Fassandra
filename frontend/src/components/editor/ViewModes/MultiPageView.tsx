@@ -16,13 +16,39 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
   const [pageCount, setPageCount] = useState(3);
   const contentRef = useRef<HTMLDivElement>(null);
   const [contentHTML, setContentHTML] = useState('');
+  const pageRef = useRef<HTMLDivElement>(null);
   
   // Page dimensions and adjustable margins
-  const pageHeight = 600; // Total page height
+  const [pageHeight, setPageHeight] = useState(600); // Dynamic page height
   const [headerMargin, setHeaderMargin] = useState(40); // Adjustable top margin
   const [footerMargin, setFooterMargin] = useState(40); // Adjustable bottom margin
   const [usableContentHeight, setUsableContentHeight] = useState(pageHeight - 40 - 40); // Calculated dynamically
   
+  // Measure actual page height from DOM
+  useEffect(() => {
+    const measurePageHeight = () => {
+      if (pageRef.current) {
+        const rect = pageRef.current.getBoundingClientRect();
+        const actualHeight = rect.height;
+        if (actualHeight > 0 && actualHeight !== pageHeight) {
+          console.log('📏 Measuring actual page height:', actualHeight, 'vs hardcoded:', pageHeight);
+          setPageHeight(actualHeight);
+        }
+      }
+    };
+
+    // Initial measurement
+    measurePageHeight();
+
+    // Re-measure on window resize
+    const handleResize = () => {
+      setTimeout(measurePageHeight, 100);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [pageHeight]);
+
   // Update usable content height when margins change
   useEffect(() => {
     const newUsableHeight = pageHeight - headerMargin - footerMargin;
@@ -68,6 +94,7 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
         {pages.map((pageIndex) => (
           <div 
             key={pageIndex} 
+            ref={pageIndex === 0 ? pageRef : undefined}
             className="dinA4Page multiplePage"
             style={{
               height: 'var(--page-height)',

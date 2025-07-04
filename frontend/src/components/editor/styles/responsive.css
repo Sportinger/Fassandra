@@ -150,6 +150,7 @@ html, body {
 .multi-page-view .dinA4Page {
   height: var(--page-height); /* Fixed height, not min-height */
   overflow: hidden; /* Hide content that doesn't fit */
+  padding: 0; /* Remove default padding - we control margins manually with ruler */
 }
 
 .dinA4Page.exiting {
@@ -310,7 +311,7 @@ html, body {
     min-height: var(--page-height);
     box-shadow: var(--shadow-lg);
     border-radius: var(--radius-sm);
-    padding: var(--content-padding-y) var(--content-padding-x);
+    padding: 0; /* Remove padding - we control margins manually with ruler */
   }
   
   /* Ensure content stays properly wrapped on mobile */

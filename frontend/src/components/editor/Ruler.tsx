@@ -29,12 +29,15 @@ export const Ruler: React.FC<RulerProps> = ({
   const generateVerticalMarks = () => {
     const marks = [];
     
-    // Create marks for this page only (0 to pageHeight)
-    for (let i = 0; i <= Math.ceil(pageHeight / 28.35); i++) { // 28.35 pixels per cm approximately
+    // Create marks every 0.5cm for the full page height
+    const pageHeightCm = pageHeight / 28.35; // Convert pixels to cm
+    const totalMarks = Math.ceil(pageHeightCm * 2); // 2 marks per cm (every 0.5cm)
+    
+    for (let i = 0; i <= totalMarks; i++) {
       const cmValue = i * 0.5;
-      const pixelValue = cmValue * 28.35; // Convert cm to pixels
+      const percentage = (cmValue * 28.35 / pageHeight) * 100;
       
-      if (pixelValue > pageHeight) break;
+      if (percentage > 100) break;
       
       const isFullCm = i % 2 === 0;
       const isFiveCm = cmValue % 5 === 0 && cmValue > 0;
@@ -45,7 +48,7 @@ export const Ruler: React.FC<RulerProps> = ({
           className="ruler-mark"
           style={{
             position: 'absolute',
-            top: `${pixelValue}px`,
+            top: `${percentage}%`,
             right: '5px',
             width: isFiveCm ? '15px' : isFullCm ? '10px' : '6px',
             height: '1px',
@@ -138,6 +141,22 @@ export const Ruler: React.FC<RulerProps> = ({
   const generateMarginHandles = () => {
     const handles = [];
     
+    // Calculate percentage positions to align exactly with dashed lines
+    const headerPercentage = (headerMargin / pageHeight) * 100;
+    const footerPercentage = ((pageHeight - footerMargin) / pageHeight) * 100;
+    
+    // Debug logging for footer positioning
+    if (pageIndex === 0) {
+      console.log('🔧 Ruler calculations:', {
+        pageHeight,
+        headerMargin,
+        footerMargin,
+        headerPercentage,
+        footerPercentage,
+        footerPositionPx: pageHeight - footerMargin
+      });
+    }
+    
     // Header handle - positioned exactly on the BLUE dashed line
     handles.push(
       <div
@@ -145,7 +164,7 @@ export const Ruler: React.FC<RulerProps> = ({
         className="margin-handle header-handle"
         style={{
           position: 'absolute',
-          top: `${headerMargin}px`, // Exact position of blue dashed line
+          top: `${headerPercentage}%`, // Percentage-based position for exact alignment
           left: '5px',
           width: '50px',
           height: '4px',
@@ -184,7 +203,7 @@ export const Ruler: React.FC<RulerProps> = ({
         className="margin-handle footer-handle"
         style={{
           position: 'absolute',
-          top: `${pageHeight - footerMargin}px`, // Exact position of red dashed line
+          top: `${footerPercentage}%`, // Percentage-based position for exact alignment
           left: '5px',
           width: '50px',
           height: '4px',
