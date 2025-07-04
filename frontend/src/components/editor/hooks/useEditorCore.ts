@@ -166,6 +166,7 @@ export const useEditorCore = ({
         case 'connected':
           setConnectionStatus('connected');
           setErrorMessage(null);
+          console.log('[Collaboration Cursor] WebSocket connected - cursor sharing should be active');
           break;
         case 'disconnected':
           setConnectionStatus('disconnected');
@@ -284,6 +285,42 @@ export const useEditorCore = ({
             name: user.name || user.email || 'Anonymous',
             color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
           },
+          // Add debugging for cursor events
+          onUpdate: (users: any[]) => {
+            console.log('[Collaboration Cursor] Users with cursors:', users.map(u => ({ name: u.name, clientId: u.clientId })));
+            return null;
+          },
+          // Temporarily use default rendering to test cursor sharing
+          // render: (user: { name: string; color: string }) => {
+          //   console.log('[Collaboration Cursor] Rendering cursor for user:', user.name);
+          //   
+          //   // Create cursor element
+          //   const cursor = document.createElement('div');
+          //   cursor.classList.add('collaboration-cursor');
+          //   cursor.style.borderLeftColor = user.color;
+          //   cursor.style.position = 'absolute';
+          //   cursor.style.pointerEvents = 'none';
+          //   cursor.style.userSelect = 'none';
+          //   cursor.style.zIndex = '9999';
+          //   
+          //   // Create label element that truly floats above everything
+          //   const label = document.createElement('div');
+          //   label.classList.add('collaboration-cursor-label');
+          //   label.style.backgroundColor = user.color;
+          //   label.style.position = 'absolute';
+          //   label.style.pointerEvents = 'none';
+          //   label.style.userSelect = 'none';
+          //   label.style.zIndex = '10000';
+          //   label.style.width = 'fit-content';
+          //   label.style.minWidth = 'fit-content';
+          //   label.textContent = user.name;
+          //   
+          //   // Append label to cursor
+          //   cursor.appendChild(label);
+          //   
+          //   console.log('[Collaboration Cursor] Created cursor element for:', user.name);
+          //   return cursor;
+          // },
         }),
       ] : []),
     ],
@@ -314,8 +351,40 @@ export const useEditorCore = ({
     onSelectionUpdate: ({ editor }) => {
       // Update toolbar context based on selection
       updateToolbarContext(editor);
+      
+      // Debug cursor position sharing
+      const { from, to } = editor.state.selection;
+      console.log('[Collaboration Cursor] Local cursor position changed:', { from, to });
+      
+      // Check if there are other users' cursors
+      const collaborationState = editor.storage.collaborationCursor;
+      if (collaborationState) {
+        console.log('[Collaboration Cursor] Other users present:', Object.keys(collaborationState.users || {}));
+      }
     },
   }, [ydoc, provider]);
+
+  // Add debugging for collaboration cursor behavior
+  useEffect(() => {
+    if (editor && provider && connectionStatus === 'connected') {
+      // Check collaboration cursor state periodically
+      const checkCursorState = () => {
+        const collaborationCursor = editor.storage.collaborationCursor;
+        if (collaborationCursor && collaborationCursor.users) {
+          const userCount = Object.keys(collaborationCursor.users).length;
+          if (userCount > 0) {
+            console.log('[Collaboration Cursor] Active users with cursors:', userCount);
+            console.log('[Collaboration Cursor] User details:', collaborationCursor.users);
+          }
+        }
+      };
+      
+      // Check every 5 seconds when connected
+      const interval = setInterval(checkCursorState, 5000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [editor, provider, connectionStatus]);
 
   // Apply pending content to editor when both editor and content are ready
   useEffect(() => {

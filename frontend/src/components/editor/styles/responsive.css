@@ -309,6 +309,40 @@ html, body {
 
 /* ===== COLLABORATION CURSOR ===== */
 
+/* Default TipTap collaboration cursor styles */
+.ProseMirror .collaboration-cursor__caret {
+  position: absolute;
+  border-left: 2px solid;
+  border-color: var(--user-color, #3b82f6);
+  height: 1.2em;
+  pointer-events: none;
+  user-select: none;
+  z-index: 9999;
+  opacity: 0.8;
+  margin-left: -1px;
+  margin-top: 0.1em;
+}
+
+.ProseMirror .collaboration-cursor__label {
+  position: absolute;
+  top: -1.4em;
+  left: -1px;
+  font-size: 0.75em;
+  font-weight: 600;
+  color: white;
+  background: var(--user-color, #3b82f6);
+  padding: 0.1em 0.3em;
+  border-radius: 3px 3px 3px 0;
+  white-space: nowrap;
+  width: fit-content;
+  z-index: 10000;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  opacity: 0.9;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Custom collaboration cursor styles (currently disabled) */
 .collaboration-cursor {
   position: absolute;
   pointer-events: none;
@@ -318,7 +352,12 @@ html, body {
   border-left: 2px solid;
   margin-left: -1px;
   margin-top: 0.1em;
-  z-index: var(--z-index-base);
+  z-index: 9999; /* Ensure it's on top of everything */
+  opacity: 0.4; /* 40% opacity as requested */
+  /* Prevent any document flow interference */
+  top: 0;
+  left: 0;
+  transform: translateZ(0); /* Create stacking context */
 }
 
 .collaboration-cursor-label {
@@ -331,11 +370,36 @@ html, body {
   padding: 0.1em 0.3em;
   border-radius: 3px 3px 3px 0;
   white-space: nowrap;
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  z-index: var(--z-index-popover);
+  /* Make width only as long as the name - no max-width constraint */
+  width: fit-content;
+  min-width: fit-content;
+  overflow: visible; /* Don't truncate names */
+  text-overflow: clip; /* Don't add ellipsis */
+  z-index: 10000; /* Even higher than cursor */
   box-shadow: var(--shadow-sm);
+  opacity: 0.9; /* Slightly more opaque for readability */
+  /* Prevent any document flow interference */
+  transform: translateZ(0); /* Create stacking context */
+  backdrop-filter: blur(1px); /* Subtle blur effect */
+}
+
+/* Ensure cursor labels don't interfere with text selection */
+.collaboration-cursor-label:hover {
+  opacity: 0.6; /* Reduce opacity on hover to see through */
+}
+
+/* Animation for cursor appearance */
+.collaboration-cursor {
+  animation: cursorGlow 2s infinite;
+}
+
+@keyframes cursorGlow {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.3);
+  }
 }
 
 /* ===== LOADING AND ERROR STATES ===== */
