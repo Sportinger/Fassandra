@@ -98,6 +98,7 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
   const restartTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
   // Check for speech recognition support
@@ -195,7 +196,7 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
           deviceId: deviceId ? { exact: deviceId } : undefined,
           echoCancellation: true,
           noiseSuppression: false,  // Disable to capture more audio
-          autoGainControl: true,    // Enable automatic gain
+          autoGainControl: false,   // Disable to prevent auto-adjustment
           sampleRate: 48000,        // Higher sample rate
           channelCount: 1           // Mono for better processing
         }
@@ -209,34 +210,55 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
       const analyser = audioContext.createAnalyser();
       const microphone = audioContext.createMediaStreamSource(stream);
       
-      // Configure analyser for better sensitivity
-      analyser.fftSize = 2048;
-      analyser.smoothingTimeConstant = 0.3; // Lower for more responsive detection
-      analyser.minDecibels = -90;           // Lower threshold for quiet sounds
+      // Create gain node for manual gain control
+      const gainNode = audioContext.createGain();
+      gainNode.gain.value = microphoneGain;
+      
+      // Configure analyser for maximum sensitivity
+      analyser.fftSize = 1024;              // Lower for better performance
+      analyser.smoothingTimeConstant = 0.1; // Much lower for more responsive detection
+      analyser.minDecibels = -100;          // Lower threshold for very quiet sounds
       analyser.maxDecibels = -10;           // Higher threshold for loud sounds
       
-      microphone.connect(analyser);
+      // Connect: microphone -> gain -> analyser
+      microphone.connect(gainNode);
+      gainNode.connect(analyser);
       
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
+      gainNodeRef.current = gainNode;
       
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      // Use time domain data for better level detection
+      const dataArray = new Uint8Array(analyser.fftSize);
       let frameCount = 0;
       
       const updateAudioLevel = () => {
         if (analyserRef.current && streamRef.current?.active) {
-          analyserRef.current.getByteFrequencyData(dataArray);
-          const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
-          const level = Math.round((average / 255) * 100);
+          // Use time domain data instead of frequency data for better level detection
+          analyserRef.current.getByteTimeDomainData(dataArray);
+          
+          // Calculate RMS (Root Mean Square) for more accurate level detection
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            const sample = (dataArray[i] - 128) / 128.0; // Convert to -1 to 1 range
+            sum += sample * sample;
+          }
+          const rms = Math.sqrt(sum / dataArray.length);
+          
+          // Apply gain boost and convert to percentage
+          const amplifiedRMS = rms * microphoneGain;
+          const level = Math.min(Math.round(amplifiedRMS * 100 * 5), 100); // Boost by 5x for better sensitivity
           
           setAudioLevel(level);
-          setIsAudioActive(level > 3); // Lower threshold for detection
+          setIsAudioActive(level > 5); // Lower threshold for detection
           
           // Enhanced logging for debugging
-          if (frameCount % 60 === 0 && level > 3) {
-            console.log(`🎤 📊 Audio level: ${level}% (threshold for speech: >20%)`);
-            if (level < 20) {
-              console.log('🎤 💡 Audio level too low - try speaking louder or adjusting microphone settings');
+          if (frameCount % 60 === 0) {
+            console.log(`🎤 📊 Audio level: ${level}% (RMS: ${rms.toFixed(3)}, Gain: ${microphoneGain}x)`);
+            if (level > 5) {
+              console.log('🎤 ✅ Audio detected - good level!');
+            } else {
+              console.log('🎤 💡 Very low audio - try speaking louder or increasing gain');
             }
           }
           
@@ -252,7 +274,7 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
       setError(`Failed to initialize audio monitoring: ${error.message}`);
       return null;
     }
-  }, []);
+  }, [microphoneGain]); // Add microphoneGain as dependency
 
   // Restart speech recognition with debouncing
   const restartSpeechRecognition = useCallback(() => {
@@ -478,6 +500,7 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
       }
       
       analyserRef.current = null;
+      gainNodeRef.current = null;
       setAudioLevel(0);
       setIsAudioActive(false);
       setTranscriptionText('');
@@ -509,6 +532,14 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
     }
   }, [isListening, selectedDevice, initializeAudioMonitoring, initializeSpeechRecognition]);
 
+  // Update gain in real-time when user changes slider
+  useEffect(() => {
+    if (gainNodeRef.current && isListening) {
+      gainNodeRef.current.gain.value = microphoneGain;
+      console.log(`🎤 🔧 Updated microphone gain to ${microphoneGain}x`);
+    }
+  }, [microphoneGain, isListening]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -527,6 +558,7 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
+      gainNodeRef.current = null;
     };
   }, []);
 
@@ -618,6 +650,9 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
             
             <label htmlFor="microphone-gain" style={{ marginTop: '15px' }}>
               Microphone Sensitivity: {microphoneGain.toFixed(1)}x
+              <span style={{ fontSize: '11px', color: '#6c757d', marginLeft: '8px' }}>
+                (Enhanced audio detection)
+              </span>
             </label>
             <input
               type="range"
@@ -656,7 +691,7 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
               )}
             </button>
             
-            {!isListening && audioLevel < 20 && audioLevel > 0 && (
+            {!isListening && audioLevel < 15 && audioLevel > 0 && (
               <div style={{ 
                 marginTop: '15px', 
                 padding: '10px', 
@@ -667,13 +702,29 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
               }}>
                 <div style={{ fontWeight: 'bold', color: '#856404' }}>⚠️ Low Microphone Level</div>
                 <div style={{ marginTop: '5px', color: '#856404' }}>
-                  Your microphone level is {audioLevel}%, but Chrome needs 20%+ for speech recognition.
+                  Your microphone level is {audioLevel}%. The new sensitive detection should show 15%+ when speaking.
                   <br/>
                   <strong>Try:</strong>
-                  <br/>• Speaking much louder
+                  <br/>• Speaking louder and clearer
                   <br/>• Moving closer to your microphone
-                  <br/>• Adjusting system microphone volume
-                  <br/>• Increasing sensitivity above ⬆️
+                  <br/>• Increasing sensitivity slider above ⬆️
+                  <br/>• Checking system microphone volume
+                </div>
+              </div>
+            )}
+            
+            {!isListening && audioLevel >= 15 && (
+              <div style={{ 
+                marginTop: '15px', 
+                padding: '10px', 
+                backgroundColor: '#d4edda', 
+                borderRadius: '6px',
+                fontSize: '12px',
+                textAlign: 'left'
+              }}>
+                <div style={{ fontWeight: 'bold', color: '#155724' }}>✅ Good Microphone Level</div>
+                <div style={{ marginTop: '5px', color: '#155724' }}>
+                  Level: {audioLevel}% - Perfect for speech recognition! You can now start listening.
                 </div>
               </div>
             )}
@@ -693,7 +744,7 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
                   className="audio-level-fill"
                   style={{ 
                     width: `${audioLevel}%`,
-                    backgroundColor: audioLevel > 20 ? '#4CAF50' : audioLevel > 10 ? '#FF9800' : '#f44336'
+                    backgroundColor: audioLevel > 15 ? '#4CAF50' : audioLevel > 8 ? '#FF9800' : '#f44336'
                   }}
                 />
               </div>
