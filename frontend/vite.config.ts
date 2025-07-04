@@ -3,6 +3,11 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import fs from 'fs';
 
+// Check if SSL dev certificates exist
+const sslKeyPath = './ssl/dev-key.pem';
+const sslCertPath = './ssl/dev-cert.pem';
+const hasSSLCerts = fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath);
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), VitePWA({ registerType: 'autoUpdate' })],
@@ -10,10 +15,13 @@ export default defineConfig({
     port: 8081,     // Using port 8081 for consistency
     host: true,     // erlaubt Zugriff vom Host auf den Container
     allowedHosts: process.env.VITE_APP_DOMAIN ? [process.env.VITE_APP_DOMAIN] : ['localhost'],
-    https: {
-      key: fs.readFileSync('./ssl/dev-key.pem'),
-      cert: fs.readFileSync('./ssl/dev-cert.pem'),
-    },
+    // Only use HTTPS if SSL certificates exist (local development)
+    ...(hasSSLCerts && {
+      https: {
+        key: fs.readFileSync(sslKeyPath),
+        cert: fs.readFileSync(sslCertPath),
+      },
+    }),
     watch: {
       usePolling: true,  // Docker-sicheres File-Watching
       interval: 500,     // optional: Polling-Intervall (ms)
