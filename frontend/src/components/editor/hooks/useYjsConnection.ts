@@ -56,7 +56,7 @@ export const useYjsConnection = ({
   // provider, // Not used directly in this hook, managed internally
   setProvider,
   persistenceRef,
-  status,
+  status: _status,
   setStatus,
   setErrorMessage,
   setScriptTitle,
@@ -226,7 +226,7 @@ export const useYjsConnection = ({
       const browserType = isMobile() ? 'Mobile' : (browserInfo.isChrome ? 'Chrome' : 'Safari');
       console.log(`[YJS] Applying ${browserType}-specific WebSocket configuration`);
       logDebugInfo('Editor', `Applying ${browserType}-specific WebSocket configuration`);
-      
+
       // Manually construct WebSocket URL with token as query parameter for compatibility
       const cleanToken = token.trim(); // Remove any trailing whitespace/slash
       const wsUrlWithToken = `${wsBaseUrl}/${roomName}?token=${encodeURIComponent(cleanToken)}`;
@@ -276,7 +276,7 @@ export const useYjsConnection = ({
 
       const currentProvider = new WebsocketProvider(wsBaseUrl, roomName, currentDoc, providerConfig);
       setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
-      setProvider(currentProvider);
+    setProvider(currentProvider);
     }
 
     logDebugInfo('Editor', 'WebSocket provider created with browser-specific options');

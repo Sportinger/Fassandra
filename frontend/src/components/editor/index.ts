@@ -22,7 +22,7 @@ export * from './utils/formatters';
 export * from './utils/contentConverters';
 
 // Hooks
-export * from './hooks';
+export * from './hooks'; 
 
 // Extensions
 export * from './extensions'; 

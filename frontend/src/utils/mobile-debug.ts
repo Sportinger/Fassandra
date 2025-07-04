@@ -80,7 +80,7 @@ export const getMobileDebugInfo = (): MobileDebugInfo => {
 
 // Test WebSocket connection with detailed logging
 export const testWebSocketConnection = (
-  baseUrl: string,
+  _baseUrl: string,
   roomId: string,
   token: string,
   timeout: number = 10000

@@ -109,7 +109,7 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
       console.error(`[Content Converter] Failed to convert block of type '${blockType}':`, contentJsonString, e);
       // Fallback to original formatting
       const formattedText = formatContentElement(blockType, contentJsonString);
-      return `<p>${formattedText}</p>`;
+    return `<p>${formattedText}</p>`;
     }
   });
   

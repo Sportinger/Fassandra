@@ -13,18 +13,13 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
   showRuler,
   className = ''
 }) => {
-  console.log('[SinglePageView] Rendering with showRuler:', showRuler);
-  
-  // Side effect for logging when ruler should render
-  if (showRuler) {
-    console.log('[SinglePageView] Ruler should be visible');
-  }
-  
   return (
     <div className={`single-page-view ${className}`}>
       {showRuler && <Ruler />}
-      <div className="dinA4Page">
-        {children}
+      <div className="singlePageContainer">
+        <div className="dinA4Page">
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -22,11 +22,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         ws: true, // Enable WebSocket proxying for real-time collaboration
-        configure: (proxy, options) => {
-          proxy.on('proxyReqWs', (proxyReq, req, socket) => {
+        configure: (proxy, _options) => {
+          proxy.on('proxyReqWs', (_proxyReq, req, _socket) => {
             console.log('WebSocket proxy request:', req.url);
           });
-          proxy.on('error', (err, req, res) => {
+          proxy.on('error', (err, _req, _res) => {
             console.log('Proxy error:', err);
           });
         },
