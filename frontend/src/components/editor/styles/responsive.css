@@ -153,6 +153,41 @@ html, body {
   padding: 0; /* Remove default padding - we control margins manually with ruler */
 }
 
+/* Click-to-edit hover effect for inactive pages */
+.multi-page-view .dinA4Page:hover .click-to-edit-indicator {
+  opacity: 1 !important;
+}
+
+/* Inactive pages have slightly reduced opacity */
+.multi-page-view .dinA4Page:not(:hover) {
+  transition: opacity 0.2s ease;
+}
+
+/* Dark area context menu styling */
+.single-page-view, .multi-page-view {
+  cursor: context-menu;
+}
+
+.single-page-view .dinA4Page, .multi-page-view .dinA4Page {
+  cursor: auto;
+}
+
+/* Context menu styling */
+.context-menu {
+  animation: contextMenuFadeIn 0.15s ease-out;
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .dinA4Page.exiting {
   animation: slideOutToBottom 400ms cubic-bezier(0.4, 0, 0.2, 1);
 }

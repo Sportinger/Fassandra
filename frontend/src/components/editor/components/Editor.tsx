@@ -12,6 +12,7 @@ import { PageCanvas } from './page/PageCanvas';
 import { Toolbar } from './toolbar/Toolbar';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { SinglePageView, MultiPageView } from '../ViewModes';
+import { AudioTranscription } from './AudioTranscription';
 // import { ErrorDisplay } from './ui/ErrorDisplay';
 // import { StatusIndicator } from './ui/StatusIndicator';
 import type { EditorProps, ViewMode } from '../types';
@@ -51,6 +52,7 @@ export const Editor: React.FC<EditorProps> = ({
   // Local UI state
   const [viewMode, setViewMode] = useState<ViewMode>('single-page');
   const [showRuler, setShowRuler] = useState(false);
+  const [audioTranscriptionActive, setAudioTranscriptionActive] = useState(false);
 
   // Debug ruler state
   useEffect(() => {
@@ -207,7 +209,11 @@ export const Editor: React.FC<EditorProps> = ({
       
       {/* Main editor content with ViewMode support */}
       {viewMode === 'single-page' ? (
-        <SinglePageView showRuler={showRuler}>
+        <SinglePageView 
+          showRuler={showRuler}
+          onToggleRuler={() => setShowRuler(!showRuler)}
+          onToggleViewMode={() => setViewMode('multiple-pages')}
+        >
           {editor ? (
             <div 
               className="editor-content"
@@ -241,7 +247,11 @@ export const Editor: React.FC<EditorProps> = ({
           )}
         </SinglePageView>
       ) : (
-        <MultiPageView showRuler={showRuler}>
+        <MultiPageView 
+          showRuler={showRuler}
+          onToggleRuler={() => setShowRuler(!showRuler)}
+          onToggleViewMode={() => setViewMode('single-page')}
+        >
           {editor ? (
             <div 
               className="editor-content"
@@ -356,6 +366,13 @@ export const Editor: React.FC<EditorProps> = ({
         speakerNames={speakerNames}
         onSetViewMode={setViewMode}
         onToggleRuler={() => setShowRuler(!showRuler)}
+      />
+      
+      {/* Audio Transcription - Floating */}
+      <AudioTranscription 
+        editor={editor}
+        isActive={audioTranscriptionActive}
+        onToggle={setAudioTranscriptionActive}
       />
     </div>
   );

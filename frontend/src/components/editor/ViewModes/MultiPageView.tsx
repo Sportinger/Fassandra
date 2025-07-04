@@ -6,18 +6,26 @@ interface MultiPageViewProps {
   children: React.ReactNode;
   showRuler: boolean;
   className?: string;
+  onToggleRuler?: () => void;
+  onToggleViewMode?: () => void;
 }
 
 export const MultiPageView: React.FC<MultiPageViewProps> = ({ 
   children, 
   showRuler,
-  className = ''
+  className = '',
+  onToggleRuler,
+  onToggleViewMode
 }) => {
   const [pageCount, setPageCount] = useState(3);
   const contentRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const [pageOffsets, setPageOffsets] = useState<number[]>([]);
   const [pageContents, setPageContents] = useState<string[]>([]);
+  const [activeEditPage, setActiveEditPage] = useState(0); // Which page has the active editor
+  const [contextMenu, setContextMenu] = useState<{x: number; y: number; visible: boolean}>({
+    x: 0, y: 0, visible: false
+  });
   
   // Page dimensions and adjustable margins
   const [pageHeight, setPageHeight] = useState(600); // Dynamic page height
@@ -218,12 +226,61 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
     // Trigger immediate recalculation for responsive feel
     requestAnimationFrame(extractContent);
   }, [extractContent]);
+
+  // Handle clicking on a page to make it editable
+  const handlePageClick = useCallback((pageIndex: number) => {
+    console.log(`📝 Switching editor to page ${pageIndex + 1}`);
+    setActiveEditPage(pageIndex);
+  }, []);
+
+  // Handle clicking on dark area around pages to show context menu
+  const handleDarkAreaClick = useCallback((e: React.MouseEvent) => {
+    // Only trigger if clicking on the background container, not on pages
+    if (e.target === e.currentTarget) {
+      console.log('🖱️ Dark area clicked, showing context menu');
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        visible: true
+      });
+    }
+  }, []);
+
+  // Handle context menu actions
+  const handleContextMenuAction = useCallback((action: string) => {
+    console.log('📋 Context menu action:', action);
+    
+    switch (action) {
+      case 'toggle-ruler':
+        onToggleRuler?.();
+        break;
+      case 'toggle-view':
+        onToggleViewMode?.();
+        break;
+      default:
+        console.log('Unknown action:', action);
+    }
+    
+    setContextMenu({ x: 0, y: 0, visible: false });
+  }, [onToggleRuler, onToggleViewMode]);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (contextMenu.visible) {
+        setContextMenu({ x: 0, y: 0, visible: false });
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [contextMenu.visible]);
   
   // Generate pages array
   const pages = Array.from({ length: pageCount }, (_, index) => index);
   
   return (
-    <div className={`multi-page-view ${className}`}>
+    <div className={`multi-page-view ${className}`} onClick={handleDarkAreaClick}>
       <div className="multiplePagesContainer" style={{ position: 'relative' }}>
         {pages.map((pageIndex) => (
           <div 
@@ -233,8 +290,12 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
             style={{
               height: 'var(--page-height)',
               overflow: 'hidden',
-              position: 'relative'
+              position: 'relative',
+              cursor: pageIndex !== activeEditPage ? 'pointer' : 'text',
+              border: pageIndex === activeEditPage ? '2px solid rgba(59, 130, 246, 0.3)' : '1px solid transparent',
+              transition: 'border-color 0.2s ease'
             }}
+            onClick={() => handlePageClick(pageIndex)}
           >
             {/* Individual ruler for this page */}
             {showRuler && (
@@ -262,15 +323,22 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
               overflow: 'hidden',
               position: 'relative'
             }}>
-              {pageIndex === 0 ? (
-                // First page: show actual TipTap editor (hidden reference for content extraction)
+              {pageIndex === activeEditPage ? (
+                // Active page: show actual TipTap editor with correct scroll offset
                 <div>
-                  <div ref={contentRef} style={{ opacity: 1 }}>
+                  <div 
+                    ref={pageIndex === activeEditPage ? contentRef : undefined}
+                    style={{ 
+                      opacity: 1,
+                      transform: pageOffsets[activeEditPage] ? `translateY(-${pageOffsets[activeEditPage]}px)` : 'translateY(0)',
+                      transition: 'transform 0.3s ease'
+                    }}
+                  >
                     {children}
                   </div>
                 </div>
               ) : (
-                // Other pages: show ONLY the content specific to this page - MUCH MORE EFFICIENT!
+                // Inactive pages: show static content (clickable to activate)
                 <div style={{
                   pointerEvents: 'none'
                 }}>
@@ -283,9 +351,32 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
                       fontSize: 'var(--font-size-base)',
                       lineHeight: 'var(--line-height-normal)',
                       fontFamily: 'inherit',
-                      color: 'var(--color-text, #1f2937)'
+                      color: 'var(--color-text, #1f2937)',
+                      opacity: 0.7
                     }}
                   />
+                  
+                  {/* Click to edit indicator */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.9)',
+                    color: 'white',
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    pointerEvents: 'none',
+                    opacity: 0,
+                    transition: 'opacity 0.2s ease',
+                    zIndex: 1001
+                  }}
+                  className="click-to-edit-indicator"
+                  >
+                    Click to edit this page
+                  </div>
                   
                   {/* Debug: Show page info - only in development */}
                   {process.env.NODE_ENV === 'development' && pageContents[pageIndex] && (
@@ -307,7 +398,7 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
                 </div>
               )}
             </div>
-            
+
             {/* Footer margin area */}
             <div style={{
               height: `${footerMargin}px`,
@@ -315,23 +406,81 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
               borderTop: showRuler ? '1px dashed rgba(239, 68, 68, 0.3)' : 'none',
             }} />
             
-            {/* Page number indicator */}
+                      {/* Page number indicator with edit status */}
             <div style={{
               position: 'absolute',
               bottom: '10px',
               right: '20px',
               fontSize: '12px',
-              color: '#999',
+              color: pageIndex === activeEditPage ? '#3b82f6' : '#999',
               pointerEvents: 'none',
-              backgroundColor: 'rgba(255,255,255,0.8)',
+              backgroundColor: pageIndex === activeEditPage ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255,255,255,0.8)',
               padding: '2px 6px',
-              borderRadius: '2px'
+              borderRadius: '2px',
+              fontWeight: pageIndex === activeEditPage ? '600' : '400',
+              border: pageIndex === activeEditPage ? '1px solid rgba(59, 130, 246, 0.3)' : 'none'
             }}>
-              {pageIndex + 1}
+              {pageIndex + 1} {pageIndex === activeEditPage && '✏️'}
             </div>
-          </div>
+                  </div>
         ))}
       </div>
+      
+      {/* Context Menu for dark area clicks */}
+      {contextMenu.visible && (
+        <div 
+          className="context-menu"
+          style={{
+            position: 'fixed',
+            left: `${contextMenu.x}px`,
+            top: `${contextMenu.y}px`,
+            background: 'white',
+            border: '1px solid #ccc',
+            borderRadius: '8px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            zIndex: 10000,
+            minWidth: '200px',
+            padding: '4px 0',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div 
+            className="context-menu-item"
+            style={{
+              padding: '12px 16px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '14px',
+              borderBottom: '1px solid #eee',
+              transition: 'background-color 0.2s ease',
+            }}
+            onClick={() => handleContextMenuAction('toggle-ruler')}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+          >
+            📏 {showRuler ? 'Hide Ruler' : 'Show Ruler'}
+          </div>
+          <div 
+            className="context-menu-item"
+            style={{
+              padding: '12px 16px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '14px',
+              transition: 'background-color 0.2s ease',
+            }}
+            onClick={() => handleContextMenuAction('toggle-view')}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+          >
+            📃 Switch to Single Page View
+          </div>
+        </div>
+      )}
     </div>
   );
 }; 
