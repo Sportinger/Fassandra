@@ -1,13 +1,18 @@
 // Main Editor component - NEW REFACTORED VERSION
 export { Editor } from './components/Editor';
 
-// Sub-components
-export { FloatingToolbar } from './FloatingToolbar';
+// Sub-components that are still used
 export { FontSizeDropdown } from './FontSizeDropdown';
-export { ContextMenu } from './ContextMenu';
 export { SpeakerDropdown } from './SpeakerDropdown';
 export { Ruler } from './Ruler';
 export { SinglePageView, MultiPageView } from './ViewModes';
+
+// New architecture components
+export { Toolbar } from './components/toolbar/Toolbar';
+export { PageCanvas } from './components/page/PageCanvas';
+export { LoadingSpinner } from './components/ui/LoadingSpinner';
+export { ErrorDisplay } from './components/ui/ErrorDisplay';
+export { StatusIndicator } from './components/ui/StatusIndicator';
 
 // Types
 export type * from './types';
@@ -17,4 +22,7 @@ export * from './utils/formatters';
 export * from './utils/contentConverters';
 
 // Hooks
-export * from './hooks'; 
+export * from './hooks';
+
+// Extensions
+export * from './extensions'; 

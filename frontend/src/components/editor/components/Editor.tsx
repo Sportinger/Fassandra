@@ -49,6 +49,67 @@ export const Editor: React.FC<EditorProps> = ({
   // Local UI state
   const [viewMode, setViewMode] = useState<ViewMode>('single-page');
   const [showRuler, setShowRuler] = useState(false);
+  const [localContextMenu, setLocalContextMenu] = useState<{
+    x: number;
+    y: number;
+    visible: boolean;
+    onSpeakerName: boolean;
+    onPageBackground: boolean;
+  }>({
+    x: 0,
+    y: 0,
+    visible: false,
+    onSpeakerName: false,
+    onPageBackground: false,
+  });
+
+  // Handle context menu
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    // Check if clicked on speaker name
+    const target = e.target as HTMLElement;
+    const speakerElement = target.closest('[data-type="speaker"]');
+    
+    setLocalContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      visible: true,
+      onSpeakerName: !!speakerElement,
+      onPageBackground: !speakerElement,
+    });
+  }, []);
+
+  // Handle context menu actions
+  const handleContextMenuAction = useCallback((action: string) => {
+    if (!editor) return;
+    
+    switch (action) {
+      case 'insert-dialogue':
+        console.log('Inserting dialogue block from context menu');
+        editor.chain().focus().insertDialogueBlock().run();
+        break;
+      case 'toggle-view':
+        setViewMode(prev => prev === 'single-page' ? 'multiple-pages' : 'single-page');
+        break;
+      default:
+        console.log('Unknown context menu action:', action);
+    }
+    
+    setLocalContextMenu(prev => ({ ...prev, visible: false }));
+  }, [editor]);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (localContextMenu.visible) {
+        setLocalContextMenu(prev => ({ ...prev, visible: false }));
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [localContextMenu.visible]);
   
   // Early return if no auth
   if (!token || !user) {
@@ -138,16 +199,18 @@ export const Editor: React.FC<EditorProps> = ({
           {editor ? (
             <div 
               className="editor-content"
+              onContextMenu={handleContextMenu}
               onClick={(e) => {
-                // Handle context menu
-                if (e.button === 2) { // Right click
-                  setContextMenu({
-                    x: e.clientX,
-                    y: e.clientY,
-                    visible: true,
-                    onSpeakerName: false,
-                    onPageBackground: true,
-                  });
+                // Close context menu on click
+                setLocalContextMenu(prev => ({ ...prev, visible: false }));
+                
+                // Handle editor click for context detection
+                const target = e.target as HTMLElement;
+                const speakerElement = target.closest('[data-type="speaker"]');
+                
+                if (speakerElement) {
+                  console.log('[Editor] Clicked on speaker element:', speakerElement);
+                  // The useEditorCore hook will handle context setting through selection update
                 }
               }}
             >
@@ -166,6 +229,76 @@ export const Editor: React.FC<EditorProps> = ({
           )}
         </div>
       </PageCanvas>
+      
+      {/* Context Menu */}
+      {localContextMenu.visible && (
+        <div 
+          className="context-menu"
+          style={{
+            position: 'fixed',
+            left: `${localContextMenu.x}px`,
+            top: `${localContextMenu.y}px`,
+            background: 'white',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+            zIndex: 1000,
+            minWidth: '200px',
+          }}
+        >
+          {localContextMenu.onPageBackground && (
+            <>
+              <div 
+                className="context-menu-item"
+                style={{
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid #eee',
+                }}
+                onClick={() => handleContextMenuAction('insert-dialogue')}
+              >
+                💬 Insert Dialogue Block
+              </div>
+              <div 
+                className="context-menu-item"
+                style={{
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                }}
+                onClick={() => handleContextMenuAction('toggle-view')}
+              >
+                {viewMode === 'single-page' ? '📄 Multiple Pages View' : '📃 Single Page View'}
+              </div>
+            </>
+          )}
+          
+          {localContextMenu.onSpeakerName && (
+            <>
+              <div 
+                className="context-menu-item"
+                style={{
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid #eee',
+                }}
+                onClick={() => handleContextMenuAction('format-speakers')}
+              >
+                🗣️ Format All Speaker Names
+              </div>
+              <div 
+                className="context-menu-item"
+                style={{
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                }}
+                onClick={() => handleContextMenuAction('change-speaker-color')}
+              >
+                🎨 Change Speaker Color
+              </div>
+            </>
+          )}
+        </div>
+      )}
       
       {/* Floating Toolbar */}
       <Toolbar 

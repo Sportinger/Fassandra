@@ -208,6 +208,8 @@ export const useEditorInstance = ({
   useEffect(() => {
     if (editor && pendingContent && ydoc) {
       console.log("[Editor Content] Setting pending content into editor and Yjs doc");
+      console.log("[Editor Content] Pending content preview:", pendingContent.substring(0, 500) + '...');
+      console.log("[Editor Content] Pending content length:", pendingContent.length);
       
       // Set content directly into the Yjs document (which will sync to TipTap)
       const xmlFragment = ydoc.getXmlFragment('default');
@@ -218,13 +220,32 @@ export const useEditorInstance = ({
         
         // Parse the HTML content and insert into Yjs
         // For now, we'll use the editor's command to set content, which will sync to Yjs
-        editor.commands.setContent(pendingContent);
+        const success = editor.commands.setContent(pendingContent);
+        console.log("[Editor Content] setContent command result:", success);
+        
+        // Check if content was set successfully
+        setTimeout(() => {
+          const currentHTML = editor.getHTML();
+          console.log("[Editor Content] Current editor HTML after setting:", currentHTML.substring(0, 500) + '...');
+          console.log("[Editor Content] Current editor HTML length:", currentHTML.length);
+          
+          // Check if dialogue blocks are present
+          const dialogueBlocks = currentHTML.match(/data-type="dialogue-block"/g);
+          console.log("[Editor Content] Found dialogue blocks:", dialogueBlocks ? dialogueBlocks.length : 0);
+        }, 100);
         
         console.log("[Editor Content] Content set successfully, clearing pending content");
       }, 'setInitialContent');
       
       // Clear pending content
       setPendingContent(null);
+    } else {
+      console.log("[Editor Content] Waiting for editor, pendingContent, or ydoc:", {
+        hasEditor: !!editor,
+        hasPendingContent: !!pendingContent,
+        hasYdoc: !!ydoc,
+        pendingContentLength: pendingContent?.length || 0
+      });
     }
   }, [editor, pendingContent, ydoc, setPendingContent]);
 

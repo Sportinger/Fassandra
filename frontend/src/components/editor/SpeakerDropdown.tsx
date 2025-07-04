@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Editor as EditorInstance } from '@tiptap/react';
-import styles from './Editor.module.css';
+import './styles/toolbar.css';
 
 interface SpeakerDropdownProps {
   editor: EditorInstance | null;
@@ -115,28 +115,29 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
   ];
 
   return (
-    <div className={styles.speakerDropdownContainer} ref={dropdownRef}>
+    <div className="dropdownContainer" ref={dropdownRef}>
       <button
         ref={buttonRef}
-        className={`${styles.toolbarButton} ${isOpen ? styles.active : ''}`}
+        className={`toolbarButton dropdownButton ${isOpen ? 'active' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
         title="Select Speaker"
       >
-        🗣️ {currentSpeaker}
+        <span className="label">🗣️ {currentSpeaker}</span>
+        <span className="arrow">▼</span>
       </button>
       
       {isOpen && (
-        <div className={styles.speakerDropdown}>
-          <div className={styles.speakerDropdownHeader}>
+        <div className="dropdownMenu">
+          <div className="dropdownHeader">
             Select Speaker:
           </div>
           
           {allSpeakers.map((speaker, index) => (
             <button
               key={index}
-              className={`${styles.speakerDropdownItem} ${
-                speaker === currentSpeaker ? styles.active : ''
-              } ${speaker === '+ New Speaker' ? styles.newSpeaker : ''}`}
+              className={`dropdownItem ${
+                speaker === currentSpeaker ? 'active' : ''
+              } ${speaker === '+ New Speaker' ? 'special' : ''}`}
               onClick={() => {
                 if (speaker === '+ New Speaker') {
                   const newSpeaker = prompt('Enter new speaker name:');
@@ -153,7 +154,7 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
           ))}
           
           {speakerList.length === 0 && (
-            <div className={styles.speakerDropdownEmpty}>
+            <div className="dropdownItem">
               No speakers found in script
             </div>
           )}

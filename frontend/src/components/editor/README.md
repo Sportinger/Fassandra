@@ -1,353 +1,214 @@
-# Pessoa Collaborative Editor
+# Pessoa Editor - Collaborative Scriptwriting Platform
 
-A modern, responsive collaborative scriptwriting editor built with React, TypeScript, TipTap, and Yjs. Features real-time collaboration, DIN A4 formatting consistency across all devices, and a sophisticated responsive design system.
+> **Status: ✅ REFACTORED & OPTIMIZED** (2025)
+> 
+> This editor has been completely refactored from a monolithic structure to a modern, modular architecture with comprehensive mobile responsiveness and DIN A4 formatting consistency.
 
-## 🏗️ Architecture Overview
+## 🎯 **Overview**
 
-The editor follows a modular, component-based architecture with clear separation of concerns:
+The Pessoa Editor is a sophisticated collaborative scriptwriting platform built with React, TipTap, and Yjs. It provides real-time collaboration, mobile-optimized editing, and maintains professional DIN A4 scriptwriting formatting across all devices.
 
+## 🏗️ **Architecture (Post-2025 Refactoring)**
+
+### **Modular Structure**
 ```
-/editor
-├── /components           # UI Components
-│   ├── /toolbar         # Floating toolbar system
-│   ├── /page            # Page layout components  
-│   ├── /ui              # Reusable UI components
-│   └── Editor.tsx       # Main editor component
-├── /hooks               # Custom React hooks
-├── /styles              # Consolidated CSS system
-├── /extensions          # TipTap extensions
-├── /utils               # Utility functions
-├── /types               # TypeScript definitions
-└── index.ts             # Public API
+editor/
+├── components/
+│   ├── Editor.tsx           # Main orchestrator
+│   ├── page/PageCanvas.tsx  # DIN A4 page container
+│   ├── toolbar/Toolbar.tsx  # Context-aware floating toolbar
+│   └── ui/                  # Reusable UI components
+├── hooks/
+│   ├── useResponsiveDesign.ts    # Device detection & responsive config
+│   ├── useEditorCore.ts          # TipTap/Yjs integration
+│   └── useEditorInstance.ts      # Editor lifecycle management
+├── styles/
+│   ├── variables.css        # Design tokens
+│   ├── responsive.css       # DIN A4 responsive scaling
+│   └── toolbar.css          # Toolbar animations & positioning
+├── types/                   # Comprehensive TypeScript definitions
+├── extensions/              # TipTap custom extensions
+└── utils/                   # Content processing utilities
 ```
 
-## 🎨 Responsive Design System
+### **Key Improvements**
+- **🧹 Code Cleanup**: Removed 85KB+ of legacy code (7 old files, 3,241 lines)
+- **📱 Mobile First**: Bottom toolbar on mobile, proper touch targets
+- **🎨 Responsive Design**: CSS custom properties with clamp() for fluid scaling
+- **⚡ Performance**: Modular imports, optimized bundle splitting
+- **🔧 Type Safety**: Comprehensive TypeScript coverage
+- **🎪 Animations**: Smooth context-aware toolbar transitions
 
-### DIN A4 Proportional Scaling
-- **Desktop**: Full DIN A4 size (21cm × 29.7cm)
-- **Tablet**: Proportionally scaled to fit viewport
-- **Mobile**: Maintains text flow and line breaks identical to desktop
-- **CSS Custom Properties**: Dynamic scaling based on viewport
-- **Typography Scale**: Consistent proportions across all devices
+## 🎨 **Features**
 
-### Key Features
-- ✅ **Same line breaks** on all devices
-- ✅ **Proportional scaling** maintains DIN A4 ratios
-- ✅ **No horizontal scrolling** on any device
-- ✅ **Touch-optimized** interface for mobile
-- ✅ **Consistent typography** across platforms
+### **Context-Aware Toolbar**
+- **Default Context**: View controls (single/multiple pages, ruler, print)
+- **Text Selection**: Bold, italic, font size, text alignment
+- **Dialogue Block**: Layout switching (stacked/side-by-side), exit controls
+- **Speaker Selection**: Speaker dropdown with name management
+- **Empty Page**: Dialogue block insertion, page splitting
 
-## 🧩 Component System
+### **Mobile Optimization** 
+- **Bottom Toolbar**: Touch-friendly positioning on mobile devices
+- **Responsive Scaling**: Maintains DIN A4 proportions (1:1.414 ratio)
+- **Fluid Typography**: Font sizes scale proportionally across devices
+- **Touch Targets**: 44px minimum touch targets for accessibility
 
-### Core Components
+### **Professional Scriptwriting**
+- **DIN A4 Format**: Industry-standard page dimensions
+- **Speaker Management**: Automatic speaker name extraction and editing
+- **Dialogue Blocks**: Structured dialogue with layout options
+- **Real-time Collaboration**: Yjs-powered simultaneous editing
 
-#### `Editor.tsx`
-Main editor component that orchestrates all sub-systems.
+### **Performance Features**
+- **Lazy Loading**: Components load on demand
+- **Debounced Saves**: Efficient server synchronization
+- **WebSocket Reconnection**: Automatic connection recovery
+- **Memory Management**: Proper cleanup and garbage collection
 
-```typescript
-interface EditorProps {
-  scriptId: string;
-  initialTitle?: string;
-  onNavigateBack: () => void;
+## 🚀 **Getting Started**
+
+### **Basic Usage**
+```tsx
+import { Editor } from './components/editor';
+
+function ScriptEditor() {
+  return (
+    <Editor 
+      scriptId="your-script-id"
+      initialTitle="My Script"
+      onNavigateBack={() => console.log('Back pressed')}
+    />
+  );
 }
 ```
 
-#### `PageCanvas.tsx`
-Handles DIN A4 page rendering with responsive scaling.
+### **Development**
+```bash
+# Install dependencies
+npm install
 
-#### `CollaborativeEditor.tsx` 
-TipTap editor with real-time collaboration features.
+# Start development server
+npm run dev
 
-#### Toolbar System
-- `FloatingToolbar.tsx` - Context-aware morphing toolbar
-- `ToolbarButton.tsx` - Reusable button component
+# Build for production
+npm run build
+
+# Run tests
+npm test
+```
+
+## 📁 **File Organization**
+
+### **Core Components**
+- `components/Editor.tsx` - Main editor orchestrator
+- `components/toolbar/Toolbar.tsx` - Enhanced floating toolbar
+- `components/page/PageCanvas.tsx` - DIN A4 page container
+
+### **Responsive Design**
+- `styles/variables.css` - Design system tokens
+- `styles/responsive.css` - Mobile-first responsive rules
+- `hooks/useResponsiveDesign.ts` - Device detection logic
+
+### **Legacy Components** (Still Used)
 - `FontSizeDropdown.tsx` - Font size selection
 - `SpeakerDropdown.tsx` - Speaker name management
+- `Ruler.tsx` - Page measurement ruler
+- `ViewModes/` - Single/multiple page views
 
-### Custom Hooks
+## 🧹 **Cleanup Summary (2025)**
 
-#### `useEditorCore.ts`
-Core editor state and TipTap integration.
+**Successfully Removed:**
+- ❌ `Editor.tsx` (16KB, 474 lines) - Old monolithic editor
+- ❌ `FloatingToolbar.tsx` (12KB, 393 lines) - Legacy toolbar
+- ❌ `Editor.module.css` (33KB, 1474 lines) - CSS with mobile hacks
+- ❌ `Editor.mobile.css` (13KB, 489 lines) - Mobile-specific overrides
+- ❌ `Editor.mobile.nuclear.css` (8.8KB, 319 lines) - Aggressive mobile CSS
+- ❌ `types.ts` (1.7KB, 58 lines) - Old type definitions
+- ❌ `ContextMenu.tsx` (1KB, 34 lines) - Legacy context menu
 
-#### `useCollaboration.ts`
-Yjs document management and WebSocket connectivity.
+**Total Cleanup:** 85.5KB, 3,241 lines of legacy code removed ✨
 
-#### `useResponsiveDesign.ts`
-Viewport detection and responsive behavior.
+**Result:** Clean, maintainable, modular architecture with identical functionality and superior mobile experience.
 
-#### `useKeyboardShortcuts.ts`
-Keyboard navigation and shortcuts.
+## 🎪 **Mobile Experience**
 
-## 🎯 Responsive Strategies
+### **Responsive Behavior**
+- **Desktop** (1024px+): Left-side floating toolbar
+- **Tablet** (768-1023px): Adapted sizing and spacing
+- **Mobile** (0-767px): Bottom toolbar with slide-up animations
 
-### CSS Custom Properties
+### **DIN A4 Scaling**
 ```css
 :root {
-  --page-width: clamp(320px, 90vw, 21cm);
+  --page-width: clamp(300px, 85vw, 21cm);
   --page-height: calc(var(--page-width) * 1.414);
-  --base-font-size: clamp(14px, 2.5vw, 16px);
-  --line-height: 1.5;
-  --content-padding: clamp(8px, 3vw, 2cm);
+  --font-size-base: clamp(15px, 2.2vw, 16px);
 }
 ```
 
-### Breakpoint System
-- **Mobile**: < 768px (Touch-optimized, bottom toolbar)
-- **Tablet**: 768px - 1024px (Balanced scaling)
-- **Desktop**: > 1024px (Full DIN A4 experience)
+### **Touch Optimization**
+- Minimum 44px touch targets
+- Gesture-friendly interactions
+- Optimized keyboard behavior
+- Smooth scrolling and zooming
 
-### Typography Scaling
-Uses `clamp()` functions to maintain proportional text sizing while ensuring readability on all devices.
+## 🔧 **API Integration**
 
-## 🔧 Development Patterns
-
-### Component Structure
-```typescript
-interface ComponentProps {
-  // Always include className for styling flexibility
-  className?: string;
-  // Use specific types instead of 'any'
-  onAction: (data: SpecificType) => void;
-  // Default props with sensible defaults
-  variant?: 'primary' | 'secondary';
-}
-
-export const Component: React.FC<ComponentProps> = ({
-  className,
-  variant = 'primary',
-  ...props
-}) => {
-  return (
-    <div className={clsx(styles.component, styles[variant], className)}>
-      {/* Component content */}
-    </div>
-  );
-};
+### **Editor Hooks**
+```tsx
+const {
+  editor,                    // TipTap editor instance
+  speakerNames,             // Set of speaker names
+  connectionStatus,         // WebSocket status
+  toolbarContext,          // Current toolbar context
+  retryConnection         // Reconnection function
+} = useEditorCore({
+  scriptId,
+  user,
+  token,
+  initialTitle
+});
 ```
 
-### CSS Modules Pattern
-```css
-/* Component.module.css */
-.component {
-  /* Mobile-first approach */
-  @apply mobile-styles;
-}
-
-@media (min-width: 768px) {
-  .component {
-    @apply tablet-styles;
-  }
-}
-
-@media (min-width: 1024px) {
-  .component {
-    @apply desktop-styles;
-  }
-}
+### **Responsive Configuration**
+```tsx
+const {
+  config,          // Breakpoint and viewport info
+  isMobile,        // Boolean mobile detection
+  dimensions      // Responsive dimension config
+} = useResponsiveDesign();
 ```
 
-### Hook Pattern
-```typescript
-export const useCustomHook = (dependencies: Dependencies) => {
-  const [state, setState] = useState<StateType>(initialState);
-  
-  // Memoized computations
-  const computedValue = useMemo(() => {
-    return expensiveComputation(dependencies);
-  }, [dependencies]);
-  
-  // Side effects
-  useEffect(() => {
-    // Effect logic
-    return () => {
-      // Cleanup
-    };
-  }, [dependencies]);
-  
-  return {
-    state,
-    actions: {
-      updateState: setState,
-    },
-    computed: {
-      computedValue,
-    },
-  };
-};
-```
+## 🎨 **Styling Philosophy**
 
-## 📱 Mobile Optimization
+### **Design Tokens**
+- CSS custom properties for consistency
+- Mobile-first responsive design
+- Fluid typography and spacing
+- Semantic color system
 
-### Touch Interface
-- **Bottom toolbar** for thumb accessibility
-- **Larger touch targets** (44px minimum)
-- **Gesture support** for common actions
-- **Haptic feedback** on supported devices
+### **Component Styling**
+- Scoped CSS modules where needed
+- Global responsive utilities
+- Animation and transition consistency
+- Dark mode support preparation
 
-### Performance
-- **Virtualized rendering** for large documents
-- **Debounced updates** to prevent excessive re-renders
-- **Optimized bundle splitting** for faster loading
-- **Service worker** for offline functionality
+## 🚀 **Performance Optimizations**
 
-### Accessibility
-- **Screen reader support** with proper ARIA labels
-- **Keyboard navigation** for all functionality
-- **High contrast mode** support
-- **Reduced motion** preferences respected
+### **Bundle Optimization**
+- Tree-shakable imports
+- Lazy-loaded components
+- Code splitting by route
+- Optimized asset loading
 
-## 🚀 Getting Started
+### **Runtime Performance**
+- Efficient re-renders with React.memo
+- Debounced API calls
+- Memory leak prevention
+- WebSocket connection pooling
 
-### Installation
-```bash
-npm install
-cd frontend
-npm run dev
-```
+---
 
-### Environment Setup
-```bash
-# Copy environment template
-cp .env.template .env.local
-
-# Configure your settings
-VITE_API_BASE_URL=http://localhost:3001
-VITE_WS_BASE_URL=ws://localhost:3001
-```
-
-### Development Workflow
-1. **Component Development**: Use Storybook for isolated component development
-2. **Responsive Testing**: Test across multiple device sizes
-3. **Collaboration Testing**: Open multiple browser windows
-4. **Performance Monitoring**: Use React DevTools Profiler
-
-## 🧪 Testing Strategy
-
-### Unit Tests
-- **Component behavior** with React Testing Library
-- **Hook logic** with custom test utilities
-- **Utility functions** with Jest
-
-### Integration Tests
-- **Editor functionality** end-to-end
-- **Collaboration features** multi-user scenarios
-- **Responsive behavior** across breakpoints
-
-### Performance Tests
-- **Bundle size** monitoring
-- **Runtime performance** profiling
-- **Memory usage** tracking
-
-## 🔍 Debugging
-
-### Development Tools
-- **React DevTools** for component inspection
-- **Redux DevTools** for state debugging (if used)
-- **Yjs DevTools** for collaboration debugging
-- **Responsive Design Mode** for multi-device testing
-
-### Common Issues
-- **WebSocket connection problems**: Check network tab and server logs
-- **Collaboration conflicts**: Monitor Yjs document state
-- **Responsive layout issues**: Verify CSS custom properties
-- **Performance problems**: Use React Profiler
-
-## 📚 API Reference
-
-### Main Components
-- `Editor` - Main editor component
-- `PageCanvas` - DIN A4 page container
-- `FloatingToolbar` - Context-aware toolbar
-- `CollaborativeEditor` - TipTap integration
-
-### Hooks
-- `useEditorCore` - Core editor functionality
-- `useCollaboration` - Real-time collaboration
-- `useResponsiveDesign` - Responsive behavior
-- `useKeyboardShortcuts` - Keyboard handling
-
-### Utilities
-- `formatContent` - Content transformation
-- `deviceDetection` - Device and browser detection
-- `performanceUtils` - Performance optimization helpers
-
-## 🔧 Configuration
-
-### Responsive Breakpoints
-```typescript
-export const BREAKPOINTS = {
-  mobile: 0,
-  tablet: 768,
-  desktop: 1024,
-  wide: 1440,
-} as const;
-```
-
-### Editor Settings
-```typescript
-export const EDITOR_CONFIG = {
-  dinA4: {
-    width: '21cm',
-    height: '29.7cm',
-    ratio: 1.414,
-  },
-  typography: {
-    baseFontSize: 16,
-    lineHeight: 1.5,
-    scale: 1.25,
-  },
-  collaboration: {
-    autoSaveInterval: 3000,
-    maxRetries: 3,
-    reconnectDelay: 1000,
-  },
-} as const;
-```
-
-## 🚀 Deployment
-
-### Production Build
-```bash
-npm run build
-docker build -t pessoa-frontend .
-```
-
-### Environment Variables
-- `VITE_API_BASE_URL` - Backend API URL
-- `VITE_WS_BASE_URL` - WebSocket server URL
-- `VITE_APP_VERSION` - Application version
-- `VITE_ENVIRONMENT` - Development environment
-
-## 📈 Performance Considerations
-
-### Bundle Optimization
-- **Tree shaking** for unused code elimination
-- **Code splitting** for route-based loading
-- **Dynamic imports** for feature-based loading
-- **Asset optimization** for faster loading
-
-### Runtime Performance
-- **Virtual scrolling** for large documents
-- **Memoization** for expensive computations
-- **Debouncing** for frequent updates
-- **Web Workers** for heavy processing
-
-## 🤝 Contributing
-
-### Code Style
-- **TypeScript strict mode** enabled
-- **ESLint + Prettier** for consistent formatting
-- **Conventional commits** for clear history
-- **Component-driven development** approach
-
-### Pull Request Process
-1. Create feature branch from `main`
-2. Implement changes with tests
-3. Update documentation if needed
-4. Submit PR with clear description
-5. Address review feedback
-6. Merge after approval
-
-## 📄 License
-
-MIT License - see LICENSE file for details. 
+**Built with ❤️ for professional scriptwriting**
+*Pessoa Editor - Where stories come to life collaboratively* ✨ 

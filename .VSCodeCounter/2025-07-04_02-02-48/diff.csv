@@ -1,0 +1,16 @@
+"filename", "language", "TypeScript JSX", "TypeScript", "Markdown", "CSS", "comment", "blank", "total"
+"/home/tbn/pessoa/frontend/src/components/editor/ContextMenu.tsx", "TypeScript JSX", -31, 0, 0, 0, 0, -3, -34
+"/home/tbn/pessoa/frontend/src/components/editor/Editor.mobile.css", "CSS", 0, 0, 0, -315, -90, -84, -489
+"/home/tbn/pessoa/frontend/src/components/editor/Editor.mobile.nuclear.css", "CSS", 0, 0, 0, -238, -31, -50, -319
+"/home/tbn/pessoa/frontend/src/components/editor/Editor.module.css", "CSS", 0, 0, 0, -1166, -103, -205, -1474
+"/home/tbn/pessoa/frontend/src/components/editor/Editor.tsx", "TypeScript JSX", -391, 0, 0, 0, -38, -45, -474
+"/home/tbn/pessoa/frontend/src/components/editor/FloatingToolbar.tsx", "TypeScript JSX", -333, 0, 0, 0, -24, -36, -393
+"/home/tbn/pessoa/frontend/src/components/editor/FontSizeDropdown.tsx", "TypeScript JSX", -1, 0, 0, 0, 0, 0, -1
+"/home/tbn/pessoa/frontend/src/components/editor/README.md", "Markdown", 0, 0, -113, 0, 0, -26, -139
+"/home/tbn/pessoa/frontend/src/components/editor/Ruler.tsx", "TypeScript JSX", -16, 0, 0, 0, -3, -10, -29
+"/home/tbn/pessoa/frontend/src/components/editor/SpeakerDropdown.tsx", "TypeScript JSX", 1, 0, 0, 0, 0, 0, 1
+"/home/tbn/pessoa/frontend/src/components/editor/ViewModes/MultiPageView.tsx", "TypeScript JSX", -32, 0, 0, 0, -6, -5, -43
+"/home/tbn/pessoa/frontend/src/components/editor/ViewModes/SinglePageView.tsx", "TypeScript JSX", -54, 0, 0, 0, -3, -2, -59
+"/home/tbn/pessoa/frontend/src/components/editor/index.ts", "TypeScript", 0, 4, 0, 0, 2, 2, 8
+"/home/tbn/pessoa/frontend/src/components/editor/types.ts", "TypeScript", 0, -49, 0, 0, 0, -9, -58
+"Total", "-", -857, -45, -113, -1719, -296, -473, -3503

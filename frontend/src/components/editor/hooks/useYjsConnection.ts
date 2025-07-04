@@ -128,6 +128,42 @@ export const useYjsConnection = ({
     const persistence = new IndexeddbPersistence(`theater-script-${scriptId}`, currentDoc);
     persistenceRef.current = persistence;
 
+    // Check initial state immediately after creating persistence
+    console.log(`[YJS] Initial persistence state:`, {
+      synced: persistence.synced,
+      isDocEmpty: isYDocEmpty(currentDoc),
+      hasToken: !!token
+    });
+
+    // If already synced, handle it immediately
+    if (persistence.synced) {
+      console.log(`[YJS] Persistence already synced, checking content immediately`);
+      if (isYDocEmpty(currentDoc) && token) {
+        console.log(`[Editor Fetch] Y.Doc empty (immediate check), fetching initial content for script ${scriptId}`);
+        getScriptWithBlocks(token, scriptId)
+          .then(scriptData => {
+            console.log("[Editor Fetch] Received scriptData (immediate):", scriptData);
+            setScriptTitle(scriptData.script.title);
+            setScriptCreationDate(scriptData.script.created_at);
+
+            // Convert blocks to Tiptap content and set
+            const tiptapContent = convertBlocksToTiptapContent(scriptData.blocks);
+            console.log("[Editor Fetch] Converted to TipTap content (immediate):", tiptapContent);
+
+            // Store content to be set when editor is ready
+            setPendingContent(tiptapContent);
+            console.log("[Editor Fetch] Content converted, stored as pending for editor (immediate)");
+          })
+          .catch(error => {
+            console.error("[Editor Fetch] Failed to fetch script content (immediate):", error);
+            setErrorMessage(`Failed to load script: ${error.message}`);
+            setStatus('error');
+          });
+      } else {
+        console.log(`[Editor Fetch] Not fetching content (immediate) - isEmpty: ${isYDocEmpty(currentDoc)}, hasToken: ${!!token}`);
+      }
+    }
+
     // Add YJS document event logging for mobile debugging
     currentDoc.on('update', (update: Uint8Array, origin: any) => {
       console.log(`[YJS] Document update received:`, {
@@ -149,9 +185,9 @@ export const useYjsConnection = ({
 
     persistence.on('synced', (isSynced: boolean) => {
       console.log(`[YJS] IndexedDB sync status: ${isSynced}`);
-      if (isSynced && status !== 'connected') {
-        // Check if content needs fetching AFTER sync
-        if (isYDocEmpty(currentDoc) && token) {
+      if (isSynced && token) {
+        // Check if content needs fetching AFTER sync - regardless of connection status
+        if (isYDocEmpty(currentDoc)) {
           console.log(`[Editor Fetch] Y.Doc empty, fetching initial content for script ${scriptId}`);
           getScriptWithBlocks(token, scriptId)
             .then(scriptData => {
@@ -173,10 +209,14 @@ export const useYjsConnection = ({
               setStatus('error');
             });
         } else {
-          console.log(`[Editor Fetch] Y.Doc not empty or no token, skipping fetch`);
+          console.log(`[Editor Fetch] Y.Doc not empty, skipping fetch. Document has content.`);
         }
+      } else {
+        console.log(`[Editor Fetch] Not fetching content - isSynced: ${isSynced}, hasToken: ${!!token}`);
       }
     });
+
+    console.log(`[YJS] Persistence 'synced' event handler attached`);
 
     // Set up WebSocket provider with auth and mobile fallback
     const roomName = scriptId;

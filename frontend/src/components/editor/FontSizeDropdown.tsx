@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Editor as EditorInstance } from '@tiptap/react';
-import styles from './Editor.module.css';
+import './styles/toolbar.css';
 
 interface FontSizeDropdownProps {
   editor: EditorInstance | null;
@@ -165,9 +165,9 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
     <div 
       ref={dropdownRef}
       className={[
-        styles.fontSizeDropdown,
-        styles.morphingButton,
-        isVisible ? styles.visible : styles.hidden
+        'dropdownContainer',
+        'morphingButton',
+        isVisible ? 'visible' : 'hidden'
       ].filter(Boolean).join(' ')}
       style={{ transitionDelay }}
     >
@@ -175,19 +175,19 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
         ref={buttonRef}
         type="button"
         className={[
-          styles.toolbarButton,
-          styles.fontSizeButton,
-          isOpen ? styles.active : ''
+          'toolbarButton',
+          'dropdownButton',
+          isOpen ? 'active' : ''
         ].filter(Boolean).join(' ')}
         onClick={() => setIsOpen(!isOpen)}
         title="Font Size"
       >
-        <span className={styles.fontSizeDisplay}>
+        <span className="label">
           {currentSize}
         </span>
         <span className={[
-          styles.dropdownArrow,
-          isOpen ? styles.open : ''
+          'arrow',
+          isOpen ? 'open' : ''
         ].filter(Boolean).join(' ')}>
           ▼
         </span>
@@ -195,18 +195,17 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
 
       {isOpen && (
         <div className={[
-          styles.fontSizeMenu,
-          styles.dropdownEnter,
-          styles[`position-${dropdownPosition}`]
+          'dropdownMenu',
+          `position-${dropdownPosition}`
         ].filter(Boolean).join(' ')}>
-          <div className={styles.fontSizeList}>
+          <div className="dropdownList">
             {FONT_SIZES.map((size) => (
               <button
                 key={size}
                 type="button"
                 className={[
-                  styles.fontSizeOption,
-                  currentSize === size ? styles.selected : ''
+                  'dropdownItem',
+                  currentSize === size ? 'active' : ''
                 ].filter(Boolean).join(' ')}
                 onClick={() => handleFontSizeChange(size)}
                 style={{ fontSize: `${Math.min(size, 18)}px` }}

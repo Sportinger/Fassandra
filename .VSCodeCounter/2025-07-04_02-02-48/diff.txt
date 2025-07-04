@@ -1,0 +1,47 @@
+Date : 2025-07-04 02:02:48
+Directory : /home/tbn/pessoa
+Total : 14 files,  -2734 codes, -296 comments, -473 blanks, all -3503 lines
+
+Languages
++----------------+------------+------------+------------+------------+------------+
+| language       | files      | code       | comment    | blank      | total      |
++----------------+------------+------------+------------+------------+------------+
+| TypeScript     |          2 |        -45 |          2 |         -7 |        -50 |
+| Markdown       |          1 |       -113 |          0 |        -26 |       -139 |
+| TypeScript JSX |          8 |       -857 |        -74 |       -101 |     -1,032 |
+| CSS            |          3 |     -1,719 |       -224 |       -339 |     -2,282 |
++----------------+------------+------------+------------+------------+------------+
+
+Directories
++------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                         | files      | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                            |         14 |     -2,734 |       -296 |       -473 |     -3,503 |
+| frontend                                                                     |         14 |     -2,734 |       -296 |       -473 |     -3,503 |
+| frontend/src                                                                 |         14 |     -2,734 |       -296 |       -473 |     -3,503 |
+| frontend/src/components                                                      |         14 |     -2,734 |       -296 |       -473 |     -3,503 |
+| frontend/src/components/editor                                               |         14 |     -2,734 |       -296 |       -473 |     -3,503 |
+| frontend/src/components/editor (Files)                                       |         12 |     -2,648 |       -287 |       -466 |     -3,401 |
+| frontend/src/components/editor/ViewModes                                     |          2 |        -86 |         -9 |         -7 |       -102 |
++------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
+| filename                                                                     | language       | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
+| /home/tbn/pessoa/frontend/src/components/editor/ContextMenu.tsx              | TypeScript JSX |        -31 |          0 |         -3 |        -34 |
+| /home/tbn/pessoa/frontend/src/components/editor/Editor.mobile.css            | CSS            |       -315 |        -90 |        -84 |       -489 |
+| /home/tbn/pessoa/frontend/src/components/editor/Editor.mobile.nuclear.css    | CSS            |       -238 |        -31 |        -50 |       -319 |
+| /home/tbn/pessoa/frontend/src/components/editor/Editor.module.css            | CSS            |     -1,166 |       -103 |       -205 |     -1,474 |
+| /home/tbn/pessoa/frontend/src/components/editor/Editor.tsx                   | TypeScript JSX |       -391 |        -38 |        -45 |       -474 |
+| /home/tbn/pessoa/frontend/src/components/editor/FloatingToolbar.tsx          | TypeScript JSX |       -333 |        -24 |        -36 |       -393 |
+| /home/tbn/pessoa/frontend/src/components/editor/FontSizeDropdown.tsx         | TypeScript JSX |         -1 |          0 |          0 |         -1 |
+| /home/tbn/pessoa/frontend/src/components/editor/README.md                    | Markdown       |       -113 |          0 |        -26 |       -139 |
+| /home/tbn/pessoa/frontend/src/components/editor/Ruler.tsx                    | TypeScript JSX |        -16 |         -3 |        -10 |        -29 |
+| /home/tbn/pessoa/frontend/src/components/editor/SpeakerDropdown.tsx          | TypeScript JSX |          1 |          0 |          0 |          1 |
+| /home/tbn/pessoa/frontend/src/components/editor/ViewModes/MultiPageView.tsx  | TypeScript JSX |        -32 |         -6 |         -5 |        -43 |
+| /home/tbn/pessoa/frontend/src/components/editor/ViewModes/SinglePageView.tsx | TypeScript JSX |        -54 |         -3 |         -2 |        -59 |
+| /home/tbn/pessoa/frontend/src/components/editor/index.ts                     | TypeScript     |          4 |          2 |          2 |          8 |
+| /home/tbn/pessoa/frontend/src/components/editor/types.ts                     | TypeScript     |        -49 |          0 |         -9 |        -58 |
+| Total                                                                        |                |     -2,734 |       -296 |       -473 |     -3,503 |
++------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
