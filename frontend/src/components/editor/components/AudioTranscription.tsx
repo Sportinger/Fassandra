@@ -88,11 +88,14 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [audioLevel, setAudioLevel] = useState<number>(0);
   const [isAudioActive, setIsAudioActive] = useState<boolean>(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('en-US');
+  const [microphoneGain, setMicrophoneGain] = useState<number>(1.0);
   
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const matchHighlightRef = useRef<HTMLElement | null>(null);
   const shouldRestartRef = useRef<boolean>(false);
+  const restartTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -183,17 +186,22 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
     }
   }, [isActive, isSupported, selectedDevice]);
 
-  // Initialize audio level monitoring
+  // Initialize audio level monitoring with optimized microphone settings
   const initializeAudioMonitoring = useCallback(async (deviceId: string) => {
     try {
+      // Use optimized audio constraints for better sensitivity
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { 
           deviceId: deviceId ? { exact: deviceId } : undefined,
           echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
+          noiseSuppression: false,  // Disable to capture more audio
+          autoGainControl: true,    // Enable automatic gain
+          sampleRate: 48000,        // Higher sample rate
+          channelCount: 1           // Mono for better processing
         }
       });
+      
+      console.log('🎤 🔧 Setting up optimized audio monitoring...');
       
       streamRef.current = stream;
       
@@ -201,8 +209,12 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
       const analyser = audioContext.createAnalyser();
       const microphone = audioContext.createMediaStreamSource(stream);
       
+      // Configure analyser for better sensitivity
       analyser.fftSize = 2048;
-      analyser.smoothingTimeConstant = 0.8;
+      analyser.smoothingTimeConstant = 0.3; // Lower for more responsive detection
+      analyser.minDecibels = -90;           // Lower threshold for quiet sounds
+      analyser.maxDecibels = -10;           // Higher threshold for loud sounds
+      
       microphone.connect(analyser);
       
       audioContextRef.current = audioContext;
@@ -218,7 +230,15 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
           const level = Math.round((average / 255) * 100);
           
           setAudioLevel(level);
-          setIsAudioActive(level > 5);
+          setIsAudioActive(level > 3); // Lower threshold for detection
+          
+          // Enhanced logging for debugging
+          if (frameCount % 60 === 0 && level > 3) {
+            console.log(`🎤 📊 Audio level: ${level}% (threshold for speech: >20%)`);
+            if (level < 20) {
+              console.log('🎤 💡 Audio level too low - try speaking louder or adjusting microphone settings');
+            }
+          }
           
           frameCount++;
           animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
@@ -232,6 +252,33 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
       setError(`Failed to initialize audio monitoring: ${error.message}`);
       return null;
     }
+  }, []);
+
+  // Restart speech recognition with debouncing
+  const restartSpeechRecognition = useCallback(() => {
+    if (!shouldRestartRef.current) {
+      console.log('🎤 Restart cancelled - shouldRestart is false');
+      return;
+    }
+    
+    // Clear any existing restart timeout
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
+    }
+    
+    // Schedule restart with debouncing
+    restartTimeoutRef.current = setTimeout(() => {
+      if (recognitionRef.current && shouldRestartRef.current) {
+        try {
+          console.log('🎤 🔄 Restarting speech recognition...');
+          recognitionRef.current.start();
+        } catch (error) {
+          console.log('🎤 ❌ Failed to restart recognition:', error);
+        }
+      }
+      restartTimeoutRef.current = null;
+    }, 1000); // Single 1-second delay
   }, []);
 
   // Initialize speech recognition
@@ -249,11 +296,20 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = 'en-US';
+      recognition.lang = selectedLanguage;
       recognition.maxAlternatives = 1;
+      
+      // Additional debugging and configuration
+      console.log('🎤 Speech recognition configuration:', {
+        continuous: recognition.continuous,
+        interimResults: recognition.interimResults,
+        lang: recognition.lang,
+        maxAlternatives: recognition.maxAlternatives
+      });
       
       recognition.onstart = () => {
         console.log('🎤 ✅ Speech recognition started successfully');
+        console.log('🎤 📊 Audio levels are being detected, waiting for speech...');
       };
       
       recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -301,18 +357,9 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
         
         if (event.error === 'no-speech') {
           console.log('🎤 No speech detected, will restart...');
-          if (shouldRestartRef.current) {
-            setTimeout(() => {
-              if (recognitionRef.current && shouldRestartRef.current) {
-                try {
-                  console.log('🎤 Restarting speech recognition...');
-                  recognitionRef.current.start();
-                } catch (error) {
-                  console.log('🎤 Failed to restart recognition:', error);
-                }
-              }
-            }, 1000);
-          }
+          console.log('🎤 💡 TIP: Try speaking louder, clearer, and closer to the microphone');
+          console.log('🎤 💡 TIP: Try saying something like "Hello, this is a test" clearly');
+          restartSpeechRecognition();
         } else {
           console.log('🎤 Setting error:', event.error);
           setError(`Speech recognition error: ${event.error}`);
@@ -322,17 +369,8 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
       recognition.onend = () => {
         console.log('🎤 Speech recognition ended');
         if (shouldRestartRef.current) {
-          console.log('🎤 Will restart recognition in 500ms...');
-          setTimeout(() => {
-            if (recognitionRef.current && shouldRestartRef.current) {
-              try {
-                console.log('🎤 Restarting speech recognition from onend...');
-                recognitionRef.current.start();
-              } catch (error) {
-                console.log('🎤 Failed to restart recognition from onend:', error);
-              }
-            }
-          }, 500);
+          console.log('🎤 Will restart recognition...');
+          restartSpeechRecognition();
         }
       };
       
@@ -341,7 +379,7 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
       setError(`Failed to initialize speech recognition: ${error.message}`);
       return null;
     }
-  }, [isSupported, editor]);
+  }, [isSupported, editor, restartSpeechRecognition, selectedLanguage]);
 
   // Find best match function
   const findBestMatch = (transcribedText: string, editor: EditorInstance): TranscriptionMatch | null => {
@@ -413,6 +451,12 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
       setIsListening(false);
       shouldRestartRef.current = false;
       
+      // Clear restart timeout
+      if (restartTimeoutRef.current) {
+        clearTimeout(restartTimeoutRef.current);
+        restartTimeoutRef.current = null;
+      }
+      
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         recognitionRef.current = null;
@@ -444,17 +488,17 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
       // Start listening
       setError(null);
       
-      try {
-        const stream = await initializeAudioMonitoring(selectedDevice);
-        if (!stream) return;
-        
-        const recognition = initializeSpeechRecognition();
-        if (!recognition) return;
-        
-                 recognitionRef.current = recognition;
+             try {
+         const stream = await initializeAudioMonitoring(selectedDevice);
+         if (!stream) return;
+         
+         const recognition = initializeSpeechRecognition();
+         if (!recognition) return;
+         
+         recognitionRef.current = recognition;
          shouldRestartRef.current = true;
          
-         console.log('🎤 Starting speech recognition...');
+         console.log('🎤 Starting speech recognition with optimized audio settings...');
          recognition.start();
          console.log('🎤 Recognition.start() called, setting listening to true');
          setIsListening(true);
@@ -468,6 +512,9 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (restartTimeoutRef.current) {
+        clearTimeout(restartTimeoutRef.current);
+      }
       if (recognitionRef.current) {
         recognitionRef.current.stop();
       }
@@ -549,6 +596,51 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
                 <option value="">No microphones found</option>
               )}
             </select>
+            
+            <label htmlFor="audio-language" style={{ marginTop: '15px' }}>Speech Language:</label>
+            <select
+              id="audio-language"
+              value={selectedLanguage}
+              onChange={(e) => setSelectedLanguage(e.target.value)}
+              disabled={isListening}
+            >
+              <option value="en-US">English (US)</option>
+              <option value="en-GB">English (UK)</option>
+              <option value="en-AU">English (Australia)</option>
+              <option value="en-CA">English (Canada)</option>
+              <option value="de-DE">German</option>
+              <option value="fr-FR">French</option>
+              <option value="es-ES">Spanish</option>
+              <option value="it-IT">Italian</option>
+              <option value="pt-PT">Portuguese</option>
+              <option value="ru-RU">Russian</option>
+            </select>
+            
+            <label htmlFor="microphone-gain" style={{ marginTop: '15px' }}>
+              Microphone Sensitivity: {microphoneGain.toFixed(1)}x
+            </label>
+            <input
+              type="range"
+              id="microphone-gain"
+              min="0.5"
+              max="3.0"
+              step="0.1"
+              value={microphoneGain}
+              onChange={(e) => setMicrophoneGain(parseFloat(e.target.value))}
+              disabled={isListening}
+              style={{ width: '100%', marginTop: '5px' }}
+            />
+            <div style={{ 
+              fontSize: '11px', 
+              color: '#6c757d', 
+              marginTop: '5px',
+              display: 'flex',
+              justifyContent: 'space-between'
+            }}>
+              <span>Quiet</span>
+              <span>Normal</span>
+              <span>Loud</span>
+            </div>
           </div>
           
           <div className="audio-transcription-controls">
@@ -563,6 +655,28 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
                 <>🎤 Start Listening</>
               )}
             </button>
+            
+            {!isListening && audioLevel < 20 && audioLevel > 0 && (
+              <div style={{ 
+                marginTop: '15px', 
+                padding: '10px', 
+                backgroundColor: '#fff3cd', 
+                borderRadius: '6px',
+                fontSize: '12px',
+                textAlign: 'left'
+              }}>
+                <div style={{ fontWeight: 'bold', color: '#856404' }}>⚠️ Low Microphone Level</div>
+                <div style={{ marginTop: '5px', color: '#856404' }}>
+                  Your microphone level is {audioLevel}%, but Chrome needs 20%+ for speech recognition.
+                  <br/>
+                  <strong>Try:</strong>
+                  <br/>• Speaking much louder
+                  <br/>• Moving closer to your microphone
+                  <br/>• Adjusting system microphone volume
+                  <br/>• Increasing sensitivity above ⬆️
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Audio Level Indicator */}
