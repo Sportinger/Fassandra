@@ -37,6 +37,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const [visibleButtons, setVisibleButtons] = useState<Set<string>>(new Set());
   const [previousContext, setPreviousContext] = useState<ToolbarContext>('default');
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const timeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
   // Handle window resize for responsive toolbar height
@@ -48,6 +49,111 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Virtual keyboard detection for mobile
+  useEffect(() => {
+    // Only enable on mobile devices
+    if (windowWidth > 767) {
+      setKeyboardHeight(0);
+      return;
+    }
+
+    let initialViewportHeight = window.innerHeight;
+    let initialVisualViewportHeight = window.visualViewport?.height || window.innerHeight;
+
+    // Detect iOS Safari
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+
+    const detectKeyboard = () => {
+      // Use Visual Viewport API if available (modern browsers)
+      if (window.visualViewport) {
+        const currentVisualHeight = window.visualViewport.height;
+        const heightDifference = initialVisualViewportHeight - currentVisualHeight;
+        
+        console.log('[Mobile Keyboard] Visual Viewport detection:', {
+          initial: initialVisualViewportHeight,
+          current: currentVisualHeight,
+          difference: heightDifference,
+          isIOS,
+          isSafari
+        });
+
+        // Adjust threshold for iOS Safari (can have smaller changes)
+        const threshold = isIOS && isSafari ? 100 : 150;
+        const keyboardVisible = heightDifference > threshold;
+        setKeyboardHeight(keyboardVisible ? heightDifference : 0);
+      } else {
+        // Fallback: detect via window.innerHeight changes
+        const currentHeight = window.innerHeight;
+        const heightDifference = initialViewportHeight - currentHeight;
+        
+        console.log('[Mobile Keyboard] Window height detection:', {
+          initial: initialViewportHeight,
+          current: currentHeight,
+          difference: heightDifference,
+          isIOS,
+          isSafari
+        });
+
+        // Adjust threshold for iOS
+        const threshold = isIOS ? 100 : 150;
+        const keyboardVisible = heightDifference > threshold;
+        setKeyboardHeight(keyboardVisible ? heightDifference : 0);
+      }
+    };
+
+    // Listen for viewport changes
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', detectKeyboard);
+    }
+    
+    // Fallback resize listener
+    window.addEventListener('resize', detectKeyboard);
+
+    // Special handling for iOS Safari
+    if (isIOS && isSafari) {
+      // iOS Safari also needs focusin/focusout events
+      const handleFocusIn = () => {
+        setTimeout(detectKeyboard, 300); // Delay for keyboard animation
+      };
+      
+      const handleFocusOut = () => {
+        setTimeout(() => {
+          setKeyboardHeight(0);
+        }, 300); // Delay for keyboard animation
+      };
+      
+      document.addEventListener('focusin', handleFocusIn);
+      document.addEventListener('focusout', handleFocusOut);
+      
+      return () => {
+        document.removeEventListener('focusin', handleFocusIn);
+        document.removeEventListener('focusout', handleFocusOut);
+        if (window.visualViewport) {
+          window.visualViewport.removeEventListener('resize', detectKeyboard);
+        }
+        window.removeEventListener('resize', detectKeyboard);
+      };
+    }
+
+    // Also listen for orientationchange
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => {
+        initialViewportHeight = window.innerHeight;
+        initialVisualViewportHeight = window.visualViewport?.height || window.innerHeight;
+        detectKeyboard();
+      }, 500); // Delay to allow orientation to complete
+    });
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', detectKeyboard);
+      }
+      window.removeEventListener('resize', detectKeyboard);
+      window.removeEventListener('orientationchange', detectKeyboard);
+    };
+  }, [windowWidth]);
 
   // Clear all pending timeouts
   const clearAllTimeouts = () => {
@@ -394,13 +500,36 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     return null;
   }
 
+  // Calculate dynamic bottom position for mobile keyboard adjustment
+  const isMobile = windowWidth <= 767;
+  const keyboardActive = isMobile && keyboardHeight > 0;
+  const calculatedBottom = keyboardActive ? keyboardHeight + 80 : 24; // 80px above keyboard for full visibility
+  
+  const dynamicStyle = isMobile ? {
+    height: `${toolbarHeight}px`,
+    transition: 'height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), bottom 0.3s ease-out',
+    '--calculated-bottom': `${calculatedBottom}px`,
+    bottom: keyboardActive 
+      ? `${calculatedBottom}px` // Above keyboard
+      : `var(--space-lg)` // Default position
+  } : {
+    height: `${toolbarHeight}px`,
+    transition: 'height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)' // easeOutQuad
+  };
+
+  console.log('[Mobile Toolbar] Render styling:', {
+    isMobile,
+    keyboardHeight,
+    keyboardActive,
+    toolbarHeight,
+    calculatedBottom,
+    bottomPosition: keyboardActive ? `${calculatedBottom}px` : 'default'
+  });
+
   return (
     <div 
-      className={`floatingToolbar morphingToolbar context-${currentContext} ${className}`}
-      style={{
-        height: `${toolbarHeight}px`,
-        transition: 'height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)' // easeOutQuad
-      }}
+      className={`floatingToolbar morphingToolbar context-${currentContext} ${keyboardActive ? 'keyboard-active' : ''} ${className}`}
+      style={dynamicStyle}
     >
       {contextButtons.map((button, index) => {
         const isVisible = visibleButtons.has(button.id);

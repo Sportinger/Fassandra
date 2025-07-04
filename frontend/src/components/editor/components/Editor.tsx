@@ -49,6 +49,11 @@ export const Editor: React.FC<EditorProps> = ({
   // Local UI state
   const [viewMode, setViewMode] = useState<ViewMode>('single-page');
   const [showRuler, setShowRuler] = useState(false);
+
+  // Debug ruler state
+  useEffect(() => {
+    console.log('[Editor] showRuler state changed:', showRuler);
+  }, [showRuler]);
   const [localContextMenu, setLocalContextMenu] = useState<{
     x: number;
     y: number;
