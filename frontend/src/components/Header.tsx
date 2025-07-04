@@ -9,6 +9,7 @@ interface HeaderProps {
   scriptTitle?: string;
   onNavigateToScripts?: () => void;
   onThumbnailsRefreshed?: () => void;
+  activeUserCount?: number;
   // Layout management props (only for editor view)
   layouts?: ScriptLayout[];
   currentLayout?: ScriptLayout | null;
@@ -89,11 +90,49 @@ const useTypewriter = (targetText: string, speed: number = 400) => {
   return displayText;
 };
 
+// Custom hook for animating number counts
+const useAnimatedNumber = (targetNumber: number, duration: number = 300) => {
+  const [displayNumber, setDisplayNumber] = useState(targetNumber);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    if (targetNumber === displayNumber || isAnimating) return;
+
+    setIsAnimating(true);
+    const startNumber = displayNumber;
+    const difference = targetNumber - startNumber;
+    const startTime = Date.now();
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Ease out for smooth deceleration
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      
+      const currentNumber = Math.round(startNumber + difference * easeOut);
+      setDisplayNumber(currentNumber);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        setDisplayNumber(targetNumber);
+        setIsAnimating(false);
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [targetNumber, displayNumber, isAnimating, duration]);
+
+  return displayNumber;
+};
+
 export const Header: React.FC<HeaderProps> = ({ 
   currentView = 'scripts', 
   scriptTitle, 
   onNavigateToScripts,
   onThumbnailsRefreshed,
+  activeUserCount = 0,
   layouts = [],
   currentLayout,
   onLayoutChange,
@@ -111,6 +150,14 @@ export const Header: React.FC<HeaderProps> = ({
     : `PESSOA / Scripts / ${scriptTitle || ''}`;
 
   const animatedBreadcrumb = useTypewriter(targetBreadcrumb, 400);
+  
+  // Animate the user count for smooth transitions
+  const animatedUserCount = useAnimatedNumber(activeUserCount, 300);
+  
+  // Build the user display text based on count
+  const userDisplayText = animatedUserCount > 0 
+    ? `${animatedUserCount} + ${user?.username || user?.email || 'User'}`
+    : user?.username || user?.email || 'User';
 
   const handleLogout = () => {
     setToken(null);
@@ -208,7 +255,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* User menu on the right */}
       <div className={styles.menuContainer}>
-        <span className={styles.username}>{user?.username}</span>
+        <span className={styles.username}>{userDisplayText}</span>
         <button className={styles.menuButton} onClick={() => setIsMenuOpen(!isMenuOpen)}>
           ☰
         </button>

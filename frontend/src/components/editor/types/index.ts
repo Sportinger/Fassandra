@@ -206,6 +206,7 @@ export interface UseEditorCoreProps {
   initialTitle?: string;
 }
 
+// Return type for useEditorCore hook
 export interface UseEditorCoreReturn {
   // Core editor instance
   editor: TipTapEditor | null;
@@ -215,9 +216,10 @@ export interface UseEditorCoreReturn {
   provider: WebsocketProvider | null;
   
   // Content state
-  scriptTitle: string | null;
+  scriptTitle: string;
   scriptCreationDate: string | null;
   speakerNames: Set<string>;
+  activeUserCount: number;
   
   // Connection state
   connectionStatus: ConnectionStatus;
@@ -229,7 +231,7 @@ export interface UseEditorCoreReturn {
   
   // Actions
   setScriptTitle: (title: string) => void;
-  setContextMenu: (menu: ContextMenu | ((prev: ContextMenu) => ContextMenu)) => void;
+  setContextMenu: (menu: ContextMenu) => void;
   setToolbarContext: (context: ToolbarContext) => void;
   retryConnection: () => void;
 }

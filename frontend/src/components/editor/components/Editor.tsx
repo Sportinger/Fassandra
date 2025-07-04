@@ -11,6 +11,7 @@ import { useEditorCore } from '../hooks/useEditorCore';
 import { PageCanvas } from './page/PageCanvas';
 import { Toolbar } from './toolbar/Toolbar';
 import { LoadingSpinner } from './ui/LoadingSpinner';
+import { SinglePageView, MultiPageView } from '../ViewModes';
 // import { ErrorDisplay } from './ui/ErrorDisplay';
 // import { StatusIndicator } from './ui/StatusIndicator';
 import type { EditorProps, ViewMode } from '../types';
@@ -35,6 +36,7 @@ export const Editor: React.FC<EditorProps> = ({
     connectionStatus,
     errorMessage,
     speakerNames,
+    activeUserCount,
     contextMenu,
     toolbarContext,
     setContextMenu,
@@ -54,6 +56,11 @@ export const Editor: React.FC<EditorProps> = ({
   useEffect(() => {
     console.log('[Editor] showRuler state changed:', showRuler);
   }, [showRuler]);
+  
+  // Debug view mode changes
+  useEffect(() => {
+    console.log('[Editor] viewMode changed to:', viewMode);
+  }, [viewMode]);
   const [localContextMenu, setLocalContextMenu] = useState<{
     x: number;
     y: number;
@@ -187,6 +194,7 @@ export const Editor: React.FC<EditorProps> = ({
         onLayoutChange={() => {}} // TODO: Implement
         onCreateNewLayout={async () => {}} // TODO: Implement
         onSaveLayout={async () => {}} // TODO: Implement
+        activeUserCount={activeUserCount}
       />
       
       {/* Status indicator for mobile */}
@@ -197,10 +205,9 @@ export const Editor: React.FC<EditorProps> = ({
         </div>
       )}
       
-      {/* Main editor content */}
-      <PageCanvas showRuler={showRuler}>
-        {/* TipTap Editor with DIN A4 responsive design */}
-        <div className="dinA4Page">
+      {/* Main editor content with ViewMode support */}
+      {viewMode === 'single-page' ? (
+        <SinglePageView showRuler={showRuler}>
           {editor ? (
             <div 
               className="editor-content"
@@ -232,8 +239,42 @@ export const Editor: React.FC<EditorProps> = ({
               <p>Initializing collaborative editor...</p>
             </div>
           )}
-        </div>
-      </PageCanvas>
+        </SinglePageView>
+      ) : (
+        <MultiPageView showRuler={showRuler}>
+          {editor ? (
+            <div 
+              className="editor-content"
+              onContextMenu={handleContextMenu}
+              onClick={(e) => {
+                // Close context menu on click
+                setLocalContextMenu(prev => ({ ...prev, visible: false }));
+                
+                // Handle editor click for context detection
+                const target = e.target as HTMLElement;
+                const speakerElement = target.closest('[data-type="speaker"]');
+                
+                if (speakerElement) {
+                  console.log('[Editor] Clicked on speaker element:', speakerElement);
+                  // The useEditorCore hook will handle context setting through selection update
+                }
+              }}
+            >
+              {/* This is where the TipTap editor content will render */}
+              <div ref={(node) => {
+                if (node && editor && !node.contains(editor.options.element)) {
+                  node.appendChild(editor.options.element);
+                }
+              }} />
+            </div>
+          ) : (
+            <div className="editor-loading">
+              <LoadingSpinner size="lg" />
+              <p>Initializing collaborative editor...</p>
+            </div>
+          )}
+        </MultiPageView>
+      )}
       
       {/* Context Menu */}
       {localContextMenu.visible && (

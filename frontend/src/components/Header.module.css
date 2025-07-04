@@ -85,6 +85,9 @@
   font-size: 0.9rem;
   font-weight: 500;
   color: var(--color-text-secondary);
+  transition: all 0.3s ease;
+  font-variant-numeric: tabular-nums; /* Ensures numbers don't jump around */
+  min-width: fit-content; /* Prevent layout shifts */
 }
 
 .menuButton {

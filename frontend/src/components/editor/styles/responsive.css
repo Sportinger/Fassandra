@@ -30,6 +30,60 @@ html, body {
   background: var(--color-background-secondary, #f8fafc);
 }
 
+/* ===== VIEW MODE CONTAINERS ===== */
+
+.single-page-view {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: var(--content-padding-y) var(--content-padding-x);
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  
+  /* Adjust for toolbar on desktop */
+  padding-left: calc(var(--content-padding-x) + var(--toolbar-width) + var(--space-lg));
+}
+
+.multi-page-view {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: var(--content-padding-y) var(--content-padding-x);
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  
+  /* Adjust for toolbar on desktop */
+  padding-left: calc(var(--content-padding-x) + var(--toolbar-width) + var(--space-lg));
+}
+
+.multiplePagesContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  align-items: center;
+  width: 100%;
+  max-width: var(--page-width);
+}
+
+.multiplePage {
+  margin-bottom: var(--space-xl);
+  position: relative;
+}
+
+.multiplePage:last-child {
+  margin-bottom: 0;
+}
+
 /* ===== PAGE CANVAS - DIN A4 RESPONSIVE CONTAINER ===== */
 
 .pageCanvas {
@@ -195,6 +249,22 @@ html, body {
     
     /* Minimal padding for edge-to-edge feel */
     padding: var(--space-md);
+  }
+  
+  .single-page-view, .multi-page-view {
+    /* Remove toolbar padding on mobile */
+    padding-left: var(--content-padding-x);
+    
+    /* Minimal padding for edge-to-edge feel */
+    padding: var(--space-md);
+  }
+  
+  .multiplePagesContainer {
+    gap: var(--space-lg);
+  }
+  
+  .multiplePage {
+    margin-bottom: var(--space-lg);
   }
   
   .dinA4Page {

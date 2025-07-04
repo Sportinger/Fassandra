@@ -49,6 +49,7 @@ export const useEditorCore = ({
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('uninitialized');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pendingContent, setPendingContent] = useState<string | null>(null);
+  const [activeUserCount, setActiveUserCount] = useState<number>(0);
   
   // UI state
   const [contextMenu, setContextMenu] = useState<ContextMenu>({
@@ -371,11 +372,26 @@ export const useEditorCore = ({
       const checkCursorState = () => {
         const collaborationCursor = editor.storage.collaborationCursor;
         if (collaborationCursor && collaborationCursor.users) {
-          const userCount = Object.keys(collaborationCursor.users).length;
-          if (userCount > 0) {
-            console.log('[Collaboration Cursor] Active users with cursors:', userCount);
-            console.log('[Collaboration Cursor] User details:', collaborationCursor.users);
+          const allUsers = Object.keys(collaborationCursor.users);
+          const currentUserName = user?.name || user?.email || 'Anonymous';
+          
+          // Filter out the current user from the count
+          const otherUsers = allUsers.filter(userId => {
+            const userData = collaborationCursor.users[userId];
+            return userData && userData.name !== currentUserName;
+          });
+          
+          const otherUsersCount = otherUsers.length;
+          
+          // Count only OTHER users (not including current user)
+          setActiveUserCount(otherUsersCount);
+          
+          if (otherUsersCount > 0) {
+            console.log('[Collaboration Cursor] Other active users:', otherUsersCount);
           }
+        } else {
+          // No other users are active
+          setActiveUserCount(0);
         }
       };
       
@@ -383,6 +399,9 @@ export const useEditorCore = ({
       const interval = setInterval(checkCursorState, 5000);
       
       return () => clearInterval(interval);
+    } else {
+      // Not connected, so no other users
+      setActiveUserCount(0);
     }
   }, [editor, provider, connectionStatus]);
 
@@ -582,6 +601,7 @@ export const useEditorCore = ({
     scriptTitle,
     scriptCreationDate,
     speakerNames,
+    activeUserCount,
     
     // Connection state
     connectionStatus,

@@ -13,11 +13,11 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
   showRuler,
   className = ''
 }) => {
-  console.log('[SinglePageView] Received showRuler:', showRuler);
+  console.log('[SinglePageView] Rendering with showRuler:', showRuler);
   
   // Side effect for logging when ruler should render
   if (showRuler) {
-    console.log('[SinglePageView] Rendering Ruler component');
+    console.log('[SinglePageView] Ruler should be visible');
   }
   
   return (
