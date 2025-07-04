@@ -36,7 +36,18 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const [visibleButtons, setVisibleButtons] = useState<Set<string>>(new Set());
   const [previousContext, setPreviousContext] = useState<ToolbarContext>('default');
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const timeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set());
+
+  // Handle window resize for responsive toolbar height
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Clear all pending timeouts
   const clearAllTimeouts = () => {
@@ -316,21 +327,54 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     };
   }, []);
 
-  // Calculate dynamic toolbar height based on visible buttons
+  // Calculate dynamic toolbar height based on visible buttons and device
   const toolbarHeight = useMemo(() => {
     const visibleCount = visibleButtons.size;
-    const buttonHeight = 40;
-    const gap = 8;
-    const padding = 24; // 12px top + 12px bottom
     
-    if (visibleCount === 0) return 64; // Minimum height
+    // Check if we're on mobile using the state that updates on resize
+    const isMobile = windowWidth <= 767;
     
-    // Add separators for text-selection context
-    const separatorCount = currentContext === 'text-selection' ? 2 : 0;
-    const separatorHeight = separatorCount * (1 + gap); // 1px height + gap
-    
-    return (visibleCount * buttonHeight) + ((visibleCount - 1) * gap) + separatorHeight + padding;
-  }, [visibleButtons.size, currentContext]);
+    if (isMobile) {
+      // Mobile: horizontal layout - height is just button height + padding
+      const mobileButtonHeight = 44; // Touch-optimized
+      const mobilePadding = 16; // 8px top + 8px bottom (--space-sm * 2)
+      const finalHeight = mobileButtonHeight + mobilePadding;
+      console.log('[Mobile Toolbar] Height calculation:', {
+        windowWidth,
+        isMobile,
+        visibleCount,
+        mobileButtonHeight,
+        mobilePadding,
+        finalHeight
+      });
+      return finalHeight;
+    } else {
+      // Desktop: vertical layout - stack buttons
+      const buttonHeight = 40;
+      const gap = 8;
+      const padding = 24; // 12px top + 12px bottom
+      
+      if (visibleCount === 0) return 64; // Minimum height
+      
+      // Add separators for text-selection context
+      const separatorCount = currentContext === 'text-selection' ? 2 : 0;
+      const separatorHeight = separatorCount * (1 + gap); // 1px height + gap
+      
+      const finalHeight = (visibleCount * buttonHeight) + ((visibleCount - 1) * gap) + separatorHeight + padding;
+      console.log('[Desktop Toolbar] Height calculation:', {
+        windowWidth,
+        isMobile,
+        visibleCount,
+        buttonHeight,
+        gap,
+        padding,
+        separatorCount,
+        separatorHeight,
+        finalHeight
+      });
+      return finalHeight;
+    }
+  }, [visibleButtons.size, currentContext, windowWidth]);
 
   // Render separator between button groups (only for text-selection)
   const shouldShowSeparatorAfter = (button: ToolbarButton, index: number): boolean => {
