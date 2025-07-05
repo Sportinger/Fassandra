@@ -3,28 +3,38 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import fs from 'fs';
 
-// Check if SSL dev certificates exist
-const sslKeyPath = './ssl/dev-key.pem';
-const sslCertPath = './ssl/dev-cert.pem';
-const hasSSLCerts = fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath);
+// Check for SSL certificates in multiple locations
+const sslPaths = [
+  { key: './ssl/dev-key.pem', cert: './ssl/dev-cert.pem' },
+  { key: './ssl/dev/key.pem', cert: './ssl/dev/cert.pem' },
+  { key: '/app/ssl/dev/key.pem', cert: '/app/ssl/dev/cert.pem' }
+];
+
+let sslConfig = null;
+for (const paths of sslPaths) {
+  if (fs.existsSync(paths.key) && fs.existsSync(paths.cert)) {
+    sslConfig = {
+      key: fs.readFileSync(paths.key),
+      cert: fs.readFileSync(paths.cert),
+    };
+    break;
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), VitePWA({ registerType: 'autoUpdate' })],
   server: {
-    port: 8081,     // Using port 8081 for consistency
-    host: true,     // erlaubt Zugriff vom Host auf den Container
-    allowedHosts: process.env.VITE_APP_DOMAIN ? [process.env.VITE_APP_DOMAIN] : ['localhost'],
-    // Only use HTTPS if SSL certificates exist (local development)
-    ...(hasSSLCerts && {
-    https: {
-        key: fs.readFileSync(sslKeyPath),
-        cert: fs.readFileSync(sslCertPath),
-    },
+    port: 8080,     // Standard port for hot reload
+    host: true,     // Allow access from host to container
+    allowedHosts: process.env.VITE_APP_DOMAIN ? [process.env.VITE_APP_DOMAIN] : ['localhost', '192.168.2.111'],
+    // Use HTTPS if SSL certificates exist
+    ...(sslConfig && {
+      https: sslConfig,
     }),
     watch: {
-      usePolling: true,  // Docker-sicheres File-Watching
-      interval: 500,     // optional: Polling-Intervall (ms)
+      usePolling: true,  // Docker-safe file watching
+      interval: 500,     // Polling interval (ms)
     },
     // Proxy API requests to backend in development mode
     // Use Docker service name for container-to-container communication
