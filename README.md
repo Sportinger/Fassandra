@@ -394,25 +394,26 @@ Once the application is running:
 
 | Path                                          | Purpose                                             |
 |-----------------------------------------------|-----------------------------------------------------|
+| **Core Application**                          |                                                     |
 | `backend/`                                    | Rust/Axum API, WebSocket server, AI logic          |
 | `frontend/`                                   | React/TypeScript UI, Tiptap editor, Yjs integration |
-| **Production Deployment**                     |                                                     |
-| `.github/workflows/deploy.yml`                | GitHub Actions CI/CD pipeline for automated deployment |
-| `docker-compose.hetzner-github-actions.yml`   | Production Docker Compose using pre-built images   |
-| `env.hetzner-github-actions.template`         | Production environment variables template           |
-| `setup_hetzner_deployment.sh`                 | Automated production server setup script           |
-| **Local Development**                         |                                                     |
-| `docker-compose.yml`                          | Local development with hot-reload                   |
-| `docker-compose.https.yml`                    | Local HTTPS development configuration               |
-| `frontend/nginx-https.conf`                   | HTTPS nginx configuration with proxy rules         |
-| `frontend/Dockerfile.https`                   | Docker configuration for HTTPS frontend            |
-| `env.exact.copy.md`                           | Environment variables template                      |
-| `generate-ssl-certs-domain.sh`                | SSL certificate generation script                   |
-| `setup-https.sh`                              | Automated HTTPS setup script                       |
-| **Documentation & Assets**                    |                                                     |
-| `doc/`                                        | Advanced documentation, notes                       |
-| `img/`                                        | Logos, screenshots                                  |
-| `helper/`                                     | Utility scripts (like rebuild, start)              |
+| **Configuration**                             |                                                     |
+| `docker-compose.yml`                          | Local development with HTTPS                        |
+| `docker-compose.prod.yml`                     | Production deployment                               |
+| `env.example`                                 | Local development environment template              |
+| `env.production`                              | Production environment template                     |
+| `.gitignore`                                  | Git configuration                                   |
+| **Project Management**                        |                                                     |
+| `README.md`                                   | Main project documentation                          |
+| `.github/`                                    | CI/CD workflows and GitHub Actions                  |
+| `package.json`                                | Root dependencies                                   |
+| `Cargo.toml`                                  | Rust workspace configuration                        |
+| **Documentation**                             |                                                     |
+| `docs/`                                       | Deployment guides and setup documentation           |
+| **Archive**                                   |                                                     |
+| `archive/`                                    | Development tools, testing, legacy docs, assets    |
+
+> 📦 **Archive Note**: Development tools, testing utilities, legacy documentation, and assets have been moved to the `archive/` directory to keep the main project structure clean and focused. See `archive/README.md` for details on what's available and how to use archived items.
 
 ## Architecture Overview
 

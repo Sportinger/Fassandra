@@ -1,3 +1,0 @@
-# First, make sure DATABASE_URL points to your local database
-export DATABASE_URL=postgres://pessoa_user:theater@localhost:5432/pessoa_db
-# See if your local postgresql is up. You might need to close it for building or runnning the containers.
