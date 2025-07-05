@@ -9,14 +9,6 @@ dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-# Editor directories and files
-.idea/
-.vscode/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
 
 # Rust
 target/
@@ -32,12 +24,8 @@ Thumbs.db
 
 # Build artifacts
 /build/
-/dist/
 *.zip
 *.tar.*
-
-# Optional Static files
-/static # If generated/copied during build
 
 # Test output files
 *_test_output.log
@@ -54,4 +42,13 @@ frontend/coverage/
 # Local database files
 *.db
 *.sqlite
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 

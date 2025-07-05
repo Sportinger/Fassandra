@@ -1,89 +1,96 @@
-# 🏠 LOCAL DEVELOPMENT ENVIRONMENT
-# Simple, clean setup for local development with HTTPS
+# Production Docker Compose for Hetzner Server
+# Uses pre-built images from container registry
 
 services:
   db:
     image: postgres:15
-    container_name: ${CONTAINER_PREFIX:-dev_}pessoa_db
+    container_name: ${CONTAINER_PREFIX}pessoa_db
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pessoa_pgdata:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT}:${DB_INTERNAL_PORT}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    networks:
+      - pessoa_network
 
   backend:
-    container_name: ${CONTAINER_PREFIX:-dev_}pessoa_backend
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: builder
+    container_name: ${CONTAINER_PREFIX}pessoa_backend
     environment:
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_API_URL: ${GEMINI_API_URL}
-      BACKEND_PORT: 3001
+      BACKEND_PORT: ${BACKEND_INTERNAL_PORT:-3001}
       APP_DOMAIN: ${APP_DOMAIN}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
       DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-10}
       RUST_LOG: ${RUST_LOG:-info}
     ports:
-      - "${BACKEND_PORT:-3001}:3001"
+      - "${BACKEND_PORT}:${BACKEND_INTERNAL_PORT}"
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-      - cargo_cache:/usr/local/cargo/registry
-      - target_cache:/app/target
-    command: ["sh", "-c", "cargo-watch -q -x 'run --bin backend'"]
     restart: unless-stopped
+    networks:
+      - pessoa_network
 
   frontend:
-    container_name: ${CONTAINER_PREFIX:-dev_}pessoa_frontend
     build:
       context: ./frontend
-      dockerfile: Dockerfile.local
+      dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL}
         VITE_WS_BASE_URL: ${VITE_WS_BASE_URL}
+    container_name: ${CONTAINER_PREFIX}pessoa_frontend
+    volumes:
+      # Mount SSL certificates from host
+      - ${SSL_CERT_PATH}:/etc/ssl/certs/server.crt:ro
+      - ${SSL_KEY_PATH}:/etc/ssl/private/server.key:ro
     ports:
-      - "${FRONTEND_PORT:-8080}:80"         # HTTP
-      - "${FRONTEND_HTTPS_PORT:-8443}:443"  # HTTPS
+      - "${FRONTEND_PORT:-80}:80"           # HTTP (redirect to HTTPS)
+      - "${FRONTEND_HTTPS_PORT:-443}:443"   # HTTPS
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      - pessoa_network
 
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: ${CONTAINER_PREFIX:-dev_}pessoa_pgadmin
+    container_name: ${CONTAINER_PREFIX}pessoa_pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
       - "${PGADMIN_PORT:-5050}:80"
     volumes:
-      - pgadmin_data:/var/lib/pgadmin
+      - pessoa_pgadmin_data:/var/lib/pgadmin
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - pessoa_network
 
 volumes:
-  postgres_data:
-    name: ${CONTAINER_PREFIX:-dev_}postgres_data
-  cargo_cache:
-    name: ${CONTAINER_PREFIX:-dev_}cargo_cache
-  target_cache:
-    name: ${CONTAINER_PREFIX:-dev_}target_cache
-  pgadmin_data:
-    name: ${CONTAINER_PREFIX:-dev_}pgadmin_data 
+  pessoa_pgdata:
+    name: ${CONTAINER_PREFIX}pessoa_pgdata
+  pessoa_pgadmin_data:
+    name: ${CONTAINER_PREFIX}pessoa_pgadmin_data
+
+networks:
+  pessoa_network:
+    name: ${CONTAINER_PREFIX}pessoa_network
+    driver: bridge 

@@ -17,10 +17,10 @@ export default defineConfig({
     allowedHosts: process.env.VITE_APP_DOMAIN ? [process.env.VITE_APP_DOMAIN] : ['localhost'],
     // Only use HTTPS if SSL certificates exist (local development)
     ...(hasSSLCerts && {
-      https: {
+    https: {
         key: fs.readFileSync(sslKeyPath),
         cert: fs.readFileSync(sslCertPath),
-      },
+    },
     }),
     watch: {
       usePolling: true,  // Docker-sicheres File-Watching
