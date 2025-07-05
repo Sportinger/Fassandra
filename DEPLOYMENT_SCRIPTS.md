@@ -1,19 +1,29 @@
-# 🚀 Deployment Scripts
+# 🚀 Enhanced Deployment Scripts
 
-This project now has **two separate deployment scripts** that handle environment switching automatically:
+This project has **two powerful deployment scripts** with flexible parameters for different development scenarios:
 
-## 🏠 Local Development: `./deploy_local.sh`
+## 🏠 Local Development: `./deploy_local.sh [target] [options]`
 
-**What it does:**
-- Automatically creates `.env.local` with local development settings
-- Uses `docker-compose.yml` 
-- Sets up local URLs (`localhost:8080`, `localhost:3001`)
-- Optionally cleans up old containers/volumes
-- Tests endpoints after deployment
+**Targets:**
+- `all` - Rebuild everything (default)
+- `frontend` - Rebuild just frontend
+- `backend` - Rebuild just backend  
+- `db` - Reset database only
 
-**Usage:**
+**Options:**
+- `--no-cache` - Force rebuild without Docker cache
+- `--reset-db` - Reset database (drop volumes)
+- `--clean` - Clean up old containers/images first
+- `--help` - Show usage information
+
+**Usage Examples:**
 ```bash
-./deploy_local.sh
+./deploy_local.sh                           # Default: rebuild all, keep DB
+./deploy_local.sh all --reset-db --no-cache # Full rebuild + DB reset + no cache
+./deploy_local.sh frontend --no-cache       # Just frontend, no cache
+./deploy_local.sh backend                   # Just backend, with cache
+./deploy_local.sh db --reset                # Just reset database
+./deploy_local.sh all --clean               # Full rebuild + cleanup
 ```
 
 **Endpoints after deployment:**
@@ -22,29 +32,29 @@ This project now has **two separate deployment scripts** that handle environment
 - Backend API: https://192.168.2.111:8443/api
 - PgAdmin: http://localhost:5050
 
-## 🌐 Hetzner Production: `./deploy_hetzner.sh`
+## 🌐 Hetzner Production: `./deploy_hetzner.sh [target] [options]`
 
-**What it does:**
-- Automatically creates `.env.hetzner` with production settings
-- Uses `docker-compose.prod.yml`
-- Sets up production URLs (`pessoa.theater`)
-- Handles build → push → deploy workflow
-- Can run locally (build/push) or on server (deploy only)
+**Targets:**
+- `all` - Rebuild everything (default)
+- `frontend` - Rebuild just frontend
+- `backend` - Rebuild just backend
+- `db` - Reset database only
 
-**Usage:**
+**Options:**
+- `--no-cache` - Force rebuild without Docker cache
+- `--reset-db` - Reset database (drop volumes)
+- `--clean` - Clean up old containers/images first
+- `--deploy-only` - Skip build/push, deploy only (for server)
+- `--help` - Show usage information
 
-### From your local machine (full deployment):
+**Usage Examples:**
 ```bash
-./deploy_hetzner.sh
-```
-This will:
-1. Build images locally
-2. Optionally push to GitHub Container Registry
-3. Optionally deploy to Hetzner server via SSH
-
-### On Hetzner server (deploy only):
-```bash
-./deploy_hetzner.sh --deploy-only
+./deploy_hetzner.sh                           # Default: rebuild all, keep DB
+./deploy_hetzner.sh all --reset-db --no-cache # Full rebuild + DB reset + no cache
+./deploy_hetzner.sh frontend --no-cache       # Just frontend, no cache
+./deploy_hetzner.sh backend                   # Just backend, with cache
+./deploy_hetzner.sh db --reset                # Just reset database
+./deploy_hetzner.sh all --clean               # Full rebuild + cleanup
 ```
 
 **Endpoints after deployment:**

@@ -1,11 +1,72 @@
 #!/bin/bash
 
-# Local Development Deployment Script
-# Usage: ./deploy_local.sh
+# Enhanced Local Development Deployment Script
+# Usage: ./deploy_local.sh [target] [options]
 
 set -e
 
+# Default values
+TARGET="all"
+NO_CACHE=false
+RESET_DB=false
+CLEAN=false
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        all|frontend|backend|db)
+            TARGET="$1"
+            shift
+            ;;
+        --no-cache)
+            NO_CACHE=true
+            shift
+            ;;
+        --reset-db)
+            RESET_DB=true
+            shift
+            ;;
+        --clean)
+            CLEAN=true
+            shift
+            ;;
+        --help)
+            echo "🏠 Local Development Deployment Script"
+            echo ""
+            echo "Usage: ./deploy_local.sh [target] [options]"
+            echo ""
+            echo "Targets:"
+            echo "  all        Rebuild everything (default)"
+            echo "  frontend   Rebuild just frontend"
+            echo "  backend    Rebuild just backend"
+            echo "  db         Reset database only"
+            echo ""
+            echo "Options:"
+            echo "  --no-cache   Force rebuild without Docker cache"
+            echo "  --reset-db   Reset database (drop volumes)"
+            echo "  --clean      Clean up old containers/images first"
+            echo "  --help       Show this help message"
+            echo ""
+            echo "Examples:"
+            echo "  ./deploy_local.sh                           # Default: rebuild all, keep DB"
+            echo "  ./deploy_local.sh all --reset-db --no-cache # Full rebuild + DB reset + no cache"
+            echo "  ./deploy_local.sh frontend --no-cache       # Just frontend, no cache"
+            echo "  ./deploy_local.sh backend                   # Just backend, with cache"
+            echo "  ./deploy_local.sh db --reset                # Just reset database"
+            echo "  ./deploy_local.sh all --clean               # Full rebuild + cleanup"
+            exit 0
+            ;;
+        *)
+            echo "❌ Unknown parameter: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
 echo "🏠 Starting Local Development Deployment..."
+echo "📋 Target: $TARGET"
+echo "🔧 Options: no-cache=$NO_CACHE, reset-db=$RESET_DB, clean=$CLEAN"
 
 # Check if we're in the right directory
 if [ ! -f "docker-compose.yml" ]; then
@@ -52,22 +113,55 @@ ENVIRONMENT=development
 RUST_LOG=debug
 EOF
 
-# Stop any existing containers
+# Stop existing containers
 echo "📦 Stopping existing containers..."
 docker-compose --env-file .env.local down 2>/dev/null || true
 
-# Clean up old containers and volumes if requested
-read -p "🧹 Clean up old containers and volumes? (y/N): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+# Clean up if requested
+if [ "$CLEAN" = true ]; then
     echo "🧹 Cleaning up old containers and volumes..."
     docker-compose --env-file .env.local down -v --remove-orphans 2>/dev/null || true
     docker system prune -f
 fi
 
-# Build images
-echo "🔨 Building local images..."
-docker-compose --env-file .env.local build --no-cache
+# Reset database if requested
+if [ "$RESET_DB" = true ]; then
+    echo "🗄️ Resetting database volumes..."
+    docker-compose --env-file .env.local down -v 2>/dev/null || true
+    docker volume rm dev_postgres_data 2>/dev/null || true
+fi
+
+# Handle database-only reset
+if [ "$TARGET" = "db" ]; then
+    echo "🗄️ Resetting database only..."
+    docker-compose --env-file .env.local down 2>/dev/null || true
+    docker volume rm dev_postgres_data 2>/dev/null || true
+    docker-compose --env-file .env.local up -d db
+    echo "✅ Database reset complete!"
+    exit 0
+fi
+
+# Set build options
+BUILD_OPTS=""
+if [ "$NO_CACHE" = true ]; then
+    BUILD_OPTS="--no-cache"
+fi
+
+# Build based on target
+case $TARGET in
+    "all")
+        echo "🔨 Building all services..."
+        docker-compose --env-file .env.local build $BUILD_OPTS
+        ;;
+    "frontend")
+        echo "🔨 Building frontend only..."
+        docker-compose --env-file .env.local build $BUILD_OPTS frontend
+        ;;
+    "backend")
+        echo "🔨 Building backend only..."
+        docker-compose --env-file .env.local build $BUILD_OPTS backend
+        ;;
+esac
 
 # Start services
 echo "🚀 Starting local services..."

@@ -1,11 +1,77 @@
 #!/bin/bash
 
-# Hetzner Production Deployment Script (NON-INTERACTIVE)
-# Usage: ./deploy_hetzner.sh
+# Enhanced Hetzner Production Deployment Script
+# Usage: ./deploy_hetzner.sh [target] [options]
 
 set -e
 
-echo "🌐 Starting Hetzner Production Deployment (Automatic)..."
+# Default values
+TARGET="all"
+NO_CACHE=false
+RESET_DB=false
+CLEAN=false
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        all|frontend|backend|db)
+            TARGET="$1"
+            shift
+            ;;
+        --no-cache)
+            NO_CACHE=true
+            shift
+            ;;
+        --reset-db)
+            RESET_DB=true
+            shift
+            ;;
+        --clean)
+            CLEAN=true
+            shift
+            ;;
+        --deploy-only)
+            DEPLOY_ONLY=true
+            shift
+            ;;
+        --help)
+            echo "🌐 Hetzner Production Deployment Script"
+            echo ""
+            echo "Usage: ./deploy_hetzner.sh [target] [options]"
+            echo ""
+            echo "Targets:"
+            echo "  all        Rebuild everything (default)"
+            echo "  frontend   Rebuild just frontend"
+            echo "  backend    Rebuild just backend"
+            echo "  db         Reset database only"
+            echo ""
+            echo "Options:"
+            echo "  --no-cache     Force rebuild without Docker cache"
+            echo "  --reset-db     Reset database (drop volumes)"
+            echo "  --clean        Clean up old containers/images first"
+            echo "  --deploy-only  Skip build/push, deploy only (for server)"
+            echo "  --help         Show this help message"
+            echo ""
+            echo "Examples:"
+            echo "  ./deploy_hetzner.sh                           # Default: rebuild all, keep DB"
+            echo "  ./deploy_hetzner.sh all --reset-db --no-cache # Full rebuild + DB reset + no cache"
+            echo "  ./deploy_hetzner.sh frontend --no-cache       # Just frontend, no cache"
+            echo "  ./deploy_hetzner.sh backend                   # Just backend, with cache"
+            echo "  ./deploy_hetzner.sh db --reset                # Just reset database"
+            echo "  ./deploy_hetzner.sh all --clean               # Full rebuild + cleanup"
+            exit 0
+            ;;
+        *)
+            echo "❌ Unknown parameter: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+echo "🌐 Starting Hetzner Production Deployment..."
+echo "📋 Target: $TARGET"
+echo "🔧 Options: no-cache=$NO_CACHE, reset-db=$RESET_DB, clean=$CLEAN"
 
 # Check if we're in the right directory
 if [ ! -f "docker-compose.prod.yml" ]; then
@@ -52,40 +118,83 @@ IMAGE_TAG=latest
 EOF
 
 # Check if we're running locally (for build and push) or on server (for deploy only)
-if [ "$1" = "--deploy-only" ]; then
+if [ "$DEPLOY_ONLY" = true ]; then
     echo "🚀 Deploy-only mode: Skipping build and push..."
-    DEPLOY_ONLY=true
 else
     echo "🔨 Full deployment: Will build, push, and deploy..."
-    DEPLOY_ONLY=false
 fi
 
-if [ "$DEPLOY_ONLY" = false ]; then
-    # Build production images locally (using runtime stage for smaller images)
-    echo "🔨 Building production images locally..."
-    
-    # Build backend with runtime stage (small optimized image)
-    echo "🔨 Building backend (runtime stage)..."
-    docker build -f backend/Dockerfile --target runtime -t pessoa-1-backend:latest ./backend
-    
-    # Build frontend (production with HTTPS)
-    echo "🔨 Building frontend (production with HTTPS)..."
-    docker build -f frontend/Dockerfile.prod \
-        --build-arg VITE_API_BASE_URL=https://pessoa.theater \
-        --build-arg VITE_WS_BASE_URL=wss://pessoa.theater/api/collab \
-        -t pessoa-1-frontend:latest ./frontend
+if [ "$DEPLOY_ONLY" != true ]; then
+    # Clean up if requested
+    if [ "$CLEAN" = true ]; then
+        echo "🧹 Cleaning up old containers and images..."
+        docker system prune -f
+    fi
+
+    # Set build options
+    BUILD_OPTS=""
+    if [ "$NO_CACHE" = true ]; then
+        BUILD_OPTS="--no-cache"
+    fi
+
+    # Build production images locally based on target
+    case $TARGET in
+        "all")
+            echo "🔨 Building all production images locally..."
+            
+            # Build backend with runtime stage (small optimized image)
+            echo "🔨 Building backend (runtime stage)..."
+            docker build $BUILD_OPTS -f backend/Dockerfile --target runtime -t pessoa-1-backend:latest ./backend
+            
+            # Build frontend (production with HTTPS)
+            echo "🔨 Building frontend (production with HTTPS)..."
+            docker build $BUILD_OPTS -f frontend/Dockerfile.prod \
+                --build-arg VITE_API_BASE_URL=https://pessoa.theater \
+                --build-arg VITE_WS_BASE_URL=wss://pessoa.theater/api/collab \
+                -t pessoa-1-frontend:latest ./frontend
+            ;;
+        "frontend")
+            echo "🔨 Building frontend only (production with HTTPS)..."
+            docker build $BUILD_OPTS -f frontend/Dockerfile.prod \
+                --build-arg VITE_API_BASE_URL=https://pessoa.theater \
+                --build-arg VITE_WS_BASE_URL=wss://pessoa.theater/api/collab \
+                -t pessoa-1-frontend:latest ./frontend
+            ;;
+        "backend")
+            echo "🔨 Building backend only (runtime stage)..."
+            docker build $BUILD_OPTS -f backend/Dockerfile --target runtime -t pessoa-1-backend:latest ./backend
+            ;;
+        "db")
+            echo "🗄️ Database-only deployment - skipping image builds..."
+            ;;
+    esac
     
     # Tag and push to registry (GitHub Container Registry) - AUTOMATIC
-    echo "🏷️  Tagging and pushing images to GitHub Container Registry..."
-    
-    # Tag images for GitHub Container Registry
-    docker tag pessoa-1-backend:latest ghcr.io/sportinger/pessoa-backend:latest
-    docker tag pessoa-1-frontend:latest ghcr.io/sportinger/pessoa-frontend:latest
-    
-    echo "🔑 Pushing images to GitHub Container Registry..."
-    docker push ghcr.io/sportinger/pessoa-backend:latest
-    docker push ghcr.io/sportinger/pessoa-frontend:latest
-    echo "✅ Images pushed to registry!"
+    if [ "$TARGET" != "db" ]; then
+        echo "🏷️  Tagging and pushing images to GitHub Container Registry..."
+        
+        # Tag and push based on what was built
+        case $TARGET in
+            "all")
+                docker tag pessoa-1-backend:latest ghcr.io/sportinger/pessoa-backend:latest
+                docker tag pessoa-1-frontend:latest ghcr.io/sportinger/pessoa-frontend:latest
+                echo "🔑 Pushing both images to GitHub Container Registry..."
+                docker push ghcr.io/sportinger/pessoa-backend:latest
+                docker push ghcr.io/sportinger/pessoa-frontend:latest
+                ;;
+            "frontend")
+                docker tag pessoa-1-frontend:latest ghcr.io/sportinger/pessoa-frontend:latest
+                echo "🔑 Pushing frontend image to GitHub Container Registry..."
+                docker push ghcr.io/sportinger/pessoa-frontend:latest
+                ;;
+            "backend")
+                docker tag pessoa-1-backend:latest ghcr.io/sportinger/pessoa-backend:latest
+                echo "🔑 Pushing backend image to GitHub Container Registry..."
+                docker push ghcr.io/sportinger/pessoa-backend:latest
+                ;;
+        esac
+        echo "✅ Images pushed to registry!"
+    fi
     
     # Deploy to Hetzner server - AUTOMATIC
     echo "📡 Deploying to Hetzner server..."
@@ -95,8 +204,12 @@ if [ "$DEPLOY_ONLY" = false ]; then
     scp docker-compose.prod.yml roman@pessoa.theater:/opt/pessoa/
     scp deploy_hetzner.sh roman@pessoa.theater:/opt/pessoa/
     
-    # Run deployment on server
-    ssh roman@pessoa.theater "cd /opt/pessoa && chmod +x deploy_hetzner.sh && ./deploy_hetzner.sh --deploy-only"
+    # Run deployment on server with same parameters
+    DEPLOY_CMD="cd /opt/pessoa && chmod +x deploy_hetzner.sh && ./deploy_hetzner.sh $TARGET --deploy-only"
+    if [ "$RESET_DB" = true ]; then
+        DEPLOY_CMD="$DEPLOY_CMD --reset-db"
+    fi
+    ssh roman@pessoa.theater "$DEPLOY_CMD"
     
 else
     # Deploy-only mode (run this on the server) - AUTOMATIC
@@ -106,9 +219,36 @@ else
     echo "📦 Stopping existing production containers..."
     docker-compose -f docker-compose.prod.yml --env-file .env down 2>/dev/null || true
     
-    # Pull latest images from registry - AUTOMATIC
+    # Reset database if requested
+    if [ "$RESET_DB" = true ]; then
+        echo "🗄️ Resetting database volumes..."
+        docker-compose -f docker-compose.prod.yml --env-file .env down -v 2>/dev/null || true
+        docker volume rm prod_postgres_data 2>/dev/null || true
+    fi
+    
+    # Handle database-only reset
+    if [ "$TARGET" = "db" ]; then
+        echo "🗄️ Resetting database only..."
+        docker-compose -f docker-compose.prod.yml --env-file .env down 2>/dev/null || true
+        docker volume rm prod_postgres_data 2>/dev/null || true
+        docker-compose -f docker-compose.prod.yml --env-file .env up -d db
+        echo "✅ Database reset complete!"
+        exit 0
+    fi
+    
+    # Pull latest images from registry - AUTOMATIC (only what's needed)
     echo "📥 Pulling latest images from registry..."
-    docker-compose -f docker-compose.prod.yml --env-file .env pull
+    case $TARGET in
+        "all")
+            docker-compose -f docker-compose.prod.yml --env-file .env pull
+            ;;
+        "frontend")
+            docker-compose -f docker-compose.prod.yml --env-file .env pull frontend
+            ;;
+        "backend")
+            docker-compose -f docker-compose.prod.yml --env-file .env pull backend
+            ;;
+    esac
     
     # Start production services
     echo "🚀 Starting production services..."
@@ -146,7 +286,7 @@ else
     
     echo ""
     echo "🎉 Hetzner deployment complete!"
-    echo "🌐 Frontend: https://pessoa.theater (or http://pessoa.theater)"
+    echo "�� Frontend: https://pessoa.theater (or http://pessoa.theater)"
     echo "🔧 Backend API: https://pessoa.theater/api (or http://pessoa.theater/api)"
     echo "🗄️  PgAdmin: http://pessoa.theater:5050"
     echo ""
