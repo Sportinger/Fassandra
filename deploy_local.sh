@@ -36,7 +36,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --help)
-            echo "🏠 Local Development Deployment Script"
+            echo "🏠 Local Development Deployment Script for Pessoa"
             echo ""
             echo "Usage: ./deploy_local.sh [target] [options]"
             echo ""
@@ -50,25 +50,34 @@ while [[ $# -gt 0 ]]; do
             echo "  --no-cache     Force rebuild without Docker cache"
             echo "  --reset-db     Reset database (drop volumes)"
             echo "  --clean        Clean up old containers/images first"
-            echo "  --hot-reload   Enable full hot reload for frontend (dev server)"
+            echo "  --hot-reload   Enable Vite dev server (faster iteration)"
             echo "  --help         Show this help message"
             echo ""
             echo "Examples:"
-            echo "  ./deploy_local.sh                           # Default: rebuild all, keep DB"
+            echo "  ./deploy_local.sh                           # HTTPS production mode (recommended)"
             echo "  ./deploy_local.sh all --reset-db --no-cache # Full rebuild + DB reset + no cache"
-            echo "  ./deploy_local.sh frontend --hot-reload     # Frontend with hot reload dev server"
+            echo "  ./deploy_local.sh frontend --hot-reload     # Hot reload dev mode (mixed content)"
             echo "  ./deploy_local.sh backend                   # Just backend, with cache"
-            echo "  ./deploy_local.sh db --reset                # Just reset database"
-            echo "  ./deploy_local.sh all --clean --hot-reload  # Full rebuild + cleanup + hot reload"
+            echo "  ./deploy_local.sh db --reset-db             # Reset database only"
+            echo "  ./deploy_local.sh all --clean               # Full clean rebuild"
             echo ""
-            echo "🎯 Target-Specific Behavior:"
-            echo "  all:      Stops/starts all containers"
-            echo "  specific: Only stops/rebuilds target container, others keep running"
+            echo "🎯 Development Modes:"
+            echo "  Default (HTTPS): Production-like with nginx, SSL, and API proxy"
+            echo "    ✅ Full HTTPS security, no mixed content issues"
+            echo "    ✅ Tests complete authentication and proxy flow"
+            echo "    ❌ Slower frontend rebuilds (requires container restart)"
             echo ""
-            echo "🔥 Hot Reload Options:"
-            echo "  Default:      Frontend builds static files (faster startup)"
-            echo "  --hot-reload: Frontend runs Vite dev server (instant changes)"
-            echo "  Backend:      Always has hot reload with cargo-watch"
+            echo "  Hot Reload:      Development mode with instant frontend changes"
+            echo "    ✅ Instant frontend updates on file save"
+            echo "    ✅ Faster development iteration"
+            echo "    ⚠️  Mixed content warnings (HTTP/HTTPS)"
+            echo "    ❌ Doesn't test production HTTPS flow"
+            echo ""
+            echo "🔧 Backend: Always has hot reload with cargo-watch in both modes"
+            echo ""
+            echo "🌐 Access URLs:"
+            echo "  HTTPS Mode:    https://192.168.2.111:8443 (secure, recommended)"
+            echo "  Hot Reload:    http://192.168.2.111:8444 (dev only)"
             exit 0
             ;;
         *)
@@ -109,19 +118,22 @@ VITE_WS_BASE_URL=wss://192.168.2.111:8443/api/collab
 CORS_ORIGINS=https://192.168.2.111:8443,http://192.168.2.111:8080,http://localhost:8080,https://localhost:8443
 ALLOWED_ORIGINS=https://192.168.2.111:8443,http://192.168.2.111:8080,http://localhost:8080,https://localhost:8443
 
-# Database configuration
-DATABASE_URL=postgresql://postgres:password@db:5432/pessoa_db
+# Database configuration (corrected credentials)
+DATABASE_URL=postgresql://pessoa_user:dev_password_123@db:5432/pessoa_db
 POSTGRES_DB=pessoa_db
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=password
+POSTGRES_USER=pessoa_user
+POSTGRES_PASSWORD=dev_password_123
 
 # PgAdmin configuration
 PGADMIN_DEFAULT_EMAIL=admin@pessoa.local
 PGADMIN_DEFAULT_PASSWORD=admin123
 
-# SSL (optional for local - will use if certificates exist)
-SSL_CERT_PATH=./ssl/localhost.pem
-SSL_KEY_PATH=./ssl/localhost-key.pem
+# Security
+JWT_SECRET=your-super-secret-jwt-key-for-local-development-only-min-32-chars
+
+# AI Integration (optional for basic functionality)
+GEMINI_API_KEY=your-gemini-api-key-here
+GEMINI_API_URL=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent
 
 # Environment
 ENVIRONMENT=development
@@ -130,6 +142,23 @@ RUST_LOG=debug
 # Hot reload configuration
 HOT_RELOAD_MODE=$HOT_RELOAD
 EOF
+
+# Generate SSL certificates if they don't exist
+echo "🔐 Setting up SSL certificates..."
+mkdir -p frontend/ssl/certs frontend/ssl/private
+
+if [ ! -f "frontend/ssl/certs/server.crt" ] || [ ! -f "frontend/ssl/private/server.key" ]; then
+    echo "🔑 Generating self-signed SSL certificates..."
+    openssl req -x509 -newkey rsa:4096 \
+        -keyout frontend/ssl/private/server.key \
+        -out frontend/ssl/certs/server.crt \
+        -days 365 -nodes \
+        -subj "/C=US/ST=Development/L=Local/O=Pessoa/CN=192.168.2.111" \
+        -addext "subjectAltName=IP:192.168.2.111,DNS:localhost" 2>/dev/null
+    echo "✅ SSL certificates generated successfully!"
+else
+    echo "✅ SSL certificates already exist!"
+fi
 
 # Create hot reload docker compose override if needed
 if [ "$HOT_RELOAD" = true ]; then
@@ -154,10 +183,15 @@ services:
       - VITE_API_BASE_URL=\${VITE_API_BASE_URL}
       - VITE_WS_BASE_URL=\${VITE_WS_BASE_URL}
     ports:
-      - "8444:8080"   # Use port 8444 for hot reload dev server (temp fix for port conflict)
+      - "8444:8080"   # Use port 8444 for hot reload dev server
+      - "8445:8443"   # Use port 8445 for hot reload HTTPS
     command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "8080"]
 EOF
     COMPOSE_FILES="-f docker-compose.yml -f docker-compose.hot-reload.yml"
+    
+    # Update API base URL for hot reload mode to use direct Vite dev server
+    sed -i 's|VITE_API_BASE_URL=https://192.168.2.111:8443|VITE_API_BASE_URL=http://192.168.2.111:3001|' .env.local
+    echo "🔥 Hot reload mode: API calls will go directly to backend (mixed content in dev mode)"
 else
     # Remove hot reload override if it exists
     rm -f docker-compose.hot-reload.yml
@@ -271,19 +305,14 @@ if [ "$HOT_RELOAD" = true ]; then
     fi
     
     # Test backend (direct connection in hot reload mode)
-    if curl -f -s http://192.168.2.111:3001/api/health >/dev/null 2>&1; then
+    if curl -f -s http://192.168.2.111:3001/health >/dev/null 2>&1; then
         echo "✅ Backend is running!"
     else
         echo "⚠️  Backend may still be starting up..."
     fi
 else
-    # Test backend (through HTTPS frontend proxy)
-    if curl -f -s -k https://192.168.2.111:8443/api/health >/dev/null 2>&1; then
-        echo "✅ Backend is running!"
-    else
-        echo "⚠️  Backend may still be starting up..."
-    fi
-
+    echo "🔐 HTTPS mode enabled - testing secure endpoints..."
+    
     # Test frontend HTTPS
     if curl -f -s -k https://192.168.2.111:8443 >/dev/null 2>&1; then
         echo "✅ Frontend HTTPS is running!"
@@ -291,11 +320,22 @@ else
         echo "⚠️  Frontend HTTPS may still be starting up..."
     fi
 
-    # Test frontend HTTP (should redirect)
-    if curl -f -s http://192.168.2.111:8080 >/dev/null 2>&1; then
-        echo "✅ Frontend HTTP is running!"
+    # Test frontend HTTP redirect
+    HTTP_RESPONSE=$(curl -s -I http://192.168.2.111:8080 2>/dev/null | head -1)
+    if echo "$HTTP_RESPONSE" | grep -q "301\|302"; then
+        echo "✅ HTTP to HTTPS redirect is working!"
     else
-        echo "⚠️  Frontend HTTP may still be starting up..."
+        echo "⚠️  HTTP redirect may still be starting up..."
+    fi
+
+    # Test authentication endpoint (through HTTPS proxy)
+    AUTH_TEST=$(curl -f -s -k -X POST https://192.168.2.111:8443/login \
+        -H "Content-Type: application/json" \
+        -d '{"email": "admin@pessoa.de", "password": "PassoaDevteam"}' 2>/dev/null)
+    if [ $? -eq 0 ] && [ ! -z "$AUTH_TEST" ]; then
+        echo "✅ Authentication endpoint is working!"
+    else
+        echo "⚠️  Authentication may still be starting up..."
     fi
 fi
 
@@ -303,18 +343,29 @@ echo ""
 echo "🎉 Local deployment complete!"
 
 if [ "$HOT_RELOAD" = true ]; then
+    echo ""
     echo "🔥 HOT RELOAD MODE ENABLED"
     echo "🌐 Frontend Dev Server: http://192.168.2.111:8444 (instant changes)"
-    echo "🔧 Backend API: http://192.168.2.111:3001/api (cargo-watch hot reload)"
+    echo "🔧 Backend API: http://192.168.2.111:3001/api (direct access)"
     echo "📝 Edit files in ./frontend or ./backend and see changes instantly!"
+    echo "⚠️  Note: Mixed content warnings expected in dev mode"
 else
-    echo "🌐 Frontend HTTPS: https://192.168.2.111:8443 (PRIMARY)"
+    echo ""
+    echo "🔐 HTTPS PRODUCTION MODE"
+    echo "🌐 Frontend HTTPS: https://192.168.2.111:8443 (PRIMARY - secure)"
     echo "🌐 Frontend HTTP: http://192.168.2.111:8080 (redirects to HTTPS)"
-    echo "🔧 Backend API: https://192.168.2.111:8443/api (cargo-watch hot reload)"
+    echo "🔧 Backend API: https://192.168.2.111:8443/api (proxied through nginx)"
+    echo "🔒 Self-signed SSL certificates generated for development"
+    echo "⚠️  Browser will show certificate warning - click 'Advanced' > 'Proceed'"
 fi
 
+echo ""
+echo "👤 Default Login:"
+echo "   📧 Email: admin@pessoa.de"
+echo "   🔑 Password: PassoaDevteam"
+echo ""
 echo "🗄️  PgAdmin: http://localhost:5050"
-echo "📊 Database: postgresql://postgres:password@localhost:5432/pessoa_db"
+echo "📊 Database: postgresql://pessoa_user:dev_password_123@localhost:5432/pessoa_db"
 echo ""
 echo "📋 To view logs: docker compose $COMPOSE_FILES --env-file .env.local logs -f"
 echo "🛑 To stop: docker compose $COMPOSE_FILES --env-file .env.local down" 
