@@ -52,15 +52,18 @@ services:
     container_name: ${CONTAINER_PREFIX:-dev_}pessoa_frontend
     build:
       context: ./frontend
-      dockerfile: Dockerfile.local
+      dockerfile: Dockerfile.dev
       args:
-          VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
         VITE_WS_BASE_URL: ${VITE_WS_BASE_URL}
     ports:
-      - "${FRONTEND_PORT:-8080}:80"         # HTTP
-      - "${FRONTEND_HTTPS_PORT:-8443}:443"  # HTTPS
+      - "${FRONTEND_PORT:-8080}:8080"       # HTTP (Vite dev server)
+      - "${FRONTEND_HTTPS_PORT:-8443}:8443" # HTTPS (Vite dev server)
     depends_on:
       - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     restart: unless-stopped
 
   pgadmin:

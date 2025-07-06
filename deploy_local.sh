@@ -131,7 +131,7 @@ RUST_LOG=debug
 HOT_RELOAD_MODE=$HOT_RELOAD
 EOF
 
-# Create hot reload docker-compose override if needed
+# Create hot reload docker compose override if needed
 if [ "$HOT_RELOAD" = true ]; then
     echo "🔥 Creating hot reload configuration..."
     cat > docker-compose.hot-reload.yml << EOF
@@ -167,32 +167,32 @@ fi
 # Stop existing containers (target-specific)
 if [ "$TARGET" = "all" ]; then
     echo "📦 Stopping all containers..."
-    docker-compose $COMPOSE_FILES --env-file .env.local down 2>/dev/null || true
+    docker compose $COMPOSE_FILES --env-file .env.local down 2>/dev/null || true
 else
     echo "📦 Stopping $TARGET container..."
     # For hot reload mode, we need to stop any existing frontend from both configurations
     if [ "$HOT_RELOAD" = true ] && [ "$TARGET" = "frontend" ]; then
         echo "🔥 Hot reload mode: Stopping any existing frontend containers..."
-        docker-compose --env-file .env.local stop frontend 2>/dev/null || true
-        docker-compose --env-file .env.local rm -f frontend 2>/dev/null || true
-        docker-compose -f docker-compose.yml -f docker-compose.hot-reload.yml --env-file .env.local stop frontend 2>/dev/null || true
-        docker-compose -f docker-compose.yml -f docker-compose.hot-reload.yml --env-file .env.local rm -f frontend 2>/dev/null || true
+        docker compose --env-file .env.local stop frontend 2>/dev/null || true
+        docker compose --env-file .env.local rm -f frontend 2>/dev/null || true
+        docker compose -f docker-compose.yml -f docker-compose.hot-reload.yml --env-file .env.local stop frontend 2>/dev/null || true
+        docker compose -f docker-compose.yml -f docker-compose.hot-reload.yml --env-file .env.local rm -f frontend 2>/dev/null || true
     fi
     # Always remove the target container to avoid configuration conflicts
-    docker-compose --env-file .env.local rm -f $TARGET 2>/dev/null || true
+    docker compose --env-file .env.local rm -f $TARGET 2>/dev/null || true
     # Also stop any running instance with the old configuration
-    docker-compose $COMPOSE_FILES --env-file .env.local stop $TARGET 2>/dev/null || true
+    docker compose $COMPOSE_FILES --env-file .env.local stop $TARGET 2>/dev/null || true
 fi
 
 # Clean up if requested
 if [ "$CLEAN" = true ]; then
     if [ "$TARGET" = "all" ]; then
         echo "🧹 Cleaning up all containers and volumes..."
-        docker-compose $COMPOSE_FILES --env-file .env.local down -v --remove-orphans 2>/dev/null || true
+        docker compose $COMPOSE_FILES --env-file .env.local down -v --remove-orphans 2>/dev/null || true
         docker system prune -f
     else
         echo "🧹 Cleaning up $TARGET container..."
-        docker-compose $COMPOSE_FILES --env-file .env.local rm -f $TARGET 2>/dev/null || true
+        docker compose $COMPOSE_FILES --env-file .env.local rm -f $TARGET 2>/dev/null || true
         docker image prune -f
     fi
 fi
@@ -200,16 +200,16 @@ fi
 # Reset database if requested
 if [ "$RESET_DB" = true ]; then
     echo "🗄️ Resetting database volumes..."
-    docker-compose $COMPOSE_FILES --env-file .env.local down -v 2>/dev/null || true
+    docker compose $COMPOSE_FILES --env-file .env.local down -v 2>/dev/null || true
     docker volume rm dev_postgres_data 2>/dev/null || true
 fi
 
 # Handle database-only reset
 if [ "$TARGET" = "db" ]; then
     echo "🗄️ Resetting database only..."
-    docker-compose $COMPOSE_FILES --env-file .env.local down 2>/dev/null || true
+    docker compose $COMPOSE_FILES --env-file .env.local down 2>/dev/null || true
     docker volume rm dev_postgres_data 2>/dev/null || true
-    docker-compose $COMPOSE_FILES --env-file .env.local up -d db
+    docker compose $COMPOSE_FILES --env-file .env.local up -d db
     echo "✅ Database reset complete!"
     exit 0
 fi
@@ -224,26 +224,26 @@ fi
 case $TARGET in
     "all")
         echo "🔨 Building all services..."
-        docker-compose $COMPOSE_FILES --env-file .env.local build $BUILD_OPTS
+        docker compose $COMPOSE_FILES --env-file .env.local build $BUILD_OPTS
         ;;
     "frontend")
         echo "🔨 Building frontend only..."
-        docker-compose $COMPOSE_FILES --env-file .env.local build $BUILD_OPTS frontend
+        docker compose $COMPOSE_FILES --env-file .env.local build $BUILD_OPTS frontend
         ;;
     "backend")
         echo "🔨 Building backend only..."
-        docker-compose $COMPOSE_FILES --env-file .env.local build $BUILD_OPTS backend
+        docker compose $COMPOSE_FILES --env-file .env.local build $BUILD_OPTS backend
         ;;
 esac
 
 # Start services (target-specific)
 if [ "$TARGET" = "all" ]; then
     echo "🚀 Starting all services..."
-    docker-compose $COMPOSE_FILES --env-file .env.local up -d
+    docker compose $COMPOSE_FILES --env-file .env.local up -d
 else
     echo "🚀 Starting $TARGET service (with dependencies)..."
     echo "ℹ️  Note: Other services (db, backend) will remain running if already started"
-    docker-compose $COMPOSE_FILES --env-file .env.local up -d $TARGET
+    docker compose $COMPOSE_FILES --env-file .env.local up -d $TARGET
 fi
 
 # Wait for services to be ready
@@ -252,7 +252,7 @@ sleep 15
 
 # Check if services are running
 echo "🔍 Checking service status..."
-docker-compose $COMPOSE_FILES --env-file .env.local ps
+docker compose $COMPOSE_FILES --env-file .env.local ps
 
 # Test local endpoints
 echo "🧪 Testing local endpoints..."
@@ -316,5 +316,5 @@ fi
 echo "🗄️  PgAdmin: http://localhost:5050"
 echo "📊 Database: postgresql://postgres:password@localhost:5432/pessoa_db"
 echo ""
-echo "📋 To view logs: docker-compose $COMPOSE_FILES --env-file .env.local logs -f"
-echo "🛑 To stop: docker-compose $COMPOSE_FILES --env-file .env.local down" 
+echo "📋 To view logs: docker compose $COMPOSE_FILES --env-file .env.local logs -f"
+echo "🛑 To stop: docker compose $COMPOSE_FILES --env-file .env.local down" 
