@@ -23,8 +23,6 @@ use crate::models::user::User;
 use crate::thumbnail::{update_script_thumbnail, generate_missing_thumbnails, regenerate_all_thumbnails};
 use uuid::Uuid; // Import Uuid
 
-const MAX_UPLOAD_SIZE: usize = 10 * 1024 * 1024; // 10 MB limit
-
 /// Creates a router for script-related endpoints.
 ///
 /// Sets up the routes for script upload and processing.

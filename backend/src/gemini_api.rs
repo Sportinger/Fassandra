@@ -18,21 +18,10 @@ const GEMINI_API_KEY_VAR: &str = "GEMINI_API_KEY";
 
 // --- Structs for OpenAPI Schema Definition (subset used by Gemini) ---
 
-#[derive(Serialize, Debug, Clone)] // Clone needed for static definition
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")] // Match API enum style
-enum SchemaType {
-    String,
-    Number, // Represents float/double
-    Integer,
-    Boolean,
-    Array,
-    Object,
-}
-
 #[derive(Serialize, Debug, Clone)] // REMOVED Default here
 struct Schema {
     #[serde(rename = "type")]
-    schema_type: SchemaType,
+    schema_type: String, // Changed from SchemaType to String since enum is removed
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -50,131 +39,6 @@ struct Schema {
     #[serde(skip_serializing_if = "Option::is_none")]
     required: Option<Vec<String>>,
     // propertyOrdering is mentioned but might not be strictly needed if we match struct order
-}
-
-// --- Function to build the target response schema ---
-
-fn get_script_response_schema() -> Schema {
-    // Define a helper to create a basic String schema
-    let string_schema = || Schema {
-        schema_type: SchemaType::String,
-        description: None, format: None, nullable: None, enum_values: None, items: None, properties: None, required: None,
-    };
-    let nullable_string_schema = || Schema {
-        schema_type: SchemaType::String,
-        description: None, format: None, nullable: Some(true), enum_values: None, items: None, properties: None, required: None,
-    };
-    let id_schema = || Schema {
-         schema_type: SchemaType::String, 
-         description: Some("UUID".to_string()), format: None, 
-         nullable: None, enum_values: None, items: None, properties: None, required: None,
-    };
-    let string_array_schema = || Schema {
-        schema_type: SchemaType::Array,
-        items: Some(Box::new(string_schema())),
-        description: None, format: None, nullable: None, enum_values: None, properties: None, required: None,
-    };
-    
-    // Define schema for the ContentElement object 
-    // Include ALL possible fields from the enum variants as optional properties.
-    // Use descriptions to guide the AI on which field to use for which type.
-    let content_element_item_schema = Schema {
-        schema_type: SchemaType::Object, 
-        description: Some("A script element. Must include a 'type' field (dialogue, monologue, stage_direction, joint_dialogue, reading)".to_string()),
-        format: None, nullable: None, enum_values: None, items: None, 
-        properties: Some(HashMap::from([
-            // Required type tag
-            ("type".to_string(), Schema {
-                schema_type: SchemaType::String,
-                description: Some("Type of script element (dialogue, monologue, stage_direction, joint_dialogue, reading)".to_string()),
-                format: None, nullable: None, enum_values: None, items: None, properties: None, required: None,
-            }),
-            // Dialogue/JointDialogue field
-            ("line".to_string(), Schema {
-                schema_type: SchemaType::String,
-                description: Some("The spoken text for 'dialogue' or 'joint_dialogue' types.".to_string()),
-                format: None, 
-                nullable: Some(false), // Make the line field non-nullable in the schema
-                enum_values: None, 
-                items: None, 
-                properties: None, required: None,
-            }), 
-             // Monologue field
-            ("lines".to_string(), Schema { 
-                schema_type: SchemaType::Array, 
-                items: Some(Box::new(string_schema())), 
-                description: Some("Array of spoken text lines for 'monologue' type.".to_string()),
-                format: None, nullable: Some(true), enum_values: None, properties: None, required: None 
-            }),
-            // StageDirection field
-            ("description".to_string(), Schema {
-                 schema_type: SchemaType::String,
-                 description: Some("The text content for 'stage_direction' type.".to_string()),
-                 format: None, nullable: Some(true), enum_values: None, items: None, properties: None, required: None,
-            }),
-            // Common speaker field (used by Dialogue, Monologue, Reading)
-            ("speaker".to_string(), nullable_string_schema()), 
-            // JointDialogue field
-            ("speakers".to_string(), Schema { 
-                schema_type: SchemaType::Array, 
-                items: Some(Box::new(string_schema())), 
-                description: Some("Array of speakers for 'joint_dialogue' type.".to_string()),
-                format: None, nullable: Some(true), enum_values: None, properties: None, required: None 
-            }), 
-             // Reading fields
-            ("source".to_string(), nullable_string_schema()),
-            ("language".to_string(), nullable_string_schema()),
-            ("reading_text".to_string(), Schema { // Use 'reading_text' specifically for Reading type to avoid confusion
-                schema_type: SchemaType::String, 
-                description: Some("The text content for 'reading' type.".to_string()),
-                format: None, nullable: Some(true), enum_values: None, items: None, properties: None, required: None,
-            }), 
-            // ID field (common)
-             ("id".to_string(), id_schema()), // Include ID as optional in schema
-        ])),
-        required: Some(vec!["type".to_string()]), // Only 'type' is strictly required by the schema definition itself
-    };
-
-    // Define schema for Section
-    let section_schema = Schema {
-        schema_type: SchemaType::Object,
-        description: Some("Represents a major section like a Scene or Act".to_string()),
-        properties: Some(HashMap::from([
-            ("id".to_string(), id_schema()),
-            ("section_number".to_string(), nullable_string_schema()),
-            ("title".to_string(), nullable_string_schema()),
-            ("participants".to_string(), string_array_schema()),
-            ("setting_note".to_string(), nullable_string_schema()),
-            ("content".to_string(), Schema {
-                schema_type: SchemaType::Array,
-                description: Some("Array of script elements".to_string()),
-                items: Some(Box::new(content_element_item_schema.clone())), // Use the updated object schema
-                format: None, nullable: None, enum_values: None, properties: None, required: None,
-            }),
-        ])),
-        required: None, 
-        format: None, nullable: None, enum_values: None, items: None,
-    };
-
-    // Define the top-level Script schema
-    Schema {
-        schema_type: SchemaType::Object,
-        description: Some("Represents the entire parsed script".to_string()),
-        properties: Some(HashMap::from([
-            ("id".to_string(), id_schema()),
-            ("source_filename".to_string(), nullable_string_schema()),
-            ("title".to_string(), nullable_string_schema()),
-            ("subtitle".to_string(), nullable_string_schema()),
-            ("adaptation_by".to_string(), string_array_schema()), 
-            ("sections".to_string(), Schema {
-                schema_type: SchemaType::Array,
-                items: Some(Box::new(section_schema.clone())), 
-                description: None, format: None, nullable: None, enum_values: None, properties: None, required: None, 
-            }),
-        ])),
-        required: Some(vec!["sections".to_string()]),
-        format: None, nullable: None, enum_values: None, items: None,
-    }
 }
 
 // --- Structs for API Interaction ---

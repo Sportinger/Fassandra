@@ -1,7 +1,7 @@
 # 🔍 PESSOA BACKEND SECURITY AUDIT REPORT
 
 **Date**: January 2025  
-**Auditor**: Comprehensive Security Analysis  
+**Auditor**: Comprehensive Security Analysis (Updated)  
 **Scope**: Complete backend codebase security assessment  
 **Verdict**: 🚨 **CRITICAL SECURITY FAILURES - PRODUCTION DEPLOYMENT BLOCKED**
 
@@ -9,19 +9,19 @@
 
 ## 📋 EXECUTIVE SUMMARY
 
-The Pessoa backend contains **multiple critical security vulnerabilities** that render it completely unsuitable for production deployment. This comprehensive audit identified **35+ security issues** across all severity levels:
+The Pessoa backend contains **multiple critical security vulnerabilities** that render it completely unsuitable for production deployment. This comprehensive audit identified **30+ security issues** across all severity levels:
 
 ### Key Findings:
-- **🔴 Critical (12 issues)**: Authentication bypass, hardcoded secrets, authorization failures
-- **🟡 Major (15 issues)**: Information disclosure, memory leaks, SQL injection risks  
+- **🔴 Critical (10 issues)**: Authentication bypass, hardcoded secrets, information disclosure
+- **🟡 Major (12 issues)**: Memory leaks, race conditions, scalability bottlenecks  
 - **🟢 Minor (8+ issues)**: Input validation gaps, missing security headers
 
 ### Most Critical Issues:
-1. **Complete Authentication Bypass**: Password verification system is fundamentally broken
+1. **Dual Authentication System Disaster**: Two authentication systems - one broken, one working
 2. **Hardcoded Production Secrets**: Admin credentials and API keys exposed in source code
-3. **Authorization Bypass**: Any authenticated user can access/modify any script
-4. **Data Corruption**: Race conditions in real-time collaboration system
-5. **Information Disclosure**: Internal error details exposed to clients
+3. **Critical Information Disclosure**: Internal error details exposed to clients
+4. **Data Corruption**: Race conditions and silent corruption in persistence system
+5. **WebSocket Authorization Bypass**: Any authenticated user can access any script's real-time collaboration
 
 **🚨 IMMEDIATE ACTION REQUIRED**: This system must not be deployed to production until all critical vulnerabilities are resolved.
 
@@ -29,28 +29,35 @@ The Pessoa backend contains **multiple critical security vulnerabilities** that 
 
 ## 🔴 CRITICAL SECURITY VULNERABILITIES
 
-### 1. **AUTHENTICATION BYPASS** - `api/auth.rs`
+### 1. **DUAL AUTHENTICATION SYSTEM DISASTER** - Multiple Files
 
-**Location**: `backend/src/api/auth.rs:11-36`
+**Location**: `api/auth.rs` vs `main.rs`
 
 ```rust
-// CRITICAL FLAW: Plaintext password storage and comparison
-password_hash: password.to_string(), // In production, hash the password
-
-// SQL query compares plaintext password to hash - WILL NEVER WORK
-let user = sqlx::query_as::<_, User>(
-    "SELECT * FROM users WHERE email = $1 AND password_hash = $2"
-)
+// BROKEN SYSTEM: api/auth.rs (lines 11-36)
+password_hash: password.to_string(), // Plaintext storage
+sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = $1 AND password_hash = $2")
 .bind(email)
-.bind(password) // PLAINTEXT compared to ARGON2 hash!
+    .bind(password) // Plaintext compared to hash - IMPOSSIBLE to work
 ```
 
-**Impact**: 🚨 **COMPLETE AUTHENTICATION BYPASS**
-- No user can ever log in legitimately
-- Authentication system is fundamentally broken
-- Passwords stored in plaintext during registration
+vs
 
-### 2. **HARDCODED PRODUCTION CREDENTIALS** - `main.rs`
+```rust
+// WORKING SYSTEM: main.rs (lines 160-165)
+if !verify_password(&payload.password, &user.password_hash) {
+    return Err(AppError::Unauthorized("Invalid credentials".to_string()));
+}
+```
+
+**Impact**: 🚨 **AUTHENTICATION SYSTEM SCHIZOPHRENIA**
+- Two completely different authentication implementations
+- One system stores plaintext passwords and can never authenticate users
+- One system properly hashes and verifies passwords
+- Creates confusion and potential bypass paths
+- Indicates severe architectural failure
+
+### 2. **HARDCODED PRODUCTION BACKDOOR** - `main.rs`
 
 **Location**: `backend/src/main.rs:36-37`
 
@@ -59,10 +66,10 @@ const DEV_USER_EMAIL: &str = "admin@pessoa.de";
 const DEV_USER_PASSWORD: &str = "PassoaDevteam";
 ```
 
-**Impact**: 🚨 **PRODUCTION BACKDOOR**
+**Impact**: 🚨 **PERMANENT BACKDOOR**
 - Hardcoded admin credentials in source code
 - Creates permanent backdoor in production systems
-- Credentials documented in multiple files
+- Credentials documented in multiple files and Git history
 
 **Also Found In**:
 - `backend/migrations/20250506002947_add_dev_user.sql`
@@ -84,61 +91,9 @@ GEMINI_API_KEY=AIzaSyCGkJudo4e0YEgZZKQ8xXTPBOTB3cQCY_g
 - Key is committed to Git history
 - Could result in unauthorized API usage and billing
 
-### 4. **AUTHORIZATION BYPASS** - `handlers/script_handlers.rs`
+### 4. **CRITICAL INFORMATION DISCLOSURE** - `error.rs`
 
-**Location**: `backend/src/handlers/script_handlers.rs:201-210`
-
-```rust
-pub async fn share_script(
-    State(pool): State<PgPool>,
-    AuthUser { user_id }: AuthUser, // User authenticated but...
-    Path(script_id): Path<Uuid>,    // ...NO ownership verification!
-    Json(request): Json<ShareScriptRequest>,
-) -> Result<Json<ScriptShare>, AppError> {
-    // MISSING: Verify user owns the script before sharing
-```
-
-**Impact**: 🚨 **COMPLETE AUTHORIZATION BYPASS**
-- Any authenticated user can share ANY script
-- No ownership verification before script operations
-- Affects multiple endpoints across the system
-
-### 5. **WEBSOCKET AUTHENTICATION BYPASS** - `ws.rs`
-
-**Location**: `backend/src/ws.rs:115-125`
-
-```rust
-// Verify the user has access to this script
-// For now, we just verify they're authenticated
-// In a production app, you'd check script-specific permissions
-let user_id = auth_user.user_id;
-```
-
-**Impact**: 🚨 **REAL-TIME COLLABORATION BYPASS**
-- Any authenticated user can connect to ANY script's WebSocket
-- Complete bypass of script-level permissions
-- Allows unauthorized real-time editing of any document
-
-### 6. **MASS DATA EXPOSURE** - `api/scripts.rs`
-
-**Location**: `backend/src/api/scripts.rs:37-50`
-
-```sql
-SELECT DISTINCT s.id, s.title, s.created_by, s.created_at, s.is_public, s.thumbnail 
-FROM scripts s
-WHERE s.created_by = $1
-   OR s.is_public = true  -- Returns ALL public scripts to ALL users
-   OR EXISTS (...)
-```
-
-**Impact**: 🚨 **BROKEN ACCESS CONTROL**
-- Every user sees ALL public scripts regardless of permissions
-- No pagination or access controls
-- Potential for data enumeration attacks
-
-### 7. **INFORMATION DISCLOSURE** - `error.rs`
-
-**Location**: `backend/src/error.rs:85-95`
+**Location**: `backend/src/error.rs:73-76`
 
 ```rust
 AppError::Internal(e) => (
@@ -148,12 +103,59 @@ AppError::Internal(e) => (
 ),
 ```
 
-**Impact**: 🚨 **CRITICAL INFORMATION DISCLOSURE**
+**Impact**: 🚨 **SYSTEM FINGERPRINTING**
 - Internal error details exposed to clients through `e.to_string()`
 - Database errors, internal errors, and validation errors leak implementation details
 - Aids attackers in reconnaissance and system fingerprinting
 
-### 8. **PANIC-PRONE SERVER CRASHES** - Multiple Locations
+### 5. **WEBSOCKET AUTHORIZATION BYPASS** - `ws.rs`
+
+**Location**: `backend/src/ws.rs:112-115`
+
+```rust
+// Verify the user has access to this script
+// For now, we just verify they're authenticated
+// In a production app, you'd check script-specific permissions
+let user_id = auth_user.user_id;
+```
+
+**Impact**: 🚨 **REAL-TIME COLLABORATION HIJACKING**
+- Any authenticated user can connect to ANY script's WebSocket
+- Complete bypass of document-level permissions
+- Allows unauthorized real-time editing of confidential documents
+
+### 6. **SQL INJECTION RISKS** - Multiple Files
+
+**Location**: 15+ instances across codebase
+
+```rust
+// Unchecked queries bypass SQLx compile-time verification
+sqlx::query_unchecked!(Script, "SELECT ...", params) // api/scripts.rs:16,37,57,81
+sqlx::query_unchecked!("UPDATE ...", params) // lib.rs:198,207,275
+```
+
+**Impact**: 🚨 **POTENTIAL SQL INJECTION**
+- Disables SQLx's compile-time safety guarantees
+- Could allow SQL injection if parameter types change
+- Removes type safety from database operations
+
+### 7. **SILENT DATA CORRUPTION** - `async_db_writer.rs`
+
+**Location**: `backend/src/async_db_writer.rs:9-13`
+
+```rust
+let script_id = Uuid::parse_str(&event.script_id).unwrap_or_else(|_| {
+    tracing::error!("Failed to parse script_id: {}", event.script_id);
+    Uuid::nil() // SILENTLY CORRUPTS DATA!
+});
+```
+
+**Impact**: 🚨 **DOCUMENT CORRUPTION**
+- Invalid script IDs become nil UUID
+- Persistence events corrupted silently
+- No error propagation to detect failures
+
+### 8. **PRODUCTION CRASH VULNERABILITIES** - Multiple Locations
 
 **Locations**: 
 - `backend/src/auth.rs:41` - JWT secret loading
@@ -167,32 +169,12 @@ env::var("JWT_SECRET").expect("JWT_SECRET must be set") // auth.rs:41
 let colon_pos = line_content.find(':').unwrap(); // lib.rs:572
 ```
 
-**Impact**: 🚨 **SERVER CRASHES**
+**Impact**: 🚨 **DENIAL OF SERVICE**
 - 70+ instances of `unwrap()`, `expect()`, and potential panic points
 - Production server will crash on invalid input
 - No graceful error handling for edge cases
 
-### 9. **SQL INJECTION RISKS** - Multiple Files
-
-**Location**: 15+ instances across codebase
-
-```rust
-// Unchecked queries bypass SQLx compile-time verification
-sqlx::query_unchecked!("UPDATE blocks SET content = $1 WHERE id = $2", content, block_id)
-sqlx::query_as_unchecked!(Script, "SELECT ...", user_id)
-```
-
-**Files Affected**:
-- `backend/src/lib.rs` (Lines 198, 207, 275)
-- `backend/src/api/scripts.rs` (Line 81)
-- `backend/src/api/ws.rs` (Line 107)
-
-**Impact**: 🚨 **POTENTIAL SQL INJECTION**
-- Disables SQLx's compile-time safety guarantees
-- Could allow SQL injection if parameter types change
-- Removes type safety from database operations
-
-### 10. **DATA CORRUPTION RACE CONDITIONS** - `snapshotting_service.rs`
+### 9. **RACE CONDITIONS IN SNAPSHOTTING** - `snapshotting_service.rs`
 
 **Location**: `backend/src/snapshotting_service.rs:41-85`
 
@@ -209,23 +191,7 @@ let last_processed_update_id_from_meta: i64 = last_meta.map_or(0, |(val,)| val.i
 - No atomic read-modify-write operations
 - Yjs updates can be processed multiple times
 
-### 11. **SILENT DATA CORRUPTION** - `async_db_writer.rs`
-
-**Location**: `backend/src/async_db_writer.rs:9-13`
-
-```rust
-let script_id = Uuid::parse_str(&event.script_id).unwrap_or_else(|_| {
-    tracing::error!("Failed to parse script_id: {}", event.script_id);
-    Uuid::nil() // SILENTLY CORRUPTS DATA!
-});
-```
-
-**Impact**: 🚨 **DATA CORRUPTION**
-- Invalid script IDs become nil UUID
-- Persistence events corrupted silently
-- No error propagation to detect failures
-
-### 12. **MISSING SECURITY HEADERS** - Server Configuration
+### 10. **MISSING SECURITY HEADERS** - Server Configuration
 
 **Location**: No security headers configured
 
@@ -239,7 +205,24 @@ let script_id = Uuid::parse_str(&event.script_id).unwrap_or_else(|_| {
 
 ## 🟡 MAJOR SECURITY ISSUES
 
-### 1. **XSS VULNERABILITY** - `thumbnail.rs`
+### 1. **GLOBAL BROADCAST BOTTLENECK** - `ws.rs`
+
+**Location**: `backend/src/ws.rs:36`
+
+```rust
+pub static GLOBAL_BROADCAST: Lazy<(Sender<(String, String, Vec<u8>)>, ...)> = Lazy::new(|| {
+    let (tx, rx) = broadcast::channel(1000);
+    (tx, std::sync::Mutex::new(Some(rx)))
+});
+// ALL WebSocket messages go through single global channel
+```
+
+**Impact**: 🟡 **SCALABILITY NIGHTMARE**
+- Single global channel for all WebSocket messages
+- Will become bottleneck with multiple concurrent users
+- No per-script or per-room isolation
+
+### 2. **XSS VULNERABILITY** - `thumbnail.rs`
 
 **Location**: `backend/src/thumbnail.rs:27-45`
 
@@ -254,27 +237,7 @@ let svg_content = format!(
 - User content directly injected into SVG without escaping
 - Could execute JavaScript in thumbnail context
 
-### 2. **WEAK PASSWORD VALIDATION** - `auth.rs`
-
-**Location**: `backend/src/auth.rs:33`
-
-```rust
-static ref PASSWORD_REGEX: Regex = Regex::new(r"^.{8,}$").unwrap();
-```
-
-**Impact**: 🟡 **WEAK SECURITY**
-- Only checks password length (8+ characters)
-- No complexity requirements (uppercase, lowercase, numbers, symbols)
-- Vulnerable to dictionary attacks
-
-### 3. **MISSING RATE LIMITING** - Multiple Endpoints
-
-**Impact**: 🟡 **DOS VULNERABILITY**
-- Rate limiter exists but not applied to all endpoints
-- No protection against brute force attacks
-- API abuse and resource exhaustion possible
-
-### 4. **MEMORY LEAKS** - `ws.rs`
+### 3. **MEMORY LEAKS** - `ws.rs`
 
 **Location**: `backend/src/ws.rs:155-157`
 
@@ -291,7 +254,27 @@ let session = SESSIONS
 - No guaranteed cleanup on disconnect
 - Long-running server will consume increasing memory
 
-### 5. **INPUT VALIDATION GAPS** - Multiple Endpoints
+### 4. **WEAK PASSWORD VALIDATION** - `auth.rs`
+
+**Location**: `backend/src/auth.rs:33`
+
+```rust
+static ref PASSWORD_REGEX: Regex = Regex::new(r"^.{8,}$").unwrap();
+```
+
+**Impact**: 🟡 **WEAK SECURITY**
+- Only checks password length (8+ characters)
+- No complexity requirements (uppercase, lowercase, numbers, symbols)
+- Vulnerable to dictionary attacks
+
+### 5. **MISSING RATE LIMITING** - Multiple Endpoints
+
+**Impact**: 🟡 **DOS VULNERABILITY**
+- Rate limiter exists but not applied to all endpoints
+- No protection against brute force attacks
+- API abuse and resource exhaustion possible
+
+### 6. **INPUT VALIDATION GAPS** - Multiple Endpoints
 
 **Locations**: Throughout API handlers
 
@@ -300,7 +283,7 @@ let session = SESSIONS
 - File upload processing lacks comprehensive validation
 - HTML content processing has minimal sanitization
 
-### 6. **FILE PROCESSING VULNERABILITIES** - `handlers/script_handlers.rs`
+### 7. **FILE PROCESSING VULNERABILITIES** - `handlers/script_handlers.rs`
 
 **Location**: DOCX file processing
 
@@ -308,15 +291,6 @@ let session = SESSIONS
 - DOCX file processing lacks comprehensive validation
 - No file type validation beyond extension checking
 - File upload size limits not consistently applied
-
-### 7. **WEBSOCKET SECURITY ISSUES** - `ws.rs`
-
-**Location**: WebSocket message handling
-
-**Impact**: 🟡 **MESSAGE INTERCEPTION**
-- Global broadcast channel creates potential for message interception
-- Awareness updates not properly filtered for sensitive data
-- No per-script message isolation
 
 ### 8. **EXCESSIVE CLONING** - `snapshotting_service.rs`
 
@@ -333,21 +307,7 @@ description: current_element_text_content.clone(),
 - Slows down real-time collaboration
 - Scales poorly with document size
 
-### 9. **GLOBAL BROADCAST BOTTLENECK** - `ws.rs`
-
-**Location**: `backend/src/ws.rs:36`
-
-```rust
-pub static GLOBAL_BROADCAST: Lazy<(Sender<(String, String, Vec<u8>)>, ...)>
-// ALL WebSocket messages go through single global channel
-```
-
-**Impact**: 🟡 **SCALABILITY NIGHTMARE**
-- Single global channel for all WebSocket messages
-- Will become bottleneck with multiple concurrent users
-- No per-script or per-room isolation
-
-### 10. **MISSING DATABASE INDEXES** - `migrations/`
+### 9. **MISSING DATABASE INDEXES** - `migrations/`
 
 **Missing Indexes**:
 - `blocks.script_id` (frequent queries will table scan)
@@ -417,19 +377,38 @@ pub extra: std::collections::HashMap<String, Value>, // Catches unknown JSON
 
 ## 🔍 CROSS-MODULE SECURITY ANALYSIS
 
-### **Authentication Flow Bypass Chain**
+### **Authentication Flow Analysis**
 
-1. **`api/auth.rs`** - Broken password verification (plaintext vs hash)
-2. **`auth.rs`** - JWT secret in environment (no rotation mechanism)
-3. **`main.rs`** - Hardcoded dev credentials as backup
-4. **Result**: Complete authentication system failure
+**CORRECTED FINDING**: The system has TWO authentication implementations:
 
-### **Authorization Escalation Chain**
+1. **Broken System** (`api/auth.rs`):
+   - Stores plaintext passwords
+   - Compares plaintext to hash (impossible to work)
+   - Never successfully authenticates users
 
-1. **`handlers/script_handlers.rs`** - No ownership checks on script operations
-2. **`api/scripts.rs`** - Broken access control queries return all public data
-3. **`ws.rs`** - No script-level permissions for real-time access
-4. **Result**: Any authenticated user can access/modify any script
+2. **Working System** (`main.rs`):
+   - Properly hashes passwords with Argon2
+   - Correctly verifies passwords
+   - Generates valid JWT tokens
+
+**Result**: Dual authentication system creates confusion and potential security gaps.
+
+### **Authorization Analysis**
+
+**CORRECTED FINDING**: Authorization IS properly implemented in script handlers:
+
+```rust
+// handlers/script_handlers.rs:189-196 - PROPER OWNERSHIP CHECK
+let owner_check = sqlx::query!("SELECT created_by FROM scripts WHERE id = $1", script_id)
+    .fetch_optional(&pool).await?;
+match owner_check {
+    Some(record) if record.created_by == Some(user_id) => { /* User owns script */ }
+    Some(_) => return Err(AppError::Forbidden("You don't have permission to share this script".into())),
+    None => return Err(AppError::NotFound("Script not found".into())),
+}
+```
+
+**However**: WebSocket connections bypass these authorization checks entirely.
 
 ### **Data Corruption Chain**
 
@@ -451,18 +430,11 @@ pub extra: std::collections::HashMap<String, Value>, // Catches unknown JSON
 
 ### **Phase 1: Emergency Fixes (URGENT - Within 24 Hours)**
 
-1. **Fix Authentication System**:
+1. **Consolidate Authentication System**:
    ```rust
-   // api/auth.rs - Implement proper password verification
-   pub async fn login(pool: &PgPool, email: &str, password: &str) -> Result<User, AppError> {
-       let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = $1")
-           .bind(email).fetch_one(pool).await?;
-       
-       if !verify_password(password, &user.password_hash) {
-           return Err(AppError::Unauthorized("Invalid credentials".to_string()));
-       }
-       Ok(user)
-   }
+   // Remove broken api/auth.rs functions entirely
+   // Use only the working main.rs authentication system
+   // Ensure consistent password hashing across all registration endpoints
    ```
 
 2. **Remove Hardcoded Secrets**:
@@ -473,7 +445,7 @@ pub extra: std::collections::HashMap<String, Value>, // Catches unknown JSON
    # Update all environment files
    ```
 
-3. **Fix Error Disclosure**:
+3. **Fix Information Disclosure**:
    ```rust
    // error.rs - Remove internal error details from responses
    AppError::Internal(_) => (
@@ -483,23 +455,10 @@ pub extra: std::collections::HashMap<String, Value>, // Catches unknown JSON
    ),
    ```
 
-4. **Add Basic Authorization**:
+4. **Add WebSocket Authorization**:
    ```rust
-   // Add ownership verification to all script endpoints
-   async fn verify_script_access(pool: &PgPool, script_id: Uuid, user_id: Uuid) -> Result<(), AppError> {
-       let has_access = sqlx::query_scalar!(
-           "SELECT EXISTS(SELECT 1 FROM scripts WHERE id = $1 AND 
-            (created_by = $2 OR is_public = true OR EXISTS(
-                SELECT 1 FROM script_shares WHERE script_id = $1 AND shared_with_user_id = $2
-            )))",
-           script_id, user_id
-       ).fetch_one(pool).await?;
-       
-       if !has_access {
-           return Err(AppError::Forbidden("No access to script".to_string()));
-       }
-       Ok(())
-   }
+   // Add script access verification before WebSocket upgrade
+   verify_script_access(&pool, &script_id, user_id).await?;
    ```
 
 ### **Phase 2: Security Hardening (Within 1 Week)**
@@ -526,15 +485,7 @@ pub extra: std::collections::HashMap<String, Value>, // Catches unknown JSON
    .layer(RateLimitLayer::new(/* config */))
    ```
 
-4. **Fix WebSocket Security**:
-   ```rust
-   // Add script access verification before WebSocket upgrade
-   verify_script_access(&pool, &script_id, user_id).await?;
-   ```
-
-### **Phase 3: Data Integrity (Within 2 Weeks)**
-
-1. **Add Transaction Isolation**:
+4. **Fix Race Conditions**:
    ```rust
    // snapshotting_service.rs - Use proper transactions
    let mut tx = pool.begin().await?;
@@ -542,14 +493,16 @@ pub extra: std::collections::HashMap<String, Value>, // Catches unknown JSON
    tx.commit().await?;
    ```
 
-2. **Replace Panic-Prone Code**:
+### **Phase 3: Data Integrity (Within 2 Weeks)**
+
+1. **Replace Panic-Prone Code**:
    ```rust
    // Replace all unwrap() and expect() with proper error handling
    let colon_pos = line_content.find(':')
        .ok_or_else(|| AppError::BadRequest("Invalid dialogue format"))?;
    ```
 
-3. **Add Input Validation**:
+2. **Add Input Validation**:
    ```rust
    #[derive(Validate)]
    pub struct CreateScriptRequest {
@@ -558,6 +511,13 @@ pub extra: std::collections::HashMap<String, Value>, // Catches unknown JSON
        #[validate(custom = "validate_content")]
        pub content: String,
    }
+   ```
+
+3. **Fix Silent Corruption**:
+   ```rust
+   // async_db_writer.rs - Proper error handling
+   let script_id = Uuid::parse_str(&event.script_id)
+       .map_err(|e| AppError::BadRequest(format!("Invalid script_id: {}", e)))?;
    ```
 
 ### **Phase 4: Performance & Monitoring (Within 1 Month)**
@@ -589,8 +549,8 @@ pub extra: std::collections::HashMap<String, Value>, // Catches unknown JSON
 
 | Severity | Count | Critical Examples |
 |----------|-------|-------------------|
-| 🔴 Critical | 12 | Authentication bypass, Hardcoded secrets, Authorization failure |
-| 🟡 Major | 15 | XSS vulnerabilities, Memory leaks, SQL injection risks |
+| 🔴 Critical | 10 | Dual auth systems, Hardcoded secrets, Information disclosure |
+| 🟡 Major | 12 | Global broadcast bottleneck, Memory leaks, XSS vulnerabilities |
 | 🟢 Minor | 8+ | Type inconsistencies, Missing constraints, Debug logging |
 
 ### **Risk Assessment Matrix**
@@ -598,14 +558,14 @@ pub extra: std::collections::HashMap<String, Value>, // Catches unknown JSON
 | Security Domain | Current Risk | Target Risk | Priority |
 |----------------|--------------|-------------|----------|
 | Authentication | 🔴 Critical | 🟢 Low | P0 |
-| Authorization | 🔴 Critical | 🟢 Low | P0 |
+| Authorization | 🟡 Major | 🟢 Low | P1 |
 | Data Integrity | 🔴 Critical | 🟢 Low | P0 |
 | Information Disclosure | 🔴 Critical | 🟢 Low | P0 |
 | Input Validation | 🟡 Major | 🟢 Low | P1 |
 | Performance | 🟡 Major | 🟢 Low | P2 |
 | Monitoring | 🟡 Major | 🟢 Low | P2 |
 
-### **Overall Security Score**: 🔴 **15/100** (Critical Failure)
+### **Overall Security Score**: 🔴 **18/100** (Critical Failure)
 
 ---
 
@@ -615,8 +575,8 @@ pub extra: std::collections::HashMap<String, Value>, // Catches unknown JSON
 
 1. **🚨 STOP ALL PRODUCTION DEPLOYMENT** - System is not secure
 2. **🔄 ROTATE ALL SECRETS** - Exposed API keys and hardcoded credentials
-3. **🔧 FIX AUTHENTICATION** - Implement proper password verification
-4. **🛡️ ADD AUTHORIZATION** - Verify ownership for all script operations
+3. **🔧 CONSOLIDATE AUTHENTICATION** - Remove broken authentication system
+4. **🛡️ ADD WEBSOCKET AUTHORIZATION** - Verify script access for real-time editing
 5. **📝 SECURITY TESTING** - Add comprehensive security test suite
 
 ### **Long-term Security Strategy**
@@ -693,11 +653,11 @@ pub extra: std::collections::HashMap<String, Value>, // Catches unknown JSON
 
 ## 📝 CONCLUSION
 
-The Pessoa backend security audit reveals a system with **critical security failures** that make it completely unsuitable for production deployment. The scope and severity of vulnerabilities require immediate and comprehensive remediation.
+The Pessoa backend security audit reveals a system with **critical security failures** that make it completely unsuitable for production deployment. While some authorization controls are properly implemented, the scope and severity of vulnerabilities require immediate and comprehensive remediation.
 
 ### **Key Takeaways**:
 
-1. **🚨 Critical State**: 12 critical vulnerabilities that could lead to complete system compromise
+1. **🚨 Critical State**: 10 critical vulnerabilities that could lead to complete system compromise
 2. **🔧 Fixable Issues**: Most issues can be resolved with proper security implementation
 3. **📊 Systematic Problems**: Security was not considered during development
 4. **⏰ Time to Fix**: Estimated 4-6 weeks with dedicated security focus
@@ -705,6 +665,7 @@ The Pessoa backend security audit reveals a system with **critical security fail
 ### **Success Criteria**:
 
 - [ ] All critical vulnerabilities resolved
+- [ ] Authentication system consolidated
 - [ ] Security testing implemented
 - [ ] Penetration testing passed
 - [ ] Security monitoring active
@@ -722,7 +683,7 @@ The Pessoa backend security audit reveals a system with **critical security fail
 
 ---
 
-**Report Generated**: January 2025  
+**Report Generated**: January 2025 (Updated)  
 **Next Review**: After Phase 1 emergency fixes implemented  
 **Classification**: 🔴 **CRITICAL - PRODUCTION DEPLOYMENT BLOCKED**
 

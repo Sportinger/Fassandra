@@ -1,5 +1,5 @@
 use sqlx::PgPool;
-use tokio::time::{self, Duration, Instant};
+use tokio::time::Duration;
 use std::sync::Arc;
 use uuid::Uuid;
 use yrs::{
@@ -24,7 +24,9 @@ const SNAPSHOT_INTERVAL_SECONDS: u64 = 2;  // Run every 2 seconds for faster per
 struct SnapshotYjsUpdate {
     id: i64,
     update_data: Vec<u8>,
+    #[allow(dead_code)]
     user_id: Option<Uuid>,
+    #[allow(dead_code)]
     created_at: chrono::DateTime<chrono::Utc>,
 }
 

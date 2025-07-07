@@ -26,7 +26,7 @@ use backend::models::block::Block;
 use backend::models::edit::Edit;
 use backend::models::user::User;
 use backend::models::script_layout::{ScriptLayout, CreateScriptLayoutRequest, UpdateScriptLayoutRequest};
-use backend::handlers::script_handlers::{script_routes, share_script, get_script_shares, remove_script_share, toggle_script_public};
+use backend::handlers::script_handlers::script_routes;
 use backend::persistence_event::YjsPersistenceEvent;
 use backend::async_db_writer::run_async_db_writer;
 use backend::snapshotting_service::run_snapshotting_service;
@@ -81,13 +81,11 @@ async fn update_dev_user_password(pool: &PgPool) -> Result<()> {
 /// Fields:
 /// - `database_url`: Database connection string.
 /// - `db_max_connections`: Maximum number of DB connections.
-/// - `allowed_origins`: List of allowed CORS origins.
 /// - `backend_port`: Port for the backend server.
 #[derive(Debug)]
 struct Config {
     database_url: String,
     db_max_connections: u32,
-    allowed_origins: Vec<String>,
     backend_port: u16,
 }
 
@@ -104,11 +102,6 @@ impl Config {
                 .map(|val| val.parse::<u32>())
                 .unwrap_or(Ok(5))
                 .context("Invalid DB_MAX_CONNECTIONS value")?,
-            allowed_origins: env::var("ALLOWED_ORIGINS")
-                .unwrap_or_else(|_| "http://localhost:8080,http://localhost:5173".to_string())
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect(),
             backend_port: env::var("BACKEND_PORT")
                 .map(|val| val.parse::<u16>())
                 .unwrap_or(Ok(3001))
@@ -345,10 +338,6 @@ struct ConsoleLogEntry {
     timestamp: String,
     level: String,
     message: String,
-    user_agent: String,
-    url: String,
-    script_id: Option<String>,
-    user_id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -444,7 +433,7 @@ async fn create_script_layout_endpoint(
 async fn update_script_layout_endpoint(
     State(pool): State<Arc<PgPool>>,
     AuthUser{user_id}: AuthUser,
-    Path((script_id, layout_id)): Path<(Uuid, Uuid)>,
+    Path((_script_id, layout_id)): Path<(Uuid, Uuid)>,
     Json(request): Json<UpdateScriptLayoutRequest>
 ) -> Result<Json<ScriptLayout>, AppError> {
     let layout = update_script_layout(pool.as_ref(), layout_id, &request, user_id).await?;
@@ -455,7 +444,7 @@ async fn update_script_layout_endpoint(
 async fn delete_script_layout_endpoint(
     State(pool): State<Arc<PgPool>>,
     AuthUser{user_id: _}: AuthUser,
-    Path((script_id, layout_id)): Path<(Uuid, Uuid)>
+    Path((_script_id, layout_id)): Path<(Uuid, Uuid)>
 ) -> Result<axum::http::StatusCode, AppError> {
     delete_script_layout(pool.as_ref(), layout_id).await?;
     Ok(axum::http::StatusCode::NO_CONTENT)
@@ -486,7 +475,6 @@ async fn receive_console_logs(
 const MAX_REQUEST_BODY_SIZE: usize = 20 * 1024 * 1024;
 
 const YJS_PERSISTENCE_QUEUE_CAPACITY: usize = 1024;
-const SNAPSHOTTING_INTERVAL_SECONDS: u64 = 60 * 5;
 
 /// Main entry point for the backend server.
 ///

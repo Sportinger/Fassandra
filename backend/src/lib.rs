@@ -403,7 +403,7 @@ pub async fn update_script_content_from_html(
     pool: &PgPool,
     script_id: Uuid,
     html_content: &str,
-    user_id: Uuid,
+    _user_id: Uuid,
 ) -> Result<()> {
     tracing::debug!("📝 Parsing HTML content for script {}: {} chars", script_id, html_content.len());
     
@@ -712,7 +712,7 @@ pub async fn update_script_layout(
     pool: &PgPool,
     layout_id: Uuid,
     request: &models::script_layout::UpdateScriptLayoutRequest,
-    user_id: Uuid
+    _user_id: Uuid
 ) -> Result<models::script_layout::ScriptLayout> {
     let mut tx = pool.begin().await
         .map_err(|e| AppError::Internal(Error::msg(e.to_string())))?;

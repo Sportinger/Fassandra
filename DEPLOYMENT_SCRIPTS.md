@@ -1,142 +1,254 @@
-# Pessoa Deployment Scripts
+# 🚀 PESSOA DEPLOYMENT SCRIPTS GUIDE
 
-Automated deployment scripts for local development and Hetzner production environments.
+## 📋 Overview
 
-## Quick Start
+This guide explains how to use the deployment scripts for the Pessoa collaborative scriptwriting platform. We provide separate scripts for local development and production deployment.
 
+## 🏠 Local Development
+
+### Quick Start
 ```bash
-# Local development (production build)
+# Default: Build and run everything with hot reload
 ./deploy_local.sh
 
-# Local development with hot reload
-./deploy_local.sh --hot-reload
+# Build specific components
+./deploy_local.sh frontend
+./deploy_local.sh backend
+./deploy_local.sh db
 
-# Production deployment to Hetzner
+# Advanced options
+./deploy_local.sh --hot-reload    # Enable hot reload for development
+./deploy_local.sh --reset-db      # Reset database (careful!)
+./deploy_local.sh --no-cache      # Force rebuild without cache
+```
+
+### Environment Setup
+1. Copy `env.example` to `.env`
+2. Customize your IP address and ports
+3. Set your development API keys
+
+## 🚀 Production Deployment
+
+### Production Environment Variables Best Practices
+
+#### 🔐 **SECURITY HIERARCHY** (Most Secure → Least Secure)
+
+| **Method** | **Security** | **Use Case** |
+|------------|--------------|--------------|
+| **1. External Secret Management** | 🔒🔒🔒 | Enterprise (Vault, AWS Secrets) |
+| **2. System Environment Variables** | 🔒🔒 | Production servers |
+| **3. Docker Secrets** | 🔒🔒 | Docker Swarm/Kubernetes |
+| **4. .env files** | 🔒 | Development only |
+
+#### 🛡️ **Recommended Production Setup**
+
+**Step 1: Set System Environment Variables on Production Server**
+```bash
+# On your production server (pessoa.theater)
+export DATABASE_URL="postgres://pessoa_user:REAL_SECURE_PASSWORD@db:5432/pessoa_db"
+export JWT_SECRET="super-long-random-string-at-least-32-chars-for-jwt-signing"
+export GEMINI_API_KEY="your-actual-gemini-api-key-here"
+export PGADMIN_DEFAULT_PASSWORD="secure-pgadmin-password"
+export POSTGRES_PASSWORD="real-secure-db-password"
+
+# Make them persistent
+echo 'export DATABASE_URL="postgres://pessoa_user:REAL_SECURE_PASSWORD@db:5432/pessoa_db"' >> ~/.bashrc
+echo 'export JWT_SECRET="super-long-random-string-at-least-32-chars-for-jwt-signing"' >> ~/.bashrc
+echo 'export GEMINI_API_KEY="your-actual-gemini-api-key-here"' >> ~/.bashrc
+echo 'export PGADMIN_DEFAULT_PASSWORD="secure-pgadmin-password"' >> ~/.bashrc
+echo 'export POSTGRES_PASSWORD="real-secure-db-password"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**Step 2: Copy Non-Secret Configuration**
+```bash
+# Copy the production template (contains no secrets)
+cp env.production .env
+```
+
+**Step 3: Deploy**
+```bash
+# Deploy everything
 ./deploy_hetzner.sh
+
+# Deploy specific components
+./deploy_hetzner.sh frontend
+./deploy_hetzner.sh backend
 ```
 
-## Scripts Overview
-
-### `deploy_local.sh` - Local Development
-- **Purpose**: Deploy to local development environment
-- **URL**: `https://192.168.2.111:8443`
-- **Features**: HTTPS with self-signed certificates, hot reload support
-
-### `deploy_hetzner.sh` - Production Deployment  
-- **Purpose**: Deploy to Hetzner production server
-- **URL**: `https://pessoa.theater`
-- **Features**: Optimized builds, automatic push to registry, remote deployment
-
-## Hot Reload Development 🔥
-
-### What is Hot Reload?
-Hot reload provides instant feedback during development by automatically updating the browser when you save files, without requiring manual rebuilds.
-
-### Features
-- **Frontend**: Vite dev server with React Fast Refresh
-- **Backend**: Cargo-watch with automatic Rust recompilation
-- **Instant Updates**: Changes appear in browser immediately
-- **State Preservation**: React state is preserved during updates
-
-### Usage
+#### 🔧 **Generate Secure Secrets**
 
 ```bash
-# Enable hot reload for all services
-./deploy_local.sh --hot-reload
+# Generate secure JWT secret (32+ characters)
+openssl rand -hex 32
 
-# Enable hot reload for specific service
-./deploy_local.sh frontend --hot-reload
-./deploy_local.sh backend --hot-reload
+# Generate secure database password
+openssl rand -base64 32
+
+# Generate secure PgAdmin password
+openssl rand -base64 16
 ```
 
-### URLs in Hot Reload Mode
-- **Frontend Dev Server**: `http://192.168.2.111:8444` (instant changes)
-- **Backend API**: `http://192.168.2.111:3001/api` (cargo-watch hot reload)
-- **Database**: `postgresql://localhost:5432/pessoa_db`
-- **PgAdmin**: `http://localhost:5050`
+#### 🏢 **Advanced: Using External Secret Management**
 
-### Hot Reload vs Production Build
-
-| Feature | Production Build | Hot Reload |
-|---------|------------------|------------|
-| **Build Time** | 30-60 seconds | 5-10 seconds |
-| **File Changes** | Manual rebuild required | Instant browser update |
-| **Performance** | Optimized for production | Optimized for development |
-| **SSL** | HTTPS (port 8443) | HTTP (port 8444) |
-| **State Preservation** | Full page reload | React state preserved |
-
-### Development Workflow
-
-1. **Start Hot Reload**:
-   ```bash
-   ./deploy_local.sh --hot-reload
-   ```
-
-2. **Open Browser**: Navigate to `http://192.168.2.111:8444`
-
-3. **Edit Files**: Make changes to any file in `./frontend` or `./backend`
-
-4. **See Changes**: Browser updates automatically (frontend) or API restarts (backend)
-
-5. **Stop Services**:
-   ```bash
-   docker-compose -f docker-compose.yml -f docker-compose.hot-reload.yml --env-file .env.local down
-   ```
-
-### Technical Implementation
-
-**Frontend Hot Reload**:
-- Uses Vite development server with React Fast Refresh
-- Volume mounts `./frontend` for live file watching
-- Polling enabled for Docker compatibility (`CHOKIDAR_USEPOLLING=true`)
-- Runs on port 8444 to avoid conflicts with production build
-
-**Backend Hot Reload**:
-- Uses `cargo-watch` to monitor Rust source files
-- Automatically recompiles and restarts on file changes
-- Maintains database connections and state
-- Runs on port 3001 (same as production)
-
-**Configuration Files**:
-- `docker-compose.hot-reload.yml`: Override configuration for development
-- `frontend/Dockerfile.dev`: Development container with Vite dev server
-- `frontend/vite.config.ts`: Vite configuration with HMR settings
-
-## Flexible Parameters
-
-**Targets:**
-- `all` - Rebuild everything (default)
-- `frontend` - Rebuild just frontend
-- `backend` - Rebuild just backend  
-- `db` - Reset database only
-
-**Options:**
-- `--no-cache` - Force rebuild without Docker cache
-- `--reset-db` - Reset database (drop volumes)
-- `--clean` - Clean up old containers/images first
-- `--hot-reload` - Enable full hot reload for frontend (dev server)
-- `--help` - Show usage information
-
-**Usage Examples:**
+**Option A: HashiCorp Vault**
 ```bash
-./deploy_local.sh                           # Default: rebuild all, keep DB
-./deploy_local.sh all --reset-db --no-cache # Full rebuild + DB reset + no cache
-./deploy_local.sh frontend --hot-reload     # Frontend with hot reload dev server
-./deploy_local.sh backend                   # Just backend, with cache
-./deploy_local.sh db --reset                # Just reset database
-./deploy_local.sh all --clean --hot-reload  # Full rebuild + cleanup + hot reload
+# Install and configure Vault
+export DATABASE_URL="$(vault kv get -field=url secret/pessoa/db)"
+export JWT_SECRET="$(vault kv get -field=secret secret/pessoa/jwt)"
+export GEMINI_API_KEY="$(vault kv get -field=key secret/pessoa/gemini)"
 ```
 
-**🔥 Hot Reload Options:**
-- **Default**: Frontend builds static files (faster startup)
-- **--hot-reload**: Frontend runs Vite dev server (instant changes)
-- **Backend**: Always has hot reload with cargo-watch
+**Option B: AWS Secrets Manager**
+```bash
+# Install AWS CLI and configure
+export DATABASE_URL="$(aws secretsmanager get-secret-value --secret-id pessoa/db-url --query SecretString --output text)"
+export JWT_SECRET="$(aws secretsmanager get-secret-value --secret-id pessoa/jwt-secret --query SecretString --output text)"
+```
 
-**Endpoints after deployment:**
-- Frontend HTTPS: https://192.168.2.111:8443 (PRIMARY)
-- Frontend HTTP: http://192.168.2.111:8080 (redirects to HTTPS)
-- Backend API: https://192.168.2.111:8443/api
-- PgAdmin: http://localhost:5050
+**Option C: Docker Secrets (Docker Swarm)**
+```yaml
+# docker-compose.prod.yml
+services:
+  backend:
+    secrets:
+      - db_password
+      - jwt_secret
+      - gemini_api_key
+    environment:
+      DATABASE_URL: "postgres://pessoa_user:$(cat /run/secrets/db_password)@db:5432/pessoa_db"
+      JWT_SECRET: "$(cat /run/secrets/jwt_secret)"
+      GEMINI_API_KEY: "$(cat /run/secrets/gemini_api_key)"
+
+secrets:
+  db_password:
+    external: true
+  jwt_secret:
+    external: true
+  gemini_api_key:
+    external: true
+```
+
+### Hetzner Production Deployment
+
+#### Prerequisites
+- Hetzner server with Docker and Docker Compose
+- GitHub Container Registry access
+- SSL certificates (Let's Encrypt)
+
+#### Quick Deploy
+```bash
+# Build and deploy everything
+./deploy_hetzner.sh
+
+# Deploy specific components
+./deploy_hetzner.sh frontend --no-cache
+./deploy_hetzner.sh backend --no-cache
+./deploy_hetzner.sh all --reset-db --clean
+```
+
+#### Advanced Options
+```bash
+# Full rebuild with database reset
+./deploy_hetzner.sh all --reset-db --no-cache --clean
+
+# Deploy-only mode (skip build/push, run on server)
+./deploy_hetzner.sh all --deploy-only
+
+# Frontend only with no cache
+./deploy_hetzner.sh frontend --no-cache
+```
+
+## 🎯 **Why System Environment Variables Are Better**
+
+### **Development**: `.env` files are perfect ✅
+- Easy for developers to set up
+- Can be version controlled (without secrets)
+- Quick to modify
+
+### **Production**: System environment variables are better 🔒
+- **More secure** - No secret files on disk
+- **Better for containers** - Standard practice
+- **Easier secret rotation** - Change without file edits
+- **Better for CI/CD** - Standard in most platforms
+- **Audit trails** - Better logging of secret access
+
+## 🔄 **Migration Strategy**
+
+### Current Setup → Recommended Setup
+
+**What you have now** (Good for development):
+```bash
+# .env file
+DATABASE_URL=postgres://user:pass@db:5432/db
+JWT_SECRET=secret
+```
+
+**What you should have in production** (Much more secure):
+```bash
+# System environment variables
+export DATABASE_URL="postgres://user:real_secure_pass@db:5432/db"
+export JWT_SECRET="real_long_random_string"
+
+# .env file (non-secrets only)
+APP_HOSTNAME=pessoa.theater
+CONTAINER_PREFIX=prod_
+RUST_LOG=info
+```
+
+This gives you:
+- ✅ **Security** - Secrets not in files
+- ✅ **Flexibility** - Easy to change without redeploying
+- ✅ **Compliance** - Meets security standards
+- ✅ **Simplicity** - Still easy to manage
+
+## 🚨 **Security Checklist**
+
+### Development Environment ✅
+- [ ] Use `.env` files for convenience
+- [ ] Never commit real API keys
+- [ ] Use development/test credentials only
+
+### Production Environment 🔒
+- [ ] Set secrets as system environment variables
+- [ ] Use `.env` files for non-secret config only
+- [ ] Rotate secrets regularly
+- [ ] Use strong, unique passwords (32+ chars)
+- [ ] Consider external secret management for enterprise
+
+## 🔗 **Useful Commands**
+
+```bash
+# Check what environment variables are set
+env | grep -E "(DATABASE_URL|JWT_SECRET|GEMINI_API_KEY)"
+
+# Test if Docker can access environment variables
+docker run --rm -e DATABASE_URL="$DATABASE_URL" alpine env | grep DATABASE_URL
+
+# Generate secure secrets
+openssl rand -hex 32    # For JWT secrets
+openssl rand -base64 32 # For passwords
+```
+
+## 📞 **Troubleshooting**
+
+### Common Issues
+1. **Environment variables not loading** - Check if they're exported
+2. **Docker not seeing variables** - Ensure they're in the shell running docker-compose
+3. **Secrets still in files** - Review `.env` files for accidental secrets
+
+### Debug Commands
+```bash
+# Check if environment variables are set
+echo $DATABASE_URL
+echo $JWT_SECRET
+
+# Check Docker environment
+docker-compose config
+
+# Check container environment
+docker exec container_name env
+```
 
 ## 🌐 Hetzner Production: `./deploy_hetzner.sh [target] [options]`
 
