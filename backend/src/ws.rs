@@ -141,9 +141,23 @@ pub async fn ws_handler_with_deps(
         }
     };
     
-    // Check if user owns this script
-    let script_exists = match sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM scripts WHERE id = $1 AND created_by = $2)"
+    // Check if user has access to this script (owns it, it's public, or it's shared with them)
+    let has_access = match sqlx::query_scalar::<_, bool>(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM scripts s
+            WHERE s.id = $1 
+            AND (
+                s.created_by = $2           -- User owns the script
+                OR s.is_public = true       -- Script is public
+                OR EXISTS (                 -- Script is shared with user
+                    SELECT 1 FROM script_shares ss 
+                    WHERE ss.script_id = s.id 
+                    AND ss.shared_with_user_id = $2
+                )
+            )
+        )
+        "#
     )
     .bind(script_uuid)
     .bind(user_id)
@@ -157,7 +171,7 @@ pub async fn ws_handler_with_deps(
         }
     };
     
-    if !script_exists {
+    if !has_access {
         tracing::warn!("User {} attempted to access script {} without permission", user_id, script_id);
         return (StatusCode::FORBIDDEN, "Access denied").into_response();
     }
