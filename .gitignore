@@ -52,3 +52,7 @@ frontend/coverage/
 *.sln
 *.sw?
 
+
+# Temporary setup files (used during initial deployment)
+.setup-files/
+.dev-files/

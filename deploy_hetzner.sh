@@ -10,6 +10,7 @@ TARGET="all"
 NO_CACHE=false
 RESET_DB=false
 CLEAN=false
+DIRECT_DEPLOY=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -34,6 +35,10 @@ while [[ $# -gt 0 ]]; do
             DEPLOY_ONLY=true
             shift
             ;;
+        --direct)
+            DIRECT_DEPLOY=true
+            shift
+            ;;
         --help)
             echo "🌐 Hetzner Production Deployment Script"
             echo ""
@@ -50,6 +55,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --reset-db     Reset database (drop volumes)"
             echo "  --clean        Clean up old containers/images first"
             echo "  --deploy-only  Skip build/push, deploy only (for server)"
+            echo "  --direct       Deploy directly without registry (saves built images)"
             echo "  --help         Show this help message"
             echo ""
             echo "Examples:"
@@ -59,6 +65,7 @@ while [[ $# -gt 0 ]]; do
             echo "  ./deploy_hetzner.sh backend                   # Just backend, with cache"
             echo "  ./deploy_hetzner.sh db --reset                # Just reset database"
             echo "  ./deploy_hetzner.sh all --clean               # Full rebuild + cleanup"
+            echo "  ./deploy_hetzner.sh all --direct --reset-db   # Direct deploy + complete purge"
             exit 0
             ;;
         *)
@@ -71,7 +78,7 @@ done
 
 echo "🌐 Starting Hetzner Production Deployment..."
 echo "📋 Target: $TARGET"
-echo "🔧 Options: no-cache=$NO_CACHE, reset-db=$RESET_DB, clean=$CLEAN"
+echo "🔧 Options: no-cache=$NO_CACHE, reset-db=$RESET_DB, clean=$CLEAN, direct=$DIRECT_DEPLOY"
 
 # Check if we're in the right directory
 if [ ! -f "docker-compose.prod.yml" ]; then
@@ -169,31 +176,53 @@ if [ "$DEPLOY_ONLY" != true ]; then
             ;;
     esac
     
-    # Tag and push to registry (GitHub Container Registry) - AUTOMATIC
+    # Handle registry push or direct deployment
     if [ "$TARGET" != "db" ]; then
-        echo "🏷️  Tagging and pushing images to GitHub Container Registry..."
-        
-        # Tag and push based on what was built
-        case $TARGET in
-            "all")
-                docker tag pessoa-1-backend:latest ghcr.io/sportinger/pessoa-backend:latest
-                docker tag pessoa-1-frontend:latest ghcr.io/sportinger/pessoa-frontend:latest
-                echo "🔑 Pushing both images to GitHub Container Registry..."
-                docker push ghcr.io/sportinger/pessoa-backend:latest
-                docker push ghcr.io/sportinger/pessoa-frontend:latest
-                ;;
-            "frontend")
-                docker tag pessoa-1-frontend:latest ghcr.io/sportinger/pessoa-frontend:latest
-                echo "🔑 Pushing frontend image to GitHub Container Registry..."
-                docker push ghcr.io/sportinger/pessoa-frontend:latest
-                ;;
-            "backend")
-                docker tag pessoa-1-backend:latest ghcr.io/sportinger/pessoa-backend:latest
-                echo "🔑 Pushing backend image to GitHub Container Registry..."
-                docker push ghcr.io/sportinger/pessoa-backend:latest
-                ;;
-        esac
-        echo "✅ Images pushed to registry!"
+        if [ "$DIRECT_DEPLOY" = true ]; then
+            echo "🚀 Direct deployment mode - saving images to deploy directly..."
+            
+            # Save images to tar files for direct transfer
+            case $TARGET in
+                "all")
+                    echo "💾 Saving backend and frontend images..."
+                    docker save pessoa-1-backend:latest | gzip > pessoa-backend-latest.tar.gz
+                    docker save pessoa-1-frontend:latest | gzip > pessoa-frontend-latest.tar.gz
+                    ;;
+                "frontend")
+                    echo "💾 Saving frontend image..."
+                    docker save pessoa-1-frontend:latest | gzip > pessoa-frontend-latest.tar.gz
+                    ;;
+                "backend")
+                    echo "💾 Saving backend image..."
+                    docker save pessoa-1-backend:latest | gzip > pessoa-backend-latest.tar.gz
+                    ;;
+            esac
+            echo "✅ Images saved for direct deployment!"
+        else
+            echo "🏷️  Tagging and pushing images to GitHub Container Registry..."
+            
+            # Tag and push based on what was built
+            case $TARGET in
+                "all")
+                    docker tag pessoa-1-backend:latest ghcr.io/sportinger/pessoa-backend:latest
+                    docker tag pessoa-1-frontend:latest ghcr.io/sportinger/pessoa-frontend:latest
+                    echo "🔑 Pushing both images to GitHub Container Registry..."
+                    docker push ghcr.io/sportinger/pessoa-backend:latest
+                    docker push ghcr.io/sportinger/pessoa-frontend:latest
+                    ;;
+                "frontend")
+                    docker tag pessoa-1-frontend:latest ghcr.io/sportinger/pessoa-frontend:latest
+                    echo "🔑 Pushing frontend image to GitHub Container Registry..."
+                    docker push ghcr.io/sportinger/pessoa-frontend:latest
+                    ;;
+                "backend")
+                    docker tag pessoa-1-backend:latest ghcr.io/sportinger/pessoa-backend:latest
+                    echo "🔑 Pushing backend image to GitHub Container Registry..."
+                    docker push ghcr.io/sportinger/pessoa-backend:latest
+                    ;;
+            esac
+            echo "✅ Images pushed to registry!"
+        fi
     fi
     
     # Deploy to Hetzner server - AUTOMATIC
@@ -204,10 +233,45 @@ if [ "$DEPLOY_ONLY" != true ]; then
     scp docker-compose.prod.yml roman@pessoa.theater:/opt/pessoa/
     scp deploy_hetzner.sh roman@pessoa.theater:/opt/pessoa/
     
+    # Handle direct deployment - transfer images
+    if [ "$DIRECT_DEPLOY" = true ]; then
+        echo "📦 Transferring images directly to server..."
+        case $TARGET in
+            "all")
+                scp pessoa-backend-latest.tar.gz roman@pessoa.theater:/opt/pessoa/
+                scp pessoa-frontend-latest.tar.gz roman@pessoa.theater:/opt/pessoa/
+                ;;
+            "frontend")
+                scp pessoa-frontend-latest.tar.gz roman@pessoa.theater:/opt/pessoa/
+                ;;
+            "backend")
+                scp pessoa-backend-latest.tar.gz roman@pessoa.theater:/opt/pessoa/
+                ;;
+        esac
+        echo "✅ Images transferred to server!"
+        
+        # Clean up local tar files
+        echo "🧹 Cleaning up local image files..."
+        case $TARGET in
+            "all")
+                rm -f pessoa-backend-latest.tar.gz pessoa-frontend-latest.tar.gz
+                ;;
+            "frontend")
+                rm -f pessoa-frontend-latest.tar.gz
+                ;;
+            "backend")
+                rm -f pessoa-backend-latest.tar.gz
+                ;;
+        esac
+    fi
+    
     # Run deployment on server with same parameters
     DEPLOY_CMD="cd /opt/pessoa && chmod +x deploy_hetzner.sh && ./deploy_hetzner.sh $TARGET --deploy-only"
     if [ "$RESET_DB" = true ]; then
         DEPLOY_CMD="$DEPLOY_CMD --reset-db"
+    fi
+    if [ "$DIRECT_DEPLOY" = true ]; then
+        DEPLOY_CMD="$DEPLOY_CMD --direct"
     fi
     ssh roman@pessoa.theater "$DEPLOY_CMD"
     
@@ -236,19 +300,60 @@ else
         exit 0
     fi
     
-    # Pull latest images from registry - AUTOMATIC (only what's needed)
-    echo "📥 Pulling latest images from registry..."
-    case $TARGET in
-        "all")
-            docker-compose -f docker-compose.prod.yml --env-file .env pull
-            ;;
-        "frontend")
-            docker-compose -f docker-compose.prod.yml --env-file .env pull frontend
-            ;;
-        "backend")
-            docker-compose -f docker-compose.prod.yml --env-file .env pull backend
-            ;;
-    esac
+    # Load images (direct deployment) or pull from registry
+    if [ "$DIRECT_DEPLOY" = true ]; then
+        echo "📥 Loading direct images from transferred files..."
+        case $TARGET in
+            "all")
+                echo "🔄 Loading backend image..."
+                docker load < pessoa-backend-latest.tar.gz
+                echo "🔄 Loading frontend image..."
+                docker load < pessoa-frontend-latest.tar.gz
+                # Tag images for docker-compose
+                docker tag pessoa-1-backend:latest ghcr.io/sportinger/pessoa-backend:latest
+                docker tag pessoa-1-frontend:latest ghcr.io/sportinger/pessoa-frontend:latest
+                ;;
+            "frontend")
+                echo "🔄 Loading frontend image..."
+                docker load < pessoa-frontend-latest.tar.gz
+                docker tag pessoa-1-frontend:latest ghcr.io/sportinger/pessoa-frontend:latest
+                ;;
+            "backend")
+                echo "🔄 Loading backend image..."
+                docker load < pessoa-backend-latest.tar.gz
+                docker tag pessoa-1-backend:latest ghcr.io/sportinger/pessoa-backend:latest
+                ;;
+        esac
+        echo "✅ Images loaded successfully!"
+        
+        # Clean up transferred files
+        echo "🧹 Cleaning up transferred image files..."
+        case $TARGET in
+            "all")
+                rm -f pessoa-backend-latest.tar.gz pessoa-frontend-latest.tar.gz
+                ;;
+            "frontend")
+                rm -f pessoa-frontend-latest.tar.gz
+                ;;
+            "backend")
+                rm -f pessoa-backend-latest.tar.gz
+                ;;
+        esac
+    else
+        # Pull latest images from registry - AUTOMATIC (only what's needed)
+        echo "📥 Pulling latest images from registry..."
+        case $TARGET in
+            "all")
+                docker-compose -f docker-compose.prod.yml --env-file .env pull
+                ;;
+            "frontend")
+                docker-compose -f docker-compose.prod.yml --env-file .env pull frontend
+                ;;
+            "backend")
+                docker-compose -f docker-compose.prod.yml --env-file .env pull backend
+                ;;
+        esac
+    fi
     
     # Start production services
     echo "🚀 Starting production services..."
