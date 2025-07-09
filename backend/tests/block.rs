@@ -49,12 +49,13 @@ async fn test_create_and_get_block() -> Result<(), AppError> {
     // Insert block
     let block = sqlx::query_as_unchecked!(
         Block,
-        "INSERT INTO blocks (id, script_id, block_type, content, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id, script_id, block_type, content, created_at",
+        "INSERT INTO blocks (id, script_id, block_type, content, created_at, block_order) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, script_id, block_type, content, created_at, block_order",
         block_id,
         script_id,
         &block_type,
         &content,
-        created_at
+        created_at,
+        0 // block_order
     )
     .fetch_one(&pool)
     .await?;
@@ -62,7 +63,7 @@ async fn test_create_and_get_block() -> Result<(), AppError> {
     // Fetch block
     let block2 = sqlx::query_as_unchecked!(
         Block,
-        "SELECT id, script_id, block_type, content, created_at FROM blocks WHERE id = $1",
+        "SELECT id, script_id, block_type, content, created_at, block_order FROM blocks WHERE id = $1",
         block_id
     )
     .fetch_one(&pool)

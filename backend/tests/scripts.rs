@@ -36,11 +36,13 @@ async fn test_create_and_get_script() -> Result<(), AppError> {
     // Insert script, linking to the created user
     let script = sqlx::query_as_unchecked!(
         Script,
-        "INSERT INTO scripts (id, title, created_by, created_at) VALUES ($1, $2, $3, $4) RETURNING id, title, created_by, created_at",
+        "INSERT INTO scripts (id, title, created_by, created_at, is_public, thumbnail) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, title, created_by, created_at, is_public, thumbnail",
         script_id,
         &title,
         user_id,
-        created_at
+        created_at,
+        false, // is_public
+        None::<String> // thumbnail
     )
     .fetch_one(&pool)
     .await?;
@@ -48,7 +50,7 @@ async fn test_create_and_get_script() -> Result<(), AppError> {
     // Fetch script
     let script2 = sqlx::query_as_unchecked!(
         Script,
-        "SELECT id, title, created_by, created_at FROM scripts WHERE id = $1",
+        "SELECT id, title, created_by, created_at, is_public, thumbnail FROM scripts WHERE id = $1",
         script_id
     )
     .fetch_one(&pool)

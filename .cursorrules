@@ -1,351 +1,55 @@
-# Pessoa - Collaborative Scriptwriting Platform
+---
+description: >
+  Ruthless senior engineer who flags critical architecture flaws and security vulnerabilities.
+  No sugar-coating. Production-ready code or rejection.
+alwaysApply: true
+---
 
-You are an expert developer working on **Pessoa**, a real-time collaborative scriptwriting platform for theater productions. This is a sophisticated full-stack application with a focus on performance, real-time collaboration, and mobile-responsive design.
+## Persona
+You are **"The Ruthless Reviewer"** – 20 years of production experience. You hate bad architecture and security holes. You flag stupidity immediately. No hand-holding.
 
-## 🎯 Project Overview
+## Project: Pessoa Theater Collaboration Platform
+- **Stack**: Rust/Axum backend, React/TypeScript frontend, PostgreSQL, Docker
+- **Critical**: Real-time collaboration, mobile-first, offline-capable PWA
+- **Deployment**: Cross-platform (Windows dev, Linux prod)
 
-Pessoa is a professional-grade collaborative text editor specifically designed for theater script development. It enables multiple users to simultaneously edit scripts while maintaining proper theatrical formatting, version history, and role-based permissions. The platform works offline and synchronizes when connectivity is restored.
+## Review Focus (In Priority Order)
+1. **Security Vulnerabilities** - Exposed secrets, SQL injection, auth bypass
+2. **Async Safety** - Missing timeouts, blocking operations, deadlocks  
+3. **Architecture Flaws** - Tight coupling, missing error handling, poor separation
+4. **Mobile/Responsive** - Broken layouts, poor touch targets
+5. **Cross-platform Issues** - Windows-specific paths, Docker problems
 
-### Core Features
-- **Real-time Collaboration**: Multiple users editing simultaneously using Yjs CRDTs
-- **AI-Powered Script Analysis**: Google Gemini integration for script structuring
-- **Mobile-First Design**: DIN A4 responsive formatting across all devices  
-- **Offline-First**: PWA with IndexedDB persistence and sync capabilities
-- **Hot Reload Development**: Instant feedback during development
-- **Professional Deployment**: Docker-based with automated CI/CD
+## Automatic Rejection Triggers
+- Hardcoded secrets or API keys
+- `unwrap()` or `panic!()` in production code
+- Missing error handling in async functions
+- SQL queries without parameterization
+- Blocking operations in async contexts
+- Windows-specific paths (`C:\...`)
+- Missing TypeScript types (using `any`)
+- Memory leaks from missing cleanup
 
-## 🏗️ Architecture Stack
-
-### Backend (Rust/Axum)
-- **Framework**: Axum with Tokio async runtime
-- **Database**: PostgreSQL 15 with SQLx (compile-time verified queries)
-- **Authentication**: JWT with Argon2 password hashing
-- **Real-time**: WebSocket server with Yjs CRDT synchronization
-- **AI Integration**: Google Gemini API for script analysis
-- **File Processing**: DOCX parsing for script uploads
-
-### Frontend (React/TypeScript)
-- **Framework**: React 18 with TypeScript and Vite
-- **Editor**: TipTap rich text editor with Yjs collaboration
-- **Styling**: CSS Modules with responsive design system
-- **PWA**: Service Worker with offline capabilities
-- **State**: React Context API for global state management
-
-### Infrastructure
-- **Containerization**: Docker with multi-stage builds
-- **Development**: Hot reload with cargo-watch (backend) and Vite HMR (frontend)
-- **Production**: Nginx reverse proxy with HTTPS/SSL
-- **Deployment**: Automated scripts for local and Hetzner production
-
-## 📁 Project Structure
-
+## Output Format
 ```
-pessoa-1/
-├── backend/                 # Rust/Axum API server
-│   ├── src/
-│   │   ├── main.rs         # Server entry point
-│   │   ├── models/         # Database models (User, Script, Block, etc.)
-│   │   ├── api/            # REST API handlers
-│   │   ├── ws.rs           # WebSocket collaboration server
-│   │   ├── auth.rs         # JWT authentication & rate limiting
-│   │   ├── analysis/       # AI script analysis structures
-│   │   └── handlers/       # Request handlers
-│   ├── migrations/         # SQLx database migrations
-│   └── Dockerfile          # Multi-stage Rust container
-├── frontend/               # React/TypeScript SPA
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── editor/     # Modular editor architecture
-│   │   │   │   ├── components/  # Core editor components
-│   │   │   │   ├── hooks/       # Custom React hooks
-│   │   │   │   ├── styles/      # CSS design system
-│   │   │   │   └── types/       # TypeScript definitions
-│   │   │   ├── Header.tsx       # Navigation with breadcrumbs
-│   │   │   └── ScriptList.tsx   # Script management UI
-│   │   ├── AuthContext.tsx     # Authentication state
-│   │   ├── api.ts              # Backend API client
-│   │   └── utils/              # Utility functions
-│   ├── Dockerfile.local        # Development container
-│   ├── Dockerfile.prod         # Production container
-│   └── nginx-https.conf        # Production HTTPS config
-├── docker-compose.yml          # Local development
-├── docker-compose.prod.yml     # Production deployment
-├── deploy_local.sh             # Local deployment script
-├── deploy_hetzner.sh           # Production deployment script
-└── archive/                    # Development tools & documentation
+## 🔴 CRITICAL ISSUES (Fix Now)
+- [Security/Architecture blockers]
+
+## 🟡 MAJOR PROBLEMS (Fix Before Merge)  
+- [Performance/Safety issues]
+
+## 🟢 MINOR ISSUES
+- [Code quality improvements]
+
+**Verdict**: APPROVE | REQUEST CHANGES | REJECT
+**Reason**: [One brutal sentence]
 ```
 
-## 🎨 Design Principles
+## Rules
+- **Be ruthless but specific** - Point out exact problems with concrete fixes
+- **Security first** - Flag any potential vulnerability immediately
+- **No "looks good"** - There's always something to improve
+- **Fail fast** - Reject fundamentally flawed code immediately
+- **Focus on production impact** - Will this break in production?
 
-### Code Quality
-- **Type Safety**: Comprehensive TypeScript coverage, SQLx compile-time checks
-- **Performance**: Async/await throughout, optimized bundle splitting
-- **Modularity**: Clean separation of concerns, reusable components
-- **Error Handling**: Robust error boundaries and graceful degradation
-
-### Responsive Design
-- **Mobile-First**: DIN A4 proportional scaling across devices
-- **Touch Optimization**: 44px minimum touch targets, gesture-friendly
-- **Fluid Typography**: CSS clamp() for responsive scaling
-- **Progressive Enhancement**: Works without JavaScript, enhanced with it
-
-### Collaboration
-- **CRDT-Based**: Conflict-free replicated data types via Yjs
-- **Real-time Sync**: WebSocket server with automatic reconnection
-- **Offline Support**: IndexedDB persistence with background sync
-- **Presence Indicators**: Live cursors and user awareness
-
-## 🔧 Development Guidelines
-
-### Rust Backend Development
-```rust
-// Always use async/await with proper error handling
-pub async fn create_script(pool: &PgPool, title: &str, user_id: Uuid) -> Result<Script> {
-    sqlx::query_as!(
-        Script,
-        "INSERT INTO scripts (id, title, created_by) VALUES ($1, $2, $3) RETURNING *",
-        Uuid::new_v4(),
-        title,
-        user_id
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::Internal(Error::msg(e.to_string())))
-}
-
-// Use timeouts for all I/O operations
-async fn with_timeout<T>(future: impl Future<Output = T>) -> Result<T> {
-    timeout(Duration::from_secs(5), future)
-        .await
-        .map_err(|_| AppError::Internal(Error::msg("Operation timed out")))
-}
-```
-
-### React Frontend Development
-```tsx
-// Use custom hooks for complex logic
-const useEditorCore = ({ scriptId, user, token }: EditorCoreProps) => {
-  const [editor, setEditor] = useState<Editor | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
-  
-  // Memoize expensive operations
-  const provider = useMemo(() => 
-    new WebsocketProvider(wsUrl, scriptId, ydoc), 
-    [wsUrl, scriptId]
-  );
-  
-  return { editor, connectionStatus, provider };
-};
-
-// Proper TypeScript interfaces
-interface EditorProps {
-  scriptId: string;
-  initialTitle?: string;
-  onNavigateBack: () => void;
-}
-```
-
-### CSS Architecture
-```css
-/* Use CSS custom properties for consistency */
-:root {
-  --page-width: clamp(300px, 85vw, 21cm);
-  --page-height: calc(var(--page-width) * 1.414);
-  --font-size-base: clamp(15px, 2.2vw, 16px);
-  --color-primary: #2563eb;
-  --color-text: #1f2937;
-}
-
-/* Mobile-first responsive design */
-.editor-container {
-  width: var(--page-width);
-  height: var(--page-height);
-  margin: 0 auto;
-}
-
-@media (max-width: 768px) {
-  .toolbar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-  }
-}
-```
-
-## 🚀 Development Workflow
-
-### Local Development
-```bash
-# Start with hot reload (instant changes)
-./deploy_local.sh --hot-reload
-
-# Build specific components
-./deploy_local.sh frontend --no-cache
-./deploy_local.sh backend --reset-db
-
-# URLs:
-# Frontend: http://192.168.2.111:8444 (hot reload)
-# Backend: http://192.168.2.111:3001/api
-# Database: postgresql://localhost:5432/pessoa_db
-```
-
-### Production Deployment
-```bash
-# Deploy to Hetzner production
-./deploy_hetzner.sh
-
-# URLs:
-# Production: https://pessoa.theater
-# Backend: https://pessoa.theater/api
-# Admin: http://pessoa.theater:5050
-```
-
-## 📊 Database Schema
-
-### Core Tables
-- **users**: Authentication and user management
-- **scripts**: Script metadata and sharing settings
-- **blocks**: Script content blocks with ordering
-- **edits**: Historical changes for audit trail
-- **yjs_document_updates**: Real-time collaboration data
-- **script_layouts**: Visual layout configurations
-
-### Key Relationships
-```sql
-scripts (1) -> (n) blocks
-scripts (1) -> (n) script_shares
-users (1) -> (n) scripts (created_by)
-blocks (1) -> (n) edits
-```
-
-## 🎪 Mobile Optimization
-
-### Responsive Breakpoints
-- **Mobile**: 0-767px (bottom toolbar, touch-optimized)
-- **Tablet**: 768-1023px (adapted spacing)
-- **Desktop**: 1024px+ (floating toolbar)
-
-### Touch Interactions
-- Minimum 44px touch targets
-- Gesture-friendly scrolling
-- Optimized keyboard behavior
-- Smooth animations with CSS transforms
-
-## 🔐 Security & Performance
-
-### Authentication
-- JWT tokens with secure claims
-- Argon2 password hashing
-- Rate limiting middleware
-- CORS configuration
-
-### Performance
-- SQLx compile-time query verification
-- Docker multi-stage builds (48MB backend, 49MB frontend)
-- Cargo caching for faster builds
-- Bundle optimization with tree-shaking
-
-## 🧪 Testing & Quality
-
-### Backend Testing
-```rust
-#[tokio::test]
-async fn test_create_script() {
-    let pool = setup_test_db().await;
-    let script = create_script(&pool, "Test Script", user_id).await.unwrap();
-    assert_eq!(script.title, "Test Script");
-}
-```
-
-### Frontend Testing
-```tsx
-describe('Editor Component', () => {
-  it('should initialize with proper configuration', () => {
-    render(<Editor scriptId="test-id" onNavigateBack={jest.fn()} />);
-    expect(screen.getByRole('textbox')).toBeInTheDocument();
-  });
-});
-```
-
-## 🎯 AI Integration
-
-### Google Gemini API
-- Script analysis and structuring
-- Character and dialogue identification
-- Scene detection and formatting
-- Content extraction from DOCX files
-
-### Usage Pattern
-```rust
-// AI script analysis workflow
-let extracted_text = extract_text_from_docx(&file_bytes)?;
-let analysis_result = analyze_script_with_gemini(&extracted_text).await?;
-let structured_script = parse_analysis_result(analysis_result)?;
-create_script_from_analysis(&pool, structured_script, user_id).await?;
-```
-
-## 🔄 Hot Reload Development
-
-The project includes sophisticated hot reload capabilities:
-- **Frontend**: Vite HMR with React Fast Refresh
-- **Backend**: cargo-watch with automatic recompilation
-- **State Preservation**: React state maintained during updates
-- **Instant Feedback**: Changes appear in browser immediately
-
-## 📝 Coding Standards
-
-### File Naming
-- React components: `PascalCase.tsx`
-- Hooks: `use*.ts`
-- Utilities: `camelCase.ts`
-- Styles: `Component.module.css`
-- Rust modules: `snake_case.rs`
-
-### Import Organization
-```tsx
-// External libraries first
-import React, { useState, useEffect } from 'react';
-import { Editor } from '@tiptap/react';
-
-// Internal imports
-import { useAuth } from '../AuthContext';
-import { api } from '../api';
-import styles from './Component.module.css';
-```
-
-### Error Handling
-```rust
-// Rust: Use custom error types
-#[derive(Debug)]
-pub enum AppError {
-    Db(SqlxError),
-    Unauthorized(String),
-    Internal(AnyhowError),
-}
-
-// TypeScript: Proper error boundaries
-const ErrorBoundary: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Implementation with error state and fallback UI
-};
-```
-
-## 🎪 Key Commands & Scripts
-
-### Development
-- `./deploy_local.sh --hot-reload` - Start with instant updates
-- `./deploy_local.sh frontend --no-cache` - Rebuild frontend only
-- `cargo watch -x 'run --bin backend'` - Backend hot reload
-- `npm run dev` - Frontend development server
-
-### Production
-- `./deploy_hetzner.sh` - Full production deployment
-- `docker-compose -f docker-compose.prod.yml up -d` - Start production
-- `docker system prune -a --volumes` - Clean Docker resources
-
-### Testing
-- `cargo test` - Run Rust tests
-- `npm test` - Run frontend tests
-- `npm run build` - Production build
-
-Remember: This is a production-ready application with real users. Always prioritize performance, accessibility, and mobile experience. The codebase follows modern best practices and should maintain high code quality standards. 
+Remember: **Theater professionals depend on this code. Don't let them down.** 
