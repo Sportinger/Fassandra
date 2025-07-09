@@ -68,11 +68,15 @@ struct ErrorResponse {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_message, details) = match self {
-            AppError::Db(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Database error".to_string(),
-                Some(vec![e.to_string()]),
-            ),
+            AppError::Db(e) => {
+                // Log the actual error for debugging (server-side only)
+                tracing::error!("Database error: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                    None, // Never expose database details to users
+                )
+            },
             AppError::Unauthorized(e) => (
                 StatusCode::UNAUTHORIZED,
                 "Unauthorized".to_string(),
@@ -98,11 +102,15 @@ impl IntoResponse for AppError {
                         .collect(),
                 ),
             ),
-            AppError::Internal(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal server error".to_string(),
-                Some(vec![e.to_string()]),
-            ),
+            AppError::Internal(e) => {
+                // Log the actual error for debugging (server-side only)
+                tracing::error!("Internal server error: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                    None, // Never expose internal details to users
+                )
+            },
             AppError::BadRequest(e) => (
                 StatusCode::BAD_REQUEST,
                 "Bad request".to_string(),

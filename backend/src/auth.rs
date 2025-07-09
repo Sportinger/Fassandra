@@ -30,16 +30,20 @@ use tracing;
 use serde_qs;
 
 lazy_static! {
-    static ref USERNAME_REGEX: Regex = Regex::new(r"^[a-zA-Z0-9_-]{3,20}$").unwrap();
-    static ref PASSWORD_REGEX: Regex = Regex::new(r"^.{8,}$").unwrap();
+    static ref USERNAME_REGEX: Regex = Regex::new(r"^[a-zA-Z0-9_-]{3,20}$")
+        .expect("USERNAME_REGEX compilation failed - invalid regex pattern");
+    static ref PASSWORD_REGEX: Regex = Regex::new(r"^.{8,}$")
+        .expect("PASSWORD_REGEX compilation failed - invalid regex pattern");
 }
 
 /// Returns the JWT secret as bytes, loaded from the JWT_SECRET environment variable.
 ///
-/// # Panics
-/// Panics if the JWT_SECRET environment variable is not set.
-fn jwt_secret() -> Vec<u8> {
-    env::var("JWT_SECRET").expect("JWT_SECRET must be set").into_bytes()
+/// # Returns
+/// * `Result<Vec<u8>>` - The JWT secret as bytes on success, or an AppError if not set.
+fn jwt_secret() -> Result<Vec<u8>> {
+    env::var("JWT_SECRET")
+        .map(|s| s.into_bytes())
+        .map_err(|_| AppError::Internal(Error::msg("JWT_SECRET environment variable is not set")))
 }
 
 /// JWT claims for authentication and authorization.
@@ -77,7 +81,7 @@ pub fn generate_token(
 ) -> Result<String> {
     let expiration = Utc::now()
         .checked_add_signed(ChronoDuration::hours(24))
-        .expect("valid timestamp")
+        .ok_or_else(|| AppError::Internal(Error::msg("Timestamp overflow when calculating JWT expiration")))?
         .timestamp() as usize;
 
     let claims = Claims {
@@ -91,7 +95,7 @@ pub fn generate_token(
     encode(
         &Header::default(),
         &claims,
-        &EncodingKey::from_secret(&jwt_secret()),
+        &EncodingKey::from_secret(&jwt_secret()?),
     )
     .map_err(|e| AppError::Internal(Error::msg(e.to_string())))
 }
@@ -106,7 +110,7 @@ pub fn generate_token(
 pub fn verify_token(token: &str) -> Result<Claims> {
     let token_data = decode::<Claims>(
         token,
-        &DecodingKey::from_secret(&jwt_secret()),
+        &DecodingKey::from_secret(&jwt_secret()?),
         &Validation::default(),
     )
     .map_err(|_| AppError::Unauthorized("Invalid token".to_string()))?;

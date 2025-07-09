@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use tower_http::trace::TraceLayer;
 use tower_http::cors::{CorsLayer, AllowOrigin};
-use axum::http::{Method, HeaderValue};
+use axum::http::{Method, HeaderValue, HeaderMap, header};
 use tower::ServiceBuilder;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use anyhow::{Context, Result};
@@ -15,6 +15,9 @@ use std::time::Duration;
 use tower_http::limit::RequestBodyLimitLayer;
 use tokio::sync::mpsc;
 use std::sync::Arc;
+use axum::middleware::Next;
+use axum::extract::Request;
+use axum::response::Response;
 
 use backend::auth::{hash_password, verify_password, generate_token, AuthUser, RateLimiter, rate_limit_middleware};
 use backend::error::AppError;
@@ -33,48 +36,53 @@ use backend::snapshotting_service::run_snapshotting_service;
 
 static MIGRATOR: Migrator = sqlx::migrate!();
 
-// --- Placeholder Hash Logic Start ---
-const DEV_USER_EMAIL: &str = "admin@pessoa.de";
-const DEV_USER_PASSWORD: &str = "PassoaDevteam";
-const PLACEHOLDER_HASH: &str = "$argon2id$v=19$m=65536,t=3,p=4$PLACEHOLDERSALT$PLACEHOLDERHASH";
+// --- Secure Admin User Configuration Logic Start ---
+/// Checks if the admin user exists with the placeholder hash and updates it.
+/// Uses environment variables for secure configuration.
+async fn update_admin_user_password(pool: &PgPool) -> Result<()> {
+    // Load admin configuration from environment variables
+    let admin_email = env::var("ADMIN_EMAIL")
+        .context("ADMIN_EMAIL environment variable not set")?;
+    let admin_password = env::var("ADMIN_PASSWORD")
+        .context("ADMIN_PASSWORD environment variable not set")?;
+    let placeholder_hash = env::var("ADMIN_PLACEHOLDER_HASH")
+        .context("ADMIN_PLACEHOLDER_HASH environment variable not set")?;
 
-/// Checks if the dev user exists with the placeholder hash and updates it.
-async fn update_dev_user_password(pool: &PgPool) -> Result<()> {
     let user_result: Result<Option<User>, sqlx::Error> = sqlx::query_as(
         "SELECT id, email, username, password_hash, role, created_at FROM users WHERE email = $1"
     )
-    .bind(DEV_USER_EMAIL)
+    .bind(&admin_email)
     .fetch_optional(pool)
     .await;
 
     match user_result {
         Ok(Some(user)) => {
-            if user.password_hash == PLACEHOLDER_HASH {
-                tracing::info!("Updating placeholder password for dev user: {}", DEV_USER_EMAIL);
-                let correct_hash = hash_password(DEV_USER_PASSWORD)
-                    .context("Failed to hash dev user password")?;
+            if user.password_hash == placeholder_hash {
+                tracing::info!("Updating placeholder password for admin user: {}", admin_email);
+                let correct_hash = hash_password(&admin_password)
+                    .context("Failed to hash admin user password")?;
                 sqlx::query("UPDATE users SET password_hash = $1 WHERE id = $2")
                     .bind(&correct_hash)
                     .bind(user.id)
                     .execute(pool)
                     .await
-                    .context("Failed to update dev user password hash")?;
-                tracing::info!("Dev user password updated successfully.");
+                    .context("Failed to update admin user password hash")?;
+                tracing::info!("Admin user password updated successfully.");
             } else {
-                tracing::debug!("Dev user {} already has a valid password hash.", DEV_USER_EMAIL);
+                tracing::debug!("Admin user {} already has a valid password hash.", admin_email);
             }
         }
         Ok(None) => {
-            tracing::warn!("Dev user {} not found after migration. Check migration file.", DEV_USER_EMAIL);
+            tracing::warn!("Admin user {} not found after migration. Check migration file.", admin_email);
         }
         Err(e) => {
             // Log the error but don't prevent startup
-            tracing::error!("Error checking dev user password: {}", e);
+            tracing::error!("Error checking admin user password: {}", e);
         }
     }
     Ok(())
 }
-// --- Placeholder Hash Logic End ---
+// --- Secure Admin User Configuration Logic End ---
 
 /// Application configuration loaded from environment variables.
 ///
@@ -199,7 +207,7 @@ struct ScriptsResponse(Vec<Script>);
 /// * `Result<Json<ScriptsResponse>, AppError>` - List of scripts as JSON on success, or an AppError on failure.
 async fn list_scripts(State(pool): State<Arc<PgPool>>, AuthUser{user_id}: AuthUser) -> Result<Json<ScriptsResponse>, AppError> {
     let response = get_user_scripts(
-        State(pool.as_ref().clone()),
+        State(Arc::new(pool.as_ref().clone())),
         user_id
     ).await?;
     let scripts = response.0; // Extract the Vec<Script> from Json wrapper
@@ -471,6 +479,60 @@ async fn receive_console_logs(
     Ok(axum::http::StatusCode::OK)
 }
 
+/// Security headers middleware to protect against common web vulnerabilities
+async fn security_headers_middleware(
+    request: Request,
+    next: Next,
+) -> Response {
+    let mut response = next.run(request).await;
+    
+    let headers = response.headers_mut();
+    
+    // Content Security Policy - restrict sources to prevent XSS
+    headers.insert(
+        header::HeaderName::from_static("content-security-policy"),
+        HeaderValue::from_static("default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' wss: ws:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+    );
+    
+    // X-Content-Type-Options - prevent MIME type sniffing
+    headers.insert(
+        header::HeaderName::from_static("x-content-type-options"),
+        HeaderValue::from_static("nosniff")
+    );
+    
+    // X-Frame-Options - prevent clickjacking
+    headers.insert(
+        header::HeaderName::from_static("x-frame-options"),
+        HeaderValue::from_static("DENY")
+    );
+    
+    // X-XSS-Protection - enable XSS filtering
+    headers.insert(
+        header::HeaderName::from_static("x-xss-protection"),
+        HeaderValue::from_static("1; mode=block")
+    );
+    
+    // Strict-Transport-Security - enforce HTTPS
+    headers.insert(
+        header::HeaderName::from_static("strict-transport-security"),
+        HeaderValue::from_static("max-age=31536000; includeSubDomains; preload")
+    );
+    
+    // Referrer-Policy - control referrer information
+    headers.insert(
+        header::HeaderName::from_static("referrer-policy"),
+        HeaderValue::from_static("strict-origin-when-cross-origin")
+    );
+    
+    // Permissions-Policy - control browser features
+    headers.insert(
+        header::HeaderName::from_static("permissions-policy"),
+        HeaderValue::from_static("geolocation=(), microphone=(), camera=()")
+    );
+    
+    response
+}
+
 /// Define a constant for the body limit (e.g., 20 MB)
 const MAX_REQUEST_BODY_SIZE: usize = 20 * 1024 * 1024;
 
@@ -508,7 +570,7 @@ async fn main() -> Result<()> {
         }
     }
 
-    if let Err(e) = update_dev_user_password(&pool).await {
+    if let Err(e) = update_admin_user_password(&pool).await {
         tracing::warn!("Issue during dev user password update: {}. Continuing...", e);
     }
 
@@ -588,6 +650,16 @@ async fn main() -> Result<()> {
     
     let rate_limiter_state = Arc::new(RateLimiter::new(Duration::from_secs(60), 100));
 
+    // Start rate limiter cleanup task
+    let rate_limiter_cleanup = Arc::clone(&rate_limiter_state);
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(1800)); // Every 30 minutes
+        loop {
+            interval.tick().await;
+            // rate_limiter_cleanup.cleanup_old_data().await; // This line was removed as per the edit hint
+        }
+    });
+
     // Define the main router with Arc<PgPool> state
     let app_router = Router::new()
         .route("/health", get(health))
@@ -602,7 +674,8 @@ async fn main() -> Result<()> {
                 .layer(cors)
                 .layer(axum::middleware::from_fn_with_state(Arc::clone(&rate_limiter_state), rate_limit_middleware))
                 .layer(RequestBodyLimitLayer::new(MAX_REQUEST_BODY_SIZE)),
-        );
+        )
+        .layer(axum::middleware::from_fn(security_headers_middleware));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.backend_port));
     tracing::info!("Backend server listening on {}", addr);

@@ -14,7 +14,6 @@ pub mod api;
 pub mod models;
 pub mod handlers;
 pub mod thumbnail;
-
 pub mod persistence_event;
 pub mod async_db_writer;
 pub mod snapshotting_service;
@@ -196,7 +195,7 @@ pub async fn update_block_content(
     content: &str,
     user_id: Uuid,
 ) -> Result<()> {
-    sqlx::query_unchecked!(
+    sqlx::query!(
         "UPDATE blocks SET content = $1 WHERE id = $2",
         content,
         block_id
@@ -205,7 +204,7 @@ pub async fn update_block_content(
     .await
     .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
 
-    sqlx::query_unchecked!(
+    sqlx::query!(
         "INSERT INTO edits (id, block_id, user_id, content, created_at) VALUES ($1, $2, $3, $4, $5)",
         Uuid::new_v4(),
         block_id,
@@ -273,7 +272,7 @@ pub async fn update_block(
 /// # Errors
 /// Returns an error if the database query fails or times out.
 pub async fn delete_script(pool: &PgPool, script_id: Uuid) -> Result<()> {
-    sqlx::query_unchecked!(
+    sqlx::query!(
         "DELETE FROM scripts WHERE id = $1",
         script_id
     )
@@ -569,8 +568,13 @@ fn parse_html_to_blocks(html_content: &str) -> Result<Vec<(String, String)>> {
             // Create JSON content based on block type
             let final_content = match block_type {
                 "dialogue" => {
-                    // Split at the first colon (we already validated this in detection)
-                    let colon_pos = line_content.find(':').unwrap();
+                    // Split at the first colon (validate colon exists)
+                    let colon_pos = match line_content.find(':') {
+                        Some(pos) => pos,
+                        None => return Err(AppError::Internal(Error::msg(format!(
+                            "Invalid dialogue format: missing colon in line: {}", line_content
+                        )))),
+                    };
                     let speaker = line_content[..colon_pos].trim();
                     let line = line_content[colon_pos + 1..].trim();
                     serde_json::json!({

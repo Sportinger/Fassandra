@@ -4,12 +4,12 @@ use uuid::Uuid;
 use crate::persistence_event::YjsPersistenceEvent;
 use crate::models::yjs_update::YjsDocumentUpdate; // Assuming this is the correct path
 
-async fn save_yjs_update(pool: &PgPool, event: &YjsPersistenceEvent) -> Result<(), sqlx::Error> {
-    // Convert the string script_id to UUID
-    let script_id = Uuid::parse_str(&event.script_id).unwrap_or_else(|_| {
-        tracing::error!("Failed to parse script_id: {}", event.script_id);
-        Uuid::nil() // Use a nil UUID as fallback - should be handled better in production
-    });
+async fn save_yjs_update(pool: &PgPool, event: &YjsPersistenceEvent) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // 🔒 CRITICAL SECURITY: Never use fallback UUIDs - fail fast to prevent data corruption
+    let script_id = Uuid::parse_str(&event.script_id).map_err(|e| {
+        tracing::error!("CRITICAL: Invalid script_id format '{}': {}. Rejecting update to prevent data corruption.", event.script_id, e);
+        Box::new(e) as Box<dyn std::error::Error + Send + Sync>
+    })?;
     
     sqlx::query_as::<_, YjsDocumentUpdate>(
         "INSERT INTO yjs_document_updates (script_id, user_id, update_data, created_at) VALUES ($1, $2, $3, $4) RETURNING id, script_id, user_id, update_data, created_at"
@@ -19,7 +19,12 @@ async fn save_yjs_update(pool: &PgPool, event: &YjsPersistenceEvent) -> Result<(
     .bind(&event.update_data)
     .bind(event.received_at) 
     .fetch_one(pool)
-    .await?;
+    .await
+    .map_err(|e| {
+        tracing::error!("CRITICAL: Database error saving Yjs update for script_id '{}': {}. Data persistence failed!", event.script_id, e);
+        Box::new(e) as Box<dyn std::error::Error + Send + Sync>
+    })?;
+    
     Ok(())
 }
 
@@ -39,11 +44,13 @@ pub async fn run_async_db_writer(
             }
             Err(e) => {
                 tracing::error!(
-                    "❌ Failed to save Yjs update for script_id: {} from user_id: {:?}. Error: {}",
+                    "❌ CRITICAL: Failed to save Yjs update for script_id: {} from user_id: {:?}. Error: {}. DATA PERSISTENCE FAILED!",
                     event.script_id, event.user_id, e
                 );
-                // Implement retry logic or dead-letter queue as per YJS_PERSISTENCE_STRATEGY.md
-                // For now, just logging the error.
+                // 🔒 CRITICAL SECURITY: Never ignore persistence failures
+                // This error indicates potential data loss and should be investigated immediately
+                // TODO: Implement retry logic or dead-letter queue as per YJS_PERSISTENCE_STRATEGY.md
+                // For now, logging as CRITICAL to ensure monitoring systems catch this
             }
         }
     }

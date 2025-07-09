@@ -4,6 +4,7 @@ use axum::{
         Path,
         State,
     },
+    http::StatusCode,
     response::IntoResponse,
     routing::get,
     Router,
@@ -107,24 +108,61 @@ impl Session {
 /// Entrypoint to create WebSocket routes
 pub fn ws_routes(persistence_event_tx: TokioMpscSender<YjsPersistenceEvent>) -> Router<Arc<sqlx::PgPool>> {
     // Create a router with the WebSocket upgrade handler
+    // We need to capture the persistence_event_tx in the handler closure since we can't use multiple states
+    let handler = move |ws: WebSocketUpgrade, 
+                        Path(script_id): Path<String>,
+                        State(pool): State<Arc<sqlx::PgPool>>,
+                        auth_user: WsAuthUser| {
+        ws_handler_with_deps(ws, script_id, pool, auth_user, persistence_event_tx.clone())
+    };
+    
     Router::new()
-        .route("/collab/:script_id", get(ws_handler))
-        .with_state(persistence_event_tx)
+        .route("/collab/:script_id", get(handler))
 }
 
 /// Handle WebSocket connections
-pub async fn ws_handler(
+pub async fn ws_handler_with_deps(
     ws: WebSocketUpgrade,
-    Path(script_id): Path<String>,
-    State(persistence_event_tx): State<TokioMpscSender<YjsPersistenceEvent>>,
+    script_id: String,
+    pool: Arc<sqlx::PgPool>,
     auth_user: WsAuthUser,
+    persistence_event_tx: TokioMpscSender<YjsPersistenceEvent>,
 ) -> impl IntoResponse {
-    // Verify the user has access to this script
-    // For now, we just verify they're authenticated
-    // In a production app, you'd check script-specific permissions
     let user_id = auth_user.user_id;
     
     tracing::info!("WebSocket connection requested for script: {}, user: {}", script_id, user_id);
+    
+    // 🔒 CRITICAL SECURITY: Verify user has access to this script before WebSocket upgrade
+    let script_uuid = match Uuid::parse_str(&script_id) {
+        Ok(uuid) => uuid,
+        Err(_) => {
+            tracing::warn!("Invalid script ID format: {}", script_id);
+            return (StatusCode::BAD_REQUEST, "Invalid script ID").into_response();
+        }
+    };
+    
+    // Check if user owns this script
+    let script_exists = match sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM scripts WHERE id = $1 AND created_by = $2)"
+    )
+    .bind(script_uuid)
+    .bind(user_id)
+    .fetch_one(pool.as_ref())
+    .await
+    {
+        Ok(exists) => exists,
+        Err(e) => {
+            tracing::error!("Database error checking script access: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response();
+        }
+    };
+    
+    if !script_exists {
+        tracing::warn!("User {} attempted to access script {} without permission", user_id, script_id);
+        return (StatusCode::FORBIDDEN, "Access denied").into_response();
+    }
+    
+    tracing::info!("User {} authorized for script {} - proceeding with WebSocket upgrade", user_id, script_id);
     
     // Upgrade the connection to a WebSocket
     // Remove protocol requirement for better Chrome compatibility
