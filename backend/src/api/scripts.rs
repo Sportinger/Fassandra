@@ -8,8 +8,12 @@ use chrono::Utc;
 use std::sync::Arc;
 use axum::{
     extract::{Path, State},
+    response::IntoResponse,
     Json,
 };
+use axum::http::StatusCode;
+use tracing::{debug, info, error};
+use serde::Deserialize;
 
 #[derive(serde::Deserialize)]
 pub struct ScriptUpdate {
@@ -97,4 +101,53 @@ pub async fn delete_script(
     .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
 
     Ok(Json(json!({"success": true})))
+} 
+
+#[derive(Deserialize)]
+pub struct ContentSnapshotRequest {
+    content: String,
+    format: String, // "html" or "json"
+}
+
+/// Store content snapshot for reliable persistence
+/// POST /api/scripts/:script_id/snapshot
+pub async fn store_content_snapshot(
+    State(pool): State<Arc<PgPool>>,
+    Path(script_id): Path<Uuid>,
+    Json(request): Json<ContentSnapshotRequest>,
+) -> impl IntoResponse {
+    debug!("Storing content snapshot for script {}: {} chars", script_id, request.content.len());
+    
+    // Store the content snapshot in the database
+    let result = sqlx::query!(
+        r#"
+        INSERT INTO script_snapshots_meta (script_id, content_snapshot, snapshot_format, created_at, last_snapshot_at)
+        VALUES ($1, $2, $3, NOW(), NOW())
+        ON CONFLICT (script_id) 
+        DO UPDATE SET 
+            content_snapshot = $2,
+            snapshot_format = $3,
+            created_at = NOW(),
+            last_snapshot_at = NOW()
+        "#,
+        script_id,
+        request.content,
+        request.format
+    )
+    .execute(pool.as_ref())
+    .await;
+
+    match result {
+        Ok(_) => {
+            info!("Successfully stored content snapshot for script {}", script_id);
+            (StatusCode::OK, Json(serde_json::json!({
+                "success": true,
+                "message": "Content snapshot stored successfully"
+            }))).into_response()
+        }
+        Err(e) => {
+            error!("Failed to store content snapshot for script {}: {}", script_id, e);
+            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to store content snapshot: {}", e)).into_response()
+        }
+    }
 } 

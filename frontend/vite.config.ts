@@ -28,10 +28,11 @@ export default defineConfig({
     port: 8080,     // Standard port for hot reload
     host: true,     // Allow access from host to container
     allowedHosts: process.env.VITE_APP_DOMAIN ? [process.env.VITE_APP_DOMAIN] : ['localhost', '192.168.2.111'],
-    // Use HTTPS if SSL certificates exist
-    ...(sslConfig && {
-      https: sslConfig,
-    }),
+    // Always use HTTPS for consistency with production
+    https: sslConfig || {
+      key: fs.readFileSync('/app/ssl/dev/key.pem'),
+      cert: fs.readFileSync('/app/ssl/dev/cert.pem'),
+    },
     watch: {
       usePolling: true,  // Docker-safe file watching
       interval: 500,     // Polling interval (ms)

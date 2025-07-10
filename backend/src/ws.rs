@@ -46,35 +46,25 @@ fn is_awareness_update(data: &[u8]) -> bool {
         return false;
     }
     
-    // Check for common awareness update patterns based on database analysis
-    // Awareness updates typically have specific hex patterns and sizes
-    let size = data.len();
-    
-    // Pattern 1: Size between 230-250 bytes with specific hex prefixes (01e7, 019f, 0184)
-    if size >= 230 && size <= 300 {
-        if data.len() >= 2 {
-            let prefix = ((data[0] as u16) << 8) | (data[1] as u16);
-            match prefix {
-                0x01e7 | 0x019f | 0x0184 | 0x01a1 | 0x01e9 | 0x01a0 => {
-                    tracing::trace!("Detected awareness update: size={}, prefix={:04x}", size, prefix);
+    // Fast-path: according to y-protocol, message type 0x04 == Awareness
+    // This catches the typical tiny 4-10 byte awareness pings and avoids an
+    // expensive full decode on every single one.
+    if data[0] == 4 {
+        tracing::trace!("Detected awareness update via msg-type byte 0x04 (len={})", data.len());
                     return true;
-                }
-                _ => {}
-            }
-        }
     }
     
-    // Try to decode as YJS sync message to detect awareness
+    // Slow-path fallback – fully decode to be safe for unknown variants.
     if let Ok(sync_message) = YrsDecodeTrait::decode(&mut DecoderV1::new(YrsIoCursor::new(data))) {
-        match sync_message {
-            YrsSyncMessage::Awareness(_) => {
-                tracing::trace!("Detected YJS awareness message: size={}", size);
+        if matches!(sync_message, YrsSyncMessage::Awareness(_)) {
+            tracing::trace!("Detected awareness update via full decode (len={})", data.len());
                 return true;
-            }
-            _ => {}
         }
+        // Any other valid SyncMessage is considered content.
+        return false;
     }
     
+    // Couldn’t decode → assume it’s content to avoid data loss.
     false
 }
 
@@ -296,7 +286,7 @@ async fn handle_socket(
                             }
                             tracing::info!("💾 Queued content update for script {} ({}bytes) - should trigger snapshotting soon", script_id, bin.len());
                         } else {
-                            tracing::trace!("👁️ Skipped persisting awareness update for script {}", script_id);
+                            tracing::debug!("👁️ Skipped persisting awareness update for script {} ({}bytes)", script_id, bin.len());
                         }
                         
                         // Always broadcast to all other clients (including awareness updates for real-time cursors)

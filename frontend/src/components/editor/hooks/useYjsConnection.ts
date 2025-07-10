@@ -81,7 +81,7 @@ export const useYjsConnection = ({
       userAgent: navigator.userAgent,
     };
 
-    console.log(`[YJS] Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id})`);
+    console.log(`[YJS] 🚀 Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id})`);
     console.log('[YJS] Browser info:', browserInfo);
     console.log('[YJS] Mobile detection:', {
       isMobile: isMobile(),
@@ -90,6 +90,7 @@ export const useYjsConnection = ({
       hostname: window.location.hostname,
       host: window.location.host,
     });
+    console.log('[YJS] 🔍 DEBUGGING: Connection setup starting...');
     
     // Enable console forwarder for mobile debugging
     if (isMobile()) {
@@ -119,9 +120,16 @@ export const useYjsConnection = ({
     // Mobile browsers connecting directly to :3001 can cause network/firewall problems
     const wsBaseUrl = envWsUrl || fallbackWsUrl; // Always use proxy route through frontend
     
-    console.log(`[YJS] Environment WS URL: ${envWsUrl}`);
-    console.log(`[YJS] Fallback WS URL: ${fallbackWsUrl}`);
-    console.log(`[YJS] Final WebSocket Base URL: ${wsBaseUrl}`);
+    console.log(`[YJS] 🌍 Environment WS URL: ${envWsUrl}`);
+    console.log(`[YJS] 🔄 Fallback WS URL: ${fallbackWsUrl}`);
+    console.log(`[YJS] ✅ Final WebSocket Base URL: ${wsBaseUrl}`);
+    console.log(`[YJS] 🔍 Current location:`, {
+      protocol: window.location.protocol,
+      host: window.location.host,
+      hostname: window.location.hostname,
+      port: window.location.port,
+      pathname: window.location.pathname
+    });
     logDebugInfo('Editor', `WebSocket Base URL: ${wsBaseUrl}`);
 
     console.log(`[YJS] Setting up IndexedDB persistence for ${scriptId}...`);
@@ -230,13 +238,16 @@ export const useYjsConnection = ({
       // Manually construct WebSocket URL with token as query parameter for compatibility
       const cleanToken = token.trim(); // Remove any trailing whitespace/slash
       const wsUrlWithToken = `${wsBaseUrl}/${roomName}?token=${encodeURIComponent(cleanToken)}`;
-      console.log(`${browserType}: Connecting to WebSocket: ${wsUrlWithToken.replace(cleanToken, 'TOKEN_HIDDEN')}`);
-      console.log(`${browserType}: Full WebSocket URL construction:`, {
+      console.log(`[YJS] 🔗 ${browserType}: Connecting to WebSocket: ${wsUrlWithToken.replace(cleanToken, 'TOKEN_HIDDEN')}`);
+      console.log(`[YJS] 🛠️ ${browserType}: Full WebSocket URL construction:`, {
         baseUrl: wsBaseUrl,
         roomName,
+        cleanToken: cleanToken.substring(0, 10) + '...',
+        tokenLength: cleanToken.length,
         isMobile: isMobile(),
         hostname: window.location.hostname,
       });
+      console.log(`[YJS] 🚀 ${browserType}: About to create WebSocketProvider...`);
       logDebugInfo('Editor', `${browserType}: Connecting to WebSocket with manual token in URL`);
       
       const providerConfig = {
@@ -247,12 +258,16 @@ export const useYjsConnection = ({
       };
 
       try {
+        console.log(`[YJS] 🔨 ${browserType}: Creating WebSocketProvider with config:`, providerConfig);
         const currentProvider = new WebsocketProvider(wsUrlWithToken, '', currentDoc, providerConfig);
-        console.log(`${browserType}: WebSocket provider created with token in URL`);
+        console.log(`[YJS] ✅ ${browserType}: WebSocket provider created successfully with token in URL`);
+        console.log(`[YJS] 🔧 ${browserType}: Setting up WebSocket provider handlers...`);
         setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
+        console.log(`[YJS] 📡 ${browserType}: Setting provider state...`);
         setProvider(currentProvider);
+        console.log(`[YJS] 🎉 ${browserType}: WebSocket setup complete!`);
       } catch (error) {
-        console.error(`${browserType}: Failed to create WebSocket provider with token in URL:`, error);
+        console.error(`[YJS] ❌ ${browserType}: Failed to create WebSocket provider with token in URL:`, error);
         setErrorMessage(`${browserType} WebSocket connection failed. You can still edit locally.`);
         setStatus('disconnected');
         // Don't set provider to null - let editor work in local mode
@@ -314,10 +329,11 @@ const setupWebSocketProviderHandlers = (
   let hasConnectedOnce = false;
 
   provider.on('status', (event: { status: string }) => {
-    console.log(`WebSocket status: ${event.status}`);
+    console.log(`[YJS] 📊 WebSocket status: ${event.status}`);
     const browserType = browserInfo.isMobile ? 'Mobile' : (browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : browserInfo.isSafari ? 'Safari' : 'Other');
     logDebugInfo('Editor', `WebSocket status: ${event.status} (attempt: ${connectionAttempts}), Browser: ${browserType}`);
     const newStatus = event.status as ConnectionStatus;
+    console.log(`[YJS] 🔄 Processing status change: ${newStatus}, attempts: ${connectionAttempts}, browser: ${browserType}`);
     
     if (newStatus === 'connecting') {
       connectionAttempts++;

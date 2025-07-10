@@ -98,6 +98,13 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
           }
         }
         
+        case 'content': {
+          // Handle content blocks (raw HTML from content snapshots)
+          console.log(`[Content Converter] Processing content block with raw HTML: "${contentJsonString}"`);
+          // Content blocks contain raw HTML, don't try to parse as JSON
+          return contentJsonString;
+        }
+        
         default: {
           console.log(`[Content Converter] Unknown block type "${blockType}", using fallback formatting`);
           // For unknown block types, use the original formatting

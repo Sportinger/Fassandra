@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO script_snapshots_meta (script_id, content_snapshot, snapshot_format, created_at, last_snapshot_at)\n        VALUES ($1, $2, $3, NOW(), NOW())\n        ON CONFLICT (script_id) \n        DO UPDATE SET \n            content_snapshot = $2,\n            snapshot_format = $3,\n            created_at = NOW(),\n            last_snapshot_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "755de9bb10302375bbe1772a6e2117d1a2e48c377c4b2fdab2598f491846266c"
+}

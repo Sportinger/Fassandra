@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #log { background: #f5f5f5; padding: 10px; border-radius: 5px; height: 400px; overflow-y: auto; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>🚀 WebSocket Connection Test</h1>
+    <p>Testing WebSocket connection to the backend server...</p>
+    
+    <button onclick="testWebSocket()">Test WebSocket Connection</button>
+    <button onclick="clearLog()">Clear Log</button>
+    
+    <div id="log"></div>
+
+    <script>
+        let ws = null;
+        
+        function log(message, className = '') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toISOString();
+            const logEntry = document.createElement('div');
+            logEntry.className = className;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        async function testWebSocket() {
+            const scriptId = 'test-script-id';
+            const token = 'test-token';
+            const baseUrl = 'wss://192.168.2.111:8443/api/collab';
+            const url = `${baseUrl}/${scriptId}?token=${encodeURIComponent(token)}`;
+            
+            log('🔍 Testing WebSocket connection...', 'info');
+            log(`URL: ${url}`, 'info');
+            
+            try {
+                if (ws) {
+                    ws.close();
+                    log('🔄 Closed existing WebSocket connection', 'info');
+                }
+                
+                ws = new WebSocket(url);
+                
+                ws.onopen = function(event) {
+                    log('✅ WebSocket connection opened successfully!', 'success');
+                    log(`Event: ${JSON.stringify(event)}`, 'info');
+                };
+                
+                ws.onmessage = function(event) {
+                    log(`📥 Received message: ${event.data}`, 'success');
+                };
+                
+                ws.onerror = function(event) {
+                    log(`❌ WebSocket error: ${JSON.stringify(event)}`, 'error');
+                };
+                
+                ws.onclose = function(event) {
+                    log(`🔐 WebSocket connection closed: ${event.code} - ${event.reason}`, 'error');
+                    log(`Was clean: ${event.wasClean}`, 'info');
+                };
+                
+                log('🚀 WebSocket connection attempt initiated...', 'info');
+                
+            } catch (error) {
+                log(`❌ Failed to create WebSocket: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test immediately on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🌐 Page loaded, ready to test WebSocket connection', 'info');
+            log('📍 Current location:', 'info');
+            log(`  - Protocol: ${window.location.protocol}`, 'info');
+            log(`  - Host: ${window.location.host}`, 'info');
+            log(`  - Hostname: ${window.location.hostname}`, 'info');
+        });
+    </script>
+</body>
+</html> 

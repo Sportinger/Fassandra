@@ -684,3 +684,33 @@ export async function deleteScriptLayout(token: string, scriptId: string, layout
         headers: { 'Authorization': `Bearer ${token}` },
     });
 } 
+
+/**
+ * Stores a content snapshot for a script.
+ * @param {string} token - Authentication token.
+ * @param {string} scriptId - ID of the script.
+ * @param {string} content - HTML content to store.
+ * @param {string} format - Content format (default: 'html').
+ * @returns {Promise<void>} - Resolves on success.
+ * @throws {ApiError} - On missing parameters or storage failure.
+ */
+export async function storeContentSnapshot(token: string, scriptId: string, content: string, format: string = 'html'): Promise<void> {
+    if (!token) {
+        throw new ApiError('Authentication token is required', 401, 'Unauthorized');
+    }
+    if (!scriptId) {
+        throw new ApiError('Script ID is required', 400, 'Bad Request');
+    }
+    if (!content) {
+        throw new ApiError('Content is required', 400, 'Bad Request');
+    }
+    
+    await fetchApi<void>(`/api/scripts/${scriptId}/snapshot`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ content, format }),
+    });
+} 

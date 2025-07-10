@@ -30,6 +30,7 @@ import type {
   ContextMenu, 
   ToolbarContext 
 } from '../types/index';
+import { storeContentSnapshot } from '../../../api';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8080/api/collab';
@@ -38,8 +39,10 @@ export const useEditorCore = ({
   scriptId,
   user,
   token,
-  initialTitle = 'Untitled Script',
+  initialTitle = 'Loading...',
 }: UseEditorCoreProps): UseEditorCoreReturn => {
+  console.log('🚀 useEditorCore called with:', { scriptId, user: user?.username, hasToken: !!token });
+  
   // State management
   const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
@@ -260,6 +263,8 @@ export const useEditorCore = ({
     };
   }, [scriptId, user, token]);
 
+
+
   // Initialize TipTap editor with Pessoa's existing extensions
   const editor = useEditor({
     extensions: [
@@ -279,6 +284,7 @@ export const useEditorCore = ({
       ...(ydoc ? [
         Collaboration.configure({
           document: ydoc,
+          field: 'default', // Explicitly specify the field name
         }),
         CollaborationCursor.configure({
           provider: provider,
@@ -522,31 +528,8 @@ export const useEditorCore = ({
     }
   }, []);
 
-  // Load script metadata
-  useEffect(() => {
-    if (!scriptId || !token) return;
-
-    const loadScriptMetadata = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/scripts/${scriptId}`, {
-          headers: {
-            'Authorization': `Bearer ${token || ''}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const script = await response.json();
-          setScriptTitle(script.title || 'Untitled Script');
-          setScriptCreationDate(script.created_at || null);
-        }
-      } catch (error) {
-        console.error('[Editor] Failed to load script metadata:', error);
-      }
-    };
-
-    loadScriptMetadata();
-  }, [scriptId, token]);
+  // Script metadata is already loaded via getScriptWithBlocks calls above
+  // Removing duplicate metadata loading that was causing race condition
 
   // Update script title
   const updateScriptTitle = useCallback(async (newTitle: string) => {
@@ -588,6 +571,55 @@ export const useEditorCore = ({
       }
     };
   }, [provider, ydoc]);
+
+  // Content snapshot effect - send content snapshots every 30 seconds
+  useEffect(() => {
+    console.log('🔍 Content snapshot effect triggered:', { 
+      hasEditor: !!editor, 
+      scriptId, 
+      hasToken: !!token,
+      tokenLength: token?.length || 0
+    });
+    
+    if (!editor || !scriptId || !token) {
+      console.log('❌ Content snapshot effect skipped - missing requirements');
+      return;
+    }
+
+    console.log('✅ Content snapshot effect starting timers');
+
+    // Function to send content snapshot
+    const sendContentSnapshot = async () => {
+      try {
+        console.log('📸 Attempting to send content snapshot...');
+        const html = editor.getHTML();
+        console.log('📸 Editor HTML:', html.length, 'chars, content:', html.substring(0, 100) + '...');
+        
+        if (html && html.trim() !== '<p></p>' && html.trim() !== '') {
+          console.log('📸 Sending content snapshot:', html.length, 'chars');
+          
+          await storeContentSnapshot(token, scriptId, html, 'html');
+          console.log('✅ Content snapshot sent successfully');
+        } else {
+          console.log('⏭️ Skipping empty content snapshot');
+        }
+      } catch (error) {
+        console.error('❌ Error sending content snapshot:', error);
+      }
+    };
+
+    // Send snapshot every 30 seconds
+    const snapshotInterval = setInterval(sendContentSnapshot, 30000);
+
+    // Send initial snapshot after 5 seconds
+    const initialTimeout = setTimeout(sendContentSnapshot, 5000);
+
+    return () => {
+      console.log('🧹 Cleaning up content snapshot timers');
+      clearInterval(snapshotInterval);
+      clearTimeout(initialTimeout);
+    };
+  }, [editor, scriptId, token]);
 
   return {
     // Core editor instance

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT content_snapshot, snapshot_format FROM script_snapshots_meta WHERE script_id = $1 AND content_snapshot IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "content_snapshot",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "snapshot_format",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "898d622fed5cda70ecf976485c95442ac2da77d4dbdc7771aecb34eaf0875fcd"
+}

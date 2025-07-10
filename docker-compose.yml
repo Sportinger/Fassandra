@@ -56,18 +56,26 @@ services:
     container_name: ${CONTAINER_PREFIX:-dev_}pessoa_frontend
     build:
       context: ./frontend
-      dockerfile: Dockerfile.https
+      dockerfile: Dockerfile.dev
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL}
         VITE_WS_BASE_URL: ${VITE_WS_BASE_URL}
     ports:
-      - "${FRONTEND_PORT:-8080}:80"         # HTTP (redirects to HTTPS)
-      - "${FRONTEND_HTTPS_PORT:-8443}:443"  # HTTPS (nginx with SSL)
+      - "${FRONTEND_PORT:-8080}:8080"       # HTTPS dev server
+      - "${FRONTEND_HTTPS_PORT:-8443}:8080" # HTTPS dev server (same as above)
     depends_on:
       - backend
     volumes:
-      - ./frontend/ssl:/etc/ssl:ro          # Mount SSL certificates
-      - ./frontend/nginx-local.conf:/etc/nginx/conf.d/default.conf:ro  # Local HTTPS config
+      - ./frontend/src:/app/src:ro          # Mount source code for hot reload
+      - ./frontend/public:/app/public:ro    # Mount public assets
+      - ./frontend/index.html:/app/index.html:ro  # Mount index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts:ro  # Mount vite config
+      - ./frontend/tsconfig.json:/app/tsconfig.json:ro    # Mount tsconfig
+      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json:ro  # Mount tsconfig
+      - ./frontend/tsconfig.node.json:/app/tsconfig.node.json:ro  # Mount tsconfig
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+      - VITE_WS_BASE_URL=${VITE_WS_BASE_URL}
     restart: unless-stopped
 
   pgadmin:

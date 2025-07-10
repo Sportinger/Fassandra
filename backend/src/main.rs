@@ -22,7 +22,7 @@ use axum::response::Response;
 use backend::auth::{hash_password, verify_password, generate_token, AuthUser, RateLimiter, rate_limit_middleware};
 use backend::error::AppError;
 use backend::{create_script, create_block, update_block, get_script_with_blocks, get_block_history, delete_script, update_script_content_from_html, get_script_layouts, get_default_script_layout, create_script_layout, update_script_layout, delete_script_layout};
-use backend::api::scripts::get_user_scripts;
+use backend::api::scripts::{get_user_scripts, store_content_snapshot};
 use backend::ws;
 use backend::models::script::Script;
 use backend::models::block::Block;
@@ -693,6 +693,7 @@ fn api_routes_arc_state(persistence_event_tx: mpsc::Sender<YjsPersistenceEvent>)
         .route("/scripts", get(list_scripts).post(create_script_endpoint))
         .route("/scripts/:id", get(get_script_endpoint).patch(update_script_title_endpoint).delete(delete_script_endpoint))
         .route("/scripts/:id/content", patch(update_script_content_endpoint))
+        .route("/scripts/:id/snapshot", post(store_content_snapshot))
         .route("/scripts/:id/blocks", post(create_block_endpoint))
         .route("/scripts/:id/layouts", get(get_script_layouts_endpoint).post(create_script_layout_endpoint))
         .route("/scripts/:id/layouts/default", get(get_default_layout_endpoint))
