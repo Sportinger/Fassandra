@@ -88,13 +88,18 @@ async fn create_script_from_parsed_handler(
 ///
 /// # Returns
 /// * `Result<Json<ParsedScript>, impl IntoResponse>` - Parsed script or error response
-// #[instrument(skip(multipart))] // Remove instrument
-// #[axum::debug_handler] // Remove debug_handler
-#[axum::debug_handler] // Added debug_handler
+#[axum::debug_handler]
 async fn upload_and_parse_script(
     mut multipart: Multipart,
 ) -> Result<Json<ParsedScript>, impl IntoResponse> {
-    let http_client = Client::new(); // Create a client for this request
+    // Create HTTP client with timeout to prevent hanging uploads
+    let http_client = Client::builder()
+        .timeout(std::time::Duration::from_secs(60)) // 60 second timeout for Gemini API
+        .build()
+        .map_err(|err| {
+            error!("Failed to create HTTP client: {}", err);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Internal server error"})))
+        })?;
     let mut extracted_text: Option<String> = None;
     let mut original_filename: Option<String> = None;
 

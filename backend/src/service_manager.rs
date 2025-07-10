@@ -235,7 +235,7 @@ pub async fn create_production_service_manager(pool: PgPool) -> Result<ServiceMa
     ServiceManager::new(
         pool,
         Duration::from_secs(60),  // 1 minute rate limit window
-        100,                      // 100 requests per minute max
+        500,                      // 500 requests per minute max (increased for development)
     ).await
 }
 
