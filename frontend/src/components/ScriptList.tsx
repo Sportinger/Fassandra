@@ -76,7 +76,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     }
   }));
 
-  // 🚀 REAL UPLOAD LOGIC: Implement actual API calls
+  // 🚀 REAL UPLOAD LOGIC: Implement actual API calls with detailed progress
   const performRealBackgroundUpload = async (placeholder: PlaceholderScript) => {
     if (!token || !placeholder.fileData) {
       console.error('[ScriptList] Missing token or file data for upload');
@@ -97,9 +97,29 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     try {
       console.log('[ScriptList] 🚀 Starting REAL upload for:', placeholder.title);
       
-      // Step 1: Upload and Parse (20% progress)
-      updateUploadStatus({ uploadStatus: 'uploading' as UploadStatus, uploadProgress: 20 });
+      // Stage 1: File validation and preparation (5% progress)
+      updateUploadStatus({ 
+        uploadStatus: 'uploading' as UploadStatus, 
+        uploadProgress: 5,
+        uploadSubStage: 'Validating file format...'
+      });
       
+      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause for UX
+      
+      // Stage 2: Starting upload (10% progress)
+      updateUploadStatus({ 
+        uploadProgress: 10,
+        uploadSubStage: `Uploading ${placeholder.fileData.name} (${(placeholder.fileData.size / 1024 / 1024).toFixed(1)} MB)...`
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Stage 3: Upload in progress (20% progress)
+      updateUploadStatus({ 
+        uploadProgress: 20,
+        uploadSubStage: 'Transferring file to server...'
+      });
+
       const formData = new FormData();
       formData.append('scriptFile', placeholder.fileData);
 
@@ -109,8 +129,36 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         body: formData,
       });
 
-      // Step 2: Analysis (60% progress)
-      updateUploadStatus({ uploadStatus: 'analyzing' as UploadStatus, uploadProgress: 60 });
+      // Stage 4: Upload complete, starting analysis (35% progress)
+      updateUploadStatus({ 
+        uploadStatus: 'analyzing' as UploadStatus, 
+        uploadProgress: 35,
+        uploadSubStage: 'File uploaded successfully. Starting content analysis...'
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      // Stage 5: Text extraction (45% progress)
+      updateUploadStatus({ 
+        uploadProgress: 45,
+        uploadSubStage: 'Extracting text from Word document...'
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 700));
+
+      // Stage 6: Content analysis (55% progress)
+      updateUploadStatus({ 
+        uploadProgress: 55,
+        uploadSubStage: 'Analyzing script structure and dialogue...'
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 900));
+
+      // Stage 7: Speaker detection (65% progress)
+      updateUploadStatus({ 
+        uploadProgress: 65,
+        uploadSubStage: 'Identifying speakers and characters...'
+      });
 
       let parsedData: ParsedScriptData | null = null;
       if (uploadResponse.status !== 204 && uploadResponse.headers.get("content-length") !== "0") {
@@ -130,13 +178,33 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         throw new Error('Analysis complete, but no data returned to create script');
       }
 
-      // Step 3: Creating script (80% progress)
-      updateUploadStatus({ uploadStatus: 'creating' as UploadStatus, uploadProgress: 80 });
+      // Stage 8: Analysis complete (75% progress)
+      updateUploadStatus({ 
+        uploadStatus: 'creating' as UploadStatus,
+        uploadProgress: 75,
+        uploadSubStage: `Analysis complete! Found ${parsedData.title ? '1 title' : 'content'}, creating script...`
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Stage 9: Database creation (85% progress)
+      updateUploadStatus({ 
+        uploadProgress: 85,
+        uploadSubStage: 'Creating script database entry...'
+      });
 
       const newScriptId = await createScriptFromParsed(token, parsedData);
       console.log('[ScriptList] Created new script with ID:', newScriptId);
 
-      // Step 4: Success (100% progress)
+      // Stage 10: Finalizing (95% progress)
+      updateUploadStatus({ 
+        uploadProgress: 95,
+        uploadSubStage: 'Finalizing script structure and metadata...'
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 400));
+
+      // Stage 11: Success (100% progress)
       const newScript: Script = {
         id: newScriptId,
         title: parsedData.title || placeholder.title,
@@ -146,7 +214,8 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         thumbnail: null,
         isPlaceholder: false,
         uploadStatus: 'completed' as UploadStatus,
-        uploadProgress: 100
+        uploadProgress: 100,
+        uploadSubStage: 'Script created successfully! Click to open.'
       };
       
       // Remove from uploading and add to main scripts
@@ -165,7 +234,8 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       updateUploadStatus({ 
         uploadStatus: 'failed' as UploadStatus, 
         uploadError: error.message || 'Upload failed',
-        uploadProgress: 0
+        uploadProgress: 0,
+        uploadSubStage: 'Upload failed. Click retry to try again.'
       });
     }
   };
@@ -197,6 +267,10 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   // 🚀 NEW: Render upload placeholder
   const renderUploadPlaceholder = (placeholder: Script) => {
     const getStatusText = () => {
+      if (placeholder.uploadSubStage) {
+        return placeholder.uploadSubStage;
+      }
+      // Fallback to basic status text
       switch (placeholder.uploadStatus) {
         case 'uploading': return 'Uploading file...';
         case 'analyzing': return 'Analyzing content...';
@@ -206,11 +280,25 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       }
     };
 
+    const getMainStatusText = () => {
+      switch (placeholder.uploadStatus) {
+        case 'uploading': return 'Uploading';
+        case 'analyzing': return 'Analyzing';
+        case 'creating': return 'Creating';
+        case 'completed': return 'Completed';
+        case 'failed': return 'Failed';
+        default: return 'Processing';
+      }
+    };
+
     const getProgressColor = () => {
       switch (placeholder.uploadStatus) {
         case 'failed': return '#ef4444';
         case 'completed': return '#10b981';
-        default: return '#3b82f6';
+        case 'uploading': return '#3b82f6';
+        case 'analyzing': return '#8b5cf6';
+        case 'creating': return '#10b981';
+        default: return '#6b7280';
       }
     };
 
@@ -230,12 +318,18 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
             data-status={placeholder.uploadStatus} // 🎨 Add data attribute for icon styling
           >
             {placeholder.uploadStatus === 'failed' ? '❌' : 
-             placeholder.uploadStatus === 'completed' ? '✅' : '📄'}
+             placeholder.uploadStatus === 'completed' ? '✅ ' : '📄'}
           </div>
           
           <div className={styles.uploadTitle}>{placeholder.title}</div>
           
-          <div className={styles.uploadStatus}>{getStatusText()}</div>
+          {/* 🎯 MAIN STATUS BAR */}
+          <div className={styles.uploadMainStatus}>
+            {getMainStatusText()} {placeholder.uploadProgress ? `${placeholder.uploadProgress}%` : ''}
+          </div>
+          
+          {/* 🎯 DETAILED SUB-STAGE */}
+          <div className={styles.uploadSubStage}>{getStatusText()}</div>
           
           {placeholder.uploadStatus !== 'failed' && placeholder.uploadStatus !== 'completed' && (
             <div className={styles.progressContainer}>
@@ -247,6 +341,9 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
                   backgroundColor: getProgressColor()
                 }}
               />
+              <div className={styles.progressText}>
+                {placeholder.uploadProgress || 0}%
+              </div>
             </div>
           )}
           

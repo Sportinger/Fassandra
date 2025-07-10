@@ -776,42 +776,138 @@
   font-weight: 500;
 }
 
+/* 🎯 DETAILED PROGRESS STYLES */
+.uploadMainStatus {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f3f4f6; /* Light color for dark theme */
+  margin-bottom: 6px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.uploadSubStage {
+  font-size: 13px;
+  color: #d1d5db; /* Lighter muted color */
+  margin-bottom: 16px;
+  text-align: center;
+  font-weight: 500;
+  line-height: 1.4;
+  min-height: 18px; /* Prevent layout shift */
+  padding: 0 8px;
+  word-wrap: break-word;
+}
+
 .progressContainer {
   width: 100%;
-  height: 8px;
+  height: 10px;
   background-color: #374151; /* Dark progress background */
-  border-radius: 4px;
+  border-radius: 6px;
   overflow: hidden;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .progressBar {
   height: 100%;
-  border-radius: 4px;
-  transition: width 0.3s ease;
+  border-radius: 6px;
+  transition: width 0.5s ease-in-out;
   animation: progressPulse 2s infinite;
+  position: relative;
 }
 
-@keyframes progressPulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
+.progressText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  z-index: 1;
 }
 
-/* Enhanced progress bar for different states - Dark theme colors */
+/* Enhanced progress bar animations for different states */
 .progressBar[data-status="uploading"] {
   background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  animation: uploadingPulse 1.5s infinite;
 }
 
 .progressBar[data-status="analyzing"] {
   background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+  animation: analyzingPulse 2s infinite;
 }
 
 .progressBar[data-status="creating"] {
   background: linear-gradient(90deg, #10b981, #059669);
+  animation: creatingPulse 1.8s infinite;
+}
+
+@keyframes uploadingPulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+  }
+}
+
+@keyframes analyzingPulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 5px rgba(139, 92, 246, 0.5);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.8);
+  }
+}
+
+@keyframes creatingPulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
+  }
+}
+
+/* Status-specific main status colors */
+.uploadMainStatus[data-status="uploading"] {
+  color: #93c5fd; /* Light blue */
+}
+
+.uploadMainStatus[data-status="analyzing"] {
+  color: #c4b5fd; /* Light purple */
+}
+
+.uploadMainStatus[data-status="creating"] {
+  color: #86efac; /* Light green */
+}
+
+.uploadMainStatus[data-status="completed"] {
+  color: #10b981; /* Success green */
+}
+
+.uploadMainStatus[data-status="failed"] {
+  color: #f87171; /* Error red */
+}
+
+/* Sub-stage specific styling */
+.uploadSubStage {
+  transition: all 0.3s ease;
+}
+
+.uploadSubStage:empty {
+  display: none;
 }
 
 .uploadError {
@@ -952,7 +1048,7 @@
   display: none; /* Remove shimmer when completed */
 }
 
-/* Mobile responsive updates */
+/* Enhanced mobile responsive styles */
 @media (max-width: 768px) {
   .uploadContent {
     padding: 16px;
@@ -993,5 +1089,25 @@
     font-size: 11px;
     padding: 3px 6px;
     margin-top: 6px;
+  }
+
+  .uploadMainStatus {
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  
+  .uploadSubStage {
+    font-size: 12px;
+    margin-bottom: 12px;
+    padding: 0 4px;
+  }
+  
+  .progressContainer {
+    height: 8px;
+    margin-bottom: 6px;
+  }
+  
+  .progressText {
+    font-size: 10px;
   }
 } 

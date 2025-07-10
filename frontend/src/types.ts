@@ -28,6 +28,7 @@ export interface User {
  * @property {UploadStatus} uploadStatus - Status of the upload process for placeholder scripts.
  * @property {string|null} uploadError - Error message if upload failed.
  * @property {number} uploadProgress - Upload progress percentage (0-100).
+ * @property {string} uploadSubStage - Detailed sub-stage message for upload progress.
  */
 export interface Script {
   id: string;
@@ -40,6 +41,7 @@ export interface Script {
   uploadStatus?: UploadStatus;
   uploadError?: string | null;
   uploadProgress?: number;
+  uploadSubStage?: string;
 }
 
 /**
