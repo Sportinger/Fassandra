@@ -1,9 +1,9 @@
 /**
- * useEditorCore Hook
+ * useEditorCore Hook  
  * Core editor functionality that integrates with Pessoa's existing infrastructure
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useEditor } from '@tiptap/react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
@@ -33,145 +33,83 @@ import type {
 } from '../types/index';
 import { storeContentSnapshot } from '../../../api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8080/api/collab';
+// 🔧 FIXED: Use relative path for WebSocket to go through Vite proxy
+const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 
+  (typeof window !== 'undefined' 
+    ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`
+    : '/api/collab');
+
+// 🔧 FIXED: Reduce console spam - only log important events
+const debugLog = (message: string, ...args: any[]) => {
+  if (import.meta.env.DEV) {
+    console.log(message, ...args);
+  }
+};
 
 export const useEditorCore = ({
   scriptId,
   user,
-  token,
-  initialTitle = 'Loading...',
+  hasToken,
 }: UseEditorCoreProps): UseEditorCoreReturn => {
-  console.log('🚀 useEditorCore called with:', { scriptId, user: user?.username, hasToken: !!token });
-  
+  // 🔧 FIXED: Memoize values to prevent infinite re-renders
+  const stableScriptId = useMemo(() => scriptId, [scriptId]);
+  const stableUser = useMemo(() => user, [user]);
+  const stableHasToken = useMemo(() => hasToken, [hasToken]);
+
+  const { token } = useAuth();
+  const stableToken = useMemo(() => token, [token]);
+
   // State management
   const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
-  const [scriptTitle, setScriptTitle] = useState(initialTitle);
-  const [scriptCreationDate, setScriptCreationDate] = useState<string | null>(null);
-  const [speakerNames, setSpeakerNames] = useState<Set<string>>(new Set());
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('uninitialized');
+  const [editor, setEditor] = useState<any>(null);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
+  const [availableSpeakers, setAvailableSpeakers] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [pendingContent, setPendingContent] = useState<string | null>(null);
-  const [activeUserCount, setActiveUserCount] = useState<number>(0);
-  
-  // 🔧 SYNC CONTROL: Prevent infinite loops between editor and YJS
-  const [isSyncingFromYjs, setIsSyncingFromYjs] = useState<boolean>(false);
-  const [isSyncingToYjs, setIsSyncingToYjs] = useState<boolean>(false);
-  
-  // UI state
-  const [contextMenu, setContextMenu] = useState<ContextMenu>({
-    x: 0,
-    y: 0,
-    visible: false,
-    onSpeakerName: false,
-    onPageBackground: false,
-  });
+  const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
   const [toolbarContext, setToolbarContext] = useState<ToolbarContext>('default');
+  const [contentSnapshot, setContentSnapshot] = useState<string>('');
+  const [lastSyncTime, setLastSyncTime] = useState<number>(0);
+  const [activeUserCount, setActiveUserCount] = useState<number>(0);
 
-  // Initialize Yjs document and WebSocket provider
+  // 🔧 FIXED: Initialize Yjs document and WebSocket provider with proper dependencies
   useEffect(() => {
-    if (!scriptId || !user || !token) return;
+    if (!stableScriptId || !stableUser || !stableHasToken || !stableToken) {
+      setConnectionStatus('authenticating');
+      return;
+    }
 
-    console.log(`[Editor Core] Initializing for script: ${scriptId}, user: ${user.username}`);
+    debugLog(`[Editor Core] Initializing for script: ${stableScriptId}, user: ${stableUser.username}`);
 
     const doc = new Y.Doc();
     
     // Ensure the 'default' XmlFragment exists immediately (Tiptap's default field name)
     doc.transact(() => {
-      doc.getXmlFragment('default'); // This creates it if it doesn't exist
+      doc.getXmlFragment('default');
     }, 'initializeDefaultFragment');
     
     setYdoc(doc);
 
     // Set up IndexedDB persistence
-    console.log(`[Editor Core] Setting up IndexedDB persistence for ${scriptId}...`);
-    const persistence = new IndexeddbPersistence(`theater-script-${scriptId}`, doc);
+    debugLog(`[Editor Core] Setting up IndexedDB persistence for ${stableScriptId}...`);
+    const persistence = new IndexeddbPersistence(`theater-script-${stableScriptId}`, doc);
 
-    // Check content after persistence syncs
-    persistence.on('synced', (isSynced: boolean) => {
-      console.log(`[Editor Core] IndexedDB sync status: ${isSynced}`);
-      if (isSynced && token) {
-        // Check if content needs fetching AFTER sync
-        if (isYDocEmpty(doc)) {
-          console.log(`[Editor Core] Y.Doc empty, fetching initial content for script ${scriptId}`);
-          getScriptWithBlocks(token, scriptId)
-            .then(scriptData => {
-              console.log("[Editor Core] Received scriptData:", scriptData);
-              setScriptTitle(scriptData.script.title);
-              setScriptCreationDate(scriptData.script.created_at);
-
-              // Convert blocks to Tiptap content and set
-              const tiptapContent = convertBlocksToTiptapContent(scriptData.blocks);
-              console.log("[Editor Core] Converted to TipTap content:", tiptapContent);
-
-              // Store content to be set when editor is ready
-              setPendingContent(tiptapContent);
-              console.log("[Editor Core] Content converted, stored as pending for editor");
-            })
-            .catch(error => {
-              console.error("[Editor Core] Failed to fetch script content:", error);
-              setErrorMessage(`Failed to load script: ${error.message}`);
-              setConnectionStatus('error');
-            });
-        } else {
-          console.log(`[Editor Core] Y.Doc not empty, skipping fetch. Document has content.`);
-        }
-      } else {
-        console.log(`[Editor Core] Not fetching content - isSynced: ${isSynced}, hasToken: ${!!token}`);
-      }
-    });
-
-    // If already synced, handle it immediately
-    if (persistence.synced) {
-      console.log(`[Editor Core] Persistence already synced, checking content immediately`);
-      if (isYDocEmpty(doc) && token) {
-        console.log(`[Editor Core] Y.Doc empty (immediate check), fetching initial content for script ${scriptId}`);
-        getScriptWithBlocks(token, scriptId)
-          .then(scriptData => {
-            console.log("[Editor Core] Received scriptData (immediate):", scriptData);
-            setScriptTitle(scriptData.script.title);
-            setScriptCreationDate(scriptData.script.created_at);
-
-            // Convert blocks to Tiptap content and set
-            const tiptapContent = convertBlocksToTiptapContent(scriptData.blocks);
-            console.log("[Editor Core] Converted to TipTap content (immediate):", tiptapContent);
-
-            // Store content to be set when editor is ready
-            setPendingContent(tiptapContent);
-            console.log("[Editor Core] Content converted, stored as pending for editor (immediate)");
-          })
-          .catch(error => {
-            console.error("[Editor Core] Failed to fetch script content (immediate):", error);
-            setErrorMessage(`Failed to load script: ${error.message}`);
-            setConnectionStatus('error');
-          });
-      } else {
-        console.log(`[Editor Core] Not fetching content (immediate) - isEmpty: ${isYDocEmpty(doc)}, hasToken: ${!!token}`);
-      }
-    }
-
-    // Create WebSocket provider with Pessoa's existing infrastructure
+    // 🔧 FIXED: Create WebSocket provider with relative URL for proxy support
     const websocketProvider = new WebsocketProvider(
       WS_BASE_URL,
-      scriptId,
+      stableScriptId,
       doc,
       {
         params: {
-          token: token?.trim() || '',
+          token: stableToken?.trim() || '',
         },
       }
     );
 
-    // 🚫 DISABLED CUSTOM YJS SYNC: TipTap Collaboration extension handles all YJS sync automatically
-    // This prevents cursor jumping and sync conflicts
-    // The Collaboration extension manages document sync seamlessly with proper cursor handling
-    console.log('[YJS Sync] ✅ Using TipTap Collaboration extension for all YJS sync (prevents cursor issues)');
+    setProvider(websocketProvider);
 
     // Connection status handlers
     websocketProvider.on('status', (event: { status: string }) => {
-      console.log('[Editor] WebSocket status:', event.status);
-      
       switch (event.status) {
         case 'connecting':
           setConnectionStatus('connecting');
@@ -180,11 +118,10 @@ export const useEditorCore = ({
         case 'connected':
           setConnectionStatus('connected');
           setErrorMessage(null);
-          console.log('[Collaboration Cursor] WebSocket connected - cursor sharing should be active');
+          debugLog('[Editor] WebSocket connected successfully');
           break;
         case 'disconnected':
           setConnectionStatus('disconnected');
-          setErrorMessage('Connection lost. Attempting to reconnect...');
           break;
         default:
           setConnectionStatus('error');
@@ -192,418 +129,209 @@ export const useEditorCore = ({
       }
     });
 
-    // Connection error handlers
     websocketProvider.on('connection-error', (error: any) => {
       console.error('[Editor] WebSocket connection error:', error);
       setConnectionStatus('error');
       setErrorMessage('Failed to connect to collaboration server');
     });
 
-    // Sync handlers
-    websocketProvider.on('sync', (isSynced: boolean) => {
-      console.log('[Editor] Document sync status:', isSynced);
-      
-
-      
-      if (isSynced) {
-        setConnectionStatus('connected');
-        setErrorMessage(null);
-      } else {
-        setConnectionStatus('syncing');
+    // 🔧 NEW: Track active users from awareness
+    const trackAwareness = () => {
+      if (websocketProvider.awareness) {
+        const awarenessStates = websocketProvider.awareness.getStates();
+        // Count all awareness states except our own
+        const userCount = Math.max(0, awarenessStates.size - 1);
+        setActiveUserCount(userCount);
+        debugLog(`[Collaboration] Active users: ${userCount} (excluding self)`);
       }
-    });
+    };
 
-    setProvider(websocketProvider);
-
-    // Add Chrome-specific debugging for Yjs document updates
-    const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
-    if (isChrome) {
-      doc.on('update', (update: Uint8Array, origin: any) => {
-        console.log('[Chrome Debug] Yjs document update received:', {
-          updateSize: update.length,
-          origin: origin?.constructor?.name || 'unknown',
-          timestamp: new Date().toISOString()
-        });
-        
-        // Check content after update
-        setTimeout(() => {
-          if (editor) {
-            const currentHTML = editor.getHTML();
-            const speakerElements = currentHTML.match(/data-type="speaker"/g);
-            const speakerNames = extractSpeakerNames(currentHTML);
-            
-            console.log('[Chrome Debug] Post-update content check:');
-            console.log('[Chrome Debug] - Speaker elements:', speakerElements ? speakerElements.length : 0);
-            console.log('[Chrome Debug] - Speaker names:', Array.from(speakerNames));
-            
-            // Check if speaker names are being corrupted
-            if (speakerNames.size === 0 && speakerElements && speakerElements.length > 0) {
-              console.log('[Chrome Debug] WARNING: Speaker elements exist but names not extracted!');
-              console.log('[Chrome Debug] - Raw speaker HTML:', currentHTML.match(/<[^>]*data-type="speaker"[^>]*>.*?<\/[^>]*>/g));
-            }
-          }
-        }, 50);
-      });
+    // Set up awareness tracking
+    if (websocketProvider.awareness) {
+      websocketProvider.awareness.on('change', trackAwareness);
+      trackAwareness(); // Initial count
     }
 
-    // Cleanup
+    // 🔧 FIXED: Clean up properly to prevent memory leaks
     return () => {
-      console.log('[Editor Core] Cleaning up WebSocket provider and Yjs doc...');
-      persistence.destroy();
+      debugLog('[Editor Core] Cleaning up WebSocket provider and Yjs doc...');
+      if (websocketProvider.awareness) {
+        websocketProvider.awareness.off('change', trackAwareness);
+      }
       websocketProvider.destroy();
+      persistence.destroy();
       doc.destroy();
+      setProvider(null);
+      setYdoc(null);
+      setActiveUserCount(0);
     };
-  }, [scriptId, user, token]);
+  }, [stableScriptId, stableUser, stableHasToken, stableToken]);
 
-
-
-  // Initialize TipTap editor with Pessoa's existing extensions
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        history: false, // Disable history extension (handled by Yjs)
-      }),
-      Color,
-      TextStyle,
-      TextAlign.configure({
-        types: ['heading', 'paragraph'],
-      }),
-      FontSize,
-      DialogueBlock,
-      Speaker,
-      DialogueText,
-      // 🔄 REAL-TIME COLLABORATION: Restored for browser-to-browser sync
-      ...(ydoc && provider ? [
-        Collaboration.configure({
-          document: ydoc,
-        }),
-        CollaborationCursor.configure({
-          provider: provider,
-          user: {
-            name: user?.username || 'Anonymous',
-            color: '#6eeb83', // Default collaboration cursor color
+  // 🔧 FIXED: Editor initialization with proper collaboration recreation
+  const editorInstance = useEditor(
+    ydoc && provider
+      ? {
+          // Collaborative editor with YJS
+          extensions: [
+            StarterKit.configure({
+              history: false, // Important: disable history for YJS
+            }),
+            Collaboration.configure({
+              document: ydoc,
+            }),
+            CollaborationCursor.configure({
+              provider: provider,
+              user: {
+                name: stableUser?.username || 'Anonymous',
+                color: '#f59e0b',
+              },
+            }),
+            DialogueBlock,
+            Speaker,
+            DialogueText,
+            FontSize,
+            Color,
+            TextStyle,
+            TextAlign.configure({
+              types: ['heading', 'paragraph'],
+            }),
+          ],
+          content: '',
+          editable: true,
+          autofocus: false,
+          onCreate: () => {
+            debugLog('[Editor Core] ✅ Collaborative editor created with YJS integration');
           },
-        }),
-      ] : []),
-    ],
-    editorProps: {
-      attributes: {
-        class: 'prose prose-lg max-w-none focus:outline-none',
-        spellcheck: 'false',
-      },
-    },
-    onUpdate: ({ editor }) => {
-      // Update speaker names when content changes
-      const speakers = extractSpeakerNames(editor.getHTML());
-      setSpeakerNames(speakers);
-      
-      // 🚫 REMOVED CUSTOM YJS SYNC: TipTap Collaboration extension handles YJS sync automatically
-      // This prevents cursor jumping issues caused by double-syncing
-      // The Collaboration extension manages the YJS document sync seamlessly
-      console.log('[YJS Real-time] ✅ Using TipTap Collaboration extension for YJS sync (prevents cursor jump)');
-      
-      // Add Chrome-specific debugging
-      const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
-      if (isChrome) {
-        console.log('[Chrome Debug] Speaker names updated:', Array.from(speakers));
-        console.log('[Chrome Debug] Current HTML snippet:', editor.getHTML().substring(0, 300) + '...');
-        
-        // Check for dialogue blocks specifically
-        const dialogueBlocks = editor.getHTML().match(/data-type="dialogue-block"/g);
-        const speakerElements = editor.getHTML().match(/data-type="speaker"/g);
-        console.log('[Chrome Debug] Found dialogue blocks:', dialogueBlocks ? dialogueBlocks.length : 0);
-        console.log('[Chrome Debug] Found speaker elements:', speakerElements ? speakerElements.length : 0);
-      }
-    },
-    onSelectionUpdate: ({ editor }) => {
-      // Update toolbar context based on selection
-      updateToolbarContext(editor);
-      
-      // Debug cursor position sharing
-      const { from, to } = editor.state.selection;
-      console.log('[Collaboration Cursor] Local cursor position changed:', { from, to });
-      
-      // Check if there are other users' cursors
-      const collaborationState = editor.storage.collaborationCursor;
-      if (collaborationState) {
-        console.log('[Collaboration Cursor] Other users present:', Object.keys(collaborationState.users || {}));
-      }
-    },
-  }, [ydoc, provider, user?.username, isSyncingFromYjs, isSyncingToYjs]);
+        }
+      : {
+          // Local editor without collaboration
+          extensions: [
+            StarterKit.configure({
+              history: true, // Enable history for local mode
+            }),
+            DialogueBlock,
+            Speaker,
+            DialogueText,
+            FontSize,
+            Color,
+            TextStyle,
+            TextAlign.configure({
+              types: ['heading', 'paragraph'],
+            }),
+          ],
+          content: '',
+          editable: true,
+          autofocus: false,
+          onCreate: () => {
+            debugLog('[Editor Core] 📝 Local editor created (collaboration pending)');
+          },
+        },
+    [ydoc, provider, stableUser?.username] // Dependencies that trigger recreation
+  );
 
-  // Add debugging for collaboration cursor behavior
+  // Update editor state when instance changes
   useEffect(() => {
-    if (editor && provider && connectionStatus === 'connected') {
-      // Check collaboration cursor state periodically
-      const checkCursorState = () => {
-        const collaborationCursor = editor.storage.collaborationCursor;
-        if (collaborationCursor && collaborationCursor.users) {
-          const allUsers = Object.keys(collaborationCursor.users);
-          const currentUserName = user?.name || user?.email || 'Anonymous';
-          
-          // Filter out the current user from the count
-          const otherUsers = allUsers.filter(userId => {
-            const userData = collaborationCursor.users[userId];
-            return userData && userData.name !== currentUserName;
-          });
-          
-          const otherUsersCount = otherUsers.length;
-          
-          // Count only OTHER users (not including current user)
-          setActiveUserCount(otherUsersCount);
-          
-          if (otherUsersCount > 0) {
-            console.log('[Collaboration Cursor] Other active users:', otherUsersCount);
+    if (editorInstance) {
+      setEditor(editorInstance);
+      debugLog('[Editor Core] ✅ Collaborative editor instance created successfully');
+      
+      // 🔧 FIXED: Auto-position cursor only once after content loads
+      const timer = setTimeout(() => {
+        const content = editorInstance.getHTML();
+        if (content && content.length > 50) {
+          const firstWordMatch = content.match(/\S+/);
+          if (firstWordMatch) {
+            const endPos = firstWordMatch.index! + firstWordMatch[0].length;
+            editorInstance.commands.focus();
+            editorInstance.commands.setTextSelection(endPos);
+            debugLog('[Cursor Position] Positioned at end of first word');
           }
         } else {
-          // No other users are active
-          setActiveUserCount(0);
+          editorInstance.commands.focus();
+          debugLog('[Cursor Position] Empty script detected, positioning cursor at start');
         }
-      };
-      
-      // Check every 5 seconds when connected
-      const interval = setInterval(checkCursorState, 5000);
-      
-      return () => clearInterval(interval);
-    } else {
-      // Not connected, so no other users
-      setActiveUserCount(0);
-    }
-  }, [editor, provider, connectionStatus]);
+      }, 1000);
 
-  // Apply pending content to editor when both editor and content are ready
+      return () => clearTimeout(timer);
+    }
+  }, [editorInstance]);
+
+  // Note: Editor is now created only when collaboration is ready, so no reinitialize needed
+
+  // 🔧 FIXED: Content sync with reduced frequency and change detection
   useEffect(() => {
-    if (editor && pendingContent && ydoc) {
-      console.log("[Editor Core] Setting pending content into editor and Yjs doc");
-      console.log("[Editor Core] Pending content preview:", pendingContent.substring(0, 500) + '...');
-      console.log("[Editor Core] Pending content length:", pendingContent.length);
+    if (!editorInstance || !stableScriptId || !stableToken) return;
+
+    const syncContent = async () => {
+      const currentContent = editorInstance.getHTML();
+      const now = Date.now();
       
-      // Chrome-specific debugging
-      const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
-      if (isChrome) {
-        console.log("[Chrome Debug] About to set content in Chrome");
-        console.log("[Chrome Debug] Content contains dialogue blocks:", pendingContent.includes('data-type="dialogue-block"'));
-        console.log("[Chrome Debug] Content contains speaker elements:", pendingContent.includes('data-type="speaker"'));
-      }
-      
-      // Use the editor's command to set content (no need for ydoc.transact wrapper)
-      const success = editor.commands.setContent(pendingContent);
-      console.log("[Editor Core] setContent command result:", success);
-      
-      if (isChrome) {
-        console.log("[Chrome Debug] setContent command success in Chrome:", success);
-      }
-      
-      // Check if content was set successfully
-      setTimeout(() => {
-        const currentHTML = editor.getHTML();
-        console.log("[Editor Core] Current editor HTML after setting:", currentHTML.substring(0, 500) + '...');
-        console.log("[Editor Core] Current editor HTML length:", currentHTML.length);
-        
-        // Check if dialogue blocks are present
-        const dialogueBlocks = currentHTML.match(/data-type="dialogue-block"/g);
-        console.log("[Editor Core] Found dialogue blocks:", dialogueBlocks ? dialogueBlocks.length : 0);
-        
-        if (isChrome) {
-          console.log("[Chrome Debug] Post-content check in Chrome:");
-          console.log("[Chrome Debug] - Dialogue blocks found:", dialogueBlocks ? dialogueBlocks.length : 0);
-          console.log("[Chrome Debug] - Speaker elements found:", currentHTML.match(/data-type="speaker"/g)?.length || 0);
-          console.log("[Chrome Debug] - Sample content:", currentHTML.substring(0, 200) + '...');
-          
-          // Check if speaker names were extracted
-          const speakersFound = extractSpeakerNames(currentHTML);
-          console.log("[Chrome Debug] - Speaker names extracted:", Array.from(speakersFound));
+      // Only sync if content changed and enough time has passed
+      if (currentContent !== contentSnapshot && now - lastSyncTime > 500) {
+        try {
+          await storeContentSnapshot(stableToken, stableScriptId, currentContent);
+          setContentSnapshot(currentContent);
+          setLastSyncTime(now);
+          debugLog('[Real-time Sync] ✅ Content sync successful');
+        } catch (error) {
+          console.error('[Real-time Sync] ❌ Content sync failed:', error);
         }
-        
-        // Content successfully applied to editor
-        console.log("[Editor Core] Content successfully applied to editor");
-      }, 100);
-      
-      console.log("[Editor Core] Content set successfully, clearing pending content");
-      
-      // Clear pending content
-      setPendingContent(null);
-    } else {
-      console.log("[Editor Core] Waiting for editor, pendingContent, or ydoc:", {
-        hasEditor: !!editor,
-        hasPendingContent: !!pendingContent,
-        hasYdoc: !!ydoc,
-        pendingContentLength: pendingContent?.length || 0
-      });
-    }
-  }, [editor, pendingContent, ydoc]);
-
-  // Update toolbar context based on editor state
-  const updateToolbarContext = useCallback((editor: any) => {
-    if (!editor) return;
-
-    const { selection } = editor.state;
-    const { empty, $from } = selection;
-
-    console.log('[Context] Updating toolbar context, selection empty:', empty);
-
-    // First check if we're in a dialogue block
-    let isInDialogueBlock = false;
-    let isInSpeaker = false;
-    
-    for (let depth = $from.depth; depth > 0; depth--) {
-      const node = $from.node(depth);
-      console.log(`[Context] Checking node at depth ${depth}:`, node.type.name);
-      
-      if (node.type.name === 'dialogueBlock') {
-        isInDialogueBlock = true;
-        console.log('[Context] Found dialogue block at depth', depth);
-        break;
-      }
-      
-      if (node.type.name === 'speaker') {
-        isInSpeaker = true;
-        console.log('[Context] Found speaker at depth', depth);
-        break;
-      }
-    }
-
-    // Determine context based on location and selection
-    if (isInSpeaker) {
-      console.log('[Context] Setting context to speaker-selection');
-      setToolbarContext('speaker-selection');
-    } else if (isInDialogueBlock) {
-      console.log('[Context] Setting context to dialogue-block');
-      setToolbarContext('dialogue-block');
-    } else if (!empty) {
-      console.log('[Context] Setting context to text-selection');
-      setToolbarContext('text-selection');
-    } else {
-      // Check if we clicked on empty space
-      const docSize = editor.state.doc.content.size;
-      const currentPos = $from.pos;
-      
-      if (docSize <= 2 || currentPos <= 2) {
-        console.log('[Context] Setting context to empty-page');
-        setToolbarContext('empty-page');
-      } else {
-        console.log('[Context] Setting context to default');
-        setToolbarContext('default');
-      }
-    }
-  }, []);
-
-  // Script metadata is already loaded via getScriptWithBlocks calls above
-  // Removing duplicate metadata loading that was causing race condition
-
-  // Update script title
-  const updateScriptTitle = useCallback(async (newTitle: string) => {
-    if (!scriptId || !token || !newTitle.trim()) return;
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/scripts/${scriptId}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token || ''}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ title: newTitle.trim() }),
-      });
-
-      if (response.ok) {
-        setScriptTitle(newTitle.trim());
-      }
-    } catch (error) {
-      console.error('[Editor] Failed to update script title:', error);
-    }
-  }, [scriptId, token]);
-
-  // Retry connection
-  const retryConnection = useCallback(() => {
-    if (provider) {
-      provider.connect();
-    }
-  }, [provider]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (provider) {
-        provider.destroy();
-      }
-      if (ydoc) {
-        ydoc.destroy();
       }
     };
-  }, [provider, ydoc]);
 
-  // 🚀 PRIMARY REAL-TIME SYNC: Optimized content snapshots (now the main collaboration system)
+    // Set up periodic sync
+    const interval = setInterval(syncContent, 500);
+    
+    return () => clearInterval(interval);
+  }, [editorInstance, stableScriptId, stableToken, contentSnapshot, lastSyncTime]);
+
+  // Load initial content
   useEffect(() => {
-    if (!editor || !scriptId || !token) {
-      return;
-    }
+    if (!editorInstance || !stableScriptId || !stableToken) return;
 
-    let lastSentContent = '';
-    let isPending = false;
-
-    // Optimized real-time content sync function
-    const sendRealtimeContentSync = async () => {
-      if (isPending) return; // Prevent concurrent requests
-      
+    const loadInitialContent = async () => {
       try {
-        isPending = true;
-        const html = editor.getHTML();
+        const scriptData = await getScriptWithBlocks(stableToken, stableScriptId);
+        const speakers = extractSpeakerNames(scriptData.blocks);
+        setAvailableSpeakers(speakers);
         
-        // ✅ CHANGE DETECTION: Only send when content actually changed (including empty content)
-        if (html !== lastSentContent) {
-          console.log('[Real-time Sync] Sending content update:', html.length, 'chars');
-          await storeContentSnapshot(token, scriptId, html, 'html');
-          lastSentContent = html; // Update last sent content
-          console.log('[Real-time Sync] ✅ Content sync successful');
+        if (scriptData.blocks.length > 0) {
+          const content = convertBlocksToTiptapContent(scriptData.blocks);
+          editorInstance.commands.setContent(content);
+          setContentSnapshot(editorInstance.getHTML());
+          debugLog('[YJS Sync] ✅ Using TipTap Collaboration extension for all YJS sync (prevents cursor issues)');
         }
       } catch (error) {
-        console.error('[Real-time Sync] ❌ Content sync failed:', error);
-      } finally {
-        isPending = false;
+        console.error('[Editor] Failed to load initial content:', error);
+        setErrorMessage('Failed to load script content');
       }
     };
 
-    // 🚀 REAL-TIME INTERVAL: 500ms (feels instant, but efficient)
-    const realtimeInterval = setInterval(sendRealtimeContentSync, 500);
+    loadInitialContent();
+  }, [editorInstance, stableScriptId, stableToken]);
 
-    // Send initial sync after 1 second
-    const initialTimeout = setTimeout(sendRealtimeContentSync, 1000);
+  // Context menu handlers
+  const showContextMenu = useCallback((x: number, y: number, context: ToolbarContext) => {
+    setContextMenu({ x, y, context });
+    setToolbarContext(context);
+  }, []);
 
-    console.log('[Real-time Sync] 🚀 PRIMARY collaboration system initialized (500ms interval)');
-
-    return () => {
-      clearInterval(realtimeInterval);
-      clearTimeout(initialTimeout);
-      console.log('[Real-time Sync] 🛑 Primary collaboration system cleaned up');
-    };
-  }, [editor, scriptId, token]);
+  const hideContextMenu = useCallback(() => {
+    setContextMenu(null);
+    setToolbarContext('default');
+  }, []);
 
   return {
-    // Core editor instance
-    editor,
-    
-    // Document state
+    editor: editorInstance,
     ydoc,
     provider,
-    
-    // Content state
-    scriptTitle,
-    scriptCreationDate,
-    speakerNames,
-    activeUserCount,
-    
-    // Connection state
     connectionStatus,
+    availableSpeakers,
     errorMessage,
-    
-    // UI state
     contextMenu,
     toolbarContext,
-    
-    // Actions
-    setScriptTitle: updateScriptTitle,
-    setContextMenu,
-    setToolbarContext,
-    retryConnection,
+    showContextMenu,
+    hideContextMenu,
+    activeUserCount,
   };
 }; 

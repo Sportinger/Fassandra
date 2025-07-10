@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { JSX } from 'react';
 import { useAuth } from './AuthContext'
 import { Login } from './components/Login'
 import { Register } from './components/Register'
-import { ScriptList } from './components/ScriptList'
+import { ScriptList, ScriptListRef } from './components/ScriptList' // Import ref type
 import { Editor } from './components/editor'
-import ScriptUploader from './components/ScriptUploader'
+import ScriptUploader, { PlaceholderScript } from './components/ScriptUploader' // Import PlaceholderScript
 import { Header } from './components/Header';
+import { Script } from './types'; // Import Script type
 
 import './App.css'
 
@@ -39,7 +40,9 @@ function App(): JSX.Element {
   const [showLogin, setShowLogin] = useState(true)
   const [isUploaderOpen, setIsUploaderOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  // const [count, setCount] = useState(0) // Removed unused count state
+  
+  // 🚀 FIXED: Use correct ScriptListRef type
+  const scriptListRef = useRef<ScriptListRef>(null);
 
   // Effect to handle view transition after login/logout
   useEffect(() => {
@@ -72,6 +75,24 @@ function App(): JSX.Element {
       '', 
       `/editor/${newScriptId}`
     );
+  };
+
+  // 🚀 FIXED: Handle background upload start with correct type
+  const handleBackgroundUploadStart = (placeholder: PlaceholderScript) => {
+    console.log('[App] Background upload started for:', placeholder.title);
+    
+    // Close uploader modal immediately for better UX
+    setIsUploaderOpen(false);
+    
+    // Pass the placeholder to ScriptList component
+    if (scriptListRef.current) {
+      scriptListRef.current.addUploadPlaceholder(placeholder);
+      console.log('[App] ✅ Placeholder passed to ScriptList');
+    } else {
+      console.error('[App] ScriptList ref not available for background upload');
+    }
+    
+    console.log('[App] ✅ Modal closed, upload continuing in background');
   };
 
   // Function to navigate back to scripts
@@ -170,6 +191,7 @@ function App(): JSX.Element {
     if (selectedScriptId) setSelectedScriptId(null);
     viewComponent = (
       <ScriptList
+        ref={scriptListRef}
         onSelectScript={handleNavigateToEditor}
         onUploadClick={() => setIsUploaderOpen(true)}
         onScriptClickStart={handleScriptClickStart}
@@ -221,7 +243,8 @@ function App(): JSX.Element {
         {token && isUploaderOpen && (
           <ScriptUploader 
             onScriptCreated={handleScriptCreated} 
-            onClose={() => setIsUploaderOpen(false)} 
+            onClose={() => setIsUploaderOpen(false)}
+            onBackgroundUploadStart={handleBackgroundUploadStart}
           />
         )}
       </main>

@@ -24,6 +24,10 @@ export interface User {
  * @property {string} created_at - ISO timestamp of script creation.
  * @property {boolean} is_public - Whether the script is publicly accessible.
  * @property {string|null} thumbnail - Base64-encoded thumbnail image for preview.
+ * @property {boolean} isPlaceholder - Whether this is a placeholder for an uploading script.
+ * @property {UploadStatus} uploadStatus - Status of the upload process for placeholder scripts.
+ * @property {string|null} uploadError - Error message if upload failed.
+ * @property {number} uploadProgress - Upload progress percentage (0-100).
  */
 export interface Script {
   id: string;
@@ -32,7 +36,16 @@ export interface Script {
   created_at: string;
   is_public: boolean;
   thumbnail: string | null;
+  isPlaceholder?: boolean;
+  uploadStatus?: UploadStatus;
+  uploadError?: string | null;
+  uploadProgress?: number;
 }
+
+/**
+ * Upload status for placeholder scripts.
+ */
+export type UploadStatus = 'uploading' | 'analyzing' | 'creating' | 'completed' | 'failed';
 
 /**
  * Represents a single block of content within a script.

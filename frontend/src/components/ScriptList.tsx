@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useAuth } from '../AuthContext';
-import { getScripts, createScript, deleteScript, updateScript, shareScript, getScriptShares, removeScriptShare, toggleScriptPublic, generateAllThumbnails } from '../api';
-import { Script, ScriptShareWithUser } from '../types';
+import { getScripts, createScript, deleteScript, updateScript, shareScript, getScriptShares, removeScriptShare, toggleScriptPublic, generateAllThumbnails, createScriptFromParsed, ParsedScriptData } from '../api';
+import { Script, ScriptShareWithUser, UploadStatus } from '../types';
+import { PlaceholderScript } from './ScriptUploader'; // Import extended type
 import { logDebugInfo } from '../utils/debug';
 import styles from './ScriptList.module.css';
 
@@ -19,6 +20,13 @@ interface ScriptListProps {
 }
 
 /**
+ * Exposed methods for the ScriptList component.
+ */
+export interface ScriptListRef {
+  addUploadPlaceholder: (placeholder: PlaceholderScript) => void; // Use extended type
+}
+
+/**
  * Script list and creation component.
  *
  * Displays a grid of scripts, allows creating new scripts via an "add" slot.
@@ -26,7 +34,12 @@ interface ScriptListProps {
  * @component
  * @param {ScriptListProps} props - Component props.
  */
-export const ScriptList: React.FC<ScriptListProps> = ({ onSelectScript, onUploadClick, onScriptClickStart, refreshTrigger }) => {
+export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({ 
+  onSelectScript, 
+  onUploadClick, 
+  onScriptClickStart, 
+  refreshTrigger 
+}, ref) => {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,11 +55,279 @@ export const ScriptList: React.FC<ScriptListProps> = ({ onSelectScript, onUpload
   const [sharePermission, setSharePermission] = useState<'read' | 'write'>('read');
   const [scriptShares, setScriptShares] = useState<ScriptShareWithUser[]>([]);
   const [sharingLoading, setSharingLoading] = useState(false);
+  
+  // 🚀 NEW: Background upload state
+  const [uploadingScripts, setUploadingScripts] = useState<Map<string, Script>>(new Map());
+  
   const { token, setToken, user } = useAuth();
   const addSlotRef = useRef<HTMLDivElement>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [renamingScriptId, setRenamingScriptId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+
+  // 🚀 EXPOSE METHODS: Allow parent to add upload placeholders
+  useImperativeHandle(ref, () => ({
+    addUploadPlaceholder: (placeholder: PlaceholderScript) => {
+      console.log('[ScriptList] Adding upload placeholder:', placeholder.title);
+      setUploadingScripts(prev => new Map(prev.set(placeholder.id, placeholder)));
+      
+      // Start the real upload process with file data
+      performRealBackgroundUpload(placeholder);
+    }
+  }));
+
+  // 🚀 REAL UPLOAD LOGIC: Implement actual API calls
+  const performRealBackgroundUpload = async (placeholder: PlaceholderScript) => {
+    if (!token || !placeholder.fileData) {
+      console.error('[ScriptList] Missing token or file data for upload');
+      return;
+    }
+    
+    const updateUploadStatus = (updates: Partial<Script>) => {
+      setUploadingScripts(prev => {
+        const newMap = new Map(prev);
+        const existing = newMap.get(placeholder.id);
+        if (existing) {
+          newMap.set(placeholder.id, { ...existing, ...updates });
+        }
+        return newMap;
+      });
+    };
+
+    try {
+      console.log('[ScriptList] 🚀 Starting REAL upload for:', placeholder.title);
+      
+      // Step 1: Upload and Parse (20% progress)
+      updateUploadStatus({ uploadStatus: 'uploading' as UploadStatus, uploadProgress: 20 });
+      
+      const formData = new FormData();
+      formData.append('scriptFile', placeholder.fileData);
+
+      const uploadResponse = await fetch('/api/s/upload', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
+
+      // Step 2: Analysis (60% progress)
+      updateUploadStatus({ uploadStatus: 'analyzing' as UploadStatus, uploadProgress: 60 });
+
+      let parsedData: ParsedScriptData | null = null;
+      if (uploadResponse.status !== 204 && uploadResponse.headers.get("content-length") !== "0") {
+        try {
+          parsedData = await uploadResponse.json();
+        } catch (parseError: any) {
+          console.error('[ScriptList] Failed to parse JSON response:', parseError);
+          throw new Error(`Analysis failed: Could not parse server response`);
+        }
+      }
+
+      if (!uploadResponse.ok) {
+        throw new Error(parsedData?.error || `Analysis failed: HTTP ${uploadResponse.status}`);
+      }
+
+      if (!parsedData) {
+        throw new Error('Analysis complete, but no data returned to create script');
+      }
+
+      // Step 3: Creating script (80% progress)
+      updateUploadStatus({ uploadStatus: 'creating' as UploadStatus, uploadProgress: 80 });
+
+      const newScriptId = await createScriptFromParsed(token, parsedData);
+      console.log('[ScriptList] Created new script with ID:', newScriptId);
+
+      // Step 4: Success (100% progress)
+      const newScript: Script = {
+        id: newScriptId,
+        title: parsedData.title || placeholder.title,
+        created_by: user?.id || null,
+        created_at: new Date().toISOString(),
+        is_public: false,
+        thumbnail: null,
+        isPlaceholder: false,
+        uploadStatus: 'completed' as UploadStatus,
+        uploadProgress: 100
+      };
+      
+      // Remove from uploading and add to main scripts
+      setUploadingScripts(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(placeholder.id);
+        return newMap;
+      });
+      
+      setScripts(prev => [...prev, newScript]);
+      
+      console.log('[ScriptList] ✅ Real upload completed successfully');
+      
+    } catch (error: any) {
+      console.error('[ScriptList] ❌ Real upload failed:', error);
+      updateUploadStatus({ 
+        uploadStatus: 'failed' as UploadStatus, 
+        uploadError: error.message || 'Upload failed',
+        uploadProgress: 0
+      });
+    }
+  };
+
+  // 🚀 NEW: Handle retry for failed uploads
+  const handleRetryUpload = (placeholderId: string) => {
+    const placeholder = uploadingScripts.get(placeholderId);
+    if (placeholder) {
+      const resetPlaceholder = {
+        ...placeholder,
+        uploadStatus: 'uploading' as UploadStatus,
+        uploadProgress: 0,
+        uploadError: null
+      };
+      setUploadingScripts(prev => new Map(prev.set(placeholderId, resetPlaceholder)));
+      performRealBackgroundUpload(resetPlaceholder);
+    }
+  };
+
+  // 🚀 NEW: Handle cancel upload
+  const handleCancelUpload = (placeholderId: string) => {
+    setUploadingScripts(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(placeholderId);
+      return newMap;
+    });
+  };
+
+  // 🚀 NEW: Render upload placeholder
+  const renderUploadPlaceholder = (placeholder: Script) => {
+    const getStatusText = () => {
+      switch (placeholder.uploadStatus) {
+        case 'uploading': return 'Uploading file...';
+        case 'analyzing': return 'Analyzing content...';
+        case 'creating': return 'Creating script...';
+        case 'failed': return 'Upload Failed';
+        default: return 'Processing...';
+      }
+    };
+
+    const getProgressColor = () => {
+      switch (placeholder.uploadStatus) {
+        case 'failed': return '#ef4444';
+        case 'completed': return '#10b981';
+        default: return '#3b82f6';
+      }
+    };
+
+    const isClickable = placeholder.uploadStatus === 'completed';
+
+    return (
+      <div 
+        key={placeholder.id} 
+        className={`${styles.scriptPage} ${styles.uploadPlaceholder} ${!isClickable ? styles.nonClickable : ''}`}
+        data-status={placeholder.uploadStatus} // 🎨 Add data attribute for CSS styling
+        onClick={isClickable ? () => handleScriptClick(placeholder.id, placeholder.title, placeholder.isPlaceholder, placeholder.uploadStatus) : undefined}
+        style={{ cursor: isClickable ? 'pointer' : 'not-allowed' }}
+      >
+        <div className={styles.uploadContent}>
+          <div 
+            className={styles.uploadIcon}
+            data-status={placeholder.uploadStatus} // 🎨 Add data attribute for icon styling
+          >
+            {placeholder.uploadStatus === 'failed' ? '❌' : 
+             placeholder.uploadStatus === 'completed' ? '✅' : '📄'}
+          </div>
+          
+          <div className={styles.uploadTitle}>{placeholder.title}</div>
+          
+          <div className={styles.uploadStatus}>{getStatusText()}</div>
+          
+          {placeholder.uploadStatus !== 'failed' && placeholder.uploadStatus !== 'completed' && (
+            <div className={styles.progressContainer}>
+              <div 
+                className={styles.progressBar}
+                data-status={placeholder.uploadStatus} // 🎨 Add data attribute for progress bar styling
+                style={{ 
+                  width: `${placeholder.uploadProgress || 0}%`,
+                  backgroundColor: getProgressColor()
+                }}
+              />
+            </div>
+          )}
+          
+          {placeholder.uploadError && (
+            <div className={styles.uploadError}>{placeholder.uploadError}</div>
+          )}
+          
+          {placeholder.uploadStatus === 'failed' && (
+            <div className={styles.uploadActions}>
+              <button 
+                className={styles.retryButton}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRetryUpload(placeholder.id);
+                }}
+              >
+                Retry
+              </button>
+              <button 
+                className={styles.cancelButton}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCancelUpload(placeholder.id);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {placeholder.uploadStatus === 'completed' && (
+            <div className={styles.completedIndicator}>
+              Click to open script
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const handleUploadOptionClick = () => {
+    // Pass the background upload handler to the uploader
+    onUploadClick();
+    setAddSlotState('plus');
+  };
+
+  const toggleMenu = (scriptId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenMenuId(openMenuId === scriptId ? null : scriptId);
+  };
+
+  const startRename = (scriptId: string, currentTitle: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenMenuId(null);
+    setRenamingScriptId(scriptId);
+    setRenameValue(currentTitle);
+  };
+
+  const cancelRename = () => {
+    setRenamingScriptId(null);
+    setRenameValue('');
+  };
+
+  const handleRename = async (scriptId: string, e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !renameValue.trim()) return;
+    
+    setError(null);
+    try {
+      const updatedScript = await updateScript(token, scriptId, renameValue.trim());
+      // Update the script in local state
+      setScripts(prev => prev.map(script => 
+        script.id === scriptId ? { ...updatedScript } : script
+      ));
+      setRenamingScriptId(null);
+      setRenameValue('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to rename script');
+      console.error(err);
+    }
+  };
 
   // Effect to handle clicks outside the add slot and menus to close them
   useEffect(() => {
@@ -278,7 +559,14 @@ export const ScriptList: React.FC<ScriptListProps> = ({ onSelectScript, onUpload
     }
   };
 
-  const handleScriptClick = (scriptId: string, scriptTitle: string) => {
+  // 🚫 PREVENT CLICKING: Only allow clicking completed scripts
+  const handleScriptClick = (scriptId: string, scriptTitle: string, isPlaceholder?: boolean, uploadStatus?: UploadStatus) => {
+    // Prevent clicking on placeholders that aren't completed
+    if (isPlaceholder && uploadStatus !== 'completed') {
+      console.log('[ScriptList] ❌ Cannot click placeholder that is still uploading');
+      return;
+    }
+
     // Start breadcrumb animation immediately
     onScriptClickStart?.(scriptTitle);
     
@@ -291,54 +579,18 @@ export const ScriptList: React.FC<ScriptListProps> = ({ onSelectScript, onUpload
     }, 200);
   };
 
-  const handleUploadOptionClick = () => {
-    onUploadClick();
-    setAddSlotState('plus');
-  };
-
-  const toggleMenu = (scriptId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setOpenMenuId(openMenuId === scriptId ? null : scriptId);
-  };
-
-  const startRename = (scriptId: string, currentTitle: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setOpenMenuId(null);
-    setRenamingScriptId(scriptId);
-    setRenameValue(currentTitle);
-  };
-
-  const cancelRename = () => {
-    setRenamingScriptId(null);
-    setRenameValue('');
-  };
-
-  const handleRename = async (scriptId: string, e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !renameValue.trim()) return;
-    
-    setError(null);
-    try {
-      const updatedScript = await updateScript(token, scriptId, renameValue.trim());
-      // Update the script in local state
-      setScripts(prev => prev.map(script => 
-        script.id === scriptId ? { ...updatedScript } : script
-      ));
-      setRenamingScriptId(null);
-      setRenameValue('');
-    } catch (err: any) {
-      setError(err.message || 'Failed to rename script');
-      console.error(err);
-    }
-  };
-
   if (loading) return <p>Loading scripts...</p>;
   if (error) return <p style={{ color: 'red' }}>Error: {error}</p>;
+
+  // Combine regular scripts with upload placeholders for rendering
+  const allScripts = [...scripts];
+  const uploadPlaceholders = Array.from(uploadingScripts.values());
 
   return (
     <div>
       <div className={`${styles.scriptGrid} ${isExiting ? styles.exiting : ''}`}>
-        {scripts.map(script => (
+        {/* Regular scripts */}
+        {allScripts.map(script => (
           <div 
             key={script.id} 
             className={`${styles.scriptPage} ${script.thumbnail ? styles.withThumbnail : ''}`}
@@ -433,6 +685,9 @@ export const ScriptList: React.FC<ScriptListProps> = ({ onSelectScript, onUpload
             </div>
           </div>
         ))}
+        
+        {/* Upload placeholders */}
+        {uploadPlaceholders.map(placeholder => renderUploadPlaceholder(placeholder))}
         
         {/* Add New Script Slot */}
         <div 
@@ -570,4 +825,10 @@ export const ScriptList: React.FC<ScriptListProps> = ({ onSelectScript, onUpload
       )}
     </div>
   );
-}; 
+});
+
+// Update the export to use the new forwardRef component
+// export const ScriptList: React.FC<ScriptListProps> = ... (remove this line)
+
+// Export the ref type for use in App component
+export type { ScriptListProps, ScriptListRef }; 

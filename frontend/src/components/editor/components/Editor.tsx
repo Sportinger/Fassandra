@@ -3,7 +3,7 @@
  * Orchestrates all editor sub-systems with responsive design
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../../../AuthContext';
 import { Header } from '../../Header';
 import { useResponsiveDesign } from '../hooks/useResponsiveDesign';
@@ -27,42 +27,38 @@ export const Editor: React.FC<EditorProps> = ({
   initialTitle, 
   onNavigateBack 
 }) => {
+  // 🔧 CRITICAL FIX: ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
   const { token, user } = useAuth();
   const { config, isMobile } = useResponsiveDesign();
+
+  // 🔧 FIXED: Reduce debug logging to prevent console spam
+  const debugLog = useMemo(() => {
+    return process.env.NODE_ENV === 'development' ? console.log : () => {};
+  }, []);
   
   // Initialize editor core with Pessoa's existing infrastructure
   const {
     editor,
-    scriptTitle,
+    ydoc,
+    provider,
     connectionStatus,
     errorMessage,
-    speakerNames,
-    activeUserCount,
+    availableSpeakers,
     contextMenu,
     toolbarContext,
-    setContextMenu,
-    retryConnection,
+    showContextMenu,
+    hideContextMenu,
+    activeUserCount,
   } = useEditorCore({
     scriptId,
     user,
-    token,
-    initialTitle,
+    hasToken: !!token,
   });
   
   // Local UI state
   const [viewMode, setViewMode] = useState<ViewMode>('single-page');
   const [showRuler, setShowRuler] = useState(false);
   const [audioTranscriptionActive, setAudioTranscriptionActive] = useState(false);
-
-  // Debug ruler state
-  useEffect(() => {
-    console.log('[Editor] showRuler state changed:', showRuler);
-  }, [showRuler]);
-  
-  // Debug view mode changes
-  useEffect(() => {
-    console.log('[Editor] viewMode changed to:', viewMode);
-  }, [viewMode]);
   const [localContextMenu, setLocalContextMenu] = useState<{
     x: number;
     y: number;
@@ -76,6 +72,16 @@ export const Editor: React.FC<EditorProps> = ({
     onSpeakerName: false,
     onPageBackground: false,
   });
+
+  // Debug ruler state
+  useEffect(() => {
+    debugLog('[Editor] showRuler state changed:', showRuler);
+  }, [showRuler, debugLog]);
+  
+  // Debug view mode changes
+  useEffect(() => {
+    debugLog('[Editor] viewMode changed to:', viewMode);
+  }, [viewMode, debugLog]);
 
   // Handle context menu
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
@@ -100,18 +106,18 @@ export const Editor: React.FC<EditorProps> = ({
     
     switch (action) {
       case 'insert-dialogue':
-        console.log('Inserting dialogue block from context menu');
+        debugLog('Inserting dialogue block from context menu');
         editor.chain().focus().insertDialogueBlock().run();
         break;
       case 'toggle-view':
         setViewMode(prev => prev === 'single-page' ? 'multiple-pages' : 'single-page');
         break;
       default:
-        console.log('Unknown context menu action:', action);
+        debugLog('Unknown context menu action:', action);
     }
     
     setLocalContextMenu(prev => ({ ...prev, visible: false }));
-  }, [editor]);
+  }, [editor, debugLog]);
 
   // Close context menu on click outside
   useEffect(() => {
@@ -124,29 +130,6 @@ export const Editor: React.FC<EditorProps> = ({
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, [localContextMenu.visible]);
-  
-  // Early return if no auth
-  if (!token || !user) {
-    return (
-      <div className="editorContainer">
-        <LoadingSpinner size="lg" />
-        <p>Authenticating...</p>
-      </div>
-    );
-  }
-  
-  // Show error if connection failed
-  if (connectionStatus === 'error' && errorMessage) {
-    return (
-      <div className="editorContainer">
-        <div className="error-display">
-          <h3>Connection Error</h3>
-          <p>{errorMessage}</p>
-          <button onClick={retryConnection}>Retry Connection</button>
-        </div>
-      </div>
-    );
-  }
 
   // Handle animated navigation back
   const handleAnimatedNavigation = useCallback(() => {
@@ -175,21 +158,43 @@ export const Editor: React.FC<EditorProps> = ({
 
   // Debug logging for responsive behavior
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Editor] Responsive config:', {
-        breakpoint: config.breakpoint,
-        isMobile,
-        viewport: config.viewport,
-      });
-    }
-  }, [config, isMobile]);
+    debugLog('[Editor] Responsive config:', {
+      breakpoint: config.breakpoint,
+      isMobile,
+      viewport: config.viewport,
+    });
+  }, [config, isMobile, debugLog]);
+
+  // 🔧 CRITICAL FIX: EARLY RETURNS MOVED AFTER ALL HOOKS
+  // Early return if no auth
+  if (!token || !user) {
+    return (
+      <div className="editorContainer">
+        <LoadingSpinner size="lg" />
+        <p>Authenticating...</p>
+      </div>
+    );
+  }
+  
+  // Show error if connection failed
+  if (connectionStatus === 'error' && errorMessage) {
+    return (
+      <div className="editorContainer">
+        <div className="error-display">
+          <h3>Connection Error</h3>
+          <p>{errorMessage}</p>
+          <button onClick={() => window.location.reload()}>Retry Connection</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="editorContainer">
       {/* Header */}
       <Header 
         currentView="editor" 
-        scriptTitle={(scriptTitle || 'Loading...') as string} 
+        scriptTitle={(initialTitle || 'Loading...') as string} 
         onNavigateToScripts={handleAnimatedNavigation}
         layouts={[]} // TODO: Implement layout management
         currentLayout={null}
@@ -227,7 +232,7 @@ export const Editor: React.FC<EditorProps> = ({
                 const speakerElement = target.closest('[data-type="speaker"]');
                 
                 if (speakerElement) {
-                  console.log('[Editor] Clicked on speaker element:', speakerElement);
+                  debugLog('[Editor] Clicked on speaker element:', speakerElement);
                   // The useEditorCore hook will handle context setting through selection update
                 }
               }}
@@ -242,7 +247,18 @@ export const Editor: React.FC<EditorProps> = ({
           ) : (
             <div className="editor-loading">
               <LoadingSpinner size="lg" />
-              <p>Initializing collaborative editor...</p>
+              <div>
+                <p>Initializing collaborative editor...</p>
+                {ydoc && provider ? (
+                  <p style={{ fontSize: '14px', opacity: 0.7 }}>
+                    ✅ Collaboration ready - Creating editor...
+                  </p>
+                ) : (
+                  <p style={{ fontSize: '14px', opacity: 0.7 }}>
+                    🔄 Status: {connectionStatus} - Setting up real-time sync...
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </SinglePageView>
@@ -265,7 +281,7 @@ export const Editor: React.FC<EditorProps> = ({
                 const speakerElement = target.closest('[data-type="speaker"]');
                 
                 if (speakerElement) {
-                  console.log('[Editor] Clicked on speaker element:', speakerElement);
+                  debugLog('[Editor] Clicked on speaker element:', speakerElement);
                   // The useEditorCore hook will handle context setting through selection update
                 }
               }}
@@ -280,7 +296,18 @@ export const Editor: React.FC<EditorProps> = ({
           ) : (
             <div className="editor-loading">
               <LoadingSpinner size="lg" />
-              <p>Initializing collaborative editor...</p>
+              <div>
+                <p>Initializing collaborative editor...</p>
+                {ydoc && provider ? (
+                  <p style={{ fontSize: '14px', opacity: 0.7 }}>
+                    ✅ Collaboration ready - Creating editor...
+                  </p>
+                ) : (
+                  <p style={{ fontSize: '14px', opacity: 0.7 }}>
+                    🔄 Status: {connectionStatus} - Setting up real-time sync...
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </MultiPageView>
@@ -363,7 +390,7 @@ export const Editor: React.FC<EditorProps> = ({
         hasTextSelection={editor?.state.selection.empty === false}
         viewMode={viewMode}
         showRuler={showRuler}
-        speakerNames={speakerNames}
+        speakerNames={new Set(availableSpeakers)}
         onSetViewMode={setViewMode}
         onToggleRuler={() => setShowRuler(!showRuler)}
       />

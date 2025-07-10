@@ -176,7 +176,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     if (!editor) return 'default';
     
     const isInDialogueBlock = editor.isActive('dialogueBlock');
-    console.log('Context check - isInDialogueBlock:', isInDialogueBlock, 'hasTextSelection:', hasTextSelection);
+    // 🔧 FIXED: Remove excessive debug logging
+    // console.log('Context check - isInDialogueBlock:', isInDialogueBlock, 'hasTextSelection:', hasTextSelection);
     
     if (isInDialogueBlock) return 'dialogue-block';
     if (hasTextSelection) return 'text-selection';

@@ -693,3 +693,305 @@
 :root[data-theme="dark"] .noThumbnail {
   background: rgba(51, 51, 51, 0.8); /* Grauer No-Thumbnail Bereich */
 } 
+
+/* 🚀 UPLOAD PLACEHOLDER STYLES - DARK THEME MATCHING */
+.uploadPlaceholder {
+  border: 2px dashed #4b5563;
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+  color: #e5e7eb; /* Light text for dark theme */
+}
+
+/* 🌟 TRANSPARENCY DURING UPLOAD PROCESS ONLY */
+.uploadPlaceholder[data-status="uploading"],
+.uploadPlaceholder[data-status="analyzing"], 
+.uploadPlaceholder[data-status="creating"] {
+  opacity: 0.5; /* 50% transparent during upload process */
+}
+
+.uploadPlaceholder::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.uploadContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.uploadIcon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+.uploadTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f3f4f6; /* Light color for dark theme */
+  margin-bottom: 8px;
+  text-align: center;
+  word-break: break-word;
+}
+
+.uploadStatus {
+  font-size: 14px;
+  color: #9ca3af; /* Muted light color */
+  margin-bottom: 16px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.progressContainer {
+  width: 100%;
+  height: 8px;
+  background-color: #374151; /* Dark progress background */
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.progressBar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  animation: progressPulse 2s infinite;
+}
+
+@keyframes progressPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Enhanced progress bar for different states - Dark theme colors */
+.progressBar[data-status="uploading"] {
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+}
+
+.progressBar[data-status="analyzing"] {
+  background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+}
+
+.progressBar[data-status="creating"] {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.uploadError {
+  font-size: 12px;
+  color: #f87171; /* Light red for dark theme */
+  text-align: center;
+  margin-bottom: 12px;
+  padding: 8px;
+  background-color: #374151; /* Dark error background */
+  border-radius: 4px;
+  border: 1px solid #6b7280;
+}
+
+.uploadActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.retryButton {
+  padding: 6px 12px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.retryButton:hover {
+  background-color: #2563eb;
+}
+
+.cancelButton {
+  padding: 6px 12px;
+  background-color: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cancelButton:hover {
+  background-color: #4b5563;
+}
+
+/* 🚫 NON-CLICKABLE PLACEHOLDER STYLES */
+.nonClickable {
+  pointer-events: none;
+  /* Opacity controlled by upload status now */
+}
+
+.nonClickable:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ✅ COMPLETION INDICATOR - Dark theme */
+.completedIndicator {
+  font-size: 12px;
+  color: #10b981;
+  font-weight: 600;
+  margin-top: 8px;
+  padding: 4px 8px;
+  background-color: #1f2937; /* Dark background */
+  border-radius: 4px;
+  border: 1px solid #374151;
+  text-align: center;
+}
+
+/* Status-specific icons with animation */
+.uploadIcon[data-status="uploading"] {
+  animation: bounce 1s infinite;
+  color: #3b82f6; /* Blue for uploading */
+}
+
+.uploadIcon[data-status="analyzing"] {
+  animation: pulse 1.5s infinite;
+  color: #8b5cf6; /* Purple for analyzing */
+}
+
+.uploadIcon[data-status="creating"] {
+  animation: spin 2s linear infinite;
+  color: #10b981; /* Green for creating */
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 🎯 FAILED STATE - Full opacity, red styling */
+.uploadPlaceholder[data-status="failed"] {
+  border-color: #ef4444;
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  opacity: 1; /* Full opacity for failed state */
+}
+
+.uploadPlaceholder[data-status="failed"]::before {
+  display: none;
+}
+
+/* 🎯 SUCCESS STATE - Full opacity, green accent */
+.uploadPlaceholder[data-status="completed"] {
+  border-color: #10b981;
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 1; /* Full opacity for completed state */
+}
+
+.uploadPlaceholder[data-status="completed"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  border-color: #059669;
+}
+
+.uploadPlaceholder[data-status="completed"]::before {
+  display: none; /* Remove shimmer when completed */
+}
+
+/* Mobile responsive updates */
+@media (max-width: 768px) {
+  .uploadContent {
+    padding: 16px;
+  }
+  
+  .uploadIcon {
+    font-size: 36px;
+    margin-bottom: 8px;
+  }
+  
+  .uploadTitle {
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  
+  .uploadStatus {
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .progressContainer {
+    height: 6px;
+    margin-bottom: 8px;
+  }
+  
+  .uploadActions {
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .retryButton,
+  .cancelButton {
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+  
+  .completedIndicator {
+    font-size: 11px;
+    padding: 3px 6px;
+    margin-top: 6px;
+  }
+} 

@@ -202,8 +202,7 @@ export interface LayoutManagementProps {
 export interface UseEditorCoreProps {
   scriptId: string;
   user: any;
-  token: string | null;
-  initialTitle?: string;
+  hasToken: boolean;
 }
 
 // Return type for useEditorCore hook
@@ -215,25 +214,21 @@ export interface UseEditorCoreReturn {
   ydoc: Y.Doc | null;
   provider: WebsocketProvider | null;
   
-  // Content state
-  scriptTitle: string;
-  scriptCreationDate: string | null;
-  speakerNames: Set<string>;
-  activeUserCount: number;
-  
   // Connection state
   connectionStatus: ConnectionStatus;
+  availableSpeakers: string[];
   errorMessage: string | null;
   
   // UI state
-  contextMenu: ContextMenu;
+  contextMenu: ContextMenu | null;
   toolbarContext: ToolbarContext;
   
   // Actions
-  setScriptTitle: (title: string) => void;
-  setContextMenu: (menu: ContextMenu) => void;
-  setToolbarContext: (context: ToolbarContext) => void;
-  retryConnection: () => void;
+  showContextMenu: (x: number, y: number, context: ToolbarContext) => void;
+  hideContextMenu: () => void;
+  
+  // Collaboration
+  activeUserCount: number;
 }
 
 export interface UseCollaborationProps {
