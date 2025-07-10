@@ -96,6 +96,7 @@ FRONTEND_PORT=80
 BACKEND_PORT=3001
 DATABASE_PORT=5432
 PGADMIN_PORT=5050
+CONTAINER_PREFIX=prod_
 
 # API URLs for production
 VITE_API_BASE_URL=https://pessoa.theater
@@ -105,22 +106,29 @@ VITE_WS_BASE_URL=wss://pessoa.theater/api/collab
 CORS_ORIGINS=https://pessoa.theater,https://www.pessoa.theater
 ALLOWED_ORIGINS=https://pessoa.theater,https://www.pessoa.theater
 
-# Database configuration
-DATABASE_URL=postgresql://postgres:password@db:5432/pessoa_db
+# Database configuration (SECURE DEFAULTS - override with env vars)
+DATABASE_URL=\${DATABASE_URL:-postgresql://pessoa_user:CHANGE_THIS_PASSWORD@db:5432/pessoa_db}
 POSTGRES_DB=pessoa_db
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=password
+POSTGRES_USER=pessoa_user
+POSTGRES_PASSWORD=\${POSTGRES_PASSWORD:-CHANGE_THIS_PASSWORD}
 
-# PgAdmin configuration
+# Security (MUST be overridden with system env vars)
+JWT_SECRET=\${JWT_SECRET:-CHANGE_THIS_TO_SECURE_32_CHAR_STRING}
+
+# AI Integration
+GEMINI_API_KEY=\${GEMINI_API_KEY:-your_production_gemini_api_key}
+GEMINI_API_URL=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent
+
+# PgAdmin configuration (override password with env var)
 PGADMIN_DEFAULT_EMAIL=admin@pessoa.theater
-PGADMIN_DEFAULT_PASSWORD=admin123
+PGADMIN_DEFAULT_PASSWORD=\${PGADMIN_DEFAULT_PASSWORD:-CHANGE_THIS_PASSWORD}
 
 # Environment
 ENVIRONMENT=production
 RUST_LOG=info
 
 # GitHub Container Registry
-DOCKER_REGISTRY=ghcr.io/sportinger
+DOCKER_REGISTRY=\${DOCKER_REGISTRY:-ghcr.io/sportinger}
 IMAGE_TAG=latest
 EOF
 
@@ -233,6 +241,10 @@ if [ "$DEPLOY_ONLY" != true ]; then
     scp docker-compose.prod.yml roman@pessoa.theater:/opt/pessoa/
     scp deploy_hetzner.sh roman@pessoa.theater:/opt/pessoa/
     
+    # Verify server requirements
+    echo "🔍 Verifying server setup..."
+    ssh roman@pessoa.theater "mkdir -p /opt/pessoa && docker --version && docker-compose --version"
+    
     # Handle direct deployment - transfer images
     if [ "$DIRECT_DEPLOY" = true ]; then
         echo "📦 Transferring images directly to server..."
@@ -281,21 +293,21 @@ else
     
     # Stop any existing production containers
     echo "📦 Stopping existing production containers..."
-    docker-compose -f docker-compose.prod.yml --env-file .env down 2>/dev/null || true
+    docker compose -f docker-compose.prod.yml --env-file .env down 2>/dev/null || true
     
     # Reset database if requested
     if [ "$RESET_DB" = true ]; then
         echo "🗄️ Resetting database volumes..."
-        docker-compose -f docker-compose.prod.yml --env-file .env down -v 2>/dev/null || true
+        docker compose -f docker-compose.prod.yml --env-file .env down -v 2>/dev/null || true
         docker volume rm prod_postgres_data 2>/dev/null || true
     fi
     
     # Handle database-only reset
     if [ "$TARGET" = "db" ]; then
         echo "🗄️ Resetting database only..."
-        docker-compose -f docker-compose.prod.yml --env-file .env down 2>/dev/null || true
+        docker compose -f docker-compose.prod.yml --env-file .env down 2>/dev/null || true
         docker volume rm prod_postgres_data 2>/dev/null || true
-        docker-compose -f docker-compose.prod.yml --env-file .env up -d db
+        docker compose -f docker-compose.prod.yml --env-file .env up -d db
         echo "✅ Database reset complete!"
         exit 0
     fi
@@ -344,20 +356,30 @@ else
         echo "📥 Pulling latest images from registry..."
         case $TARGET in
             "all")
-                docker-compose -f docker-compose.prod.yml --env-file .env pull
+                docker compose -f docker-compose.prod.yml --env-file .env pull
                 ;;
             "frontend")
-                docker-compose -f docker-compose.prod.yml --env-file .env pull frontend
+                docker compose -f docker-compose.prod.yml --env-file .env pull frontend
                 ;;
             "backend")
-                docker-compose -f docker-compose.prod.yml --env-file .env pull backend
+                docker compose -f docker-compose.prod.yml --env-file .env pull backend
                 ;;
         esac
     fi
     
+    # Check SSL certificates (for HTTPS)
+    echo "🔐 Checking SSL certificates..."
+    if [ ! -f "/etc/letsencrypt/live/pessoa.theater/fullchain.pem" ]; then
+        echo "⚠️  Warning: Let's Encrypt certificates not found at /etc/letsencrypt/live/pessoa.theater/"
+        echo "💡 Run 'certbot --nginx -d pessoa.theater' to get SSL certificates"
+        echo "📋 Or use self-signed certificates for testing"
+    else
+        echo "✅ SSL certificates found!"
+    fi
+    
     # Start production services
     echo "🚀 Starting production services..."
-    docker-compose -f docker-compose.prod.yml --env-file .env up -d
+    docker compose -f docker-compose.prod.yml --env-file .env up -d
     
     # Wait for services to be ready
     echo "⏳ Waiting for services to be ready..."
@@ -365,7 +387,7 @@ else
     
     # Check if services are running
     echo "🔍 Checking service status..."
-    docker-compose -f docker-compose.prod.yml --env-file .env ps
+    docker compose -f docker-compose.prod.yml --env-file .env ps
     
     # Test production endpoints
     echo "🧪 Testing production endpoints..."
@@ -395,6 +417,6 @@ else
     echo "🔧 Backend API: https://pessoa.theater/api (or http://pessoa.theater/api)"
     echo "🗄️  PgAdmin: http://pessoa.theater:5050"
     echo ""
-    echo "📋 To view logs: docker-compose -f docker-compose.prod.yml --env-file .env logs -f"
-    echo "🛑 To stop: docker-compose -f docker-compose.prod.yml --env-file .env down"
+    echo "📋 To view logs: docker compose -f docker-compose.prod.yml --env-file .env logs -f"
+    echo "🛑 To stop: docker compose -f docker-compose.prod.yml --env-file .env down"
 fi 
