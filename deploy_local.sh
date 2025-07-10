@@ -390,6 +390,13 @@ fi
 echo ""
 echo "🎉 Local deployment complete!"
 
+# Important warnings for running systems
+echo ""
+echo "⚠️  IMPORTANT POST-DEPLOYMENT NOTES:"
+echo "🔄 Browser Cache: Hard refresh your browser (Ctrl+Shift+R / Cmd+Shift+R) to load updated code"
+echo "⚡ Content Snapshots: Your 2-second snapshot functionality should be preserved"
+echo "🔍 If snapshots seem slow, check that browser loaded new JavaScript code"
+
 if [ "$HOT_RELOAD" = true ]; then
     echo ""
     echo "🔥 HOT RELOAD MODE ENABLED"

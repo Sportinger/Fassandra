@@ -8,24 +8,79 @@ This guide explains how to use the deployment scripts for the Pessoa collaborati
 
 ### Quick Start
 ```bash
-# Default: Build and run everything with hot reload
+# Default: Safe rebuild preserving your configuration
 ./deploy_local.sh
 
-# Build specific components
-./deploy_local.sh frontend
-./deploy_local.sh backend
-./deploy_local.sh db
+# Build specific components (safer for running systems)
+./deploy_local.sh frontend  # Safest: only rebuild frontend
+./deploy_local.sh backend   # Backend rebuild (preserves data)
+./deploy_local.sh db        # Database operations only
 
-# Advanced options
-./deploy_local.sh --hot-reload    # Enable hot reload for development
-./deploy_local.sh --reset-db      # Reset database (careful!)
-./deploy_local.sh --no-cache      # Force rebuild without cache
+# Advanced options (USE WITH CAUTION on working systems)
+./deploy_local.sh --hot-reload    # Changes API endpoints (may break)
+./deploy_local.sh --reset-db      # DESTROYS ALL DATA (requires confirmation)
+./deploy_local.sh --no-cache      # Slower build, forces full rebuild
+./deploy_local.sh --clean         # Removes containers (may lose state)
 ```
+
+### ⚠️ **CRITICAL: If You Have a Working System**
+
+**Your 2-second content snapshot system is precious! Here's how to keep it safe:**
+
+**✅ SAFE commands that preserve your working setup:**
+```bash
+./deploy_local.sh frontend      # Rebuild frontend only (safest)
+./deploy_local.sh backend       # Rebuild backend only  
+./deploy_local.sh               # Default rebuild (preserves data & config)
+```
+
+**⚠️ POTENTIALLY RISKY commands:**
+```bash
+./deploy_local.sh --reset-db    # DESTROYS database (your content snapshots!)
+./deploy_local.sh --clean       # Removes containers (may lose state)
+./deploy_local.sh --hot-reload  # Changes API URLs (may break connections)
+```
+
+**🔄 After ANY deployment:**
+1. **Hard refresh browser** (Ctrl+Shift+R / Cmd+Shift+R) to load new JavaScript
+2. **Check that 2-second snapshots still work** by typing and checking database
+3. **If snapshots are slow again**, the browser may be serving cached JavaScript
 
 ### Environment Setup
 1. Copy `env.example` to `.env`
-2. Customize your IP address and ports
+2. Customize your IP address and ports  
 3. Set your development API keys
+
+### 🔥 **Content Snapshot System Protection**
+
+**The 2-second content snapshot system is CRITICAL for data persistence!**
+
+**How it works:**
+- Frontend captures editor content every **2 seconds**
+- Backend processes snapshots every **2 seconds**
+- Content is automatically saved without user intervention
+- Survives page reloads, browser crashes, and network issues
+
+**How deployment affects it:**
+1. **Frontend rebuild** → Browser cache may serve old JavaScript → **Snapshots may revert to 30-second intervals**
+2. **Database reset** → All content snapshots destroyed → **Data loss**
+3. **Container recreation** → Runtime state reset → **May temporarily break snapshots**
+
+**Protection checklist after deployment:**
+```bash
+# 1. Test snapshot timing
+# Type in editor, then check database after 2-5 seconds:
+docker exec dev_pessoa_db psql -U pessoa_user -d pessoa_db -c "
+SELECT LEFT(content_snapshot, 50) as preview, created_at 
+FROM script_snapshots_meta 
+ORDER BY created_at DESC LIMIT 3;"
+
+# 2. If snapshots are slow, check frontend code:
+docker exec dev_pessoa_frontend grep -A 2 -B 2 "setInterval.*sendContentSnapshot" /app/src/components/editor/hooks/useEditorCore.ts
+
+# 3. Force browser to load new code:
+# Hard refresh browser with Ctrl+Shift+R / Cmd+Shift+R
+```
 
 ## 🚀 Production Deployment
 
