@@ -375,7 +375,7 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
                         // 🚀 PERFORMANCE FIX: Use trace level for detailed parsing logs
                         Ok(ContentElement::Dialogue(Dialogue {
                             id: attributes_map.get("data-id").map(|s| s.to_string()),
-                            speaker,
+                            speaker: Some(speaker),
                             line: Some(dialogue_text),
                             extra: HashMap::new(),
                         }))
@@ -385,7 +385,7 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
                         let speaker = attributes_map.get("data-speaker").map(|s| s.to_string()).unwrap_or_else(|| "Unknown Speaker".to_string());
                         Ok(ContentElement::Dialogue(Dialogue {
                             id: attributes_map.get("data-id").map(|s| s.to_string()),
-                            speaker,
+                            speaker: Some(speaker),
                             line: Some(current_element_text_content.clone()),
                             extra: HashMap::new(),
                         }))
@@ -393,14 +393,14 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
                     "stage_direction" => {
                         Ok(ContentElement::StageDirection(StageDirection {
                             id: attributes_map.get("data-id").map(|s| s.to_string()),
-                            description: current_element_text_content.clone(),
+                            description: Some(current_element_text_content.clone()),
                         }))
                     },
                     "monologue" => {
                         let speaker = attributes_map.get("data-speaker").map(|s| s.to_string()).unwrap_or_else(|| "Unknown Speaker".to_string());
                         Ok(ContentElement::Monologue(Monologue {
                             id: attributes_map.get("data-id").map(|s| s.to_string()),
-                            speaker,
+                            speaker: Some(speaker),
                             lines: vec![current_element_text_content.clone()], // Assuming single line for now from direct text
                         }))
                     },
@@ -420,10 +420,10 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
                         let language = attributes_map.get("data-language").map(|s| s.to_string());
                         Ok(ContentElement::Reading(Reading {
                             id: attributes_map.get("data-id").map(|s| s.to_string()),
-                            speaker,
+                            speaker: Some(speaker),
                             source,
                             language,
-                                                                reading_text: current_element_text_content.clone(),
+                            reading_text: Some(current_element_text_content.clone()),
                         }))
                     },
                     _ => Err(format!("Unknown Pessoa block type attribute: {}", p_block_type)),

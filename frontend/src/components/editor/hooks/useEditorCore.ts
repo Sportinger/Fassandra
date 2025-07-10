@@ -8,6 +8,7 @@ import { useEditor } from '@tiptap/react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 
+import Collaboration from '@tiptap/extension-collaboration';
 import { CollaborationCursor } from '@tiptap/extension-collaboration-cursor';
 import StarterKit from '@tiptap/starter-kit';
 import { Color } from '@tiptap/extension-color';
@@ -162,28 +163,10 @@ export const useEditorCore = ({
       }
     );
 
-    // 🔧 CUSTOM XML SYNC: Listen for YJS changes and update editor
-    const ytext = doc.getText('content');
-    const updateEditorFromYjs = () => {
-      const htmlContent = ytext.toString();
-      if (htmlContent && htmlContent.trim() !== '') {
-        console.log('[XML Sync] Received content from YJS:', htmlContent.substring(0, 200) + '...');
-        console.log('[XML Sync] YJS content length:', htmlContent.length);
-        // Note: We'll set this content when the editor is ready
-        if (!pendingContent) {
-          console.log('[XML Sync] Setting pending content from YJS');
-          setPendingContent(htmlContent);
-        }
-      } else {
-        console.log('[XML Sync] YJS content is empty, length:', htmlContent?.length || 0);
-      }
-    };
-
-    // Listen for YJS text changes
-    ytext.observe(updateEditorFromYjs);
-    
-    // Initial load of existing content
-    updateEditorFromYjs();
+    // 🚫 DISABLED CUSTOM YJS SYNC: TipTap Collaboration extension handles all YJS sync automatically
+    // This prevents cursor jumping and sync conflicts
+    // The Collaboration extension manages document sync seamlessly with proper cursor handling
+    console.log('[YJS Sync] ✅ Using TipTap Collaboration extension for all YJS sync (prevents cursor issues)');
 
     // Connection status handlers
     websocketProvider.on('status', (event: { status: string }) => {
@@ -289,9 +272,19 @@ export const useEditorCore = ({
       DialogueBlock,
       Speaker,
       DialogueText,
-      // Collaboration extensions - CUSTOM XML SYNC for backend compatibility
-      // Instead of storing ProseMirror JSON, we store HTML with data-type attributes
-      // NOTE: CollaborationCursor removed to prevent ystate errors during custom sync
+      // 🔄 REAL-TIME COLLABORATION: Restored for browser-to-browser sync
+      ...(ydoc && provider ? [
+        Collaboration.configure({
+          document: ydoc,
+        }),
+        CollaborationCursor.configure({
+          provider: provider,
+          user: {
+            name: user?.username || 'Anonymous',
+            color: '#6eeb83', // Default collaboration cursor color
+          },
+        }),
+      ] : []),
     ],
     editorProps: {
       attributes: {
@@ -304,28 +297,10 @@ export const useEditorCore = ({
       const speakers = extractSpeakerNames(editor.getHTML());
       setSpeakerNames(speakers);
       
-      // 🔄 YJS FALLBACK SYNC: Keep for future compatibility (currently broken due to YJS/YRS version mismatch)
-      // NOTE: Primary collaboration now handled by real-time content snapshots above
-      if (ydoc && editor && Math.random() < 0.1) { // Only attempt 10% of the time to reduce spam
-        console.log('[YJS Fallback] Attempting fallback sync (currently broken)');
-        
-        try {
-          const htmlContent = editor.getHTML();
-          // Store HTML content in YText field for when YJS/YRS compatibility is fixed
-          ydoc.transact(() => {
-            const ytext = ydoc.getText('content');
-            const currentContent = ytext.toString();
-            
-            if (currentContent !== htmlContent) {
-              ytext.delete(0, ytext.length);
-              ytext.insert(0, htmlContent);
-              console.log('[YJS Fallback] ✅ Stored in YText (may not be readable by backend yet)');
-            }
-          }, 'fallbackSync');
-        } catch (error) {
-          console.log('[YJS Fallback] ❌ Failed (expected due to version incompatibility):', error.message);
-        }
-      }
+      // 🚫 REMOVED CUSTOM YJS SYNC: TipTap Collaboration extension handles YJS sync automatically
+      // This prevents cursor jumping issues caused by double-syncing
+      // The Collaboration extension manages the YJS document sync seamlessly
+      console.log('[YJS Real-time] ✅ Using TipTap Collaboration extension for YJS sync (prevents cursor jump)');
       
       // Add Chrome-specific debugging
       const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
@@ -354,7 +329,7 @@ export const useEditorCore = ({
         console.log('[Collaboration Cursor] Other users present:', Object.keys(collaborationState.users || {}));
       }
     },
-  }, [ydoc, isSyncingFromYjs, isSyncingToYjs]);
+  }, [ydoc, provider, user?.username, isSyncingFromYjs, isSyncingToYjs]);
 
   // Add debugging for collaboration cursor behavior
   useEffect(() => {

@@ -68,7 +68,7 @@ pub enum ContentElement {
 pub struct Dialogue {
     #[serde(default)]
     pub id: Option<String>,
-    pub speaker: String,
+    pub speaker: Option<String>, // Make nullable to handle AI null values
     pub line: Option<String>,
     // Add extra if needed
     #[serde(flatten)]
@@ -79,7 +79,7 @@ pub struct Dialogue {
 pub struct Monologue {
     #[serde(default)]
     pub id: Option<String>,
-    pub speaker: String,
+    pub speaker: Option<String>, // Make nullable to handle AI null values
     #[serde(default)]
     pub lines: Vec<String>, 
 }
@@ -88,7 +88,7 @@ pub struct Monologue {
 pub struct StageDirection {
     #[serde(default)]
     pub id: Option<String>,
-    pub description: String, // Renamed from 'text'
+    pub description: Option<String>, // Make nullable to handle AI null values
     // Removed kind and source_location
 }
 
@@ -107,10 +107,10 @@ pub struct JointDialogue {
 pub struct Reading {
     #[serde(default)]
     pub id: Option<String>,
-    pub speaker: String,
+    pub speaker: Option<String>, // Make nullable to handle AI null values
     pub source: Option<String>,
     pub language: Option<String>,
-    pub reading_text: String,
+    pub reading_text: Option<String>, // Make nullable to handle AI null values
 }
 
 // Note: We removed the old Speaker, DialogueLine structs as they are replaced by the new structure.

@@ -34,13 +34,13 @@ const ScriptUploader: React.FC<ScriptUploaderProps> = ({ onScriptCreated, onClos
         formData.append('scriptFile', selectedFile);
 
         try {
-                         // 1. Upload and Parse (using the original fetch logic for FormData)
-             const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
-             const uploadResponse = await fetch(`${apiUrl}/api/s/upload`, {
-                 method: 'POST',
-                 headers: { 'Authorization': `Bearer ${token}` },
-                 body: formData,
-             });
+                                     // 1. Upload and Parse (using relative URL to work with Vite proxy)
+            // Use relative URL so Vite development proxy handles routing to backend
+            const uploadResponse = await fetch('/api/s/upload', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData,
+            });
  
              let parsedData: ParsedScriptData = null;
              if (uploadResponse.status !== 204 && uploadResponse.headers.get("content-length") !== "0") {
