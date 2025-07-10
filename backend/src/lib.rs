@@ -6,6 +6,7 @@
 //! documentation standards.
 
 pub mod error;
+pub mod error_helpers;
 pub mod auth;
 pub mod ws;
 pub mod analysis;
@@ -25,19 +26,16 @@ mod test_yjs;
 
 use chrono::Utc;
 use sqlx::{PgPool, Row}; // Removed unused import: Transaction
-use tokio::time::{timeout, Duration};
 use uuid::Uuid;
 use anyhow::Error;
 // Removed unused import: use std::sync::Arc;
 
 use error::AppError;
+use error_helpers::*;
 type Result<T> = std::result::Result<T, AppError>;
 
 // Add tracing import
 use tracing::{info, error, debug};
-
-// Define a default timeout duration. Consider making this configurable.
-const DB_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Extracts the main title from a potentially long title string.
 /// Takes the first line or first few words to create a clean, short title.
@@ -81,13 +79,13 @@ fn extract_main_title(raw_title: &str) -> &str {
 /// # Errors
 /// Returns an error if the database query fails or times out.
 pub async fn get_scripts(pool: &PgPool) -> Result<Vec<models::script::Script>> {
-    sqlx::query_as_unchecked!(
-        models::script::Script,
-        "SELECT id, title, created_by, created_at, is_public, thumbnail FROM scripts ORDER BY created_at DESC"
-    )
-    .fetch_all(pool)
-    .await
-    .map_err(|e| AppError::Internal(Error::msg(e.to_string())))
+    fetch_all_with_context(
+        || sqlx::query_as_unchecked!(
+            models::script::Script,
+            "SELECT id, title, created_by, created_at, is_public, thumbnail FROM scripts ORDER BY created_at DESC"
+        ).fetch_all(pool),
+        "fetching all scripts"
+    ).await
 }
 
 /// Creates a new script in the database.
@@ -103,21 +101,19 @@ pub async fn get_scripts(pool: &PgPool) -> Result<Vec<models::script::Script>> {
 /// # Errors
 /// Returns an error if the database query fails or times out.
 pub async fn create_script(pool: &PgPool, title: &str, user_id: Uuid) -> Result<models::script::Script> {
-    let script = sqlx::query_as_unchecked!(
-        models::script::Script,
-        "INSERT INTO scripts (id, title, created_by, created_at, is_public, thumbnail) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, title, created_by, created_at, is_public, thumbnail",
-        Uuid::new_v4(),
-        title,
-        user_id,
-        Utc::now(),
-        false, // Default to private
-        None::<String> // No thumbnail initially
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::Internal(Error::msg(e.to_string())))?;
-    
-    Ok(script)
+    with_db_timeout(
+        || sqlx::query_as_unchecked!(
+            models::script::Script,
+            "INSERT INTO scripts (id, title, created_by, created_at, is_public, thumbnail) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, title, created_by, created_at, is_public, thumbnail",
+            Uuid::new_v4(),
+            title,
+            user_id,
+            Utc::now(),
+            false, // Default to private
+            None::<String> // No thumbnail initially
+        ).fetch_one(pool),
+        "creating new script"
+    ).await
 }
 
 /// Fetches a script and its associated blocks by script ID.
@@ -132,23 +128,25 @@ pub async fn create_script(pool: &PgPool, title: &str, user_id: Uuid) -> Result<
 /// # Errors
 /// Returns an error if the database query fails or times out.
 pub async fn get_script_with_blocks(pool: &PgPool, script_id: Uuid) -> Result<(models::script::Script, Vec<models::block::Block>)> {
-    let script = sqlx::query_as_unchecked!(
-        models::script::Script,
-        "SELECT id, title, created_by, created_at, is_public, thumbnail FROM scripts WHERE id = $1",
+    let script = fetch_one_with_context(
+        || sqlx::query_as_unchecked!(
+            models::script::Script,
+            "SELECT id, title, created_by, created_at, is_public, thumbnail FROM scripts WHERE id = $1",
+            script_id
+        ).fetch_one(pool),
+        "fetching script by ID",
+        "script",
         script_id
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(|e| AppError::Internal(Error::msg(e.to_string())))?;
+    ).await?;
     
-    let blocks = sqlx::query_as_unchecked!(
-        models::block::Block,
-        "SELECT id, script_id, block_type, content, created_at, block_order FROM blocks WHERE script_id = $1 ORDER BY block_order ASC, created_at ASC",
-        script_id
-    )
-    .fetch_all(pool)
-    .await
-    .map_err(|e| AppError::Internal(Error::msg(e.to_string())))?;
+    let blocks = fetch_all_with_context(
+        || sqlx::query_as_unchecked!(
+            models::block::Block,
+            "SELECT id, script_id, block_type, content, created_at, block_order FROM blocks WHERE script_id = $1 ORDER BY block_order ASC, created_at ASC",
+            script_id
+        ).fetch_all(pool),
+        "fetching blocks for script"
+    ).await?;
     
     Ok((script, blocks))
 }
@@ -167,14 +165,15 @@ pub async fn get_script_with_blocks(pool: &PgPool, script_id: Uuid) -> Result<(m
 /// # Errors
 /// Returns an error if the database query fails or times out.
 pub async fn create_block(pool: &PgPool, script_id: Uuid, block_type: &str, content: &str) -> Result<Uuid> {
-    let query = sqlx::query("INSERT INTO blocks (script_id, block_type, content, block_order) VALUES ($1, $2, $3, $4) RETURNING id")
-        .bind(script_id)
-        .bind(block_type)
-        .bind(content)
-        .bind(0); // Default block_order for manually created blocks
-    let row = timeout(DB_TIMEOUT, query.fetch_one(pool))
-        .await
-        .map_err(|_| AppError::Internal(Error::msg("Database timeout".to_string())))??;
+    let row = with_db_timeout(
+        || sqlx::query("INSERT INTO blocks (script_id, block_type, content, block_order) VALUES ($1, $2, $3, $4) RETURNING id")
+            .bind(script_id)
+            .bind(block_type)
+            .bind(content)
+            .bind(0) // Default block_order for manually created blocks
+            .fetch_one(pool),
+        "creating new block"
+    ).await?;
     Ok(row.get("id"))
 }
 
@@ -204,7 +203,10 @@ pub async fn update_block_content(
     )
     .execute(&mut **tx)
     .await
-    .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
+    .map_err(|e| {
+        tracing::error!("💾 Failed to update block content for block {}: {}", block_id, e);
+        AppError::from(e) // Use From trait - preserves error type!
+    })?;
 
     sqlx::query!(
         "INSERT INTO edits (id, block_id, user_id, content, created_at) VALUES ($1, $2, $3, $4, $5)",
@@ -216,7 +218,10 @@ pub async fn update_block_content(
     )
     .execute(&mut **tx)
     .await
-    .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
+    .map_err(|e| {
+        tracing::error!("💾 Failed to insert edit record for block {}: {}", block_id, e);
+        AppError::from(e) // Use From trait - preserves error type!
+    })?;
 
     Ok(())
 }
@@ -233,18 +238,14 @@ pub async fn update_block_content(
 /// # Errors
 /// Returns an error if the database query fails or times out.
 pub async fn get_block_history(pool: &PgPool, block_id: Uuid) -> Result<Vec<models::edit::Edit>> {
-    let edits = timeout(
-        DB_TIMEOUT,
-        sqlx::query_as_unchecked!(
+    fetch_all_with_context(
+        || sqlx::query_as_unchecked!(
             models::edit::Edit,
             "SELECT id, block_id, user_id, content, created_at FROM edits WHERE block_id=$1 ORDER BY created_at",
             block_id
-        )
-        .fetch_all(pool)
-    )
-    .await
-    .map_err(|_| AppError::Internal(Error::msg("Database timeout".to_string())))??;
-    Ok(edits)
+        ).fetch_all(pool),
+        "fetching edit history for block"
+    ).await
 }
 
 /// Updates a block's content and records the edit, wrapped in a transaction.
@@ -254,12 +255,32 @@ pub async fn update_block(
     content: &str,
     user_id: Uuid,
 ) -> Result<()> {
+    tracing::debug!("🔄 Starting transaction: updating block content with edit history");
+    
     let mut tx = pool.begin().await
-        .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
-    update_block_content(&mut tx, block_id, content, user_id).await?;
-    tx.commit().await
-        .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
-    Ok(())
+        .map_err(|e| {
+            tracing::error!("❌ Failed to begin transaction for updating block {}: {}", block_id, e);
+            AppError::from(e)
+        })?;
+    
+    let result = update_block_content(&mut tx, block_id, content, user_id).await;
+    
+    match result {
+        Ok(_) => {
+            tx.commit().await
+                .map_err(|e| {
+                    tracing::error!("❌ Failed to commit transaction for updating block {}: {}", block_id, e);
+                    AppError::from(e)
+                })?;
+            tracing::debug!("✅ Transaction committed successfully: updating block content with edit history");
+            Ok(())
+        }
+        Err(e) => {
+            tracing::error!("❌ Transaction failed for updating block {}: {}", block_id, e);
+            // Transaction will be automatically rolled back when dropped
+            Err(e)
+        }
+    }
 }
 
 /// Deletes a script from the database.
@@ -274,15 +295,13 @@ pub async fn update_block(
 /// # Errors
 /// Returns an error if the database query fails or times out.
 pub async fn delete_script(pool: &PgPool, script_id: Uuid) -> Result<()> {
-    sqlx::query!(
-        "DELETE FROM scripts WHERE id = $1",
-        script_id
-    )
-    .execute(pool)
-    .await
-    .map_err(|e| AppError::Internal(Error::msg(e.to_string())))?;
-    
-    Ok(())
+    execute_with_context(
+        || sqlx::query!(
+            "DELETE FROM scripts WHERE id = $1",
+            script_id
+        ).execute(pool),
+        "deleting script"
+    ).await
 }
 
 /// Creates a new script and its blocks from parsed script data.
@@ -413,16 +432,24 @@ pub async fn update_script_content_from_html(
     let blocks_count = blocks.len();
     tracing::info!("✅ Parsed {} blocks from HTML for script {}", blocks_count, script_id);
     
-    // Start transaction to update blocks atomically
+    // Use our standardized transaction pattern
+    tracing::debug!("🔄 Starting transaction: updating script content from HTML");
+    
     let mut tx = pool.begin().await
-        .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
+        .map_err(|e| {
+            tracing::error!("❌ Failed to begin transaction for updating script {}: {}", script_id, e);
+            AppError::from(e)
+        })?;
     
     // Delete existing blocks for this script
     sqlx::query("DELETE FROM blocks WHERE script_id = $1")
         .bind(script_id)
         .execute(&mut *tx)
         .await
-        .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
+        .map_err(|e| {
+            tracing::error!("💾 Failed to delete existing blocks for script {}: {}", script_id, e);
+            AppError::from(e)
+        })?;
     
     tracing::debug!("🗑️ Deleted existing blocks for script {}", script_id);
     
@@ -438,7 +465,10 @@ pub async fn update_script_content_from_html(
         .bind(Utc::now())
         .execute(&mut *tx)
         .await
-        .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
+        .map_err(|e| {
+            tracing::error!("💾 Failed to insert block {} for script {}: {}", index, script_id, e);
+            AppError::from(e)
+        })?;
     }
     
     tracing::debug!("📝 Inserted {} new blocks for script {}", blocks_count, script_id);
@@ -448,7 +478,12 @@ pub async fn update_script_content_from_html(
     
     // Commit transaction
     tx.commit().await
-        .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
+        .map_err(|e| {
+            tracing::error!("❌ Failed to commit transaction for updating script {}: {}", script_id, e);
+            AppError::from(e)
+        })?;
+    
+    tracing::debug!("✅ Transaction committed successfully: updating script content from HTML");
     
     tracing::info!("✅ Successfully updated script {} with {} blocks", script_id, blocks_count);
     Ok(())
@@ -573,9 +608,10 @@ fn parse_html_to_blocks(html_content: &str) -> Result<Vec<(String, String)>> {
                     // Split at the first colon (validate colon exists)
                     let colon_pos = match line_content.find(':') {
                         Some(pos) => pos,
-                        None => return Err(AppError::Internal(Error::msg(format!(
-                            "Invalid dialogue format: missing colon in line: {}", line_content
-                        )))),
+                        None => return Err(validation_error(
+                            "dialogue_format",
+                            &format!("missing colon in line: {}", line_content)
+                        )),
                     };
                     let speaker = line_content[..colon_pos].trim();
                     let line = line_content[colon_pos + 1..].trim();
@@ -619,17 +655,17 @@ fn parse_html_to_blocks(html_content: &str) -> Result<Vec<(String, String)>> {
 /// # Returns
 /// * `Result<Vec<models::script_layout::ScriptLayout>>` - Vector of layouts on success, or an AppError on failure.
 pub async fn get_script_layouts(pool: &PgPool, script_id: Uuid) -> Result<Vec<models::script_layout::ScriptLayout>> {
-    sqlx::query_as!(
-        models::script_layout::ScriptLayout,
-        "SELECT id, script_id, name, description, created_by, created_at, updated_at, is_default, layout_config 
-         FROM script_layouts 
-         WHERE script_id = $1 
-         ORDER BY COALESCE(is_default, false) DESC, created_at ASC",
-        script_id
-    )
-    .fetch_all(pool)
-    .await
-    .map_err(|e| AppError::Internal(Error::msg(e.to_string())))
+    fetch_all_with_context(
+        || sqlx::query_as::<_, models::script_layout::ScriptLayout>(
+            "SELECT id, script_id, name, description, created_by, created_at, updated_at, is_default, layout_config 
+             FROM script_layouts 
+             WHERE script_id = $1 
+             ORDER BY COALESCE(is_default, false) DESC, created_at ASC"
+        )
+        .bind(script_id)
+        .fetch_all(pool),
+        "fetching script layouts"
+    ).await
 }
 
 /// Gets the default layout for a script.
@@ -641,17 +677,17 @@ pub async fn get_script_layouts(pool: &PgPool, script_id: Uuid) -> Result<Vec<mo
 /// # Returns
 /// * `Result<Option<models::script_layout::ScriptLayout>>` - The default layout if it exists, or None.
 pub async fn get_default_script_layout(pool: &PgPool, script_id: Uuid) -> Result<Option<models::script_layout::ScriptLayout>> {
-    sqlx::query_as!(
-        models::script_layout::ScriptLayout,
-        "SELECT id, script_id, name, description, created_by, created_at, updated_at, is_default, layout_config 
-         FROM script_layouts 
-         WHERE script_id = $1 AND COALESCE(is_default, false) = true
-         LIMIT 1",
-        script_id
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| AppError::Internal(Error::msg(e.to_string())))
+    fetch_optional_with_context(
+        || sqlx::query_as::<_, models::script_layout::ScriptLayout>(
+            "SELECT id, script_id, name, description, created_by, created_at, updated_at, is_default, layout_config 
+             FROM script_layouts 
+             WHERE script_id = $1 AND COALESCE(is_default, false) = true
+             LIMIT 1"
+        )
+        .bind(script_id)
+        .fetch_optional(pool),
+        "fetching default script layout"
+    ).await
 }
 
 /// Creates a new layout for a script.
@@ -671,7 +707,10 @@ pub async fn create_script_layout(
     user_id: Uuid
 ) -> Result<models::script_layout::ScriptLayout> {
     let mut tx = pool.begin().await
-        .map_err(|e| AppError::Internal(Error::msg(e.to_string())))?;
+        .map_err(|e| {
+            tracing::error!("💾 Failed to begin transaction for creating script layout: {}", e);
+            AppError::from(e)
+        })?;
     
     // If this is set as default, unset other defaults first
     if request.is_default.unwrap_or(false) {
@@ -679,7 +718,10 @@ pub async fn create_script_layout(
             .bind(script_id)
             .execute(&mut *tx)
             .await
-            .map_err(|e| AppError::Internal(Error::msg(e.to_string())))?;
+            .map_err(|e| {
+                tracing::error!("💾 Failed to unset default layouts for script {}: {}", script_id, e);
+                AppError::from(e)
+            })?;
     }
     
     let layout = sqlx::query_as!(

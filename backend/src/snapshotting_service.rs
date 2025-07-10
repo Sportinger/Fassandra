@@ -247,9 +247,9 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
             let len = f.len(&txn_ro);
             debug!("Examining fragment '{}' – len = {}", candidate, len);
             if len > 0 {
-            fragment_name = Some(candidate);
-            break;
-        }
+                fragment_name = Some(candidate);
+                break;
+            }
         }
     }
     
@@ -259,7 +259,7 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
             if txn_ro.get_xml_fragment(candidate).is_some() {
                 fragment_name = Some(candidate);
                 break;
-        }
+            }
         }
     }
         
@@ -305,7 +305,7 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
         if let XmlOut::Element(elem_ref) = top_item_out {
             let attributes_map: std::collections::HashMap<String, String> =
                 elem_ref.attributes(&txn_ro)
-                    .map(|(k, v_str)| (k.to_string(), v_str.to_string()))
+                    .map(|(k, v_str)| (k.to_string(), v_str.to_string(&txn_ro)))
                     .collect();
             
             let tag_name = elem_ref.tag().to_string();
@@ -337,7 +337,7 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
                             if let XmlOut::Element(child_elem_ref) = child_item_out {
                                 let child_attributes: std::collections::HashMap<String, String> =
                                     child_elem_ref.attributes(&txn_ro)
-                                        .map(|(k, v_str)| (k.to_string(), v_str.to_string()))
+                                        .map(|(k, v_str)| (k.to_string(), v_str.to_string(&txn_ro)))
                                         .collect();
                                 
                                 if let Some(child_type) = child_attributes.get("data-type") {

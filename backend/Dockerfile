@@ -21,11 +21,11 @@ ENV SQLX_OFFLINE=true
 COPY Cargo.toml ./Cargo.toml
 COPY Cargo.lock ./Cargo.lock
 
-# Pin yrs version. The version is specified as "=0.19.0" in Cargo.toml's [dependencies].
-# Running `cargo update -p yrs --precise 0.19.0` ensures Cargo.lock reflects this exact version.
+# Pin yrs version. The version is specified as "0.24.0" in Cargo.toml's [dependencies].
+# Running `cargo update -p yrs --precise 0.24.0` ensures Cargo.lock reflects this exact version.
 # The [patch.crates-io] section is not needed if we are just pinning to a crates.io version.
-# RUN { echo; echo '[patch.crates-io]'; echo 'yrs = { version = "=0.19.0" }'; } >> Cargo.toml
-RUN cargo update -p yrs --precise 0.19.0
+# RUN { echo; echo '[patch.crates-io]'; echo 'yrs = { version = "0.24.0" }'; } >> Cargo.toml
+RUN cargo update -p yrs --precise 0.24.0
 
 # Create dummy main.rs for the backend crate to allow cargo commands to work
 RUN mkdir -p src && \

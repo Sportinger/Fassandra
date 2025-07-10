@@ -293,7 +293,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         console.log('Inserting dialogue block');
         editor?.chain().focus().insertDialogueBlock().run();
       },
-      contexts: ['empty-page'],
+      contexts: ['empty-page', 'default'], // 🔧 FIX: Add to default context so users can always insert dialogue
       order: 1
     },
     {
@@ -310,6 +310,36 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     },
 
     // View mode buttons (default context)
+    {
+      id: 'convert-to-dialogue',
+      icon: '🎭',
+      title: 'Convert Paragraph to Dialogue Block',
+      action: () => {
+        console.log('Converting paragraph to dialogue block');
+        // Get current paragraph content
+        const { selection } = editor.state;
+        const { $from } = selection;
+        const currentNode = $from.node();
+        
+        if (currentNode.type.name === 'paragraph') {
+          const content = currentNode.textContent || 'New dialogue';
+          // Replace current paragraph with dialogue block
+          editor?.chain()
+            .focus()
+            .deleteCurrentNode()
+            .insertContent({
+              type: 'dialogueBlock',
+              content: [
+                { type: 'speaker', content: [{ type: 'text', text: 'Speaker' }] },
+                { type: 'dialogueText', content: [{ type: 'paragraph', content: [{ type: 'text', text: content }] }] },
+              ],
+            })
+            .run();
+        }
+      },
+      contexts: ['default'],
+      order: 5
+    },
     {
       id: 'single-page',
       icon: '▢',
