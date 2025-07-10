@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use crate::analysis::structs::{ContentElement, Dialogue, StageDirection, Monologue, JointDialogue, Reading};
 
 // Fixed interval configuration  
-const SNAPSHOT_INTERVAL_SECONDS: u64 = 2;  // Run every 2 seconds for faster persistence
+const SNAPSHOT_INTERVAL_MILLIS: u64 = 500;  // Run every 500ms for real-time sync
 
 #[derive(Debug)]
 struct SnapshotYjsUpdate {
@@ -84,9 +84,9 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
             last_processed_update_id_from_meta
         );
     } else {
-        debug!("✅ No new updates for script {} since ID {} - skipping processing", script_id, last_processed_update_id_from_meta);
-        // Early return: No new updates means no work to do - skip expensive Yjs processing
-        return Ok(());
+        debug!("✅ No new YJS updates for script {} since ID {} - checking content snapshots...", script_id, last_processed_update_id_from_meta);
+        // Don't return early - we still need to check content snapshots
+        // Even if YJS updates are broken, content snapshots might be newer
     }
     
     let doc = Doc::new();
@@ -102,7 +102,9 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
     {
         let mut bootstrap_txn = doc.transact_mut();
         for name in ["default", "content", "prosemirror"] {
+            // Create both XmlFragment (for structured content) and YText (for plain text content)
             bootstrap_txn.get_or_insert_xml_fragment(name);
+            bootstrap_txn.get_or_insert_text(name);
         }
     }
  
@@ -593,11 +595,11 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
     }
 
     // ------------------------------------------------------------------
-    // ✨ Content Snapshot Fallback: If YJS updates and YText both failed,
-    // try to use the stored content snapshot as a final fallback
-    // ONLY if there were actually new updates to process (don't recreate blocks unnecessarily)
+    // ✨ Content Snapshot Processing: If YJS and YText extraction failed,
+    // use the stored content snapshot as the primary content source
+    // This is now our main content processing system since YJS compatibility is broken
     // ------------------------------------------------------------------
-    if blocks_to_insert.is_empty() && !updates_to_apply.is_empty() {
+    if blocks_to_insert.is_empty() {
         debug!("[SnapshottingService] Content snapshot fallback: No blocks from YJS, trying content snapshot...");
         
         // Try to get content snapshot from database
@@ -815,12 +817,12 @@ pub async fn run_snapshotting_service(
     pool: Arc<PgPool>,
     _base_interval_duration: Duration, // Keep parameter for backwards compatibility
 ) {
-    info!("🚀 Snapshotting Service Task SPAWNED and RUNNING every {} seconds!", SNAPSHOT_INTERVAL_SECONDS);
+    info!("🚀 Snapshotting Service Task SPAWNED and RUNNING every {}ms for real-time sync!", SNAPSHOT_INTERVAL_MILLIS);
     
     let mut scripts_processed_count = 0u64;
     
     loop {
-        tokio::time::sleep(Duration::from_secs(SNAPSHOT_INTERVAL_SECONDS)).await;
+        tokio::time::sleep(Duration::from_millis(SNAPSHOT_INTERVAL_MILLIS)).await;
         
         debug!("🔍 [SnapshottingService] Running scheduled snapshot check...");
         

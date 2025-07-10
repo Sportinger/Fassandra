@@ -304,31 +304,27 @@ export const useEditorCore = ({
       const speakers = extractSpeakerNames(editor.getHTML());
       setSpeakerNames(speakers);
       
-      // 🔧 CUSTOM XML SYNC: Store HTML content directly in YJS for backend compatibility
-      console.log('[XML Sync] onUpdate triggered. ydoc:', !!ydoc, 'editor:', !!editor);
-      
-      if (ydoc && editor) {
-        const htmlContent = editor.getHTML();
-        console.log('[XML Sync] Processing HTML content:', htmlContent.length, 'chars');
+      // 🔄 YJS FALLBACK SYNC: Keep for future compatibility (currently broken due to YJS/YRS version mismatch)
+      // NOTE: Primary collaboration now handled by real-time content snapshots above
+      if (ydoc && editor && Math.random() < 0.1) { // Only attempt 10% of the time to reduce spam
+        console.log('[YJS Fallback] Attempting fallback sync (currently broken)');
         
-        // Store HTML content in YText field that backend can parse
-        ydoc.transact(() => {
-          const ytext = ydoc.getText('content');
-          const currentContent = ytext.toString();
-          
-          // Only update if content actually changed to avoid loops
-          if (currentContent !== htmlContent) {
-            console.log('[XML Sync] Storing HTML content in YJS:', htmlContent.substring(0, 200) + '...');
-            console.log('[XML Sync] Current content length:', currentContent.length, 'New content length:', htmlContent.length);
-            ytext.delete(0, ytext.length); // Clear existing content
-            ytext.insert(0, htmlContent);   // Insert new HTML content
-            console.log('[XML Sync] Content stored successfully in YJS');
-          } else {
-            console.log('[XML Sync] Content unchanged, skipping YJS update');
-          }
-        }, 'customXmlSync');
-      } else {
-        console.log('[XML Sync] SKIP: Missing ydoc or editor');
+        try {
+          const htmlContent = editor.getHTML();
+          // Store HTML content in YText field for when YJS/YRS compatibility is fixed
+          ydoc.transact(() => {
+            const ytext = ydoc.getText('content');
+            const currentContent = ytext.toString();
+            
+            if (currentContent !== htmlContent) {
+              ytext.delete(0, ytext.length);
+              ytext.insert(0, htmlContent);
+              console.log('[YJS Fallback] ✅ Stored in YText (may not be readable by backend yet)');
+            }
+          }, 'fallbackSync');
+        } catch (error) {
+          console.log('[YJS Fallback] ❌ Failed (expected due to version incompatibility):', error.message);
+        }
       }
       
       // Add Chrome-specific debugging
@@ -561,34 +557,49 @@ export const useEditorCore = ({
     };
   }, [provider, ydoc]);
 
-  // Content snapshot effect - send content snapshots every 30 seconds
+  // 🚀 PRIMARY REAL-TIME SYNC: Optimized content snapshots (now the main collaboration system)
   useEffect(() => {
     if (!editor || !scriptId || !token) {
       return;
     }
 
-    // Function to send content snapshot
-    const sendContentSnapshot = async () => {
+    let lastSentContent = '';
+    let isPending = false;
+
+    // Optimized real-time content sync function
+    const sendRealtimeContentSync = async () => {
+      if (isPending) return; // Prevent concurrent requests
+      
       try {
+        isPending = true;
         const html = editor.getHTML();
         
-        if (html && html.trim() !== '<p></p>' && html.trim() !== '') {
+        // ✅ CHANGE DETECTION: Only send when content actually changed (including empty content)
+        if (html !== lastSentContent) {
+          console.log('[Real-time Sync] Sending content update:', html.length, 'chars');
           await storeContentSnapshot(token, scriptId, html, 'html');
+          lastSentContent = html; // Update last sent content
+          console.log('[Real-time Sync] ✅ Content sync successful');
         }
       } catch (error) {
-        console.error('Error sending content snapshot:', error);
+        console.error('[Real-time Sync] ❌ Content sync failed:', error);
+      } finally {
+        isPending = false;
       }
     };
 
-    // Send snapshot every 2 seconds
-    const snapshotInterval = setInterval(sendContentSnapshot, 2000);
+    // 🚀 REAL-TIME INTERVAL: 500ms (feels instant, but efficient)
+    const realtimeInterval = setInterval(sendRealtimeContentSync, 500);
 
-    // Send initial snapshot after 5 seconds
-    const initialTimeout = setTimeout(sendContentSnapshot, 5000);
+    // Send initial sync after 1 second
+    const initialTimeout = setTimeout(sendRealtimeContentSync, 1000);
+
+    console.log('[Real-time Sync] 🚀 PRIMARY collaboration system initialized (500ms interval)');
 
     return () => {
-      clearInterval(snapshotInterval);
+      clearInterval(realtimeInterval);
       clearTimeout(initialTimeout);
+      console.log('[Real-time Sync] 🛑 Primary collaboration system cleaned up');
     };
   }, [editor, scriptId, token]);
 
