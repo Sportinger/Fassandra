@@ -29,6 +29,7 @@ use tokio::sync::mpsc::Sender as TokioMpscSender;
 use yrs::sync::Message as YrsSyncMessage;
 use yrs::updates::decoder::{Decode as YrsDecodeTrait, DecoderV1};
 use yrs::encoding::read::Cursor as YrsIoCursor;
+use anyhow;
 
 // Constants for WebSocket timeouts
 pub const CLIENT_TIMEOUT: Duration = Duration::from_secs(120);
@@ -93,6 +94,57 @@ impl Session {
         let mut last_activity = self.last_activity.lock().await;
         *last_activity = Utc::now();
     }
+    
+    /// Check if the session is inactive (no activity for more than the threshold)
+    pub async fn is_inactive(&self, threshold: chrono::Duration) -> bool {
+        let last_activity = self.last_activity.lock().await;
+        Utc::now().signed_duration_since(*last_activity) > threshold
+    }
+}
+
+/// Cleans up inactive WebSocket sessions to prevent memory leaks.
+/// This function should be called periodically to remove sessions that haven't been active.
+///
+/// # Arguments
+/// * `inactive_threshold` - Duration after which a session is considered inactive
+///
+/// # Returns
+/// * `Result<usize>` - Number of sessions removed
+pub async fn cleanup_inactive_sessions(inactive_threshold: chrono::Duration) -> Result<usize, anyhow::Error> {
+    let mut removed_count = 0;
+    let mut sessions_to_remove = Vec::new();
+    
+    // First pass: identify sessions to remove
+    for entry in SESSIONS.iter() {
+        let script_id = entry.key();
+        let session = entry.value();
+        
+        // Check if session is inactive and has no clients
+        if session.clients.is_empty() || session.is_inactive(inactive_threshold).await {
+            sessions_to_remove.push(script_id.clone());
+        }
+    }
+    
+    // Second pass: remove identified sessions
+    for script_id in sessions_to_remove {
+        if let Some((_, session)) = SESSIONS.remove(&script_id) {
+            // Double-check if session is still empty/inactive before removing
+            if session.clients.is_empty() || session.is_inactive(inactive_threshold).await {
+                removed_count += 1;
+                tracing::debug!("🧹 Removed inactive WebSocket session for script: {}", script_id);
+            } else {
+                // If session became active again, put it back
+                SESSIONS.insert(script_id.clone(), session);
+                tracing::debug!("🔄 WebSocket session for script {} became active again, keeping it", script_id);
+            }
+        }
+    }
+    
+    let total_sessions = SESSIONS.len();
+    tracing::info!("🧹 WebSocket cleanup: removed {} inactive sessions, {} active sessions remain", 
+                   removed_count, total_sessions);
+    
+    Ok(removed_count)
 }
 
 /// Entrypoint to create WebSocket routes

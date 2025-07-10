@@ -1,0 +1,225 @@
+"filename", "language", "Markdown", "YAML", "JSON", "HTML", "TypeScript", "Docker", "Properties", "TypeScript JSX", "JSON with Comments", "XML", "Ignore", "Rust", "CSS", "MS SQL", "Python", "JavaScript", "comment", "blank", "total"
+"/home/admins/projects/pessoa/.github/workflows/deploy.yml", "YAML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 1, 21
+"/home/admins/projects/pessoa/README.md", "Markdown", 574, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 177, 751
+"/home/admins/projects/pessoa/backend/.dockerignore", "Ignore", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 2, 0, 5
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-024585112b4ffa9899e0df67c926f2170d10cb1e3290b4ae6be530817aba0a10.json", "JSON", 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 19
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-15a11a2eed227ed918e5c6d17654c9c0ca153a7006214e5b5650b986113aa533.json", "JSON", 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 45
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-3ad5e76a5e4805ebd8598b9d9cbe94590987abc443a952747c1828686d388527.json", "JSON", 0, 0, 55, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 56
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-3c8e6ddf7e7c7edcdf3daa45ca7a53e2a7109448efb47fe9e92d95a074eff1ae.json", "JSON", 0, 0, 47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 48
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-3d1b069f671c32bfb7f55e91922be8469063e2d26fab97568d1241006da17f06.json", "JSON", 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 15
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-5f121bd824a2de3f256051566157a7e595746d511d3f78c4ebf00d1970d99d7b.json", "JSON", 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 24
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-606364c79e0990deb07dfbe6c32b3d302d083ec5333f3a5ce04113c38a041100.json", "JSON", 0, 0, 52, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 53
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-6a89f28f7d66eecea7cf2c3992f1dbaef784a2263161f86a74cb51a60a942aee.json", "JSON", 0, 0, 46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 47
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-72486920161fe03541a29e67953ea0349489057e4bc887746dd0582c85fc6f27.json", "JSON", 0, 0, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 59
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-736799aae1d3a2c182eff67a4b9ff6bdd8fcb669fa8b298ea5ee3daeea0f4b3f.json", "JSON", 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 16
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-7e2dca3e9ad54924a25a20e6777369b90edc564bbc711dc3e6f2115dd9e3f428.json", "JSON", 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 20
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-8cf1c9b1ad8da158dc91876d1a3d3380fda3174827c6b5ae4ddd660d4d3c98cc.json", "JSON", 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 50
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-a464e88495b538255db9c30adbeb51ae416b0dbd1edefd8852258d8708b6bebc.json", "JSON", 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 16
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-acad2219423d25e6719145f5dc1b008418cd21afd7252448a5c3078b7b704365.json", "JSON", 0, 0, 46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 47
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-af56253c829c5e43f0c2ecd9de035665bdb2224889dd14fc16df56798572d81f.json", "JSON", 0, 0, 52, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 53
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-bc741ef166e44c3210d0e1a6c5ddac67aefadc288bcb7ef45392d729a3060947.json", "JSON", 0, 0, 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 23
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-c46de91d7970b922373a9d8d24b8354ec87949fc8be9461ce40cc41a23046d1a.json", "JSON", 0, 0, 47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 48
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-dc9246b9c339bd384630b6376c625ed0347c4d8c9d37af615276a5ac8331e51e.json", "JSON", 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 51
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-e5351f3db9d0894f44e978b475b0c06c56ce05ae6fe1e94cf6d940938d8d5edd.json", "JSON", 0, 0, 41, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 42
+"/home/admins/projects/pessoa/backend/.sqlx/.sqlx/query-fc06402a72d3506fff73f75fdd3405c2c905e8cc9b87ff4f9b97174019f8e685.json", "JSON", 0, 0, 46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 47
+"/home/admins/projects/pessoa/backend/.sqlx/query-024585112b4ffa9899e0df67c926f2170d10cb1e3290b4ae6be530817aba0a10.json", "JSON", 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 19
+"/home/admins/projects/pessoa/backend/.sqlx/query-036c876059b8141f1bdcf43b3eeb5f6ad7ba8d081896170d5310406de7092a44.json", "JSON", 0, 0, 53, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 54
+"/home/admins/projects/pessoa/backend/.sqlx/query-120148520ef4b2eb9bb0a57da6ce0b465b6c4e21d9310b8f45932559f3474819.json", "JSON", 0, 0, 74, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 75
+"/home/admins/projects/pessoa/backend/.sqlx/query-312aac2ddea2a3940f8462e822404cef3ac210a7e576e1d5b0c44b2e2030c3ee.json", "JSON", 0, 0, 52, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 53
+"/home/admins/projects/pessoa/backend/.sqlx/query-3ad5e76a5e4805ebd8598b9d9cbe94590987abc443a952747c1828686d388527.json", "JSON", 0, 0, 55, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 56
+"/home/admins/projects/pessoa/backend/.sqlx/query-3d1b069f671c32bfb7f55e91922be8469063e2d26fab97568d1241006da17f06.json", "JSON", 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 15
+"/home/admins/projects/pessoa/backend/.sqlx/query-50c8b6454ae5ca533c56d8b43b4f42ff26ae213885dc3cc6790addaed9d37bd8.json", "JSON", 0, 0, 70, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 71
+"/home/admins/projects/pessoa/backend/.sqlx/query-5b7f503a1e52f23ffbe676db4556c226c418861abd70fb64faae7928e0c9c2b3.json", "JSON", 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 51
+"/home/admins/projects/pessoa/backend/.sqlx/query-5c59fe100d71df56fe6be06cb933dc02c715aafd80f4a7b91e1b51e77ac48ed2.json", "JSON", 0, 0, 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 23
+"/home/admins/projects/pessoa/backend/.sqlx/query-5f121bd824a2de3f256051566157a7e595746d511d3f78c4ebf00d1970d99d7b.json", "JSON", 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 24
+"/home/admins/projects/pessoa/backend/.sqlx/query-606364c79e0990deb07dfbe6c32b3d302d083ec5333f3a5ce04113c38a041100.json", "JSON", 0, 0, 52, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 53
+"/home/admins/projects/pessoa/backend/.sqlx/query-613172b9ce2bf6ad59b2104ff8ad9684d6e85285d8ca27111efe416d71035785.json", "JSON", 0, 0, 70, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 71
+"/home/admins/projects/pessoa/backend/.sqlx/query-72486920161fe03541a29e67953ea0349489057e4bc887746dd0582c85fc6f27.json", "JSON", 0, 0, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 59
+"/home/admins/projects/pessoa/backend/.sqlx/query-734fcf01495d017e3b0b3c6a045dd154d12e4badf227b57ac000184dc859239c.json", "JSON", 0, 0, 57, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 58
+"/home/admins/projects/pessoa/backend/.sqlx/query-736799aae1d3a2c182eff67a4b9ff6bdd8fcb669fa8b298ea5ee3daeea0f4b3f.json", "JSON", 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 16
+"/home/admins/projects/pessoa/backend/.sqlx/query-755de9bb10302375bbe1772a6e2117d1a2e48c377c4b2fdab2598f491846266c.json", "JSON", 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 17
+"/home/admins/projects/pessoa/backend/.sqlx/query-783f16def566d994dffbfa028dfb27f500b4168317351106a3da38ec127b2b0d.json", "JSON", 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 16
+"/home/admins/projects/pessoa/backend/.sqlx/query-898d622fed5cda70ecf976485c95442ac2da77d4dbdc7771aecb34eaf0875fcd.json", "JSON", 0, 0, 28, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 29
+"/home/admins/projects/pessoa/backend/.sqlx/query-91e2e7d73d8340fab498316ea51b1603128359c69b8c6743faf614519e3f2504.json", "JSON", 0, 0, 52, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 53
+"/home/admins/projects/pessoa/backend/.sqlx/query-a464e88495b538255db9c30adbeb51ae416b0dbd1edefd8852258d8708b6bebc.json", "JSON", 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 16
+"/home/admins/projects/pessoa/backend/.sqlx/query-af56253c829c5e43f0c2ecd9de035665bdb2224889dd14fc16df56798572d81f.json", "JSON", 0, 0, 52, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 53
+"/home/admins/projects/pessoa/backend/.sqlx/query-bc741ef166e44c3210d0e1a6c5ddac67aefadc288bcb7ef45392d729a3060947.json", "JSON", 0, 0, 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 23
+"/home/admins/projects/pessoa/backend/.sqlx/query-c1c4e0f25d08fcdbbbe903c4441602f942e7739b3a3ee2b39e0f78575d715ef5.json", "JSON", 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 51
+"/home/admins/projects/pessoa/backend/.sqlx/query-cc546479b0f8249accc77e03c4fcde03cc0f31f2798c6c0596f96aab3f46df61.json", "JSON", 0, 0, 53, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 54
+"/home/admins/projects/pessoa/backend/.sqlx/query-dd9a696ede9817fb92c56ff7aa3a810fa4013081ebb65c09157efca8524021ec.json", "JSON", 0, 0, 75, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 76
+"/home/admins/projects/pessoa/backend/.sqlx/query-de6cca410c6df0055f69bfd6fac3467416337a2fa7ef08e20db6d16635e5d976.json", "JSON", 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 51
+"/home/admins/projects/pessoa/backend/.sqlx/query-e5351f3db9d0894f44e978b475b0c06c56ce05ae6fe1e94cf6d940938d8d5edd.json", "JSON", 0, 0, 41, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 42
+"/home/admins/projects/pessoa/backend/.sqlx/query-fc06402a72d3506fff73f75fdd3405c2c905e8cc9b87ff4f9b97174019f8e685.json", "JSON", 0, 0, 46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 47
+"/home/admins/projects/pessoa/backend/Dockerfile", "Docker", 0, 0, 0, 0, 0, 67, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 23, 124
+"/home/admins/projects/pessoa/backend/RUTHLESS_REVIEW_FINDINGS.md", "Markdown", 105, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 33, 138
+"/home/admins/projects/pessoa/backend/migrations/0001_create_tables.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 0, 0, 6, 5, 45
+"/home/admins/projects/pessoa/backend/migrations/20250101000001_add_username_role_to_users.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 7, 3, 12
+"/home/admins/projects/pessoa/backend/migrations/20250117000000_add_script_sharing.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 3, 2, 18
+"/home/admins/projects/pessoa/backend/migrations/20250118000000_add_thumbnail_to_scripts.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 1, 5
+"/home/admins/projects/pessoa/backend/migrations/20250128000000_create_script_layouts_table.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 46, 0, 0, 3, 2, 51
+"/home/admins/projects/pessoa/backend/migrations/20250503174857_make_blocks_script_id_not_null.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 3, 3, 8
+"/home/admins/projects/pessoa/backend/migrations/20250506002947_add_dev_user.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 2, 1, 11
+"/home/admins/projects/pessoa/backend/migrations/20250507000000_create_yjs_document_updates_table.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 1, 1, 10
+"/home/admins/projects/pessoa/backend/migrations/20250507000001_create_script_snapshots_meta_table.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 1, 0, 6
+"/home/admins/projects/pessoa/backend/migrations/20250514160000_add_block_order_to_blocks.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 8, 0, 10
+"/home/admins/projects/pessoa/backend/migrations/20250514160500_add_metadata_to_blocks.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 1, 0, 3
+"/home/admins/projects/pessoa/backend/migrations/20250514161500_add_user_id_to_yjs_document_updates.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 5, 1, 9
+"/home/admins/projects/pessoa/backend/migrations/20250710000000_add_content_snapshot_to_script_snapshots_meta.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 4, 3, 14
+"/home/admins/projects/pessoa/backend/scripts/hash_password.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 1, 3, 27
+"/home/admins/projects/pessoa/backend/security_verification.py", "Python", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 318, 0, 24, 88, 430
+"/home/admins/projects/pessoa/backend/src/analysis/errors.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 1, 1, 12
+"/home/admins/projects/pessoa/backend/src/analysis/mod.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 5, 1, 9
+"/home/admins/projects/pessoa/backend/src/analysis/parser.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 64, 6, 93
+"/home/admins/projects/pessoa/backend/src/analysis/structs.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 83, 0, 0, 0, 0, 19, 17, 119
+"/home/admins/projects/pessoa/backend/src/api/mod.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 4, 1, 7
+"/home/admins/projects/pessoa/backend/src/api/scripts.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 136, 0, 0, 0, 0, 3, 14, 153
+"/home/admins/projects/pessoa/backend/src/api/ws.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 102, 0, 0, 0, 0, 20, 14, 136
+"/home/admins/projects/pessoa/backend/src/async_db_writer.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 0, 5, 5, 58
+"/home/admins/projects/pessoa/backend/src/auth.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 258, 0, 0, 0, 0, 126, 50, 434
+"/home/admins/projects/pessoa/backend/src/error.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 136, 0, 0, 0, 0, 25, 12, 173
+"/home/admins/projects/pessoa/backend/src/gemini_api.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 161, 0, 0, 0, 0, 32, 33, 226
+"/home/admins/projects/pessoa/backend/src/handlers/mod.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 4, 1, 6
+"/home/admins/projects/pessoa/backend/src/handlers/script_handlers.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 280, 0, 0, 0, 0, 119, 43, 442
+"/home/admins/projects/pessoa/backend/src/lib.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 493, 0, 0, 0, 0, 218, 76, 787
+"/home/admins/projects/pessoa/backend/src/lib_test.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 1, 1, 10
+"/home/admins/projects/pessoa/backend/src/main.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 427, 0, 0, 0, 0, 185, 74, 686
+"/home/admins/projects/pessoa/backend/src/models/block.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 10, 1, 24
+"/home/admins/projects/pessoa/backend/src/models/edit.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 9, 1, 22
+"/home/admins/projects/pessoa/backend/src/models/mod.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 4, 0, 12
+"/home/admins/projects/pessoa/backend/src/models/script.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 10, 1, 25
+"/home/admins/projects/pessoa/backend/src/models/script_layout.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 0, 0, 0, 0, 16, 3, 50
+"/home/admins/projects/pessoa/backend/src/models/script_share.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 14, 4, 50
+"/home/admins/projects/pessoa/backend/src/models/snapshot_meta.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 1, 11
+"/home/admins/projects/pessoa/backend/src/models/user.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 10, 1, 24
+"/home/admins/projects/pessoa/backend/src/models/yjs_update.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 1, 13
+"/home/admins/projects/pessoa/backend/src/persistence_event.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 1, 1, 11
+"/home/admins/projects/pessoa/backend/src/script.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 11, 0, 29
+"/home/admins/projects/pessoa/backend/src/service_manager.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 185, 0, 0, 0, 0, 36, 35, 256
+"/home/admins/projects/pessoa/backend/src/services.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 306, 0, 0, 0, 0, 20, 62, 388
+"/home/admins/projects/pessoa/backend/src/snapshotting_service.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 770, 0, 0, 0, 0, 77, 102, 949
+"/home/admins/projects/pessoa/backend/src/test_yjs.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 0, 0, 0, 0, 6, 6, 43
+"/home/admins/projects/pessoa/backend/src/tests/auth.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 129, 0, 0, 0, 0, 10, 12, 151
+"/home/admins/projects/pessoa/backend/src/tests/block.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 91, 0, 0, 0, 0, 7, 3, 101
+"/home/admins/projects/pessoa/backend/src/tests/common.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 5, 40
+"/home/admins/projects/pessoa/backend/src/tests/scripts.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 87, 0, 0, 0, 0, 7, 3, 97
+"/home/admins/projects/pessoa/backend/src/tests/user.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 117, 0, 0, 0, 0, 11, 13, 141
+"/home/admins/projects/pessoa/backend/src/tests/ws.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 0, 5, 2, 47
+"/home/admins/projects/pessoa/backend/src/thumbnail.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 191, 0, 0, 0, 0, 19, 23, 233
+"/home/admins/projects/pessoa/backend/src/ws.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 270, 0, 0, 0, 0, 63, 52, 385
+"/home/admins/projects/pessoa/backend/tests/auth.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 5, 1, 70
+"/home/admins/projects/pessoa/backend/tests/block.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 63, 0, 0, 0, 0, 5, 5, 73
+"/home/admins/projects/pessoa/backend/tests/e2e_persistence.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 0, 6, 14, 59
+"/home/admins/projects/pessoa/backend/tests/edit.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 0, 6, 5, 83
+"/home/admins/projects/pessoa/backend/tests/gemini_api_integration.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 0, 0, 0, 0, 23, 18, 127
+"/home/admins/projects/pessoa/backend/tests/mocks/mod.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 0, 0, 0, 0, 0, 4, 43
+"/home/admins/projects/pessoa/backend/tests/scripts.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 52, 0, 0, 0, 0, 4, 4, 60
+"/home/admins/projects/pessoa/backend/tests/security_audit.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 282, 0, 0, 0, 0, 49, 71, 402
+"/home/admins/projects/pessoa/backend/tests/user.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 53, 0, 0, 0, 0, 5, 1, 59
+"/home/admins/projects/pessoa/backend/tests/ws.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 8, 17, 75
+"/home/admins/projects/pessoa/doc/DEPLOYMENT_SCRIPTS.md", "Markdown", 288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 83, 371
+"/home/admins/projects/pessoa/doc/SNAPSHOT_SERVICE.md", "Markdown", 285, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 66, 351
+"/home/admins/projects/pessoa/doc/security/README.md", "Markdown", 74, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 101
+"/home/admins/projects/pessoa/doc/security/audit-reports/2025-01-29-comprehensive-security-audit.md", "Markdown", 231, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 67, 298
+"/home/admins/projects/pessoa/doc/security/audit-reports/security-test-results.md", "Markdown", 217, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 262
+"/home/admins/projects/pessoa/doc/security/configuration/environment-variables.md", "Markdown", 312, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 96, 408
+"/home/admins/projects/pessoa/doc/security/implementation/authentication.md", "Markdown", 240, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 296
+"/home/admins/projects/pessoa/doc/security/implementation/security-headers.md", "Markdown", 243, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 74, 317
+"/home/admins/projects/pessoa/doc/security/policies/security-policy.md", "Markdown", 245, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 67, 312
+"/home/admins/projects/pessoa/doc/security/testing/security-test-suite.md", "Markdown", 330, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 87, 417
+"/home/admins/projects/pessoa/docker-compose.prod.yml", "YAML", 0, 68, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 76
+"/home/admins/projects/pessoa/docker-compose.yml", "YAML", 0, 97, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 5, 104
+"/home/admins/projects/pessoa/frontend/.dockerignore", "Ignore", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 5, 4, 15
+"/home/admins/projects/pessoa/frontend/eslint.config.js", "JavaScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 0, 2, 29
+"/home/admins/projects/pessoa/frontend/index.html", "HTML", 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 18
+"/home/admins/projects/pessoa/frontend/jest.config.cjs", "JavaScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 15
+"/home/admins/projects/pessoa/frontend/junit.xml", "XML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 3
+"/home/admins/projects/pessoa/frontend/migrations/20250628204208_add_sharing_to_scripts.sql", "MS SQL", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2
+"/home/admins/projects/pessoa/frontend/nginx-https-multi-domain.conf", "Properties", 0, 0, 0, 0, 0, 0, 125, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 23, 166
+"/home/admins/projects/pessoa/frontend/nginx-https.conf", "Properties", 0, 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 9, 85
+"/home/admins/projects/pessoa/frontend/nginx-local.conf", "Properties", 0, 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 9, 85
+"/home/admins/projects/pessoa/frontend/nginx.conf", "Properties", 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 6, 62
+"/home/admins/projects/pessoa/frontend/package-lock.json", "JSON", 0, 0, 10090, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 10091
+"/home/admins/projects/pessoa/frontend/package.json", "JSON", 0, 0, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 59
+"/home/admins/projects/pessoa/frontend/public/microphone_test.html", "HTML", 0, 0, 0, 434, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 83, 522
+"/home/admins/projects/pessoa/frontend/public/vite.svg", "XML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/admins/projects/pessoa/frontend/public/websocket_test.html", "HTML", 0, 0, 0, 78, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 94
+"/home/admins/projects/pessoa/frontend/src/App.css", "CSS", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 60, 0, 0, 0, 1, 9, 70
+"/home/admins/projects/pessoa/frontend/src/App.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 161, 0, 0, 0, 0, 0, 0, 0, 0, 48, 23, 232
+"/home/admins/projects/pessoa/frontend/src/AuthContext.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 116, 0, 0, 0, 0, 0, 0, 0, 0, 53, 22, 191
+"/home/admins/projects/pessoa/frontend/src/api.test.ts", "TypeScript", 0, 0, 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 29
+"/home/admins/projects/pessoa/frontend/src/api.ts", "TypeScript", 0, 0, 0, 0, 418, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 224, 74, 716
+"/home/admins/projects/pessoa/frontend/src/assets/react.svg", "XML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/admins/projects/pessoa/frontend/src/components/App.test.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 10
+"/home/admins/projects/pessoa/frontend/src/components/Auth.module.css", "CSS", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 150, 0, 0, 0, 5, 23, 178
+"/home/admins/projects/pessoa/frontend/src/components/Breadcrumb.module.css", "CSS", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 46, 0, 0, 0, 0, 5, 51
+"/home/admins/projects/pessoa/frontend/src/components/Breadcrumb.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 37, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 41
+"/home/admins/projects/pessoa/frontend/src/components/Header.module.css", "CSS", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 193, 0, 0, 0, 3, 27, 223
+"/home/admins/projects/pessoa/frontend/src/components/Header.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 277, 0, 0, 0, 0, 0, 0, 0, 0, 23, 43, 343
+"/home/admins/projects/pessoa/frontend/src/components/Login.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 90, 0, 0, 0, 0, 0, 0, 0, 0, 19, 11, 120
+"/home/admins/projects/pessoa/frontend/src/components/Register.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 104, 0, 0, 0, 0, 0, 0, 0, 0, 19, 9, 132
+"/home/admins/projects/pessoa/frontend/src/components/ScriptList.module.css", "CSS", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 586, 0, 0, 0, 17, 92, 695
+"/home/admins/projects/pessoa/frontend/src/components/ScriptList.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 482, 0, 0, 0, 0, 0, 0, 0, 0, 37, 54, 573
+"/home/admins/projects/pessoa/frontend/src/components/ScriptUploader.module.css", "CSS", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 3, 38
+"/home/admins/projects/pessoa/frontend/src/components/ScriptUploader.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 99, 0, 0, 0, 0, 0, 0, 0, 0, 4, 18, 121
+"/home/admins/projects/pessoa/frontend/src/components/SpeakerNameExtension.ts", "TypeScript", 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 9, 64
+"/home/admins/projects/pessoa/frontend/src/components/editor/FontSizeDropdown.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 178, 0, 0, 0, 0, 0, 0, 0, 0, 16, 27, 221
+"/home/admins/projects/pessoa/frontend/src/components/editor/FontSizeExtension.ts", "TypeScript", 0, 0, 0, 0, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 7, 71
+"/home/admins/projects/pessoa/frontend/src/components/editor/README.md", "Markdown", 173, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 41, 214
+"/home/admins/projects/pessoa/frontend/src/components/editor/Ruler.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 426, 0, 0, 0, 0, 0, 0, 0, 0, 42, 41, 509
+"/home/admins/projects/pessoa/frontend/src/components/editor/SpeakerDropdown.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 133, 0, 0, 0, 0, 0, 0, 0, 0, 9, 23, 165
+"/home/admins/projects/pessoa/frontend/src/components/editor/ViewModes/MultiPageView.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 387, 0, 0, 0, 0, 0, 0, 0, 0, 44, 55, 486
+"/home/admins/projects/pessoa/frontend/src/components/editor/ViewModes/SinglePageView.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 118, 0, 0, 0, 0, 0, 0, 0, 0, 5, 10, 133
+"/home/admins/projects/pessoa/frontend/src/components/editor/ViewModes/index.ts", "TypeScript", 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2
+"/home/admins/projects/pessoa/frontend/src/components/editor/components/AudioTranscription.css", "CSS", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 327, 0, 0, 0, 5, 52, 384
+"/home/admins/projects/pessoa/frontend/src/components/editor/components/AudioTranscription.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 651, 0, 0, 0, 0, 0, 0, 0, 0, 28, 103, 782
+"/home/admins/projects/pessoa/frontend/src/components/editor/components/Editor.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 311, 0, 0, 0, 0, 0, 0, 0, 0, 35, 33, 379
+"/home/admins/projects/pessoa/frontend/src/components/editor/components/page/PageCanvas.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 0, 5, 4, 28
+"/home/admins/projects/pessoa/frontend/src/components/editor/components/toolbar/Toolbar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 477, 0, 0, 0, 0, 0, 0, 0, 0, 50, 63, 590
+"/home/admins/projects/pessoa/frontend/src/components/editor/components/ui/ErrorDisplay.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 32
+"/home/admins/projects/pessoa/frontend/src/components/editor/components/ui/LoadingSpinner.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 0, 4, 3, 28
+"/home/admins/projects/pessoa/frontend/src/components/editor/components/ui/StatusIndicator.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 70, 0, 0, 0, 0, 0, 0, 0, 0, 4, 5, 79
+"/home/admins/projects/pessoa/frontend/src/components/editor/config/constants.ts", "TypeScript", 0, 0, 0, 0, 145, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 33, 31, 209
+"/home/admins/projects/pessoa/frontend/src/components/editor/config/index.ts", "TypeScript", 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 6
+"/home/admins/projects/pessoa/frontend/src/components/editor/extensions/DialogueBlock.ts", "TypeScript", 0, 0, 0, 0, 95, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 15, 120
+"/home/admins/projects/pessoa/frontend/src/components/editor/extensions/DialogueText.ts", "TypeScript", 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 18
+"/home/admins/projects/pessoa/frontend/src/components/editor/extensions/Speaker.ts", "TypeScript", 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 18
+"/home/admins/projects/pessoa/frontend/src/components/editor/extensions/index.ts", "TypeScript", 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3
+"/home/admins/projects/pessoa/frontend/src/components/editor/hooks/index.ts", "TypeScript", 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4
+"/home/admins/projects/pessoa/frontend/src/components/editor/hooks/useEditorCore.ts", "TypeScript", 0, 0, 0, 0, 435, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 98, 83, 616
+"/home/admins/projects/pessoa/frontend/src/components/editor/hooks/useEditorInstance.ts", "TypeScript", 0, 0, 0, 0, 215, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 25, 271
+"/home/admins/projects/pessoa/frontend/src/components/editor/hooks/useEditorState.ts", "TypeScript", 0, 0, 0, 0, 70, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 14, 98
+"/home/admins/projects/pessoa/frontend/src/components/editor/hooks/useLayoutManagement.ts", "TypeScript", 0, 0, 0, 0, 142, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 31, 186
+"/home/admins/projects/pessoa/frontend/src/components/editor/hooks/useResponsiveDesign.ts", "TypeScript", 0, 0, 0, 0, 159, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 31, 212
+"/home/admins/projects/pessoa/frontend/src/components/editor/hooks/useYjsConnection.ts", "TypeScript", 0, 0, 0, 0, 339, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 46, 425
+"/home/admins/projects/pessoa/frontend/src/components/editor/index.ts", "TypeScript", 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 6, 28
+"/home/admins/projects/pessoa/frontend/src/components/editor/styles/responsive.css", "CSS", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 408, 0, 0, 0, 75, 107, 590
+"/home/admins/projects/pessoa/frontend/src/components/editor/styles/toolbar.css", "CSS", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 328, 0, 0, 0, 51, 87, 466
+"/home/admins/projects/pessoa/frontend/src/components/editor/styles/variables.css", "CSS", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 96, 0, 0, 0, 38, 30, 164
+"/home/admins/projects/pessoa/frontend/src/components/editor/types/index.ts", "TypeScript", 0, 0, 0, 0, 312, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 69, 412
+"/home/admins/projects/pessoa/frontend/src/components/editor/utils/contentConverters.ts", "TypeScript", 0, 0, 0, 0, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 24, 149
+"/home/admins/projects/pessoa/frontend/src/components/editor/utils/formatters.ts", "TypeScript", 0, 0, 0, 0, 76, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 6, 109
+"/home/admins/projects/pessoa/frontend/src/index.css", "CSS", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 318, 0, 0, 0, 49, 60, 427
+"/home/admins/projects/pessoa/frontend/src/main.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 7, 3, 23
+"/home/admins/projects/pessoa/frontend/src/mobile-test.html", "HTML", 0, 0, 0, 280, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 37, 317
+"/home/admins/projects/pessoa/frontend/src/test/auth.test.ts", "TypeScript", 0, 0, 0, 0, 28, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 33
+"/home/admins/projects/pessoa/frontend/src/test/mocks/api.ts", "TypeScript", 0, 0, 0, 0, 33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 38
+"/home/admins/projects/pessoa/frontend/src/test/mocks/data.ts", "TypeScript", 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 32
+"/home/admins/projects/pessoa/frontend/src/test/mocks/websocket.ts", "TypeScript", 0, 0, 0, 0, 37, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 7, 45
+"/home/admins/projects/pessoa/frontend/src/test/scripts.test.ts", "TypeScript", 0, 0, 0, 0, 41, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 8, 51
+"/home/admins/projects/pessoa/frontend/src/test/setup.ts", "TypeScript", 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 23
+"/home/admins/projects/pessoa/frontend/src/test/websocket.test.ts", "TypeScript", 0, 0, 0, 0, 74, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 8, 86
+"/home/admins/projects/pessoa/frontend/src/types.ts", "TypeScript", 0, 0, 0, 0, 105, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 82, 12, 199
+"/home/admins/projects/pessoa/frontend/src/utils/console-forwarder.ts", "TypeScript", 0, 0, 0, 0, 136, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 33, 187
+"/home/admins/projects/pessoa/frontend/src/utils/debug.ts", "TypeScript", 0, 0, 0, 0, 122, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 16, 144
+"/home/admins/projects/pessoa/frontend/src/utils/mobile-debug.ts", "TypeScript", 0, 0, 0, 0, 189, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 21, 219
+"/home/admins/projects/pessoa/frontend/src/utils/mobile.ts", "TypeScript", 0, 0, 0, 0, 146, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 58, 38, 242
+"/home/admins/projects/pessoa/frontend/src/vite-env.d.ts", "TypeScript", 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 12
+"/home/admins/projects/pessoa/frontend/tsconfig.app.json", "JSON", 0, 0, 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 27
+"/home/admins/projects/pessoa/frontend/tsconfig.json", "JSON with Comments", 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 1, 8
+"/home/admins/projects/pessoa/frontend/tsconfig.node.json", "JSON", 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 25
+"/home/admins/projects/pessoa/frontend/vite.config.ts", "TypeScript", 0, 0, 0, 0, 66, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 4, 76
+"/home/admins/projects/pessoa/frontend/vitest.config.ts", "TypeScript", 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 11
+"/home/admins/projects/pessoa/package-lock.json", "JSON", 0, 0, 428, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 429
+"/home/admins/projects/pessoa/package.json", "JSON", 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 14
+"/home/admins/projects/pessoa/rules.md", "Markdown", 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 55
+"Total", "-", 3362, 165, 12588, 809, 3731, 67, 298, 4203, 7, 5, 9, 5418, 2547, 134, 318, 42, 2971, 3851, 40525

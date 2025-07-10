@@ -16,6 +16,8 @@ pub mod handlers;
 pub mod thumbnail;
 pub mod persistence_event;
 pub mod async_db_writer;
+pub mod services;
+pub mod service_manager;
 pub mod snapshotting_service;
 
 #[cfg(test)]

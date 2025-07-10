@@ -320,6 +320,35 @@ impl RateLimiter {
         timestamps.push(now);
         Ok(())
     }
+
+    /// Cleans up old rate limit data for all keys.
+    /// This should be called periodically to prevent memory accumulation.
+    ///
+    /// # Returns
+    /// * `Result<usize>` - Number of entries removed.
+    pub async fn cleanup_old_data(&self) -> Result<usize> {
+        let mut requests = self.requests.lock().await;
+        let now = Instant::now();
+        let mut removed_count = 0;
+        
+        // Clean up old requests for all keys
+        requests.retain(|_key, timestamps| {
+            timestamps.retain(|&time| now.duration_since(time) < self.window);
+            
+            // Remove the entire key if no recent requests
+            if timestamps.is_empty() {
+                removed_count += 1;
+                false
+            } else {
+                true
+            }
+        });
+
+        tracing::debug!("🧹 RateLimiter cleanup: removed {} old entries, {} active IPs remain", 
+                       removed_count, requests.len());
+        
+        Ok(removed_count)
+    }
 }
 
 /// Axum middleware for rate limiting requests.
