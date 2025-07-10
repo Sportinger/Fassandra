@@ -1,6 +1,0 @@
-depends:
-postgresql-client (apt)
-rustup (snap)
-sqlx-cli (cargo --features postgres )
-docker (apt non-Ubuntu)
-==> newgrp docker
