@@ -34,17 +34,17 @@ Pessoa is a modern real-time collaborative scriptwriting platform built for prof
 ┌─────────────────────────────────────────────────────────────────┐
 │                        CLIENT LAYER                             │
 ├─────────────────────────────────────────────────────────────────┤
-│  React Frontend (Port 8080/8443)                               │
-│  ├─ TipTap Editor (Collaborative Editing)                      │
-│  ├─ YJS Provider (Real-time Sync)                              │
-│  └─ WebSocket Client (Live Collaboration)                      │
+│  React Frontend (Port 8080/8443)                                │
+│  ├─ TipTap Editor (Collaborative Editing)                       │
+│  ├─ YJS Provider (Real-time Sync)                               │
+│  └─ WebSocket Client (Live Collaboration)                       │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                      REVERSE PROXY                              │
 ├─────────────────────────────────────────────────────────────────┤
-│  Nginx (HTTPS Termination, Static Files)                       │
+│  Nginx (HTTPS Termination, Static Files)                        │
 │  ├─ SSL/TLS Configuration                                       │
 │  ├─ Static Asset Serving                                        │
 │  └─ Request Routing                                             │
@@ -54,23 +54,23 @@ Pessoa is a modern real-time collaborative scriptwriting platform built for prof
 ┌─────────────────────────────────────────────────────────────────┐
 │                      BACKEND LAYER                              │
 ├─────────────────────────────────────────────────────────────────┤
-│  Rust Backend (Port 3001)                                      │
+│  Rust Backend (Port 3001)                                       │
 │  ├─ Axum Web Framework                                          │
-│  ├─ WebSocket Handler (Real-time)                              │
-│  ├─ REST API (CRUD Operations)                                 │
+│  ├─ WebSocket Handler (Real-time)                               │
+│  ├─ REST API (CRUD Operations)                                  │
 │  ├─ Authentication (JWT)                                        │
-│  └─ Service Manager (Background Tasks)                         │
+│  └─ Service Manager (Background Tasks)                          │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    PERSISTENCE LAYER                            │
 ├─────────────────────────────────────────────────────────────────┤
-│  PostgreSQL Database (Port 5432)                               │
-│  ├─ Script Content & Metadata                                  │
+│  PostgreSQL Database (Port 5432)                                │
+│  ├─ Script Content & Metadata                                   │
 │  ├─ User Management                                             │
-│  ├─ Real-time Updates (YJS)                                    │
-│  └─ Content Snapshots                                          │
+│  ├─ Real-time Updates (YJS)                                     │
+│  └─ Content Snapshots                                           │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
