@@ -29,7 +29,7 @@ async fn test_login() -> Result<(), AppError> {
 
     // Test successful login
     let response = client
-        .post(&format!("{}/auth/login", app.address))
+        .post(&format!("{}/login", app.address))
         .json(&json!({
             "email": "test@example.com",
             "password": "password123"
@@ -43,7 +43,7 @@ async fn test_login() -> Result<(), AppError> {
 
     // Test invalid credentials
     let response = client
-        .post(&format!("{}/auth/login", app.address))
+        .post(&format!("{}/login", app.address))
         .json(&json!({
             "email": "test@example.com",
             "password": "wrong_password"
@@ -62,7 +62,7 @@ async fn test_register() -> Result<(), AppError> {
 
     // Test successful registration
     let response = client
-        .post(&format!("{}/auth/register", app.address))
+        .post(&format!("{}/register", app.address))
         .json(&json!({
             "email": "new@example.com",
             "password": "password123"
@@ -76,7 +76,7 @@ async fn test_register() -> Result<(), AppError> {
 
     // Test duplicate email
     let response = client
-        .post(&format!("{}/auth/register", app.address))
+        .post(&format!("{}/register", app.address))
         .json(&json!({
             "email": "new@example.com",
             "password": "password123"
