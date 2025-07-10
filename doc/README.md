@@ -14,10 +14,10 @@ Essential guides to get you up and running quickly.
 | Guide | Description |
 |-------|-------------|
 | **[Quick Start](getting-started/README.md)** | Set up Pessoa in 5 minutes |
-| **[Installation Guide](getting-started/installation.md)** | Complete setup instructions |
-| **[First Steps](getting-started/first-steps.md)** | Upload your first script and start collaborating |
-| **[User Guide](getting-started/user-guide.md)** | Complete walkthrough of all features |
-| **[Mobile Setup](getting-started/mobile-setup.md)** | Mobile browser configuration and debugging |
+| <span style="color: #9ca3af;">**Installation Guide**</span> | <span style="color: #9ca3af;">Complete setup instructions</span> |
+| <span style="color: #9ca3af;">**First Steps**</span> | <span style="color: #9ca3af;">Upload your first script and start collaborating</span> |
+| <span style="color: #9ca3af;">**User Guide**</span> | <span style="color: #9ca3af;">Complete walkthrough of all features</span> |
+| <span style="color: #9ca3af;">**Mobile Setup**</span> | <span style="color: #9ca3af;">Mobile browser configuration and debugging</span> |
 
 ### 🚀 Deployment
 Production-ready deployment guides for various platforms.
@@ -26,21 +26,21 @@ Production-ready deployment guides for various platforms.
 |-------|-------------|
 | **[Deployment Overview](deployment/README.md)** | Choose your deployment strategy |
 | **[Hetzner Deployment](deployment/hetzner.md)** | Deploy on Hetzner Cloud (recommended) |
-| **[AWS Deployment](deployment/aws.md)** | Deploy on Amazon Web Services |
-| **[Custom Domain Setup](deployment/custom-domain.md)** | Configure your own domain |
-| **[SSL/TLS Configuration](deployment/ssl-setup.md)** | Set up secure connections |
-| **[GitHub Actions CI/CD](deployment/github-actions.md)** | Automated deployments |
+| <span style="color: #9ca3af;">**AWS Deployment**</span> | <span style="color: #9ca3af;">Deploy on Amazon Web Services</span> |
+| <span style="color: #9ca3af;">**Custom Domain Setup**</span> | <span style="color: #9ca3af;">Configure your own domain</span> |
+| <span style="color: #9ca3af;">**SSL/TLS Configuration**</span> | <span style="color: #9ca3af;">Set up secure connections</span> |
+| <span style="color: #9ca3af;">**GitHub Actions CI/CD**</span> | <span style="color: #9ca3af;">Automated deployments</span> |
 
 ### 🔧 Development
 Contributing to Pessoa and extending functionality.
 
 | Guide | Description |
 |-------|-------------|
-| **[Development Setup](development/README.md)** | Set up your development environment |
-| **[Contributing Guide](development/contributing.md)** | How to contribute to Pessoa |
-| **[Code Style Guide](development/code-style.md)** | Coding standards and conventions |
-| **[Testing Guide](development/testing.md)** | Running and writing tests |
-| **[Architecture Deep Dive](development/architecture.md)** | Technical architecture overview |
+| <span style="color: #9ca3af;">**Development Setup**</span> | <span style="color: #9ca3af;">Set up your development environment</span> |
+| <span style="color: #9ca3af;">**Contributing Guide**</span> | <span style="color: #9ca3af;">How to contribute to Pessoa</span> |
+| <span style="color: #9ca3af;">**Code Style Guide**</span> | <span style="color: #9ca3af;">Coding standards and conventions</span> |
+| <span style="color: #9ca3af;">**Testing Guide**</span> | <span style="color: #9ca3af;">Running and writing tests</span> |
+| <span style="color: #9ca3af;">**Architecture Deep Dive**</span> | <span style="color: #9ca3af;">Technical architecture overview</span> |
 
 ### 🏗️ Architecture
 Technical documentation for understanding Pessoa's inner workings.
@@ -60,11 +60,11 @@ Complete API documentation for integrations and custom development.
 | Guide | Description |
 |-------|-------------|
 | **[API Overview](api/README.md)** | API structure and authentication |
-| **[Authentication API](api/auth.md)** | Login, registration, JWT tokens |
-| **[Scripts API](api/scripts.md)** | Script management endpoints |
-| **[Collaboration API](api/collaboration.md)** | WebSocket and real-time features |
-| **[Upload API](api/upload.md)** | File upload and AI analysis |
-| **[Admin API](api/admin.md)** | Administrative endpoints |
+| <span style="color: #9ca3af;">**Authentication API**</span> | <span style="color: #9ca3af;">Login, registration, JWT tokens</span> |
+| <span style="color: #9ca3af;">**Scripts API**</span> | <span style="color: #9ca3af;">Script management endpoints</span> |
+| <span style="color: #9ca3af;">**Collaboration API**</span> | <span style="color: #9ca3af;">WebSocket and real-time features</span> |
+| <span style="color: #9ca3af;">**Upload API**</span> | <span style="color: #9ca3af;">File upload and AI analysis</span> |
+| <span style="color: #9ca3af;">**Admin API**</span> | <span style="color: #9ca3af;">Administrative endpoints</span> |
 
 ### 🔒 Security
 Security implementation and best practices.
@@ -84,44 +84,44 @@ Common issues and solutions.
 | Guide | Description |
 |-------|-------------|
 | **[Common Issues](troubleshooting/README.md)** | Frequent problems and solutions |
-| **[WebSocket Issues](troubleshooting/websocket.md)** | Real-time collaboration problems |
-| **[Mobile Browser Issues](troubleshooting/mobile.md)** | Mobile-specific troubleshooting |
-| **[SSL/HTTPS Issues](troubleshooting/ssl.md)** | Certificate and connection problems |
-| **[Performance Issues](troubleshooting/performance.md)** | Optimization and debugging |
-| **[Database Issues](troubleshooting/database.md)** | PostgreSQL troubleshooting |
+| <span style="color: #9ca3af;">**WebSocket Issues**</span> | <span style="color: #9ca3af;">Real-time collaboration problems</span> |
+| <span style="color: #9ca3af;">**Mobile Browser Issues**</span> | <span style="color: #9ca3af;">Mobile-specific troubleshooting</span> |
+| <span style="color: #9ca3af;">**SSL/HTTPS Issues**</span> | <span style="color: #9ca3af;">Certificate and connection problems</span> |
+| <span style="color: #9ca3af;">**Performance Issues**</span> | <span style="color: #9ca3af;">Optimization and debugging</span> |
+| <span style="color: #9ca3af;">**Database Issues**</span> | <span style="color: #9ca3af;">PostgreSQL troubleshooting</span> |
 
 ### 📋 Reference
 Additional resources and references.
 
 | Guide | Description |
 |-------|-------------|
-| **[Configuration Reference](reference/configuration.md)** | All environment variables and settings |
-| **[Command Reference](reference/commands.md)** | Docker commands and scripts |
-| **[Troubleshooting Tools](reference/debugging-tools.md)** | Debug utilities and monitoring |
-| **[FAQ](reference/faq.md)** | Frequently asked questions |
-| **[Glossary](reference/glossary.md)** | Terms and definitions |
+| <span style="color: #9ca3af;">**Configuration Reference**</span> | <span style="color: #9ca3af;">All environment variables and settings</span> |
+| <span style="color: #9ca3af;">**Command Reference**</span> | <span style="color: #9ca3af;">Docker commands and scripts</span> |
+| <span style="color: #9ca3af;">**Troubleshooting Tools**</span> | <span style="color: #9ca3af;">Debug utilities and monitoring</span> |
+| <span style="color: #9ca3af;">**FAQ**</span> | <span style="color: #9ca3af;">Frequently asked questions</span> |
+| <span style="color: #9ca3af;">**Glossary**</span> | <span style="color: #9ca3af;">Terms and definitions</span> |
 
 ## 🎯 Quick Navigation
 
 ### New to Pessoa?
 1. **[Quick Start](getting-started/README.md)** - Get running in 5 minutes
-2. **[First Steps](getting-started/first-steps.md)** - Upload and collaborate
-3. **[User Guide](getting-started/user-guide.md)** - Complete feature walkthrough
+2. <span style="color: #9ca3af;">**First Steps** - Upload and collaborate</span>
+3. <span style="color: #9ca3af;">**User Guide** - Complete feature walkthrough</span>
 
 ### Ready for Production?
 1. **[Deployment Overview](deployment/README.md)** - Choose your platform
 2. **[Hetzner Deployment](deployment/hetzner.md)** - Recommended cloud deployment
-3. **[SSL Setup](deployment/ssl-setup.md)** - Secure your installation
+3. <span style="color: #9ca3af;">**SSL Setup** - Secure your installation</span>
 
 ### Want to Contribute?
-1. **[Development Setup](development/README.md)** - Set up your dev environment
-2. **[Contributing Guide](development/contributing.md)** - How to contribute
-3. **[Architecture](development/architecture.md)** - Understand the codebase
+1. <span style="color: #9ca3af;">**Development Setup** - Set up your dev environment</span>
+2. <span style="color: #9ca3af;">**Contributing Guide** - How to contribute</span>
+3. **[System Architecture](architecture/README.md)** - Understand the codebase
 
 ### Having Issues?
 1. **[Common Issues](troubleshooting/README.md)** - Check frequent problems
-2. **[WebSocket Issues](troubleshooting/websocket.md)** - Real-time collaboration
-3. **[Mobile Issues](troubleshooting/mobile.md)** - Mobile browser problems
+2. <span style="color: #9ca3af;">**WebSocket Issues** - Real-time collaboration</span>
+3. <span style="color: #9ca3af;">**Mobile Issues** - Mobile browser problems</span>
 
 ## 🔄 Recent Updates
 
@@ -156,7 +156,7 @@ Found an issue with the documentation? Want to add a guide?
 
 1. **Report Issues**: [GitHub Issues](https://github.com/your-org/pessoa/issues)
 2. **Suggest Improvements**: Create a pull request
-3. **Add Content**: Follow our [Documentation Style Guide](development/documentation-style.md)
+3. <span style="color: #9ca3af;">**Add Content**: Follow our Documentation Style Guide</span>
 
 ---
 
