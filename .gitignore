@@ -22,7 +22,7 @@ target/
 ehthumbs.db
 Thumbs.db
 
-# Build artifacts
+# Build artifactss
 /build/
 *.zip
 *.tar.*
