@@ -237,9 +237,13 @@ if [ "$DEPLOY_ONLY" != true ]; then
     echo "📡 Deploying to Hetzner server..."
     
     # Copy environment and docker-compose to server
-    scp .env.hetzner roman@pessoa.theater:/opt/pessoa/.env
+    # Only copy .env.hetzner as backup, preserve existing .env with production credentials
+    scp .env.hetzner roman@pessoa.theater:/opt/pessoa/.env.template
     scp docker-compose.prod.yml roman@pessoa.theater:/opt/pessoa/
     scp deploy_hetzner.sh roman@pessoa.theater:/opt/pessoa/
+    
+    # Preserve existing production credentials if they exist
+    ssh roman@pessoa.theater "if [ -f /opt/pessoa/.env.production ]; then cp /opt/pessoa/.env.production /opt/pessoa/.env; else cp /opt/pessoa/.env.template /opt/pessoa/.env; fi"
     
     # Verify server requirements
     echo "🔍 Verifying server setup..."
