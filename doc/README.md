@@ -14,7 +14,7 @@ Essential guides to get you up and running quickly.
 | Guide | Description |
 |-------|-------------|
 | **[Quick Start](getting-started/README.md)** | Set up Pessoa in 5 minutes |
-| <span style="color: #9ca3af;">**Installation Guide**</span> | <span style="color: #9ca3af;">Complete setup instructions</span> |
+| **[Installation Guide](getting-started/installation-guide.md)** | Complete setup instructions with troubleshooting |
 | <span style="color: #9ca3af;">**First Steps**</span> | <span style="color: #9ca3af;">Upload your first script and start collaborating</span> |
 | <span style="color: #9ca3af;">**User Guide**</span> | <span style="color: #9ca3af;">Complete walkthrough of all features</span> |
 | <span style="color: #9ca3af;">**Mobile Setup**</span> | <span style="color: #9ca3af;">Mobile browser configuration and debugging</span> |
@@ -105,8 +105,9 @@ Additional resources and references.
 
 ### New to Pessoa?
 1. **[Quick Start](getting-started/README.md)** - Get running in 5 minutes
-2. <span style="color: #9ca3af;">**First Steps** - Upload and collaborate</span>
-3. <span style="color: #9ca3af;">**User Guide** - Complete feature walkthrough</span>
+2. **[Installation Guide](getting-started/installation-guide.md)** - Complete setup with troubleshooting
+3. <span style="color: #9ca3af;">**First Steps** - Upload and collaborate</span>
+4. <span style="color: #9ca3af;">**User Guide** - Complete feature walkthrough</span>
 
 ### Ready for Production?
 1. **[Deployment Overview](deployment/README.md)** - Choose your platform
