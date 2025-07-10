@@ -36,7 +36,7 @@ Contributing to Pessoa and extending functionality.
 
 | Guide | Description |
 |-------|-------------|
-| <span style="color: #9ca3af;">**Development Setup**</span> | <span style="color: #9ca3af;">Set up your development environment</span> |
+| **[Development Setup](development/README.md)** | Set up your development environment |
 | <span style="color: #9ca3af;">**Contributing Guide**</span> | <span style="color: #9ca3af;">How to contribute to Pessoa</span> |
 | <span style="color: #9ca3af;">**Code Style Guide**</span> | <span style="color: #9ca3af;">Coding standards and conventions</span> |
 | <span style="color: #9ca3af;">**Testing Guide**</span> | <span style="color: #9ca3af;">Running and writing tests</span> |
@@ -114,7 +114,7 @@ Additional resources and references.
 3. <span style="color: #9ca3af;">**SSL Setup** - Secure your installation</span>
 
 ### Want to Contribute?
-1. <span style="color: #9ca3af;">**Development Setup** - Set up your dev environment</span>
+1. **[Development Setup](development/README.md)** - Set up your dev environment
 2. <span style="color: #9ca3af;">**Contributing Guide** - How to contribute</span>
 3. **[System Architecture](architecture/README.md)** - Understand the codebase
 
