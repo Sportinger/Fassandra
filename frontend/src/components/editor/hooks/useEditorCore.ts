@@ -193,25 +193,7 @@ export const useEditorCore = ({
     websocketProvider.on('sync', (isSynced: boolean) => {
       console.log('[Editor] Document sync status:', isSynced);
       
-      // Chrome-specific debugging
-      const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
-      if (isChrome && isSynced) {
-        console.log('[Chrome Debug] Document synced - checking content integrity:');
-        setTimeout(() => {
-          if (editor) {
-            const currentHTML = editor.getHTML();
-            const dialogueBlocks = currentHTML.match(/data-type="dialogue-block"/g);
-            const speakerElements = currentHTML.match(/data-type="speaker"/g);
-            const speakerNames = extractSpeakerNames(currentHTML);
-            
-            console.log('[Chrome Debug] Post-sync content check:');
-            console.log('[Chrome Debug] - Dialogue blocks:', dialogueBlocks ? dialogueBlocks.length : 0);
-            console.log('[Chrome Debug] - Speaker elements:', speakerElements ? speakerElements.length : 0);
-            console.log('[Chrome Debug] - Speaker names:', Array.from(speakerNames));
-            console.log('[Chrome Debug] - Content sample:', currentHTML.substring(0, 200) + '...');
-          }
-        }, 100);
-      }
+
       
       if (isSynced) {
         setConnectionStatus('connected');
@@ -574,37 +556,20 @@ export const useEditorCore = ({
 
   // Content snapshot effect - send content snapshots every 30 seconds
   useEffect(() => {
-    console.log('🔍 Content snapshot effect triggered:', { 
-      hasEditor: !!editor, 
-      scriptId, 
-      hasToken: !!token,
-      tokenLength: token?.length || 0
-    });
-    
     if (!editor || !scriptId || !token) {
-      console.log('❌ Content snapshot effect skipped - missing requirements');
       return;
     }
-
-    console.log('✅ Content snapshot effect starting timers');
 
     // Function to send content snapshot
     const sendContentSnapshot = async () => {
       try {
-        console.log('📸 Attempting to send content snapshot...');
         const html = editor.getHTML();
-        console.log('📸 Editor HTML:', html.length, 'chars, content:', html.substring(0, 100) + '...');
         
         if (html && html.trim() !== '<p></p>' && html.trim() !== '') {
-          console.log('📸 Sending content snapshot:', html.length, 'chars');
-          
           await storeContentSnapshot(token, scriptId, html, 'html');
-          console.log('✅ Content snapshot sent successfully');
-        } else {
-          console.log('⏭️ Skipping empty content snapshot');
         }
       } catch (error) {
-        console.error('❌ Error sending content snapshot:', error);
+        console.error('Error sending content snapshot:', error);
       }
     };
 
@@ -615,7 +580,6 @@ export const useEditorCore = ({
     const initialTimeout = setTimeout(sendContentSnapshot, 5000);
 
     return () => {
-      console.log('🧹 Cleaning up content snapshot timers');
       clearInterval(snapshotInterval);
       clearTimeout(initialTimeout);
     };

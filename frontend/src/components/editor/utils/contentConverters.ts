@@ -6,12 +6,6 @@ import { formatContentElement } from './formatters';
 export const convertBlocksToTiptapContent = (blocks: any[]) => {
   console.log('[Content Converter] Converting blocks:', blocks);
   
-  // Chrome-specific debugging - declare once and reuse
-  const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
-  if (isChrome) {
-    console.log('[Chrome Debug] Converting blocks in Chrome, block count:', blocks.length);
-  }
-  
   if (!blocks || blocks.length === 0) {
     console.log('[Content Converter] No blocks provided, returning empty paragraph');
     return '<p></p>'; // Default empty paragraph
@@ -23,13 +17,7 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
       contentLength: block.content?.length,
       content: block.content?.substring(0, 100) + '...' 
     });
-    
-    if (isChrome) {
-      console.log(`[Chrome Debug] Processing block ${index} in Chrome:`, {
-        blockType: block.block_type,
-        contentPreview: block.content?.substring(0, 50) + '...'
-      });
-    }
+
     
     const blockType = block.block_type;
     const contentJsonString = block.content;
@@ -123,21 +111,7 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
   const finalContent = convertedContent.join('');
   console.log('[Content Converter] Final converted content length:', finalContent.length);
   console.log('[Content Converter] Final converted content preview:', finalContent.substring(0, 500) + '...');
-  
-  // Chrome-specific debugging for final output - reuse the isChrome variable from top
-  if (isChrome) {
-    console.log('[Chrome Debug] Final content for Chrome:');
-    console.log('[Chrome Debug] - Length:', finalContent.length);
-    console.log('[Chrome Debug] - Contains dialogue blocks:', finalContent.includes('data-type="dialogue-block"'));
-    console.log('[Chrome Debug] - Contains speaker elements:', finalContent.includes('data-type="speaker"'));
-    console.log('[Chrome Debug] - Preview:', finalContent.substring(0, 300) + '...');
-    
-    // Check for potential HTML structure issues
-    const dialogueBlockMatches = finalContent.match(/data-type="dialogue-block"/g);
-    const speakerMatches = finalContent.match(/data-type="speaker"/g);
-    console.log('[Chrome Debug] - Dialogue block count:', dialogueBlockMatches ? dialogueBlockMatches.length : 0);
-    console.log('[Chrome Debug] - Speaker element count:', speakerMatches ? speakerMatches.length : 0);
-  }
+
   
   return finalContent;
 };

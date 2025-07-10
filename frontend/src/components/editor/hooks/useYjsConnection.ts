@@ -90,7 +90,7 @@ export const useYjsConnection = ({
       hostname: window.location.hostname,
       host: window.location.host,
     });
-    console.log('[YJS] 🔍 DEBUGGING: Connection setup starting...');
+    console.log('[YJS] Initializing connection...');
     
     // Enable console forwarder for mobile debugging
     if (isMobile()) {
