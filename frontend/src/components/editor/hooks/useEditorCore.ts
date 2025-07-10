@@ -573,8 +573,8 @@ export const useEditorCore = ({
       }
     };
 
-    // Send snapshot every 30 seconds
-    const snapshotInterval = setInterval(sendContentSnapshot, 30000);
+    // Send snapshot every 2 seconds
+    const snapshotInterval = setInterval(sendContentSnapshot, 2000);
 
     // Send initial snapshot after 5 seconds
     const initialTimeout = setTimeout(sendContentSnapshot, 5000);

@@ -11,16 +11,13 @@ const sslPaths = [
 ];
 
 let sslConfig = null;
-// Only setup SSL for development server (not during production builds)
-if (process.env.NODE_ENV !== 'production') {
-  for (const paths of sslPaths) {
-    if (fs.existsSync(paths.key) && fs.existsSync(paths.cert)) {
-      sslConfig = {
-        key: fs.readFileSync(paths.key),
-        cert: fs.readFileSync(paths.cert),
-      };
-      break;
-    }
+for (const paths of sslPaths) {
+  if (fs.existsSync(paths.key) && fs.existsSync(paths.cert)) {
+    sslConfig = {
+      key: fs.readFileSync(paths.key),
+      cert: fs.readFileSync(paths.cert),
+    };
+    break;
   }
 }
 
@@ -31,8 +28,11 @@ export default defineConfig({
     port: 8080,     // Standard port for hot reload
     host: true,     // Allow access from host to container
     allowedHosts: process.env.VITE_APP_DOMAIN ? [process.env.VITE_APP_DOMAIN] : ['localhost', '192.168.2.111'],
-    // Use HTTPS only in development when certificates are available
-    https: sslConfig || undefined,
+    // Always use HTTPS for consistency with production
+    https: sslConfig || {
+      key: fs.readFileSync('/app/ssl/dev/key.pem'),
+      cert: fs.readFileSync('/app/ssl/dev/cert.pem'),
+    },
     watch: {
       usePolling: true,  // Docker-safe file watching
       interval: 500,     // Polling interval (ms)

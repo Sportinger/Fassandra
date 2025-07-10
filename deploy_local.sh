@@ -98,9 +98,21 @@ if [ ! -f "docker-compose.yml" ]; then
     exit 1
 fi
 
-# Create/update local environment file
+# Create/update local environment file (preserve existing .env)
 echo "📝 Setting up local environment..."
-cat > .env.local << EOF
+
+# Check if .env already exists (preserve working config)
+if [ -f ".env" ]; then
+    echo "✅ Found existing .env file - preserving your configuration"
+    echo "ℹ️  Using existing .env instead of creating .env.local"
+    ENV_FILE=".env"
+elif [ -f ".env.local" ]; then
+    echo "✅ Found existing .env.local file - using it"
+    ENV_FILE=".env.local"
+else
+    echo "📝 Creating new .env.local file for fresh setup..."
+    ENV_FILE=".env.local"
+    cat > .env.local << EOF
 # Local Development Environment (HTTPS)
 APP_HOSTNAME=192.168.2.111
 APP_DOMAIN=192.168.2.111:8443
@@ -142,6 +154,9 @@ RUST_LOG=debug
 # Hot reload configuration
 HOT_RELOAD_MODE=$HOT_RELOAD
 EOF
+fi
+
+echo "📄 Using environment file: $ENV_FILE"
 
 # Generate SSL certificates if they don't exist
 echo "🔐 Setting up SSL certificates..."
@@ -189,8 +204,12 @@ services:
 EOF
     COMPOSE_FILES="-f docker-compose.yml -f docker-compose.hot-reload.yml"
     
-    # Update API base URL for hot reload mode to use direct Vite dev server
-    sed -i 's|VITE_API_BASE_URL=https://192.168.2.111:8443|VITE_API_BASE_URL=http://192.168.2.111:3001|' .env.local
+    # Update API base URL for hot reload mode to use direct Vite dev server (only if we created new env file)
+    if [ "$ENV_FILE" = ".env.local" ]; then
+        sed -i 's|VITE_API_BASE_URL=https://192.168.2.111:8443|VITE_API_BASE_URL=http://192.168.2.111:3001|' .env.local
+    else
+        echo "ℹ️  Hot reload mode: Using existing .env API configuration"
+    fi
     echo "🔥 Hot reload mode: API calls will go directly to backend (mixed content in dev mode)"
 else
     # Remove hot reload override if it exists
@@ -201,49 +220,58 @@ fi
 # Stop existing containers (target-specific)
 if [ "$TARGET" = "all" ]; then
     echo "📦 Stopping all containers..."
-    docker compose $COMPOSE_FILES --env-file .env.local down 2>/dev/null || true
+    docker compose $COMPOSE_FILES --env-file $ENV_FILE down 2>/dev/null || true
 else
     echo "📦 Stopping $TARGET container..."
     # For hot reload mode, we need to stop any existing frontend from both configurations
     if [ "$HOT_RELOAD" = true ] && [ "$TARGET" = "frontend" ]; then
         echo "🔥 Hot reload mode: Stopping any existing frontend containers..."
-        docker compose --env-file .env.local stop frontend 2>/dev/null || true
-        docker compose --env-file .env.local rm -f frontend 2>/dev/null || true
-        docker compose -f docker-compose.yml -f docker-compose.hot-reload.yml --env-file .env.local stop frontend 2>/dev/null || true
-        docker compose -f docker-compose.yml -f docker-compose.hot-reload.yml --env-file .env.local rm -f frontend 2>/dev/null || true
+        docker compose --env-file $ENV_FILE stop frontend 2>/dev/null || true
+        docker compose --env-file $ENV_FILE rm -f frontend 2>/dev/null || true
+        docker compose -f docker-compose.yml -f docker-compose.hot-reload.yml --env-file $ENV_FILE stop frontend 2>/dev/null || true
+        docker compose -f docker-compose.yml -f docker-compose.hot-reload.yml --env-file $ENV_FILE rm -f frontend 2>/dev/null || true
     fi
     # Always remove the target container to avoid configuration conflicts
-    docker compose --env-file .env.local rm -f $TARGET 2>/dev/null || true
+    docker compose --env-file $ENV_FILE rm -f $TARGET 2>/dev/null || true
     # Also stop any running instance with the old configuration
-    docker compose $COMPOSE_FILES --env-file .env.local stop $TARGET 2>/dev/null || true
+    docker compose $COMPOSE_FILES --env-file $ENV_FILE stop $TARGET 2>/dev/null || true
 fi
 
 # Clean up if requested
 if [ "$CLEAN" = true ]; then
     if [ "$TARGET" = "all" ]; then
         echo "🧹 Cleaning up all containers and volumes..."
-        docker compose $COMPOSE_FILES --env-file .env.local down -v --remove-orphans 2>/dev/null || true
+        docker compose $COMPOSE_FILES --env-file $ENV_FILE down -v --remove-orphans 2>/dev/null || true
         docker system prune -f
     else
         echo "🧹 Cleaning up $TARGET container..."
-        docker compose $COMPOSE_FILES --env-file .env.local rm -f $TARGET 2>/dev/null || true
+        docker compose $COMPOSE_FILES --env-file $ENV_FILE rm -f $TARGET 2>/dev/null || true
         docker image prune -f
     fi
 fi
 
-# Reset database if requested
+# Reset database if requested (WARNING: This will lose data!)
 if [ "$RESET_DB" = true ]; then
-    echo "🗄️ Resetting database volumes..."
-    docker compose $COMPOSE_FILES --env-file .env.local down -v 2>/dev/null || true
-    docker volume rm dev_postgres_data 2>/dev/null || true
+    echo "🗄️ ⚠️  WARNING: Resetting database volumes will lose all data!"
+    echo "🗄️ This includes your content snapshots and migrations!"
+    read -p "Are you sure you want to reset the database? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "🗄️ Resetting database volumes..."
+        docker compose $COMPOSE_FILES --env-file $ENV_FILE down -v 2>/dev/null || true
+        docker volume rm dev_postgres_data 2>/dev/null || true
+        echo "🗄️ Database reset complete. Fresh migrations will be applied on startup."
+    else
+        echo "🗄️ Database reset cancelled."
+    fi
 fi
 
 # Handle database-only reset
 if [ "$TARGET" = "db" ]; then
     echo "🗄️ Resetting database only..."
-    docker compose $COMPOSE_FILES --env-file .env.local down 2>/dev/null || true
+    docker compose $COMPOSE_FILES --env-file $ENV_FILE down 2>/dev/null || true
     docker volume rm dev_postgres_data 2>/dev/null || true
-    docker compose $COMPOSE_FILES --env-file .env.local up -d db
+    docker compose $COMPOSE_FILES --env-file $ENV_FILE up -d db
     echo "✅ Database reset complete!"
     exit 0
 fi
@@ -258,26 +286,46 @@ fi
 case $TARGET in
     "all")
         echo "🔨 Building all services..."
-        docker compose $COMPOSE_FILES --env-file .env.local build $BUILD_OPTS
+        docker compose $COMPOSE_FILES --env-file $ENV_FILE build $BUILD_OPTS
         ;;
     "frontend")
         echo "🔨 Building frontend only..."
-        docker compose $COMPOSE_FILES --env-file .env.local build $BUILD_OPTS frontend
+        docker compose $COMPOSE_FILES --env-file $ENV_FILE build $BUILD_OPTS frontend
         ;;
     "backend")
         echo "🔨 Building backend only..."
-        docker compose $COMPOSE_FILES --env-file .env.local build $BUILD_OPTS backend
+        docker compose $COMPOSE_FILES --env-file $ENV_FILE build $BUILD_OPTS backend
         ;;
 esac
 
 # Start services (target-specific)
 if [ "$TARGET" = "all" ]; then
     echo "🚀 Starting all services..."
-    docker compose $COMPOSE_FILES --env-file .env.local up -d
+    docker compose $COMPOSE_FILES --env-file $ENV_FILE up -d
 else
     echo "🚀 Starting $TARGET service (with dependencies)..."
     echo "ℹ️  Note: Other services (db, backend) will remain running if already started"
-    docker compose $COMPOSE_FILES --env-file .env.local up -d $TARGET
+    docker compose $COMPOSE_FILES --env-file $ENV_FILE up -d $TARGET
+fi
+
+# Run database migrations if needed
+echo "🗄️ Checking and applying database migrations..."
+sleep 10  # Wait for database to be ready
+
+# Check if content_snapshot column exists (our critical migration)
+MIGRATION_CHECK=$(docker exec dev_pessoa_db psql -U pessoa_user -d pessoa_db -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'script_snapshots_meta' AND column_name = 'content_snapshot';" 2>/dev/null | grep -c "content_snapshot" || echo "0")
+
+if [ "$MIGRATION_CHECK" -eq "0" ]; then
+    echo "🔧 Applying content snapshot migration..."
+    docker exec dev_pessoa_db psql -U pessoa_user -d pessoa_db -c "
+    ALTER TABLE script_snapshots_meta 
+    ADD COLUMN IF NOT EXISTS content_snapshot TEXT,
+    ADD COLUMN IF NOT EXISTS snapshot_format VARCHAR(10) DEFAULT 'html',
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+    " 2>/dev/null || echo "⚠️  Migration may have already been applied"
+    echo "✅ Content snapshot migration applied!"
+else
+    echo "✅ Content snapshot migration already applied - your data is safe!"
 fi
 
 # Wait for services to be ready
@@ -286,7 +334,7 @@ sleep 15
 
 # Check if services are running
 echo "🔍 Checking service status..."
-docker compose $COMPOSE_FILES --env-file .env.local ps
+docker compose $COMPOSE_FILES --env-file $ENV_FILE ps
 
 # Test local endpoints
 echo "🧪 Testing local endpoints..."
@@ -367,5 +415,5 @@ echo ""
 echo "🗄️  PgAdmin: http://localhost:5050"
 echo "📊 Database: postgresql://pessoa_user:dev_password_123@localhost:5432/pessoa_db"
 echo ""
-echo "📋 To view logs: docker compose $COMPOSE_FILES --env-file .env.local logs -f"
-echo "🛑 To stop: docker compose $COMPOSE_FILES --env-file .env.local down" 
+echo "📋 To view logs: docker compose $COMPOSE_FILES --env-file $ENV_FILE logs -f"
+echo "🛑 To stop: docker compose $COMPOSE_FILES --env-file $ENV_FILE down" 
