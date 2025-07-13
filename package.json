@@ -10,7 +10,8 @@
     "playwright:install": "playwright install",
     "playwright:codegen": "playwright codegen",
     "mcp:vision": "npx @playwright/mcp@0.0.29 --config=playwright.config.js --vision",
-    "mcp:test": "npx @playwright/mcp@0.0.29 --config=playwright.config.js"
+    "mcp:test": "npx @playwright/mcp@0.0.29 --config=playwright.config.js",
+    "db:reset": "node scripts/reset_database.js"
   },
   "dependencies": {
     "@agentdeskai/browser-tools-mcp": "^1.2.1",
@@ -23,7 +24,9 @@
     "@modelcontextprotocol/server-sequential-thinking": "^2025.7.1",
     "@neondatabase/mcp-server-neon": "^0.6.1",
     "@playwright/mcp": "^0.0.29",
-    "@tiptap/extension-text-align": "^2.11.9"
+    "@tiptap/extension-text-align": "^2.11.9",
+    "dotenv": "^17.2.0",
+    "pg": "^8.16.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",

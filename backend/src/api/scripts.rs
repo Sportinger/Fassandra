@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use crate::models::script::Script;
 use crate::error::AppError;
 use uuid::Uuid;
@@ -12,12 +12,57 @@ use axum::{
     Json,
 };
 use axum::http::StatusCode;
-use tracing::{debug, info, error};
+use tracing::{debug, info, error, warn};
 use serde::Deserialize;
+use crate::auth::AuthUser;
 
 #[derive(serde::Deserialize)]
 pub struct ScriptUpdate {
     pub title: String,
+}
+
+/// Check if user has access to a script (owns it, it's public, or shared with them)
+async fn check_script_access(pool: &PgPool, script_id: Uuid, user_id: Uuid) -> Result<bool> {
+    let row = sqlx::query(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM scripts s
+            WHERE s.id = $1 
+            AND (
+                s.created_by = $2           -- User owns the script
+                OR s.is_public = true       -- Script is public
+                OR EXISTS (                 -- Script is shared with user
+                    SELECT 1 FROM script_shares ss 
+                    WHERE ss.script_id = s.id 
+                    AND ss.shared_with_user_id = $2
+                )
+            )
+        ) as has_access
+        "#
+    )
+    .bind(script_id)
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|_| AppError::Internal(anyhow::Error::msg("Database access error")))?;
+
+    let has_access: bool = row.get("has_access");
+    Ok(has_access)
+}
+
+/// Check if user owns a script (required for modification operations)
+async fn check_script_ownership(pool: &PgPool, script_id: Uuid, user_id: Uuid) -> Result<bool> {
+    let row = sqlx::query(
+        "SELECT EXISTS(SELECT 1 FROM scripts WHERE id = $1 AND created_by = $2) as owns_script"
+    )
+    .bind(script_id)
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|_| AppError::Internal(anyhow::Error::msg("Database access error")))?;
+
+    let owns_script: bool = row.get("owns_script");
+    Ok(owns_script)
 }
 
 pub async fn create_script(
@@ -25,11 +70,19 @@ pub async fn create_script(
     Json(title): Json<String>,
     user_id: Uuid,
 ) -> Result<Json<Script>> {
-    let script = sqlx::query_as_unchecked!(
+    // Input validation
+    if title.trim().is_empty() {
+        return Err(AppError::BadRequest("Script title cannot be empty".to_string()));
+    }
+    if title.len() > 500 {
+        return Err(AppError::BadRequest("Script title too long".to_string()));
+    }
+
+    let script = sqlx::query_as!(
         Script,
         "INSERT INTO scripts (id, title, created_by, created_at, is_public, thumbnail) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, title, created_by, created_at, is_public, thumbnail",
         Uuid::new_v4(),
-        title,
+        title.trim(),
         Some(user_id),
         Some(Utc::now()),
         false,
@@ -37,7 +90,7 @@ pub async fn create_script(
     )
     .fetch_one(&*pool)
     .await
-    .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
+    .map_err(|_| AppError::Internal(anyhow::Error::msg("Failed to create script")))?;
 
     Ok(Json(script))
 }
@@ -46,7 +99,7 @@ pub async fn get_user_scripts(
     State(pool): State<Arc<PgPool>>,
     user_id: Uuid,
 ) -> Result<Json<Vec<Script>>> {
-    let scripts = sqlx::query_as_unchecked!(
+    let scripts = sqlx::query_as!(
         Script,
         r#"
         SELECT DISTINCT s.id, s.title, s.created_by, s.created_at, s.is_public, s.thumbnail FROM scripts s
@@ -63,7 +116,7 @@ pub async fn get_user_scripts(
     )
     .fetch_all(&*pool)
     .await
-    .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
+    .map_err(|_| AppError::Internal(anyhow::Error::msg("Failed to fetch scripts")))?;
 
     Ok(Json(scripts))
 }
@@ -72,18 +125,33 @@ pub async fn update_script(
     State(pool): State<Arc<PgPool>>,
     Path(script_id): Path<Uuid>,
     Json(script_update): Json<ScriptUpdate>,
+    auth_user: AuthUser,
 ) -> Result<Json<Script>> {
     let ScriptUpdate { title } = script_update;
 
-    let script = sqlx::query_as_unchecked!(
+    // Input validation
+    if title.trim().is_empty() {
+        return Err(AppError::BadRequest("Script title cannot be empty".to_string()));
+    }
+    if title.len() > 500 {
+        return Err(AppError::BadRequest("Script title too long".to_string()));
+    }
+
+    // 🔒 SECURITY: Check ownership before allowing update
+    if !check_script_ownership(&pool, script_id, auth_user.user_id).await? {
+        warn!("User {} attempted to update script {} without ownership", auth_user.user_id, script_id);
+        return Err(AppError::Forbidden("You can only update scripts you own".to_string()));
+    }
+
+    let script = sqlx::query_as!(
         Script,
         "UPDATE scripts SET title = $1 WHERE id = $2 RETURNING id, title, created_by, created_at, is_public, thumbnail",
-        title,
+        title.trim(),
         script_id
     )
     .fetch_one(&*pool)
     .await
-    .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
+    .map_err(|_| AppError::Internal(anyhow::Error::msg("Failed to update script")))?;
 
     Ok(Json(script))
 }
@@ -91,14 +159,21 @@ pub async fn update_script(
 pub async fn delete_script(
     State(pool): State<Arc<PgPool>>,
     Path(script_id): Path<Uuid>,
+    auth_user: AuthUser,
 ) -> Result<Json<Value>> {
-    sqlx::query_unchecked!(
+    // 🔒 SECURITY: Check ownership before allowing deletion
+    if !check_script_ownership(&pool, script_id, auth_user.user_id).await? {
+        warn!("User {} attempted to delete script {} without ownership", auth_user.user_id, script_id);
+        return Err(AppError::Forbidden("You can only delete scripts you own".to_string()));
+    }
+
+    sqlx::query!(
         "DELETE FROM scripts WHERE id = $1",
         script_id
     )
     .execute(&*pool)
     .await
-    .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
+    .map_err(|_| AppError::Internal(anyhow::Error::msg("Failed to delete script")))?;
 
     Ok(Json(json!({"success": true})))
 } 
@@ -115,8 +190,31 @@ pub async fn store_content_snapshot(
     State(pool): State<Arc<PgPool>>,
     Path(script_id): Path<Uuid>,
     Json(request): Json<ContentSnapshotRequest>,
+    auth_user: AuthUser,
 ) -> impl IntoResponse {
     debug!("Storing content snapshot for script {}: {} chars", script_id, request.content.len());
+    
+    // Input validation
+    if request.content.len() > 10_000_000 {  // 10MB limit
+        return (StatusCode::BAD_REQUEST, "Content too large".to_string()).into_response();
+    }
+    
+    if !["html", "json"].contains(&request.format.as_str()) {
+        return (StatusCode::BAD_REQUEST, "Invalid format, must be 'html' or 'json'".to_string()).into_response();
+    }
+
+    // 🔒 SECURITY: Check access before allowing content storage
+    match check_script_access(&pool, script_id, auth_user.user_id).await {
+        Ok(has_access) => {
+            if !has_access {
+                warn!("User {} attempted to store content for script {} without access", auth_user.user_id, script_id);
+                return (StatusCode::FORBIDDEN, "Access denied".to_string()).into_response();
+            }
+        }
+        Err(_) => {
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Database access error".to_string()).into_response();
+        }
+    }
     
     // Store the content snapshot in the database
     let result = sqlx::query!(
@@ -145,9 +243,9 @@ pub async fn store_content_snapshot(
                 "message": "Content snapshot stored successfully"
             }))).into_response()
         }
-        Err(e) => {
-            error!("Failed to store content snapshot for script {}: {}", script_id, e);
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to store content snapshot: {}", e)).into_response()
+        Err(_) => {
+            error!("Failed to store content snapshot for script {}", script_id);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to store content snapshot".to_string()).into_response()
         }
     }
 } 
