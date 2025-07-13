@@ -13,9 +13,15 @@
     "mcp:test": "npx @playwright/mcp@0.0.29 --config=playwright.config.js"
   },
   "dependencies": {
+    "@agentdeskai/browser-tools-mcp": "^1.2.1",
+    "@agentdeskai/browser-tools-server": "^1.2.1",
+    "@ahmetbarut/mcp-database-server": "^1.0.5",
     "@hisma/server-puppeteer": "^0.6.5",
+    "@just-every/mcp-deep-search": "^0.1.23",
+    "@modelcontextprotocol/server-brave-search": "^0.6.2",
     "@modelcontextprotocol/server-filesystem": "^2025.7.1",
     "@modelcontextprotocol/server-sequential-thinking": "^2025.7.1",
+    "@neondatabase/mcp-server-neon": "^0.6.1",
     "@playwright/mcp": "^0.0.29",
     "@tiptap/extension-text-align": "^2.11.9"
   },
