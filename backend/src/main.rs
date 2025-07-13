@@ -31,6 +31,7 @@ use backend::models::edit::Edit;
 use backend::models::user::User;
 use backend::models::script_layout::{ScriptLayout, CreateScriptLayoutRequest, UpdateScriptLayoutRequest};
 use backend::handlers::script_handlers::script_routes;
+use backend::handlers::page_break_handlers::create_page_break_router;
 use backend::persistence_event::YjsPersistenceEvent;
 use backend::async_db_writer::run_async_db_writer;
 use backend::snapshotting_service::run_snapshotting_service;
@@ -259,7 +260,7 @@ struct CreateBlockPayload { block_type: String, content: String }
 /// # Returns
 /// * `Result<Json<Uuid>, AppError>` - The new block's ID as JSON on success, or an AppError on failure.
 async fn create_block_endpoint(State(pool): State<Arc<PgPool>>, AuthUser{user_id: _}: AuthUser, Path(script_id): Path<Uuid>, Json(payload): Json<CreateBlockPayload>) -> Result<Json<Uuid>, AppError> {
-    let id = create_block(pool.as_ref(), script_id, &payload.block_type, &payload.content).await?;
+    let id = create_block(pool.as_ref(), script_id, &payload.block_type, &payload.content, None).await?;
     Ok(Json(id))
 }
 
@@ -713,5 +714,6 @@ fn api_routes_arc_state(persistence_event_tx: mpsc::Sender<YjsPersistenceEvent>)
         .route("/blocks/:id/history", get(block_history_endpoint))
         .route("/debug/console-logs", post(receive_console_logs))
         .merge(ws::ws_routes(persistence_event_tx.clone()))
+        .merge(create_page_break_router())
         // Note: script_routes is now handled separately in main() due to its PgPool state requirement
 }

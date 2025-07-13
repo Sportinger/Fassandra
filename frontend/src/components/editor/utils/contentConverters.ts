@@ -29,40 +29,52 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
         case 'monologue':
         case 'joint_dialogue':
         case 'reading': {
-          // Parse the JSON content
-          const element = JSON.parse(contentJsonString);
-          console.log(`[Content Converter] Parsed ${blockType} element:`, element);
-          
-          // Extract speaker(s) and text
-          let speakerName = '';
-          let dialogueText = '';
-          
-          if (blockType === 'dialogue') {
-            speakerName = element.speaker || 'Unknown';
-            dialogueText = element.line || '';
-          } else if (blockType === 'monologue') {
-            speakerName = element.speaker || 'Unknown';
-            dialogueText = (element.lines || []).join('\n');
-          } else if (blockType === 'joint_dialogue') {
-            speakerName = (element.speakers || []).join('/');
-            dialogueText = element.line || '';
-          } else if (blockType === 'reading') {
-            speakerName = element.speaker || 'Reader';
-            dialogueText = `(Reading) ${element.reading_text || ''}`;
+          try {
+            // Parse the JSON content
+            const element = JSON.parse(contentJsonString);
+            console.log(`[Content Converter] Parsed ${blockType} element:`, element);
+            
+            // Extract speaker(s) and text
+            let speakerName = '';
+            let dialogueText = '';
+            
+            if (blockType === 'dialogue') {
+              speakerName = element.speaker || 'Unknown Speaker';
+              dialogueText = element.line || '';
+            } else if (blockType === 'monologue') {
+              speakerName = element.speaker || 'Unknown Speaker';
+              dialogueText = (element.lines || []).join('\n');
+            } else if (blockType === 'joint_dialogue') {
+              speakerName = (element.speakers || []).join('/');
+              dialogueText = element.line || '';
+            } else if (blockType === 'reading') {
+              speakerName = element.speaker || 'Reader';
+              dialogueText = `(Reading) ${element.reading_text || ''}`;
+            }
+            
+            console.log(`[Content Converter] Creating dialogue block - Speaker: "${speakerName}", Text: "${dialogueText}"`);
+            
+            // Create proper dialogue block HTML
+            const dialogueHTML = `<div data-type="dialogue-block" data-layout="default">
+              <div data-type="speaker">${speakerName}</div>
+              <div data-type="dialogue-text">
+                <p>${dialogueText}</p>
+              </div>
+            </div>`;
+            
+            console.log(`[Content Converter] Generated dialogue HTML:`, dialogueHTML);
+            return dialogueHTML;
+          } catch (parseError) {
+            console.error(`[Content Converter] Failed to parse ${blockType} JSON, falling back to text:`, contentJsonString, parseError);
+            // Fallback: treat as plain text dialogue
+            const fallbackText = contentJsonString.substring(0, 200) + (contentJsonString.length > 200 ? '...' : '');
+            return `<div data-type="dialogue-block" data-layout="default">
+              <div data-type="speaker">Unknown Speaker</div>
+              <div data-type="dialogue-text">
+                <p>${fallbackText}</p>
+              </div>
+            </div>`;
           }
-          
-          console.log(`[Content Converter] Creating dialogue block - Speaker: "${speakerName}", Text: "${dialogueText}"`);
-          
-          // Create proper dialogue block HTML
-          const dialogueHTML = `<div data-type="dialogue-block" data-layout="default">
-            <div data-type="speaker">${speakerName}</div>
-            <div data-type="dialogue-text">
-              <p>${dialogueText}</p>
-            </div>
-          </div>`;
-          
-          console.log(`[Content Converter] Generated dialogue HTML:`, dialogueHTML);
-          return dialogueHTML;
         }
         
         case 'stage_direction': {
@@ -76,13 +88,19 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
         }
         
         case 'paragraph': {
-          // Handle paragraph blocks
-          const actualText = JSON.parse(contentJsonString);
-          console.log(`[Content Converter] Creating paragraph: "${actualText}"`);
-          if (typeof actualText === 'string') {
-            return `<p>${actualText}</p>`;
-          } else {
-            return `<p>${String(actualText || '')}</p>`;
+          // Handle paragraph blocks - could be JSON string or plain text
+          try {
+            const actualText = JSON.parse(contentJsonString);
+            console.log(`[Content Converter] Creating paragraph from JSON: "${actualText}"`);
+            if (typeof actualText === 'string') {
+              return `<p>${actualText}</p>`;
+            } else {
+              return `<p>${String(actualText || '')}</p>`;
+            }
+          } catch (e) {
+            // If JSON parsing fails, treat as plain text
+            console.log(`[Content Converter] Creating paragraph from plain text: "${contentJsonString}"`);
+            return `<p>${contentJsonString}</p>`;
           }
         }
         

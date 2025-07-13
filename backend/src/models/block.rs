@@ -21,4 +21,6 @@ pub struct Block {
     pub created_at: Option<DateTime<Utc>>,
     /// Order of the block within the script
     pub block_order: i32,
+    /// Page number where this block appears in the script (1-based)
+    pub page_number: i32,
 } 

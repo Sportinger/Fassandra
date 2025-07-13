@@ -1,22 +1,24 @@
 //! Handlers for script-related API endpoints.
 
 use axum::{
-    extract::{Multipart, State, Path},
-    http::StatusCode, 
+    extract::{Multipart, Path, State},
+    http::StatusCode,
     response::{IntoResponse, Json},
-    routing::{post, patch, get, delete},
-    Router, // Import Bytes
+    routing::{get, post, patch, delete},
+    Router,
 };
-use serde_json::json;
-use tracing::{error, info}; // Add warn
-use reqwest::Client; // For making the Gemini API call
-use sqlx::PgPool; // Import PgPool
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use tracing::{error, info, warn};
+use reqwest::Client;
+use sqlx::PgPool;
+use std::io::Cursor;
 
-use crate::analysis::parser::extract_text_from_docx;
-use crate::gemini_api::{call_gemini_for_parsing, GeminiApiError}; 
 use crate::analysis::structs::Script as ParsedScript;
+use crate::analysis::parser::{extract_text_with_pages_from_docx, text_with_pages_to_string_with_page_markers};
 use crate::auth::AuthUser;
 use crate::error::AppError; // Import AppError
+use crate::gemini_api::{call_gemini_for_parsing, GeminiApiError};
 use crate::create_script_from_parsed; // Import the function from lib.rs
 use crate::models::script_share::{ShareScriptRequest, ScriptShare};
 use crate::models::user::User;
@@ -60,9 +62,6 @@ pub struct CreateScriptFromParsedPayload {
 ///
 /// # Returns
 /// * `Result<Json<Uuid>, AppError>` - The ID of the newly created script or an error.
-// Restore original function signature and logic
-// #[instrument(skip(payload))] // Optional: add instrument back if desired
-// #[axum::debug_handler] // Optional: add debug_handler back if desired
 #[axum::debug_handler] // Added debug_handler
 async fn create_script_from_parsed_handler(
     State(pool): State<PgPool>,
@@ -78,10 +77,10 @@ async fn create_script_from_parsed_handler(
     Ok(Json(new_script_id))
 }
 
-/// Handles script file upload, text extraction, and parsing via Gemini API.
+/// Handles script file upload and parsing via Gemini API with enhanced text extraction.
 ///
-/// Processes a multipart form to extract a DOCX file, converts it to text,
-/// and then sends the text to the Gemini API for structural parsing.
+/// Processes a multipart form to extract a DOCX file, extracts text with page information,
+/// and sends it to Gemini for parsing with proper JSON schema for accurate page numbers.
 ///
 /// # Arguments
 /// * `multipart` - Multipart form data containing the script file
@@ -94,91 +93,75 @@ async fn upload_and_parse_script(
 ) -> Result<Json<ParsedScript>, impl IntoResponse> {
     // Create HTTP client with timeout to prevent hanging uploads
     let http_client = Client::builder()
-        .timeout(std::time::Duration::from_secs(60)) // 60 second timeout for Gemini API
+        .timeout(std::time::Duration::from_secs(60)) // 60 second timeout
         .build()
-        .map_err(|err| {
-            error!("Failed to create HTTP client: {}", err);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Internal server error"})))
+        .map_err(|e| {
+            error!("Failed to create HTTP client: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create HTTP client")
         })?;
-    let mut extracted_text: Option<String> = None;
-    let mut original_filename: Option<String> = None;
 
-    // Process the multipart form data
-    while let Some(field) = multipart.next_field().await.map_err(|err| {
-        error!("Error reading multipart field: {}", err);
-        (StatusCode::BAD_REQUEST, Json(json!({"error": "Failed to read upload data"})))
+    // Extract the file from the multipart form
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        error!("Failed to read multipart field: {}", e);
+        (StatusCode::BAD_REQUEST, "Failed to read multipart data")
     })? {
-        let name = field.name().unwrap_or("").to_string();
-        let filename = field.file_name().map(String::from);
-        
-        if name == "scriptFile" { // Expecting the file under the name "scriptFile"
-            original_filename = filename.clone(); // Store filename for context
-            info!("Processing uploaded file: {:?}", original_filename.as_deref().unwrap_or("unknown"));
-            
-            let bytes = field.bytes().await.map_err(|err| {
-                error!("Failed to read file bytes: {}", err);
-                (StatusCode::BAD_REQUEST, Json(json!({"error": "Failed to read file content"})))
+        if field.name() == Some("file") {
+            let filename = field.file_name().unwrap_or("unknown").to_string();
+            info!("Processing uploaded file: {}", filename);
+
+            // Read the file data
+            let data = field.bytes().await.map_err(|e| {
+                error!("Failed to read file data: {}", e);
+                (StatusCode::BAD_REQUEST, "Failed to read file data")
             })?;
 
-            info!("Read {} bytes from upload.", bytes.len());
+            // Check if it's a DOCX file
+            if !filename.to_lowercase().ends_with(".docx") {
+                warn!("Unsupported file type: {}", filename);
+                return Err((StatusCode::BAD_REQUEST, "Only DOCX files are supported"));
+            }
 
-            // 1. Extract text from DOCX
-            let text = extract_text_from_docx(&bytes).map_err(|err| {
-                error!("DOCX text extraction failed: {}", err);
-                (StatusCode::UNPROCESSABLE_ENTITY, Json(json!({"error": format!("Failed to extract text from DOCX: {}", err)})))
-            })?;
-            
-            // --- FOR TESTING: Use only the first 1/10 of the text ---
-            let text_len = text.len();
-            let end_index = text_len / 10;
-            let partial_text = match text.get(..end_index) {
-                Some(slice) => slice.to_string(),
-                None => text.clone(), // Should not happen if text is not empty
-            };
-            info!("Using partial text for Gemini ({} bytes)", partial_text.len());
-            // extracted_text = Some(text); // Use full text if not testing
-            extracted_text = Some(partial_text);
-            // --- END TESTING SECTION ---
+            // Extract text with page information from DOCX
+            let text_with_pages = extract_text_with_pages_from_docx(&data)
+                .map_err(|e| {
+                    error!("Failed to extract text from DOCX: {}", e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Failed to extract text from DOCX file")
+                })?;
 
-            // Stop processing fields once we have the scriptFile
-            break; 
+            info!("Extracted {} text elements with page information", text_with_pages.len());
+
+            // Convert to string with page markers for better Gemini processing
+            let enhanced_text = text_with_pages_to_string_with_page_markers(&text_with_pages);
+
+            // Call Gemini API for parsing with enhanced JSON schema
+            let parsed_script = call_gemini_for_parsing(&enhanced_text, &http_client)
+                .await
+                .map_err(|e| {
+                    error!("Gemini API call failed: {}", e);
+                    match e {
+                        GeminiApiError::Reqwest(_) => {
+                            (StatusCode::BAD_GATEWAY, "Script parsing failed: Network error")
+                        }
+                        GeminiApiError::Deserialization(_) => {
+                            (StatusCode::INTERNAL_SERVER_ERROR, "Script parsing failed: Parse error")
+                        }
+                        GeminiApiError::ApiError { status, .. } => {
+                            (status, "Script parsing failed: API returned an error")
+                        }
+                        _ => {
+                            (StatusCode::INTERNAL_SERVER_ERROR, "Script parsing failed: Unknown error")
+                        }
+                    }
+                })?;
+
+            info!("Successfully parsed script with {} sections", parsed_script.sections.len());
+            return Ok(Json(parsed_script));
         }
     }
 
-    // Ensure we got the text
-    let script_text = match extracted_text {
-        Some(text) => text,
-        None => {
-            error!("Multipart request did not contain 'scriptFile' field or text extraction failed.");
-            return Err((StatusCode::BAD_REQUEST, Json(json!({"error": "Missing 'scriptFile' in upload"}))));
-        }
-    };
-
-    // 2. Call Gemini API for parsing
-    info!("Calling Gemini API for parsing...");
-    let parsed_script_result = call_gemini_for_parsing(&http_client, &script_text).await;
-
-    match parsed_script_result {
-        Ok(mut script) => {
-            info!("Successfully parsed script using Gemini.");
-            // Add original filename to the parsed script object if available
-            script.source_filename = original_filename; 
-            Ok(Json(script))
-        }
-        Err(e) => {
-            error!("Gemini API call failed: {}", e);
-            // Map GeminiApiError to appropriate HTTP status codes
-            let status_code = match e {
-                GeminiApiError::MissingEnvVar(_) => StatusCode::INTERNAL_SERVER_ERROR,
-                GeminiApiError::Reqwest(_) => StatusCode::BAD_GATEWAY, // Error communicating with Gemini
-                GeminiApiError::ApiError { status, .. } => status, // Use status code from Gemini if available
-                GeminiApiError::Deserialization(_) => StatusCode::INTERNAL_SERVER_ERROR, // Gemini returned unexpected format
-                GeminiApiError::NoCandidate => StatusCode::INTERNAL_SERVER_ERROR, // Gemini didn't provide a response part
-                GeminiApiError::StructureParsing(_) => StatusCode::INTERNAL_SERVER_ERROR, // Failed to parse Gemini's valid JSON
-            };
-             Err((status_code, Json(json!({"error": format!("Script parsing failed: {}", e)}))))
-        }
-    }
+    // If we get here, no file was found in the multipart data
+    warn!("No file found in multipart data");
+    Err((StatusCode::BAD_REQUEST, "No file provided"))
 }
 
 /// Shares a script with another user.
@@ -444,4 +427,4 @@ async fn regenerate_all_thumbnails_endpoint(
     let count = regenerate_all_thumbnails(&pool).await?;
     
     Ok(Json(count))
-} 
+}

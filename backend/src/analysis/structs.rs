@@ -70,6 +70,8 @@ pub struct Dialogue {
     pub id: Option<String>,
     pub speaker: Option<String>, // Make nullable to handle AI null values
     pub line: Option<String>,
+    #[serde(default = "default_page_number")]
+    pub page_number: i32, // Page number where this dialogue appears
     // Add extra if needed
     #[serde(flatten)]
     pub extra: HashMap<String, Value>,
@@ -81,7 +83,9 @@ pub struct Monologue {
     pub id: Option<String>,
     pub speaker: Option<String>, // Make nullable to handle AI null values
     #[serde(default)]
-    pub lines: Vec<String>, 
+    pub lines: Vec<String>,
+    #[serde(default = "default_page_number")]
+    pub page_number: i32, // Page number where this monologue appears
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -89,6 +93,8 @@ pub struct StageDirection {
     #[serde(default)]
     pub id: Option<String>,
     pub description: Option<String>, // Make nullable to handle AI null values
+    #[serde(default = "default_page_number")]
+    pub page_number: i32, // Page number where this stage direction appears
     // Removed kind and source_location
 }
 
@@ -98,6 +104,8 @@ pub struct JointDialogue {
     pub id: Option<String>,
     pub speakers: Vec<String>,
     pub line: Option<String>,
+    #[serde(default = "default_page_number")]
+    pub page_number: i32, // Page number where this joint dialogue appears
     // Add extra if needed
     #[serde(flatten)]
     pub extra: HashMap<String, Value>,
@@ -111,6 +119,13 @@ pub struct Reading {
     pub source: Option<String>,
     pub language: Option<String>,
     pub reading_text: Option<String>, // Make nullable to handle AI null values
+    #[serde(default = "default_page_number")]
+    pub page_number: i32, // Page number where this reading appears
+}
+
+/// Default page number is 1 if not specified
+fn default_page_number() -> i32 {
+    1
 }
 
 // Note: We removed the old Speaker, DialogueLine structs as they are replaced by the new structure.

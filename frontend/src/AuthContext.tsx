@@ -2,6 +2,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { AuthState, User } from './types';
 import { logDebugInfo } from './utils/debug';
+import { setApiToken } from './api';
 
 // Create the context with a default value for AuthState
 const defaultAuthState: AuthState = {
@@ -121,6 +122,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     setTokenState(newToken);
     setUserState(userToSet);
+    
+    // Update API service with new token
+    setApiToken(newToken);
 
     if (newToken) {
       try {
@@ -162,6 +166,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Set initial token in ApiService when component mounts
+  useEffect(() => {
+    if (token) {
+      setApiToken(token);
+      logDebugInfo('Auth', 'Initial token set in ApiService on mount');
+    }
+  }, []); // Only run once on mount
 
   // Provide token, user, and setToken function
   const authValue = React.useMemo(() => ({ token, user, setToken, theme, setTheme }), [token, user, setToken, theme, setTheme]);

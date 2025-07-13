@@ -123,6 +123,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       const formData = new FormData();
       formData.append('scriptFile', placeholder.fileData);
 
+      // Use relative URL - proxy will handle routing to backend
       const uploadResponse = await fetch('/api/s/upload', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
@@ -193,7 +194,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         uploadSubStage: 'Creating script database entry...'
       });
 
-      const newScriptId = await createScriptFromParsed(token, parsedData);
+      const newScriptId = await createScriptFromParsed(parsedData);
       console.log('[ScriptList] Created new script with ID:', newScriptId);
 
       // Stage 10: Finalizing (95% progress)
@@ -413,7 +414,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     
     setError(null);
     try {
-      const updatedScript = await updateScript(token, scriptId, renameValue.trim());
+      const updatedScript = await updateScript(scriptId, renameValue.trim());
       // Update the script in local state
       setScripts(prev => prev.map(script => 
         script.id === scriptId ? { ...updatedScript } : script
@@ -463,7 +464,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     setError(null);
     
     try {
-      const fetchedScripts = await getScripts(token);
+      const fetchedScripts = await getScripts();
       logDebugInfo('ScriptList', `Fetched ${fetchedScripts.length} scripts`);
       setScripts(fetchedScripts);
       
@@ -472,12 +473,12 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       if (scriptsWithoutThumbnails.length > 0) {
         logDebugInfo('ScriptList', `Found ${scriptsWithoutThumbnails.length} scripts without thumbnails, generating...`);
         try {
-          const generatedCount = await generateAllThumbnails(token);
+          const generatedCount = await generateAllThumbnails();
           logDebugInfo('ScriptList', `Generated ${generatedCount} thumbnails`);
           
           // Refetch scripts to get the updated thumbnails
           if (generatedCount > 0) {
-            const updatedScripts = await getScripts(token);
+            const updatedScripts = await getScripts();
             setScripts(updatedScripts);
           }
         } catch (thumbnailErr: any) {
@@ -515,7 +516,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     if (!token || !newScriptName.trim()) return;
     setError(null);
     try {
-      const newScript = await createScript(token, newScriptName.trim());
+      const newScript = await createScript(newScriptName.trim());
       // Add script to the list without a full refetch for better UX
       setScripts(prev => [...prev, newScript]);
       setNewScriptName(''); // Clear input
@@ -544,7 +545,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       setConfirmDelete(null);
       setIsDeleteModalClosing(false);
       try {
-        await deleteScript(token, scriptId);
+        await deleteScript(scriptId);
         // Remove script from local state
         setScripts(prev => prev.filter(script => script.id !== scriptId));
       } catch (err: any) {
@@ -573,7 +574,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     // Load existing shares
     if (token) {
       try {
-        const shares = await getScriptShares(token, scriptId);
+        const shares = await getScriptShares(scriptId);
         setScriptShares(shares);
       } catch (err: any) {
         console.error('Failed to load shares:', err);
@@ -600,13 +601,13 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     
     setSharingLoading(true);
     try {
-      await shareScript(token, sharingScript.scriptId, {
+      await shareScript(sharingScript.scriptId, {
         username: shareUsername.trim(),
         permission: sharePermission,
       });
       
       // Reload shares
-      const shares = await getScriptShares(token, sharingScript.scriptId);
+      const shares = await getScriptShares(sharingScript.scriptId);
       setScriptShares(shares);
       setShareUsername('');
       setError(null);
@@ -622,7 +623,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     
     setSharingLoading(true);
     try {
-      await removeScriptShare(token, sharingScript.scriptId, shareId);
+      await removeScriptShare(sharingScript.scriptId, shareId);
       
       // Remove from local state
       setScriptShares(prev => prev.filter(share => share.id !== shareId));
@@ -639,7 +640,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     
     setSharingLoading(true);
     try {
-      const newPublicStatus = await toggleScriptPublic(token, sharingScript.scriptId);
+      const newPublicStatus = await toggleScriptPublic(sharingScript.scriptId);
       
       // Update local state
       setSharingScript(prev => prev ? { ...prev, isPublic: newPublicStatus } : null);

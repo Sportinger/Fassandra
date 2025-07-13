@@ -56,6 +56,7 @@ export type UploadStatus = 'uploading' | 'analyzing' | 'creating' | 'completed' 
  * @property {string} block_type - Type of block (e.g., 'text', 'dialogue').
  * @property {string} content - Content of the block (may be JSON for TipTap).
  * @property {string} created_at - ISO timestamp of block creation.
+ * @property {number} page_number - Page number where this block appears (1-based).
  */
 export interface Block {
   id: string;
@@ -63,6 +64,7 @@ export interface Block {
   block_type: string;
   content: string; // This might be structured JSON for TipTap
   created_at: string;
+  page_number: number;
 }
 
 /**

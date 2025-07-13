@@ -50,8 +50,8 @@ function App(): JSX.Element {
     // switch to the scripts view.
     if (token && currentView === 'auth') {
       setCurrentView('scripts');
-      // Set initial browser history state
-      window.history.replaceState({ view: 'scripts' }, '', '/scripts');
+      // 🔧 FIXED: Always redirect to base URL after login for clean URL
+      window.history.replaceState({ view: 'scripts' }, '', '/');
     }
     // If the token disappears (logged out) while in editor or scripts view,
     // force back to auth view.
@@ -102,6 +102,7 @@ function App(): JSX.Element {
     
     // Update browser history only if not called from popstate
     if (!skipHistoryUpdate) {
+      // 🔧 RESTORED: Use /scripts URL for normal navigation (user likes this)
       window.history.pushState({ view: 'scripts' }, '', '/scripts');
     }
     

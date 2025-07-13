@@ -14,7 +14,8 @@ import StarterKit from '@tiptap/starter-kit';
 import { Color } from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { TextAlign } from '@tiptap/extension-text-align';
-import { IndexeddbPersistence } from 'y-indexeddb';
+// 🔧 DISABLED: Offline storage - removed IndexeddbPersistence import
+// import { IndexeddbPersistence } from 'y-indexeddb';
 
 import { useAuth } from '../../../AuthContext';
 import { DialogueBlock } from '../extensions/DialogueBlock';
@@ -90,9 +91,8 @@ export const useEditorCore = ({
     
     setYdoc(doc);
 
-    // Set up IndexedDB persistence
-    debugLog(`[Editor Core] Setting up IndexedDB persistence for ${stableScriptId}...`);
-    const persistence = new IndexeddbPersistence(`theater-script-${stableScriptId}`, doc);
+    // 🔧 DISABLED: Offline storage - removed IndexedDB persistence
+    debugLog(`[Editor Core] Skipping IndexedDB persistence - always fetching from backend`);
 
     // 🔧 FIXED: Create WebSocket provider with relative URL for proxy support
     const websocketProvider = new WebsocketProvider(
@@ -159,7 +159,8 @@ export const useEditorCore = ({
         websocketProvider.awareness.off('change', trackAwareness);
       }
       websocketProvider.destroy();
-      persistence.destroy();
+      // 🔧 DISABLED: Offline storage - removed persistence cleanup
+      // persistence.destroy();
       doc.destroy();
       setProvider(null);
       setYdoc(null);
@@ -269,7 +270,7 @@ export const useEditorCore = ({
       // Only sync if content changed and enough time has passed
       if (currentContent !== contentSnapshot && now - lastSyncTime > 500) {
         try {
-          await storeContentSnapshot(stableToken, stableScriptId, currentContent);
+          await storeContentSnapshot(stableScriptId, currentContent);
           setContentSnapshot(currentContent);
           setLastSyncTime(now);
           debugLog('[Real-time Sync] ✅ Content sync successful');
@@ -291,14 +292,17 @@ export const useEditorCore = ({
 
     const loadInitialContent = async () => {
       try {
-        const scriptData = await getScriptWithBlocks(stableToken, stableScriptId);
-        const speakers = extractSpeakerNames(scriptData.blocks);
-        setAvailableSpeakers(speakers);
+        const scriptData = await getScriptWithBlocks(stableScriptId);
         
         if (scriptData.blocks.length > 0) {
           const content = convertBlocksToTiptapContent(scriptData.blocks);
           editorInstance.commands.setContent(content);
           setContentSnapshot(editorInstance.getHTML());
+          
+          // 🔧 FIXED: Extract speakers from converted HTML content, not raw blocks
+          const speakers = extractSpeakerNames(content);
+          setAvailableSpeakers(Array.from(speakers));
+          
           debugLog('[YJS Sync] ✅ Using TipTap Collaboration extension for all YJS sync (prevents cursor issues)');
         }
       } catch (error) {

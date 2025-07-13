@@ -241,10 +241,10 @@ html, body {
 /* ===== DIALOGUE BLOCKS ===== */
 
 .ProseMirror [data-type="dialogue-block"] {
-  margin: 1em 0;
+  margin: 1.5em 0;  /* Increased from 1em to 1.5em for better separation */
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: 0.5em;  /* Increased from var(--space-sm) to 0.5em for more breathing room */
   
   /* Consistent text behavior */
   word-break: normal;
@@ -256,6 +256,7 @@ html, body {
   color: var(--color-accent, #3b82f6);
   font-size: var(--font-size-base);
   line-height: var(--line-height-tight);
+  margin-bottom: 0.3em;  /* Add spacing after speaker name */
   
   /* Text consistency */
   word-break: normal;
@@ -265,10 +266,56 @@ html, body {
 .ProseMirror [data-type="dialogue-text"] {
   font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
+  margin-left: 1em;  /* Indent dialogue text slightly for better visual hierarchy */
   
   /* Text consistency */
   word-break: normal;
   overflow-wrap: break-word;
+}
+
+.ProseMirror [data-type="dialogue-text"] p {
+  margin: 0.3em 0;  /* Add some spacing between dialogue paragraphs */
+}
+
+/* ===== MONOLOGUE BLOCKS ===== */
+
+.ProseMirror [data-type="monologue-block"] {
+  margin: 2em 0;  /* Extra spacing for monologues as they're typically longer sections */
+  display: flex;
+  flex-direction: column;
+  gap: 0.7em;  /* Slightly more gap for monologue content */
+  
+  /* Consistent text behavior */
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+.ProseMirror [data-type="monologue-block"] [data-type="speaker"] {
+  margin-bottom: 0.5em;  /* More spacing after monologue speaker name */
+  font-size: 1.1em;  /* Slightly larger font for monologue speakers */
+}
+
+.ProseMirror [data-type="monologue-block"] [data-type="dialogue-text"] {
+  margin-left: 0.5em;  /* Less indent for monologue text */
+}
+
+/* ===== STAGE DIRECTIONS ===== */
+
+.ProseMirror p em {
+  color: #666;  /* Gray color for stage directions in italics */
+  font-style: italic;
+  margin: 1em 0;  /* Extra spacing around stage directions */
+}
+
+/* ===== SECTION BREAKS ===== */
+
+.ProseMirror hr {
+  margin: 3em 0;  /* Large spacing for section breaks */
+  border: none;
+  border-top: 2px solid #e5e7eb;
+  width: 50%;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ===== HEADINGS ===== */

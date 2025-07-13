@@ -38,11 +38,10 @@ export default defineConfig({
       interval: 500,     // Polling interval (ms)
     },
     // Proxy API requests to backend in development mode
-    // Use Docker service name for container-to-container communication
-    // Fallback to network IP for development outside Docker
+    // Use backend container name for Docker networking
     proxy: {
       '/api': {
-        target: process.env.VITE_BACKEND_URL || 'http://backend:3001',
+        target: process.env.VITE_BACKEND_URL || 'http://dev_pessoa_backend:3001',
         changeOrigin: true,
         secure: false,
         ws: true, // Enable WebSocket proxying for real-time collaboration
@@ -56,17 +55,17 @@ export default defineConfig({
         },
       },
       '/login': {
-        target: process.env.VITE_BACKEND_URL || 'http://backend:3001',
+        target: process.env.VITE_BACKEND_URL || 'http://dev_pessoa_backend:3001',
         changeOrigin: true,
         secure: false,
       },
       '/register': {
-        target: process.env.VITE_BACKEND_URL || 'http://backend:3001',
+        target: process.env.VITE_BACKEND_URL || 'http://dev_pessoa_backend:3001',
         changeOrigin: true,
         secure: false,
       },
       '/health': {
-        target: process.env.VITE_BACKEND_URL || 'http://backend:3001',
+        target: process.env.VITE_BACKEND_URL || 'http://dev_pessoa_backend:3001',
         changeOrigin: true,
         secure: false,
       },

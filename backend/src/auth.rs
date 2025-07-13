@@ -209,6 +209,10 @@ pub struct WsAuthUser {
 #[derive(Deserialize, Debug)]
 struct WsTokenParams {
     token: String,
+    #[serde(rename = "botName")]
+    bot_name: Option<String>,
+    #[serde(rename = "botColor")]
+    bot_color: Option<String>,
 }
 
 #[async_trait]
@@ -254,7 +258,13 @@ where
             }
         };
         
-        tracing::info!("WS Auth: Authentication successful for user: {} ({})", claims.username, claims.sub);
+        // Log bot information if present (for demo mode)
+        if let (Some(bot_name), Some(bot_color)) = (params.bot_name.as_ref(), params.bot_color.as_ref()) {
+            tracing::info!("WS Auth: Bot authentication successful - Name: {}, Color: {}, User: {} ({})", 
+                          bot_name, bot_color, claims.username, claims.sub);
+        } else {
+            tracing::info!("WS Auth: User authentication successful: {} ({})", claims.username, claims.sub);
+        }
         
         Ok(WsAuthUser { user_id: claims.sub })
     }

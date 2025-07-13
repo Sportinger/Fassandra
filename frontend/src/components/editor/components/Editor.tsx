@@ -3,7 +3,7 @@
  * Orchestrates all editor sub-systems with responsive design
  */
 
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useAuth } from '../../../AuthContext';
 import { Header } from '../../Header';
 import { useResponsiveDesign } from '../hooks/useResponsiveDesign';
@@ -13,14 +13,22 @@ import { Toolbar } from './toolbar/Toolbar';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { SinglePageView, MultiPageView } from '../ViewModes';
 import { AudioTranscription } from './AudioTranscription';
+// Removed DemoModeManager import - development utility
 // import { ErrorDisplay } from './ui/ErrorDisplay';
 // import { StatusIndicator } from './ui/StatusIndicator';
 import type { EditorProps, ViewMode } from '../types';
+import { getPageBreaks, updatePageBreaks, PageBreakInfo, PageBreakUpdate } from '../../../api';
 
 // Import the consolidated styles
 import '../styles/variables.css';
 import '../styles/responsive.css';
 import '../styles/toolbar.css';
+
+interface PageBreak {
+  id: string;
+  pageNumber: number;
+  position: number; // Position in the document (percentage from top)
+}
 
 export const Editor: React.FC<EditorProps> = ({ 
   scriptId, 
@@ -58,7 +66,14 @@ export const Editor: React.FC<EditorProps> = ({
   // Local UI state
   const [viewMode, setViewMode] = useState<ViewMode>('single-page');
   const [showRuler, setShowRuler] = useState(false);
+  const [showPageNumbers, setShowPageNumbers] = useState(false);
   const [audioTranscriptionActive, setAudioTranscriptionActive] = useState(false);
+  const [pageBreaks, setPageBreaks] = useState<PageBreak[]>([]);
+  const [pageBreakInfo, setPageBreakInfo] = useState<PageBreakInfo[]>([]);
+  const [loadingPageBreaks, setLoadingPageBreaks] = useState(false);
+  
+  // Removed demo mode state - development utility
+  // Removed demo-related state - development utility
   const [localContextMenu, setLocalContextMenu] = useState<{
     x: number;
     y: number;
@@ -73,10 +88,231 @@ export const Editor: React.FC<EditorProps> = ({
     onPageBackground: false,
   });
 
+  // Fetch page breaks when editor is ready
+  useEffect(() => {
+    if (!scriptId || !token) return;
+
+    const fetchPageBreaks = async () => {
+      try {
+        setLoadingPageBreaks(true);
+        const response = await getPageBreaks(scriptId, token);
+        setPageBreakInfo(response.blocks);
+        
+        // Convert page break info to visual page breaks
+        const breaks: PageBreak[] = [];
+        const pageNumbers = [...new Set(response.blocks.map(b => b.page_number))].sort((a, b) => a - b);
+        
+        // Calculate cumulative content length for each page to position breaks correctly
+        const pageContentLengths: { [key: number]: number } = {};
+        let totalContentLength = 0;
+        
+        // Group blocks by page and calculate content lengths
+        pageNumbers.forEach(pageNum => {
+          const pageBlocks = response.blocks.filter(b => b.page_number === pageNum);
+          const pageContentLength = pageBlocks.reduce((sum, block) => {
+            // Estimate content length (characters + formatting)
+            const contentLength = (block.content_preview || '').length + 50; // +50 for formatting/spacing
+            return sum + contentLength;
+          }, 0);
+          pageContentLengths[pageNum] = pageContentLength;
+          totalContentLength += pageContentLength;
+        });
+        
+        // Calculate cumulative positions for page breaks
+        let cumulativeLength = 0;
+        pageNumbers.forEach((pageNum, index) => {
+          if (pageNum > 1) { // Don't create a break before page 1
+            // Add previous page content length to cumulative position
+            if (index > 0) {
+              cumulativeLength += pageContentLengths[pageNumbers[index - 1]] || 0;
+            }
+            
+            // Convert to pixel position (assume ~1000px document height for typical script)
+            const estimatedDocHeight = Math.max(1000, totalContentLength * 0.8); // Adaptive height
+            const pixelPosition = (cumulativeLength / totalContentLength) * estimatedDocHeight;
+            
+            breaks.push({
+              id: `page-${pageNum}`,
+              pageNumber: pageNum,
+              position: Math.max(50, pixelPosition), // Minimum 50px from top
+            });
+          }
+        });
+        
+        setPageBreaks(breaks);
+        debugLog('[Editor] Loaded page breaks with calculated positions:', breaks);
+      } catch (error) {
+        console.error('Failed to fetch page breaks:', error);
+      } finally {
+        setLoadingPageBreaks(false);
+      }
+    };
+
+    fetchPageBreaks();
+  }, [scriptId, token, debugLog]);
+
+  // Handle page break changes with real-time synchronization
+  const handlePageBreaksChange = async (updatedPageBreaks: PageBreak[]) => {
+    if (!token) return;
+
+    try {
+      setPageBreaks(updatedPageBreaks);
+      
+      // Real-time sync: Update Yjs document with page break changes
+      if (ydoc) {
+        const pageBreakMap = ydoc.getMap('pageBreaks');
+        ydoc.transact(() => {
+          pageBreakMap.set('breaks', updatedPageBreaks);
+          pageBreakMap.set('lastUpdated', Date.now());
+          pageBreakMap.set('updatedBy', user?.id || 'unknown');
+        });
+        debugLog('[Editor] Synchronized page breaks via Yjs:', updatedPageBreaks);
+      }
+      
+      // Convert page break changes to block updates
+      const updates: PageBreakUpdate[] = [];
+      
+      // Logic to determine which blocks need page number updates based on page break positions
+      // This is simplified - in a real implementation, you'd need to map page break positions
+      // to actual block positions in the document
+      pageBreakInfo.forEach(blockInfo => {
+        const pageBreak = updatedPageBreaks.find(pb => pb.pageNumber === blockInfo.page_number);
+        if (pageBreak) {
+          updates.push({
+            block_id: blockInfo.block_id,
+            page_number: pageBreak.pageNumber,
+          });
+        }
+      });
+
+      if (updates.length > 0) {
+        await updatePageBreaks(scriptId, updates, token);
+        debugLog('[Editor] Updated page breaks in database:', updates);
+      }
+    } catch (error) {
+      console.error('Failed to update page breaks:', error);
+      // Revert changes on error
+      const response = await getPageBreaks(scriptId, token);
+      setPageBreakInfo(response.blocks);
+    }
+  };
+
+  // Recalculate page break positions based on actual content in editor
+  const recalculatePageBreakPositions = useCallback(() => {
+    if (!editor || !showPageNumbers || pageBreakInfo.length === 0) return;
+
+    const editorElement = editor.view.dom;
+    if (!editorElement) return;
+
+    const updatedBreaks: PageBreak[] = [];
+    const pageNumbers = [...new Set(pageBreakInfo.map(b => b.page_number))].sort((a, b) => a - b);
+    
+    let cumulativeHeight = 0;
+    
+    pageNumbers.forEach((pageNum, index) => {
+      if (pageNum > 1) {
+        // For uploaded content, use the estimated position with some dynamic adjustment
+        const pageBlocks = pageBreakInfo.filter(b => b.page_number === pageNum);
+        const estimatedHeight = pageBlocks.length * 80; // Rough estimate: 80px per block
+        
+        // Add some spacing between pages
+        cumulativeHeight += estimatedHeight + 40; // 40px spacing between pages
+        
+        updatedBreaks.push({
+          id: `page-${pageNum}`,
+          pageNumber: pageNum,
+          position: Math.max(100, cumulativeHeight), // Minimum 100px from top
+        });
+      }
+    });
+
+    if (updatedBreaks.length > 0) {
+      setPageBreaks(updatedBreaks);
+      debugLog('[Editor] Recalculated page break positions:', updatedBreaks);
+    }
+  }, [editor, showPageNumbers, pageBreakInfo, debugLog]);
+
+  // Initialize default page breaks for manual text entry
+  useEffect(() => {
+    if (!editor || !showPageNumbers) return;
+
+    // If we have page break info from uploaded content, recalculate positions
+    if (pageBreakInfo.length > 0) {
+      recalculatePageBreakPositions();
+      return;
+    }
+
+    // Create default page breaks every 500px (approximate page height)
+    const defaultBreaks: PageBreak[] = [];
+    for (let i = 2; i <= 5; i++) { // Create page breaks for pages 2-5
+      defaultBreaks.push({
+        id: `default-page-${i}`,
+        pageNumber: i,
+        position: (i - 1) * 500, // 500px per page approximation
+      });
+    }
+
+    // Only set default breaks if we don't have any existing breaks
+    if (pageBreaks.length === 0) {
+      setPageBreaks(defaultBreaks);
+      debugLog('[Editor] Created default page breaks for manual text entry:', defaultBreaks);
+    }
+  }, [editor, showPageNumbers, pageBreaks.length, pageBreakInfo.length, recalculatePageBreakPositions, debugLog]);
+
+  // Recalculate positions when content changes
+  useEffect(() => {
+    if (!editor || !showPageNumbers || pageBreakInfo.length === 0) return;
+
+    const handleContentUpdate = () => {
+      // Debounce recalculation to avoid excessive updates
+      setTimeout(() => {
+        recalculatePageBreakPositions();
+      }, 1000);
+    };
+
+    editor.on('update', handleContentUpdate);
+
+    return () => {
+      editor.off('update', handleContentUpdate);
+    };
+  }, [editor, showPageNumbers, pageBreakInfo.length, recalculatePageBreakPositions]);
+
+  // Listen for real-time page break changes from other users
+  useEffect(() => {
+    if (!ydoc || !showPageNumbers) return;
+
+    const pageBreakMap = ydoc.getMap('pageBreaks');
+    
+    const handlePageBreakChanges = () => {
+      const remoteBreaks = pageBreakMap.get('breaks');
+      const lastUpdated = pageBreakMap.get('lastUpdated');
+      const updatedBy = pageBreakMap.get('updatedBy');
+      
+      if (remoteBreaks && updatedBy !== user?.id) {
+        debugLog('[Editor] Received remote page break changes:', remoteBreaks);
+        setPageBreaks(remoteBreaks);
+        
+        // Show notification to user about remote changes
+        console.log(`📄 Page numbers updated by another user at ${new Date(lastUpdated).toLocaleTimeString()}`);
+      }
+    };
+
+    pageBreakMap.observe(handlePageBreakChanges);
+
+    return () => {
+      pageBreakMap.unobserve(handlePageBreakChanges);
+    };
+  }, [ydoc, showPageNumbers, user?.id, debugLog]);
+
   // Debug ruler state
   useEffect(() => {
     debugLog('[Editor] showRuler state changed:', showRuler);
   }, [showRuler, debugLog]);
+
+  // Debug page numbers state
+  useEffect(() => {
+    debugLog('[Editor] showPageNumbers state changed:', showPageNumbers);
+  }, [showPageNumbers, debugLog]);
   
   // Debug view mode changes
   useEffect(() => {
@@ -156,6 +392,10 @@ export const Editor: React.FC<EditorProps> = ({
     };
   }, [handleAnimatedNavigation]);
 
+  // Removed demo manager initialization - development utility
+
+  // Removed demo mode toggle function - development utility
+
   // Debug logging for responsive behavior
   useEffect(() => {
     debugLog('[Editor] Responsive config:', {
@@ -201,7 +441,8 @@ export const Editor: React.FC<EditorProps> = ({
         onLayoutChange={() => {}} // TODO: Implement
         onCreateNewLayout={async () => {}} // TODO: Implement
         onSaveLayout={async () => {}} // TODO: Implement
-        activeUserCount={activeUserCount}
+        activeUserCount={activeUserCount} // Removed demo bot count
+        // Removed demo mode props - development utility
       />
       
       {/* Status indicator for mobile */}
@@ -212,12 +453,17 @@ export const Editor: React.FC<EditorProps> = ({
         </div>
       )}
       
+      {/* Removed demo mode status indicator - development utility */}
+      
       {/* Main editor content with ViewMode support */}
       {viewMode === 'single-page' ? (
         <SinglePageView 
           showRuler={showRuler}
+          showPageNumbers={showPageNumbers}
           onToggleRuler={() => setShowRuler(!showRuler)}
           onToggleViewMode={() => setViewMode('multiple-pages')}
+          pageBreaks={pageBreaks}
+          onPageBreaksChange={handlePageBreaksChange}
         >
           {editor ? (
             <div 
@@ -390,9 +636,11 @@ export const Editor: React.FC<EditorProps> = ({
         hasTextSelection={editor?.state.selection.empty === false}
         viewMode={viewMode}
         showRuler={showRuler}
+        showPageNumbers={showPageNumbers}
         speakerNames={new Set(availableSpeakers)}
         onSetViewMode={setViewMode}
         onToggleRuler={() => setShowRuler(!showRuler)}
+        onTogglePageNumbers={() => setShowPageNumbers(!showPageNumbers)}
       />
       
       {/* Audio Transcription - Floating */}

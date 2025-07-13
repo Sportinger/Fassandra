@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
-import { IndexeddbPersistence } from 'y-indexeddb';
+// 🔧 DISABLED: Offline storage - removed IndexeddbPersistence import
+// import { IndexeddbPersistence } from 'y-indexeddb';
 import { ScriptLayout } from '../../../types';
 import { ContextMenu, ViewMode, ConnectionStatus } from '../types';
 
@@ -9,7 +10,8 @@ export const useEditorState = (initialTitle?: string) => {
   // Core document and provider state
   const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
-  const persistenceRef = useRef<IndexeddbPersistence | null>(null);
+  // 🔧 DISABLED: Offline storage - removed persistenceRef
+  // const persistenceRef = useRef<IndexeddbPersistence | null>(null);
 
   // Script metadata state
   const [scriptTitle, setScriptTitle] = useState<string>(initialTitle || 'Loading...');
@@ -51,7 +53,8 @@ export const useEditorState = (initialTitle?: string) => {
     setYdoc,
     provider,
     setProvider,
-    persistenceRef,
+    // 🔧 DISABLED: Offline storage - removed persistenceRef
+    // persistenceRef,
 
     // Script metadata
     scriptTitle,

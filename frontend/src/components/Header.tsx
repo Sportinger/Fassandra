@@ -16,6 +16,9 @@ interface HeaderProps {
   onLayoutChange?: (layout: ScriptLayout) => void;
   onCreateNewLayout?: () => void;
   onSaveLayout?: () => void;
+  // Demo mode props
+  isDemoMode?: boolean;
+  onToggleDemoMode?: () => void;
 }
 
 const useTypewriter = (targetText: string, speed: number = 400) => {
@@ -137,7 +140,9 @@ export const Header: React.FC<HeaderProps> = ({
   currentLayout,
   onLayoutChange,
   onCreateNewLayout,
-  onSaveLayout
+  onSaveLayout,
+  isDemoMode = false,
+  onToggleDemoMode
 }) => {
   const { user, setToken, theme, setTheme, token } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -160,6 +165,8 @@ export const Header: React.FC<HeaderProps> = ({
     : user?.username || user?.email || 'User';
 
   const handleLogout = () => {
+    // 🔧 FIXED: Immediately clear URL on logout to prevent persistence
+    window.history.replaceState({ view: 'auth' }, '', '/');
     setToken(null);
   };
 
@@ -324,6 +331,13 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 )}
               </div>
+            )}
+            
+            {/* Demo Mode Toggle (only show in editor view) */}
+            {currentView === 'editor' && onToggleDemoMode && (
+              <button onClick={onToggleDemoMode}>
+                {isDemoMode ? '🔴 Stop Demo' : '🤖 Demo Mode'}
+              </button>
             )}
             
             {/* Regular Menu Options */}

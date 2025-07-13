@@ -1,16 +1,15 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
-import { IndexeddbPersistence } from 'y-indexeddb';
+// 🔧 DISABLED: Offline storage - removed IndexeddbPersistence import
+// import { IndexeddbPersistence } from 'y-indexeddb';
 import { getScriptWithBlocks } from '../../../api';
 import { isYDocEmpty } from '../utils/formatters';
 import { convertBlocksToTiptapContent } from '../utils/contentConverters';
 import { logDebugInfo, isMobile } from '../../../utils/debug';
 import { ConnectionStatus } from '../types';
-// Import mobile debug utilities for mobile browser troubleshooting
-import '../../../utils/mobile-debug';
-// Import console forwarder for mobile debugging
-import { consoleForwarder } from '../../../utils/console-forwarder';
+// Removed mobile debug utilities - development utility
+// Removed console forwarder - development utility
 
 // Helper function to detect Chrome browser (including Brave)
 const isChrome = () => {
@@ -37,7 +36,8 @@ interface UseYjsConnectionProps {
   setYdoc: (doc: Y.Doc | null) => void;
   // provider: WebsocketProvider | null; // Not used directly in this hook
   setProvider: (provider: WebsocketProvider | null) => void;
-  persistenceRef: React.MutableRefObject<IndexeddbPersistence | null>;
+  // 🔧 DISABLED: Offline storage - removed persistenceRef
+  // persistenceRef: React.MutableRefObject<IndexeddbPersistence | null>;
   status: ConnectionStatus;
   setStatus: (status: ConnectionStatus | ((prev: ConnectionStatus) => ConnectionStatus)) => void;
   setErrorMessage: (message: string | null) => void;
@@ -55,7 +55,8 @@ export const useYjsConnection = ({
   setYdoc,
   // provider, // Not used directly in this hook, managed internally
   setProvider,
-  persistenceRef,
+  // 🔧 DISABLED: Offline storage - removed persistenceRef parameter
+  // persistenceRef,
   status: _status,
   setStatus,
   setErrorMessage,
@@ -92,10 +93,9 @@ export const useYjsConnection = ({
     });
     console.log('[YJS] Initializing connection...');
     
-    // Enable console forwarder for mobile debugging
+    // Removed console forwarder for mobile debugging - development utility
     if (isMobile()) {
-      console.log('[YJS] Mobile device detected - enabling console forwarder...');
-      consoleForwarder.enable(scriptId, user.id);
+      console.log('[YJS] Mobile device detected - debug logging enabled');
     }
     
     logDebugInfo('Editor', `Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id}), browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : browserInfo.isSafari ? 'Safari' : 'Other'}, mobile: ${browserInfo.isMobile}`);
@@ -132,44 +132,33 @@ export const useYjsConnection = ({
     });
     logDebugInfo('Editor', `WebSocket Base URL: ${wsBaseUrl}`);
 
-    console.log(`[YJS] Setting up IndexedDB persistence for ${scriptId}...`);
-    const persistence = new IndexeddbPersistence(`theater-script-${scriptId}`, currentDoc);
-    persistenceRef.current = persistence;
+    // 🔧 DISABLED: Offline storage - always fetch from backend instead of IndexedDB
+    console.log(`[YJS] Skipping IndexedDB persistence - always fetching from backend`);
+    
+    // Always fetch content from backend since we disabled offline storage
+    if (token) {
+      console.log(`[Editor Fetch] Fetching initial content for script ${scriptId} from backend`);
+      getScriptWithBlocks(scriptId)
+        .then(scriptData => {
+          console.log("[Editor Fetch] Received scriptData:", scriptData);
+          setScriptTitle(scriptData.script.title);
+          setScriptCreationDate(scriptData.script.created_at);
 
-    // Check initial state immediately after creating persistence
-    console.log(`[YJS] Initial persistence state:`, {
-      synced: persistence.synced,
-      isDocEmpty: isYDocEmpty(currentDoc),
-      hasToken: !!token
-    });
+          // Convert blocks to Tiptap content and set
+          const tiptapContent = convertBlocksToTiptapContent(scriptData.blocks);
+          console.log("[Editor Fetch] Converted to TipTap content:", tiptapContent);
 
-    // If already synced, handle it immediately
-    if (persistence.synced) {
-      console.log(`[YJS] Persistence already synced, checking content immediately`);
-      if (isYDocEmpty(currentDoc) && token) {
-        console.log(`[Editor Fetch] Y.Doc empty (immediate check), fetching initial content for script ${scriptId}`);
-        getScriptWithBlocks(token, scriptId)
-          .then(scriptData => {
-            console.log("[Editor Fetch] Received scriptData (immediate):", scriptData);
-            setScriptTitle(scriptData.script.title);
-            setScriptCreationDate(scriptData.script.created_at);
-
-            // Convert blocks to Tiptap content and set
-            const tiptapContent = convertBlocksToTiptapContent(scriptData.blocks);
-            console.log("[Editor Fetch] Converted to TipTap content (immediate):", tiptapContent);
-
-            // Store content to be set when editor is ready
-            setPendingContent(tiptapContent);
-            console.log("[Editor Fetch] Content converted, stored as pending for editor (immediate)");
-          })
-          .catch(error => {
-            console.error("[Editor Fetch] Failed to fetch script content (immediate):", error);
-            setErrorMessage(`Failed to load script: ${error.message}`);
-            setStatus('error');
-          });
-      } else {
-        console.log(`[Editor Fetch] Not fetching content (immediate) - isEmpty: ${isYDocEmpty(currentDoc)}, hasToken: ${!!token}`);
-      }
+          // Store content to be set when editor is ready
+          setPendingContent(tiptapContent);
+          console.log("[Editor Fetch] Content converted, stored as pending for editor");
+        })
+        .catch(error => {
+          console.error("[Editor Fetch] Failed to fetch script content:", error);
+          setErrorMessage(`Failed to load script: ${error.message}`);
+          setStatus('error');
+        });
+    } else {
+      console.log(`[Editor Fetch] No token available for fetching content`);
     }
 
     // Add YJS document event logging for mobile debugging
@@ -191,40 +180,8 @@ export const useYjsConnection = ({
       });
     });
 
-    persistence.on('synced', (isSynced: boolean) => {
-      console.log(`[YJS] IndexedDB sync status: ${isSynced}`);
-      if (isSynced && token) {
-        // Check if content needs fetching AFTER sync - regardless of connection status
-        if (isYDocEmpty(currentDoc)) {
-          console.log(`[Editor Fetch] Y.Doc empty, fetching initial content for script ${scriptId}`);
-          getScriptWithBlocks(token, scriptId)
-            .then(scriptData => {
-              console.log("[Editor Fetch] Received scriptData:", scriptData);
-              setScriptTitle(scriptData.script.title);
-              setScriptCreationDate(scriptData.script.created_at);
-
-              // Convert blocks to Tiptap content and set
-              const tiptapContent = convertBlocksToTiptapContent(scriptData.blocks);
-              console.log("[Editor Fetch] Converted to TipTap content:", tiptapContent);
-
-              // Store content to be set when editor is ready
-              setPendingContent(tiptapContent);
-              console.log("[Editor Fetch] Content converted, stored as pending for editor");
-            })
-            .catch(error => {
-              console.error("[Editor Fetch] Failed to fetch script content:", error);
-              setErrorMessage(`Failed to load script: ${error.message}`);
-              setStatus('error');
-            });
-        } else {
-          console.log(`[Editor Fetch] Y.Doc not empty, skipping fetch. Document has content.`);
-        }
-      } else {
-        console.log(`[Editor Fetch] Not fetching content - isSynced: ${isSynced}, hasToken: ${!!token}`);
-      }
-    });
-
-    console.log(`[YJS] Persistence 'synced' event handler attached`);
+    // 🔧 DISABLED: Offline storage - removed persistence event handler
+    console.log(`[YJS] Skipping persistence event handler - content already fetched from backend`);
 
     // Set up WebSocket provider with auth and mobile fallback
     const roomName = scriptId;
@@ -301,10 +258,11 @@ export const useYjsConnection = ({
       console.log("Cleaning up WebSocket provider and Yjs doc...");
       logDebugInfo('Editor', 'Cleaning up WebSocket provider and Yjs doc');
       
-      if (persistenceRef.current) {
-        persistenceRef.current.destroy();
-        persistenceRef.current = null;
-      }
+      // 🔧 DISABLED: Offline storage - removed persistence cleanup
+      // if (persistenceRef.current) {
+      //   persistenceRef.current.destroy();
+      //   persistenceRef.current = null;
+      // }
       
       if (currentDoc) {
         currentDoc.destroy();

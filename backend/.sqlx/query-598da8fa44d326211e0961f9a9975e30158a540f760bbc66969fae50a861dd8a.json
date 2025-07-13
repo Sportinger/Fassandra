@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, script_id, block_type, content, created_at, block_order FROM blocks WHERE script_id = $1 ORDER BY block_order ASC, created_at ASC",
+  "query": "SELECT id, block_type, content, page_number, block_order \n         FROM blocks \n         WHERE script_id = $1 \n         ORDER BY page_number ASC, block_order ASC",
   "describe": {
     "columns": [
       {
@@ -10,26 +10,21 @@
       },
       {
         "ordinal": 1,
-        "name": "script_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 2,
         "name": "block_type",
         "type_info": "Text"
       },
       {
-        "ordinal": 3,
+        "ordinal": 2,
         "name": "content",
         "type_info": "Text"
       },
       {
-        "ordinal": 4,
-        "name": "created_at",
-        "type_info": "Timestamptz"
+        "ordinal": 3,
+        "name": "page_number",
+        "type_info": "Int4"
       },
       {
-        "ordinal": 5,
+        "ordinal": 4,
         "name": "block_order",
         "type_info": "Int4"
       }
@@ -44,9 +39,8 @@
       false,
       false,
       false,
-      true,
       false
     ]
   },
-  "hash": "af56253c829c5e43f0c2ecd9de035665bdb2224889dd14fc16df56798572d81f"
+  "hash": "598da8fa44d326211e0961f9a9975e30158a540f760bbc66969fae50a861dd8a"
 }

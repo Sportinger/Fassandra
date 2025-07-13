@@ -2,6 +2,8 @@ use sqlx::{PgPool, QueryBuilder};
 use tokio::time::{timeout, Duration};
 use std::sync::Arc;
 use uuid::Uuid;
+use regex::Regex;
+use std::sync::LazyLock;
 use yrs::{
     self,
     sync::{Message as YrsSyncMessage, SyncMessage as YrsInnerSyncMessage},
@@ -10,7 +12,6 @@ use yrs::{
     Doc, ReadTxn, Transact, Update,
     Xml, GetString,
     WriteTxn,
-    Map,
 };
 use yrs::encoding::read::Cursor as YrsIoCursor;
 use tracing::{info, error, warn, debug, trace};
@@ -21,14 +22,19 @@ use crate::analysis::structs::{ContentElement, Dialogue, StageDirection, Monolog
 // Fixed interval configuration  
 const SNAPSHOT_INTERVAL_MILLIS: u64 = 500;  // Run every 500ms for real-time sync
 
+// Static regex compilation for HTML parsing - eliminates hot path compilation
+static PARAGRAPH_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"<p([^>]*)>(.*?)</p>").expect("Invalid paragraph regex")
+});
+
+static DIV_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"<div([^>]*)data-type="([^"]+)"([^>]*)>(.*?)</div>"#).expect("Invalid div regex")
+});
+
 #[derive(Debug)]
 struct SnapshotYjsUpdate {
     id: i64,
     update_data: Vec<u8>,
-    #[allow(dead_code)]
-    user_id: Option<Uuid>,
-    #[allow(dead_code)]
-    created_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Clone)]
@@ -36,6 +42,7 @@ struct NewBlockForSnapshot {
     block_type: String,
     content: Option<String>,
     block_order: i32,
+    page_number: i32,
     metadata: Option<serde_json::Value>,
 }
 
@@ -57,7 +64,7 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
     let updates_to_apply = match sqlx::query_as!(
         SnapshotYjsUpdate,
         r#"
-        SELECT id, update_data, user_id, created_at
+        SELECT id, update_data
         FROM yjs_document_updates
         WHERE script_id = $1 AND id > $2
         ORDER BY created_at ASC, id ASC
@@ -373,44 +380,64 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
                         }
                         
                         // 🚀 PERFORMANCE FIX: Use trace level for detailed parsing logs
+                        let page_number = attributes_map.get("data-page")
+                            .and_then(|p| p.parse::<i32>().ok())
+                            .unwrap_or(1);
                         Ok(ContentElement::Dialogue(Dialogue {
                             id: attributes_map.get("data-id").map(|s| s.to_string()),
                             speaker: Some(speaker),
                             line: Some(dialogue_text),
+                            page_number,
                             extra: HashMap::new(),
                         }))
                     },
                     // OLD format support (backward compatibility)
                     "dialogue" => {
                         let speaker = attributes_map.get("data-speaker").map(|s| s.to_string()).unwrap_or_else(|| "Unknown Speaker".to_string());
+                        let page_number = attributes_map.get("data-page")
+                            .and_then(|p| p.parse::<i32>().ok())
+                            .unwrap_or(1);
                         Ok(ContentElement::Dialogue(Dialogue {
                             id: attributes_map.get("data-id").map(|s| s.to_string()),
                             speaker: Some(speaker),
                             line: Some(current_element_text_content.clone()),
+                            page_number,
                             extra: HashMap::new(),
                         }))
                     },
                     "stage_direction" => {
+                        let page_number = attributes_map.get("data-page")
+                            .and_then(|p| p.parse::<i32>().ok())
+                            .unwrap_or(1);
                         Ok(ContentElement::StageDirection(StageDirection {
                             id: attributes_map.get("data-id").map(|s| s.to_string()),
                             description: Some(current_element_text_content.clone()),
+                            page_number,
                         }))
                     },
                     "monologue" => {
                         let speaker = attributes_map.get("data-speaker").map(|s| s.to_string()).unwrap_or_else(|| "Unknown Speaker".to_string());
+                        let page_number = attributes_map.get("data-page")
+                            .and_then(|p| p.parse::<i32>().ok())
+                            .unwrap_or(1);
                         Ok(ContentElement::Monologue(Monologue {
                             id: attributes_map.get("data-id").map(|s| s.to_string()),
                             speaker: Some(speaker),
                             lines: vec![current_element_text_content.clone()], // Assuming single line for now from direct text
+                            page_number,
                         }))
                     },
                     "joint_dialogue" => {
                         let speakers_str = attributes_map.get("data-speakers").map(|s| s.to_string()).unwrap_or_else(String::new);
                         let speakers = speakers_str.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+                        let page_number = attributes_map.get("data-page")
+                            .and_then(|p| p.parse::<i32>().ok())
+                            .unwrap_or(1);
                         Ok(ContentElement::JointDialogue(JointDialogue {
                             id: attributes_map.get("data-id").map(|s| s.to_string()),
                             speakers,
                             line: Some(current_element_text_content.clone()),
+                            page_number,
                             extra: HashMap::new(),
                         }))
                     },
@@ -418,12 +445,16 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
                         let speaker = attributes_map.get("data-speaker").map(|s| s.to_string()).unwrap_or_else(|| "Unknown Speaker".to_string());
                         let source = attributes_map.get("data-source").map(|s| s.to_string());
                         let language = attributes_map.get("data-language").map(|s| s.to_string());
+                        let page_number = attributes_map.get("data-page")
+                            .and_then(|p| p.parse::<i32>().ok())
+                            .unwrap_or(1);
                         Ok(ContentElement::Reading(Reading {
                             id: attributes_map.get("data-id").map(|s| s.to_string()),
                             speaker: Some(speaker),
                             source,
                             language,
                             reading_text: Some(current_element_text_content.clone()),
+                            page_number,
                         }))
                     },
                     _ => Err(format!("Unknown Pessoa block type attribute: {}", p_block_type)),
@@ -449,10 +480,16 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
                             }
 
                             // 🚀 PERFORMANCE FIX: Reduced logging frequency in hot path
+                            // Extract page number from data-page attribute if available, default to 1
+                            let page_number = attributes_map.get("data-page")
+                                .and_then(|p| p.parse::<i32>().ok())
+                                .unwrap_or(1);
+                            
                             blocks_to_insert.push(NewBlockForSnapshot {
                                 block_type: p_block_type.to_string(),
                                 content: Some(json_content),
                                 block_order: current_order,
+                                page_number,
                                 metadata: if remaining_attributes.is_empty() { None } else { Some(serde_json::to_value(remaining_attributes).unwrap_or_default()) },
                             });
                             current_order += 1;
@@ -480,6 +517,11 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
 
                 if allowed_generic_types.contains(&generic_block_type.as_str()) {
                     info!("[SnapshottingService] Creating generic block: type='{}', order={}, content='{}...', script_id: {}", generic_block_type, current_order, generic_block_content.chars().take(50).collect::<String>(), script_id);
+                    // Extract page number from data-page attribute if available, default to 1
+                    let page_number = attributes_map.get("data-page")
+                        .and_then(|p| p.parse::<i32>().ok())
+                        .unwrap_or(1);
+                    
                     blocks_to_insert.push(NewBlockForSnapshot {
                         block_type: generic_block_type.clone(),
                         content: Some(serde_json::to_string(&generic_block_content).unwrap_or_else(|e| {
@@ -487,6 +529,7 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
                             serde_json::json!({"error": "serialization failed", "original_content": generic_block_content}).to_string()
                         })),
                         block_order: current_order,
+                        page_number,
                         // For generic blocks, store all original attributes as metadata
                         metadata: if attributes_map.is_empty() { None } else { Some(serde_json::to_value(attributes_map.clone()).unwrap_or_default()) },
                     });
@@ -546,6 +589,7 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
                                  serde_json::json!({"error": "serialization failed", "original_content": loose_text_trimmed}).to_string()
                             })),
                             block_order: current_order,
+                            page_number: 1, // Default page for loose text
                             metadata: None,
                         });
                         current_order += 1;
@@ -581,6 +625,7 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
                         block_type: "paragraph".to_string(),
                         content: Some(raw_text),
                         block_order: 0,
+                        page_number: 1, // Default page for YText fallback
                         metadata: None,
                     });
                     found_content = true;
@@ -595,9 +640,8 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
     }
 
     // ------------------------------------------------------------------
-    // ✨ Content Snapshot Processing: If YJS and YText extraction failed,
-    // use the stored content snapshot as the primary content source
-    // This is now our main content processing system since YJS compatibility is broken
+    // ✨ Enhanced Content Snapshot Processing: Parse HTML into structured blocks with page numbers
+    // Instead of creating one big "content" block, preserve the detailed block structure
     // ------------------------------------------------------------------
     if blocks_to_insert.is_empty() {
         debug!("[SnapshottingService] Content snapshot fallback: No blocks from YJS, trying content snapshot...");
@@ -614,21 +658,43 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
             Ok(Some(snapshot)) => {
                 if let Some(content) = snapshot.content_snapshot {
                     if !content.trim().is_empty() {
-                        info!("[SnapshottingService] 📸 Using content snapshot fallback for script_id: {}", script_id);
+                        info!("[SnapshottingService] 📸 Using enhanced content snapshot fallback for script_id: {}", script_id);
                         
-                        // Create a single block from the HTML content
+                        // Parse HTML content into structured blocks with page numbers
+                        match parse_html_to_blocks_with_pages(&content) {
+                            Ok(parsed_blocks) => {
+                                for (index, (block_type, block_content, page_number)) in parsed_blocks.into_iter().enumerate() {
+                                    blocks_to_insert.push(NewBlockForSnapshot {
+                                        block_type,
+                                        content: Some(block_content),
+                                        block_order: index as i32,
+                                        page_number, // Use parsed page number
+                                        metadata: Some(serde_json::json!({
+                                            "source": "content_snapshot_parsed",
+                                            "format": snapshot.snapshot_format.clone().unwrap_or_else(|| "html".to_string()),
+                                            "fallback_reason": "yjs_reconstruction_failed",
+                                            "page_number": page_number
+                                        })),
+                                    });
+                                }
+                                info!("[SnapshottingService] ✅ Created {} structured blocks from content snapshot", blocks_to_insert.len());
+                            }
+                            Err(e) => {
+                                error!("[SnapshottingService] Failed to parse content snapshot HTML: {}. Falling back to single content block.", e);
+                                // Fallback to original single-block approach
                         blocks_to_insert.push(NewBlockForSnapshot {
                             block_type: "content".to_string(),
                             content: Some(content.clone()),
                             block_order: 0,
+                                    page_number: 1, // Default page for single content fallback
                             metadata: Some(serde_json::json!({
                                 "source": "content_snapshot",
                                 "format": snapshot.snapshot_format.unwrap_or_else(|| "html".to_string()),
-                                "fallback_reason": "yjs_reconstruction_failed"
+                                        "fallback_reason": "yjs_reconstruction_failed_and_parse_failed"
                             })),
                         });
-                        
-                        info!("[SnapshottingService] ✅ Created block from content snapshot: {} chars", content.len());
+                            }
+                        }
                     } else {
                         debug!("[SnapshottingService] Content snapshot is empty for script_id: {}", script_id);
                     }
@@ -655,6 +721,21 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
     }
 
     if !blocks_to_insert.is_empty() {
+        // 🚨 PROTECTION: Don't overwrite recently uploaded content
+        // Check if blocks were recently created from upload (within last 10 minutes for testing)
+        let recent_upload_check = sqlx::query!(
+            "SELECT COUNT(*) as count FROM blocks WHERE script_id = $1 AND created_at > NOW() - INTERVAL '10 minutes'",
+            script_id
+        )
+        .fetch_one(pool.as_ref())
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to check for recent uploads for script {}: {}", script_id, e))?;
+
+        if recent_upload_check.count.unwrap_or(0) > 0 {
+            info!("[SnapshottingService] 🛡️ Skipping block overwrite for script_id: {} - contains recently uploaded content (created within 2 minutes)", script_id);
+            return Ok(());
+        }
+
         let blocks_count = blocks_to_insert.len();
         info!("[SnapshottingService] Attempting to update blocks table for script_id: {}. Found {} blocks from Yjs doc.", script_id, blocks_count);
         
@@ -684,7 +765,7 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
             // This reduces transaction time from O(n) to O(1) and prevents deadlocks
             if !blocks_to_insert_clone.is_empty() {
                 let mut query_builder = QueryBuilder::new(
-                    "INSERT INTO blocks (script_id, block_type, content, block_order, metadata) "
+                    "INSERT INTO blocks (script_id, block_type, content, block_order, page_number, metadata) "
                 );
                 
                 query_builder.push_values(blocks_to_insert_clone.iter(), |mut b, block_data| {
@@ -692,6 +773,7 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
                      .push_bind(&block_data.block_type)
                      .push_bind(&block_data.content)
                      .push_bind(block_data.block_order)
+                     .push_bind(block_data.page_number)
                      .push_bind(&block_data.metadata);
                 });
 
@@ -765,6 +847,145 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
 
 
     Ok(())
+}
+
+/// Enhanced HTML parsing that extracts page numbers from HTML content.
+/// 
+/// This function parses HTML content from TipTap editor and extracts both the block structure
+/// and page number information, preserving the detailed layout that AI originally created.
+///
+/// # Arguments
+/// * `html_content` - HTML string containing editor content with potential page indicators
+///
+/// # Returns
+/// * `Result<Vec<(String, String, i32)>>` - Vector of (block_type, content, page_number) tuples
+fn parse_html_to_blocks_with_pages(html_content: &str) -> Result<Vec<(String, String, i32)>, anyhow::Error> {
+    let mut blocks = Vec::new();
+    
+    // Enhanced HTML parsing that preserves page number information
+    // Look for data-page attributes and page indicators in the HTML
+    
+    // Use static compiled regexes for better performance
+    
+    let mut current_page = 1;
+    
+            // First, look for structured Pessoa blocks (dialogue, stage directions, etc.)
+        for cap in DIV_REGEX.captures_iter(html_content) {
+        let attributes = cap.get(1).map_or("", |m| m.as_str());
+        let block_type = cap.get(2).map_or("paragraph", |m| m.as_str());
+        let content_html = cap.get(4).map_or("", |m| m.as_str());
+        
+        // Extract page number from data-page attribute
+        let page_number = extract_attribute_value(attributes, "data-page")
+            .and_then(|p| p.parse::<i32>().ok())
+            .unwrap_or(current_page);
+        
+        // Clean HTML content
+        let clean_content = remove_html_tags_simple(content_html);
+        
+        if !clean_content.trim().is_empty() {
+            // Create structured content based on block type
+            let structured_content = match block_type {
+                "dialogue-block" | "dialogue" => {
+                    // Try to extract speaker and line from attributes or content
+                    let speaker = extract_attribute_value(attributes, "data-speaker").unwrap_or_else(|| "Unknown Speaker".to_string());
+                    serde_json::json!({
+                        "speaker": speaker,
+                        "line": clean_content.trim()
+                    }).to_string()
+                },
+                "stage_direction" => {
+                    serde_json::json!({
+                        "description": clean_content.trim()
+                    }).to_string()
+                },
+                _ => {
+                    serde_json::json!(clean_content.trim()).to_string()
+                }
+            };
+            
+            blocks.push((block_type.to_string(), structured_content, page_number));
+            current_page = page_number; // Update current page for subsequent blocks
+        }
+    }
+    
+    // Then process regular paragraphs that aren't structured Pessoa blocks
+    for cap in PARAGRAPH_REGEX.captures_iter(html_content) {
+        let attributes = cap.get(1).map_or("", |m| m.as_str());
+        let content_html = cap.get(2).map_or("", |m| m.as_str());
+        
+        // Skip if this paragraph is already processed as a structured block
+        if content_html.contains("data-type=") {
+            continue;
+        }
+        
+        // Extract page number from data-page attribute
+        let page_number = extract_attribute_value(attributes, "data-page")
+            .and_then(|p| p.parse::<i32>().ok())
+            .unwrap_or(current_page);
+        
+        let clean_content = remove_html_tags_simple(content_html);
+        
+        if !clean_content.trim().is_empty() {
+            // Detect content type heuristically
+            let (block_type, final_content) = if clean_content.trim().starts_with('(') && clean_content.trim().ends_with(')') {
+                ("stage_direction", serde_json::json!({
+                    "description": clean_content.trim().trim_start_matches('(').trim_end_matches(')')
+                }).to_string())
+            } else if clean_content.contains(':') && clean_content.split(':').count() == 2 {
+                let parts: Vec<&str> = clean_content.split(':').collect();
+                let speaker = parts[0].trim();
+                let line = parts[1].trim();
+                ("dialogue", serde_json::json!({
+                    "speaker": speaker,
+                    "line": line
+                }).to_string())
+            } else {
+                ("paragraph", serde_json::json!(clean_content.trim()).to_string())
+            };
+            
+            blocks.push((block_type.to_string(), final_content, page_number));
+            current_page = page_number; // Update current page for subsequent blocks
+        }
+    }
+    
+    // If no blocks were parsed, create a default paragraph
+    if blocks.is_empty() {
+        let clean_content = remove_html_tags_simple(html_content);
+        if !clean_content.trim().is_empty() {
+            blocks.push(("paragraph".to_string(), serde_json::json!(clean_content.trim()).to_string(), 1));
+        }
+    }
+    
+    Ok(blocks)
+}
+
+/// Simple HTML tag removal function
+fn remove_html_tags_simple(html: &str) -> String {
+    let tag_regex = Regex::new(r"<[^>]*>").unwrap();
+    tag_regex.replace_all(html, "")
+        .replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .trim()
+        .to_string()
+}
+
+/// Extract attribute value from HTML attributes string
+fn extract_attribute_value(attributes: &str, attr_name: &str) -> Option<String> {
+    // Simple string parsing approach to avoid regex syntax issues
+    let search_pattern = format!("{}=\"", attr_name);
+    if let Some(start) = attributes.find(&search_pattern) {
+        let start_pos = start + search_pattern.len();
+        if let Some(end) = attributes[start_pos..].find('"') {
+            let value = &attributes[start_pos..start_pos + end];
+            return Some(value.to_string());
+        }
+    }
+    None
 }
 
 async fn get_scripts_needing_snapshot(pool: Arc<PgPool>) -> Result<Vec<Uuid>, anyhow::Error> {

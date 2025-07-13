@@ -29,9 +29,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   hasTextSelection,
   viewMode,
   showRuler,
+  showPageNumbers,
   speakerNames,
   onSetViewMode,
   onToggleRuler,
+  onTogglePageNumbers,
   className = ''
 }) => {
   const [visibleButtons, setVisibleButtons] = useState<Set<string>>(new Set());
@@ -369,14 +371,23 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       order: 3
     },
     {
+      id: 'show-page-numbers',
+      icon: '📄',
+      title: showPageNumbers ? 'Hide Page Numbers' : 'Show Page Numbers',
+      action: onTogglePageNumbers,
+      isActive: showPageNumbers,
+      contexts: ['default'],
+      order: 4
+    },
+    {
       id: 'print',
       icon: '⎙',
       title: 'Print / Export PDF',
       action: () => window.print(),
       contexts: ['default'],
-      order: 4
+      order: 5
     },
-  ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler]);
+      ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, showPageNumbers, onTogglePageNumbers]);
 
   // Get buttons for current context, sorted by order
   const contextButtons = useMemo(() => {
@@ -548,6 +559,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     transition: 'height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)' // easeOutQuad
   };
 
+  // Only log on mobile or when keyboard state changes
+  if (isMobile || keyboardActive) {
   console.log('[Mobile Toolbar] Render styling:', {
     isMobile,
     keyboardHeight,
@@ -556,6 +569,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     calculatedBottom,
     bottomPosition: keyboardActive ? `${calculatedBottom}px` : 'default'
   });
+  }
 
   return (
     <div 

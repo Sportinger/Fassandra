@@ -142,7 +142,7 @@ pub async fn get_script_with_blocks(pool: &PgPool, script_id: Uuid) -> Result<(m
     let blocks = fetch_all_with_context(
         || sqlx::query_as_unchecked!(
             models::block::Block,
-            "SELECT id, script_id, block_type, content, created_at, block_order FROM blocks WHERE script_id = $1 ORDER BY block_order ASC, created_at ASC",
+            "SELECT id, script_id, block_type, content, created_at, block_order, page_number FROM blocks WHERE script_id = $1 ORDER BY page_number ASC, block_order ASC, created_at ASC",
             script_id
         ).fetch_all(pool),
         "fetching blocks for script"
@@ -158,19 +158,21 @@ pub async fn get_script_with_blocks(pool: &PgPool, script_id: Uuid) -> Result<(m
 /// * `script_id` - The ID of the script to add the block to.
 /// * `block_type` - The type of the block (e.g., "text").
 /// * `content` - The content of the block.
+/// * `page_number` - The page number where this block appears (defaults to 1).
 ///
 /// # Returns
 /// * `Result<Uuid>` - The ID of the newly created block on success, or an AppError on failure.
 ///
 /// # Errors
 /// Returns an error if the database query fails or times out.
-pub async fn create_block(pool: &PgPool, script_id: Uuid, block_type: &str, content: &str) -> Result<Uuid> {
+pub async fn create_block(pool: &PgPool, script_id: Uuid, block_type: &str, content: &str, page_number: Option<i32>) -> Result<Uuid> {
     let row = with_db_timeout(
-        || sqlx::query("INSERT INTO blocks (script_id, block_type, content, block_order) VALUES ($1, $2, $3, $4) RETURNING id")
+        || sqlx::query("INSERT INTO blocks (script_id, block_type, content, block_order, page_number) VALUES ($1, $2, $3, $4, $5) RETURNING id")
             .bind(script_id)
             .bind(block_type)
             .bind(content)
             .bind(0) // Default block_order for manually created blocks
+            .bind(page_number.unwrap_or(1)) // Default to page 1
             .fetch_one(pool),
         "creating new block"
     ).await?;
@@ -351,8 +353,204 @@ pub async fn create_script_from_parsed(
         })?;
     info!(%new_script_id, "Script record inserted successfully.");
 
-
     // 2. Iterate through sections and content elements to create blocks
+    for (section_index, section) in parsed_script.sections.iter().enumerate() {
+        for (element_index, element) in section.content.iter().enumerate() {
+            debug!(%new_script_id, section_index, element_index, "Processing content element for block creation.");
+            let (block_type, content_json, page_number) = match element {
+                crate::analysis::structs::ContentElement::Dialogue(d) => {
+                    ("dialogue", serde_json::to_string(d), d.page_number)
+                },
+                crate::analysis::structs::ContentElement::Monologue(m) => {
+                    ("monologue", serde_json::to_string(m), m.page_number)
+                },
+                crate::analysis::structs::ContentElement::StageDirection(sd) => {
+                    ("stage_direction", serde_json::to_string(sd), sd.page_number)
+                },
+                crate::analysis::structs::ContentElement::JointDialogue(jd) => {
+                    ("joint_dialogue", serde_json::to_string(jd), jd.page_number)
+                },
+                crate::analysis::structs::ContentElement::Reading(r) => {
+                    ("reading", serde_json::to_string(r), r.page_number)
+                },
+                crate::analysis::structs::ContentElement::Unknown => {
+                    ("unknown", Ok("{}".to_string()), 1) // Default to page 1 for unknown elements
+                },
+            };
+
+            let content_str = content_json.map_err(|e| {
+                error!(error = %e, script_id = %new_script_id, section_index, element_index, "Failed to serialize content element ");
+                 AppError::Internal(Error::new(e).context("Failed to serialize content element "))
+            })?;
+            let block_created_at = Utc::now();
+            let block_id = Uuid::new_v4();
+
+            info!(%block_id, %new_script_id, %block_type, page_number, "Attempting to insert block record with AI-provided page number.");
+            // Use sqlx::query() instead of macro
+            sqlx::query("INSERT INTO blocks (id, script_id, block_type, content, created_at, block_order, page_number) VALUES ($1, $2, $3, $4, $5, $6, $7)")
+                .bind(block_id)
+                .bind(new_script_id)
+                .bind(block_type)
+                .bind(content_str.clone()) // Clone content_str for logging in case of error
+                .bind(block_created_at)
+                .bind((section_index * 1000 + element_index) as i32) // Set proper block order
+                .bind(page_number) // Use AI-provided page number directly
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| {
+                    error!(error = %e, %block_id, script_id = %new_script_id, %block_type, content = %content_str, "Failed to insert block record ");
+                    AppError::Db(e)
+                })?;
+            info!(%block_id, script_id = %new_script_id, page_number, "Block record inserted successfully with AI-provided page number.");
+        }
+    }
+
+    // Commit transaction
+    info!(%new_script_id, "Attempting to commit transaction.");
+    tx.commit().await.map_err(|e| {
+        error!(error = %e, script_id = %new_script_id, "Failed to commit transaction ");
+        AppError::Db(e)
+    })?;
+    info!(%new_script_id, "Transaction committed successfully.");
+
+    Ok(new_script_id)
+}
+
+/// Creates a script from parsed data with page information from DOCX.
+///
+/// This function uses the actual page information extracted from the DOCX file
+/// to assign accurate page numbers to blocks instead of using heuristic estimates.
+///
+/// # Arguments
+/// * `pool` - Reference to a PostgreSQL connection pool.
+/// * `parsed_script` - The parsed script structure from Gemini API.
+/// * `user_id` - The ID of the user creating the script.
+/// * `page_info` - Page information extracted from DOCX file.
+///
+/// # Returns
+/// * `Result<Uuid>` - The ID of the newly created script on success, or an AppError on failure.
+///
+/// # Errors
+/// Returns an error if database operations fail.
+pub async fn create_script_from_parsed_with_pages(
+    pool: &PgPool,
+    parsed_script: &crate::analysis::structs::Script,
+    user_id: Uuid,
+    page_info: &[crate::analysis::parser::TextWithPage],
+) -> Result<Uuid> {
+    info!(%user_id, "Attempting to start transaction for script creation with page information.");
+    let mut tx = pool.begin().await.map_err(|e| {
+        error!(error = %e, "Failed to begin transaction");
+        AppError::Db(e)
+    })?;
+    info!("Transaction started successfully.");
+
+    // 1. Create the script entry
+    let new_script_id = Uuid::new_v4();
+    let raw_title = parsed_script.title.as_deref().unwrap_or("Untitled Script");
+    // Extract just the main title (first line or first few words) to avoid long titles
+    let script_title = extract_main_title(raw_title);
+    let created_at = Utc::now();
+
+    info!(%new_script_id, title = %script_title, %user_id, "Attempting to insert script record.");
+    // Use sqlx::query() instead of macro
+    sqlx::query("INSERT INTO scripts (id, title, created_by, created_at, is_public) VALUES ($1, $2, $3, $4, $5)")
+        .bind(new_script_id)
+        .bind(script_title)
+        .bind(user_id)
+        .bind(created_at)
+        .bind(false) // Default to private
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+             error!(error = %e, script_id = %new_script_id, "Failed to insert script record ");
+             AppError::Db(e)
+        })?;
+    info!(%new_script_id, "Script record inserted successfully.");
+
+    // 2. Create a mapping function that prioritizes AI-extracted page numbers
+    let find_page_for_content = |content: &str, element: &crate::analysis::structs::ContentElement| -> i32 {
+        // First, try to extract page number from the AI-parsed content itself
+        // The AI often includes page information in its parsing
+        if let Ok(content_json) = serde_json::from_str::<serde_json::Value>(content) {
+            if let Some(page_num) = content_json.get("page_number").and_then(|v| v.as_i64()) {
+                info!("Using AI-extracted page number: {}", page_num);
+                return page_num as i32;
+            }
+        }
+        
+        // Second, look for page numbers in the actual content text
+        let content_text = match element {
+            crate::analysis::structs::ContentElement::Dialogue(d) => {
+                d.line.as_deref().unwrap_or("")
+            },
+            crate::analysis::structs::ContentElement::Monologue(m) => {
+                if let Some(first_line) = m.lines.first() {
+                    first_line.as_str()
+                } else {
+                    ""
+                }
+            },
+            crate::analysis::structs::ContentElement::StageDirection(sd) => {
+                sd.description.as_deref().unwrap_or("")
+            },
+            crate::analysis::structs::ContentElement::JointDialogue(jd) => {
+                jd.line.as_deref().unwrap_or("")
+            },
+            crate::analysis::structs::ContentElement::Reading(r) => {
+                r.reading_text.as_deref().unwrap_or("")
+            },
+            crate::analysis::structs::ContentElement::Unknown => "",
+        };
+        
+        // Third, try to match content with DOCX page info (original logic, but improved)
+        let content_lower = content_text.to_lowercase();
+        let mut best_match_page = 1;
+        let mut best_match_score = 0;
+        
+        for page in page_info.iter() {
+            let page_text_lower = page.text.to_lowercase();
+            
+            // Check for exact substring matches first
+            if !content_lower.is_empty() && content_lower.len() > 10 {
+                if page_text_lower.contains(&content_lower) {
+                    info!("Found exact match on page {}", page.page_number);
+                    return page.page_number;
+                }
+            }
+            
+            // Then try fuzzy matching by common words
+            let content_words: Vec<&str> = content_lower.split_whitespace()
+                .filter(|w| w.len() > 3) // Only meaningful words
+                .collect();
+            let page_words: Vec<&str> = page_text_lower.split_whitespace().collect();
+            let mut common_words = 0;
+            
+            for content_word in &content_words {
+                if page_words.contains(content_word) {
+                    common_words += 1;
+                }
+            }
+            
+            if common_words > best_match_score && common_words >= 2 {
+                best_match_score = common_words;
+                best_match_page = page.page_number;
+            }
+        }
+        
+        // If still no good match and we have page info, use progressive assignment
+        if best_match_score < 2 && !page_info.is_empty() {
+            // Use the middle page as a reasonable fallback
+            let middle_page = page_info.len() / 2;
+            if let Some(page) = page_info.get(middle_page) {
+                return page.page_number;
+            }
+        }
+        
+        best_match_page
+    };
+
+    // 3. Iterate through sections and content elements to create blocks
     for (section_index, section) in parsed_script.sections.iter().enumerate() {
         for (element_index, element) in section.content.iter().enumerate() {
             debug!(%new_script_id, section_index, element_index, "Processing content element for block creation.");
@@ -372,22 +570,26 @@ pub async fn create_script_from_parsed(
             let block_created_at = Utc::now();
             let block_id = Uuid::new_v4();
 
-            info!(%block_id, %new_script_id, %block_type, "Attempting to insert block record.");
+            // Use actual page information from DOCX
+            let page_number = find_page_for_content(&content_str, element);
+
+            info!(%block_id, %new_script_id, %block_type, page_number, "Attempting to insert block record with DOCX page info.");
             // Use sqlx::query() instead of macro
-            sqlx::query("INSERT INTO blocks (id, script_id, block_type, content, created_at, block_order) VALUES ($1, $2, $3, $4, $5, $6)")
+            sqlx::query("INSERT INTO blocks (id, script_id, block_type, content, created_at, block_order, page_number) VALUES ($1, $2, $3, $4, $5, $6, $7)")
                 .bind(block_id)
                 .bind(new_script_id)
                 .bind(block_type)
                 .bind(content_str.clone()) // Clone content_str for logging in case of error
                 .bind(block_created_at)
                 .bind((section_index * 1000 + element_index) as i32) // Set proper block order
+                .bind(page_number) // Use DOCX-based page number
                 .execute(&mut *tx)
                 .await
                 .map_err(|e| {
                     error!(error = %e, %block_id, script_id = %new_script_id, %block_type, content = %content_str, "Failed to insert block record ");
                     AppError::Db(e)
                 })?;
-            info!(%block_id, script_id = %new_script_id, "Block record inserted successfully.");
+            info!(%block_id, script_id = %new_script_id, page_number, "Block record inserted successfully with DOCX page info.");
         }
     }
 
@@ -398,7 +600,6 @@ pub async fn create_script_from_parsed(
         AppError::Db(e)
     })?;
     info!(%new_script_id, "Transaction committed successfully.");
-
 
     Ok(new_script_id)
 }
@@ -456,13 +657,14 @@ pub async fn update_script_content_from_html(
     // Insert new blocks
     for (index, (block_type, content)) in blocks.into_iter().enumerate() {
         sqlx::query(
-            "INSERT INTO blocks (script_id, block_type, content, block_order, created_at) VALUES ($1, $2, $3, $4, $5)"
+            "INSERT INTO blocks (script_id, block_type, content, block_order, created_at, page_number) VALUES ($1, $2, $3, $4, $5, $6)"
         )
         .bind(script_id)
         .bind(block_type)
         .bind(content)
         .bind(index as i32)
         .bind(Utc::now())
+        .bind(1) // Default to page 1 for HTML updates - will be updated with proper page detection
         .execute(&mut *tx)
         .await
         .map_err(|e| {
@@ -487,6 +689,46 @@ pub async fn update_script_content_from_html(
     
     tracing::info!("✅ Successfully updated script {} with {} blocks", script_id, blocks_count);
     Ok(())
+}
+
+/// Calculates an estimated page number for a content element based on its position in the script.
+///
+/// This function uses heuristics to estimate which page a content element would appear on
+/// in a typical theater script format.
+///
+/// # Arguments
+/// * `section_index` - Index of the section containing the element
+/// * `element_index` - Index of the element within the section
+/// * `parsed_script` - Reference to the parsed script for context
+///
+/// # Returns
+/// * `i32` - Estimated page number (1-based)
+fn calculate_page_number_for_element(
+    section_index: usize, 
+    element_index: usize, 
+    parsed_script: &crate::analysis::structs::Script
+) -> i32 {
+    // Calculate total elements processed so far
+    let mut total_elements = 0;
+    
+    // Count elements in previous sections
+    for i in 0..section_index {
+        if let Some(section) = parsed_script.sections.get(i) {
+            total_elements += section.content.len();
+        }
+    }
+    
+    // Add elements in current section up to current element
+    total_elements += element_index;
+    
+    // Estimate page number based on typical script formatting
+    // Assume approximately 25-30 elements per page for theater scripts
+    // This accounts for dialogue, stage directions, and spacing
+    let elements_per_page = 28;
+    let estimated_page = (total_elements / elements_per_page) + 1;
+    
+    // Ensure we return at least page 1
+    std::cmp::max(1, estimated_page as i32)
 }
 
 /// Removes HTML tags and attributes from a string, keeping only text content.

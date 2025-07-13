@@ -14,21 +14,11 @@ export const setApiToken = (token: string | null) => {
 // --- Authentication --- //
 
 export const login = async (email: string, password: string): Promise<string> => {
-    return apiService.request('/login', {
-        method: 'POST',
-        body: { email, password },
-        requireAuth: false, // Login doesn't require auth token
-        validate: { email, password }
-    });
+    return apiService.post('/login', { email, password }, { email, password });
 };
 
 export const register = async (email: string, username: string, password: string): Promise<string> => {
-    return apiService.request('/register', {
-        method: 'POST',
-        body: { email, username, password },
-        requireAuth: false, // Register doesn't require auth token
-        validate: { email, username, password }
-    });
+    return apiService.post('/register', { email, username, password }, { email, username, password });
 };
 
 // --- Scripts --- //
@@ -136,7 +126,7 @@ export const deleteScriptLayout = async (scriptId: string, layoutId: string): Pr
 // --- Content Snapshots --- //
 
 export const storeContentSnapshot = async (scriptId: string, content: string, format: string = 'html'): Promise<void> => {
-    return apiService.post(`/api/scripts/${scriptId}/snapshot`, { content, format }, { scriptId, content });
+    return apiService.post(`/api/scripts/${scriptId}/snapshots`, { content, format }, { scriptId, content });
 };
 
 // --- Page Breaks --- //
@@ -169,9 +159,7 @@ export const updatePageBreaks = async (scriptId: string, updates: PageBreakUpdat
 
 // --- Legacy compatibility --- //
 
-export type ParsedScriptData = any; // TODO: Define proper type based on backend
-
-export const createScriptFromParsed = async (parsedScriptData: ParsedScriptData): Promise<string> => {
+export const createScriptFromParsed = async (parsedScriptData: any): Promise<string> => {
     return apiService.post('/api/s/create_script_from_parsed', { parsed_script: parsedScriptData });
 };
 
