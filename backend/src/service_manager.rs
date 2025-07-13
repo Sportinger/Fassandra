@@ -10,7 +10,6 @@ use crate::persistence_event::YjsPersistenceEvent;
 use crate::auth::RateLimiter;
 use crate::async_db_writer::run_async_db_writer;
 use crate::snapshotting_service::run_snapshotting_service;
-use crate::ws;
 
 /// 🚀 SERVICE MANAGER: Centralized service initialization and lifecycle management
 /// This solves the tight coupling problem by providing a single point for service dependency injection
@@ -113,19 +112,12 @@ impl ServiceManager {
         
         // 4. Start WebSocket session cleanup
         let ws_cleanup_handle = tokio::spawn(async move {
-            tracing::info!("🚀 Starting WebSocket session cleanup service");
+            tracing::info!("🚀 Starting WebSocket session cleanup service (temporarily disabled)");
             let mut interval = tokio::time::interval(Duration::from_secs(300)); // 5 minutes
             loop {
                 interval.tick().await;
-                let inactive_threshold = chrono::Duration::minutes(10);
-                match ws::cleanup_inactive_sessions(inactive_threshold).await {
-                    Ok(removed) => {
-                        if removed > 0 {
-                            tracing::debug!("🧹 WebSocket cleanup: removed {} inactive sessions", removed);
-                        }
-                    }
-                    Err(e) => tracing::error!("❌ WebSocket session cleanup failed: {}", e),
-                }
+                // TODO: Re-implement WebSocket cleanup when ws module is restored
+                tracing::debug!("🧹 WebSocket cleanup: skipped (ws module not available)");
             }
         });
         self.service_handles.push(ws_cleanup_handle);

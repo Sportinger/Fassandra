@@ -1,0 +1,68 @@
+   Compiling backend v0.1.0 (/home/admins/projects/pessoa/backend)
+error[E0583]: file not found for module `ws`
+ --> src/api/mod.rs:7:1
+  |
+7 | pub mod ws; 
+  | ^^^^^^^^^^^
+  |
+  = help: to create the module `ws`, create file "src/api/ws.rs" or "src/api/ws/mod.rs"
+  = note: if there is a `mod ws` elsewhere in the crate already, import it with `use crate::...` instead
+
+error: `SQLX_OFFLINE=true` but there is no cached data for this query, run `cargo sqlx prepare` to update the query cache or unset `SQLX_OFFLINE`
+  --> src/snapshotting_service.rs:64:34
+   |
+64 |       let updates_to_apply = match sqlx::query_as!(
+   |  __________________________________^
+65 | |         SnapshotYjsUpdate,
+66 | |         r#"
+67 | |         SELECT id, update_data
+...  |
+73 | |         last_processed_update_id_from_meta // <= FIXED: Use incremental processing
+74 | |     )
+   | |_____^
+   |
+   = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unused imports: `Deserialize` and `Serialize`
+  --> src/handlers/script_handlers.rs:10:13
+   |
+10 | use serde::{Deserialize, Serialize};
+   |             ^^^^^^^^^^^  ^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused imports: `Value` and `json`
+  --> src/handlers/script_handlers.rs:11:18
+   |
+11 | use serde_json::{json, Value};
+   |                  ^^^^  ^^^^^
+
+warning: unused import: `std::io::Cursor`
+  --> src/handlers/script_handlers.rs:15:5
+   |
+15 | use std::io::Cursor;
+   |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `uuid::Uuid`
+ --> src/service_manager.rs:6:5
+  |
+6 | use uuid::Uuid;
+  |     ^^^^^^^^^^
+
+warning: unused import: `anyhow::Context`
+ --> src/error_helpers.rs:2:5
+  |
+2 | use anyhow::Context;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused variable: `br`
+  --> src/analysis/parser.rs:92:45
+   |
+92 | ...                   RunChild::Break(br) => {
+   |                                       ^^ help: if this is intentional, prefix it with an underscore: `_br`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+For more information about this error, try `rustc --explain E0583`.
+warning: `backend` (lib) generated 6 warnings
+error: could not compile `backend` (lib) due to 2 previous errors; 6 warnings emitted

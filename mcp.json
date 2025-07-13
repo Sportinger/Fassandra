@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "playwright-vision": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@0.0.29",
+        "--config=playwright.config.js",
+        "--vision"
+      ]
+    },
+    "playwright-test": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@0.0.29",
+        "--config=playwright.config.js"
+      ]
+    }
+  }
+} 
