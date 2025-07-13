@@ -7,6 +7,55 @@ test.describe('Pessoa Complete Workflow + Real Database Verification', () => {
   };
 
   test('Complete workflow + Database verification in ONE test', async ({ page }) => {
+    // =====================================================
+    // SETUP: Browser Console Capture
+    // =====================================================
+    
+    const consoleLogs = [];
+    const consoleErrors = [];
+    
+    // Capture all console messages for debugging
+    page.on('console', msg => {
+      const logEntry = {
+        type: msg.type(),
+        text: msg.text(),
+        timestamp: new Date().toISOString(),
+        url: page.url()
+      };
+      
+      if (msg.type() === 'error') {
+        consoleErrors.push(logEntry);
+        console.log(`🔴 Browser Error: ${msg.text()}`);
+      } else {
+        consoleLogs.push(logEntry);
+        console.log(`🌐 Browser ${msg.type()}: ${msg.text()}`);
+      }
+    });
+    
+    // Capture page errors
+    page.on('pageerror', exception => {
+      const errorEntry = {
+        type: 'pageerror',
+        text: exception.toString(),
+        timestamp: new Date().toISOString(),
+        url: page.url()
+      };
+      consoleErrors.push(errorEntry);
+      console.log(`💥 Page Error: ${exception}`);
+    });
+    
+    // Capture request failures
+    page.on('requestfailed', request => {
+      const failureEntry = {
+        type: 'requestfailed',
+        text: `${request.method()} ${request.url()} - ${request.failure()?.errorText || 'Unknown error'}`,
+        timestamp: new Date().toISOString(),
+        url: page.url()
+      };
+      consoleErrors.push(failureEntry);
+      console.log(`🚫 Request Failed: ${request.url()} - ${request.failure()?.errorText}`);
+    });
+    
     // Generate unique script name
     const timestamp = Date.now();
     const scriptName = `MCP-${timestamp}`;
@@ -24,13 +73,13 @@ test.describe('Pessoa Complete Workflow + Real Database Verification', () => {
     console.log('🔐 Step 1: Login...');
     await page.goto('https://192.168.2.111:8443/');
     await page.setViewportSize({ width: 700, height: 800 });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     
     await page.getByRole('textbox', { name: 'Email' }).fill(testUser.email);
     await page.getByRole('textbox', { name: 'Password' }).fill(testUser.password);
     await page.getByRole('button', { name: 'Login' }).click();
     
-    await page.waitForTimeout(1500); // Halved from 3000ms
+    await page.waitForTimeout(1000); // Lightning fast: 1 second
     await expect(page.locator('text=Scripts')).toBeVisible();
     await expect(page.getByText('+')).toBeVisible();
     console.log('✅ Login successful');
@@ -354,6 +403,75 @@ lightning-fast performance!
     test.info().annotations.push({ type: 'timestamp', description: timestamp.toString() });
     test.info().annotations.push({ type: 'performance', description: 'Optimized: 1.5ms delays + 300ms auto-save' });
     test.info().annotations.push({ type: 'verification', description: 'Both UI and database verified successfully' });
+    
+    // =====================================================
+    // SAVE BROWSER CONSOLE LOGS FOR ANALYSIS
+    // =====================================================
+    
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Ensure logs directory exists
+      const logsDir = 'logs';
+      if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir, { recursive: true });
+      }
+      
+      // Save console logs
+      const browserLogsFile = path.join(logsDir, 'browser-console.log');
+      const logOutput = {
+        testName: 'Complete workflow + Database verification',
+        timestamp: new Date().toISOString(),
+        scriptId,
+        scriptName,
+        totalLogs: consoleLogs.length,
+        totalErrors: consoleErrors.length,
+        logs: consoleLogs.slice(-20), // Last 20 logs
+        errors: consoleErrors,
+        summary: {
+          hasErrors: consoleErrors.length > 0,
+          logTypes: [...new Set(consoleLogs.map(log => log.type))],
+          errorTypes: [...new Set(consoleErrors.map(err => err.type))],
+          urls: [...new Set([...consoleLogs, ...consoleErrors].map(log => log.url))]
+        }
+      };
+      
+      fs.writeFileSync(browserLogsFile, JSON.stringify(logOutput, null, 2));
+      console.log(`📝 Browser logs saved to: ${browserLogsFile}`);
+      console.log(`   - Console messages: ${consoleLogs.length}`);
+      console.log(`   - Errors: ${consoleErrors.length}`);
+      
+      // Also save a simple text version for easy reading
+      const textLogsFile = path.join(logsDir, 'browser-console.txt');
+      const textOutput = [
+        `=== BROWSER CONSOLE LOGS ===`,
+        `Test: Complete workflow + Database verification`,
+        `Time: ${new Date().toISOString()}`,
+        `Script: ${scriptName} (${scriptId})`,
+        `Total Logs: ${consoleLogs.length}`,
+        `Total Errors: ${consoleErrors.length}`,
+        ``,
+        `=== RECENT CONSOLE MESSAGES ===`
+      ];
+      
+      consoleLogs.slice(-20).forEach(log => {
+        textOutput.push(`[${log.timestamp}] ${log.type.toUpperCase()}: ${log.text}`);
+      });
+      
+      if (consoleErrors.length > 0) {
+        textOutput.push(``, `=== ERRORS ===`);
+        consoleErrors.forEach(error => {
+          textOutput.push(`[${error.timestamp}] ${error.type.toUpperCase()}: ${error.text}`);
+        });
+      }
+      
+      fs.writeFileSync(textLogsFile, textOutput.join('\n'));
+      console.log(`📝 Browser logs (text) saved to: ${textLogsFile}`);
+      
+    } catch (saveError) {
+      console.error(`❌ Failed to save browser logs: ${saveError.message}`);
+    }
   });
 
   test('Quick performance test - Optimized workflow only', async ({ page }) => {
@@ -366,13 +484,13 @@ lightning-fast performance!
     // Rapid execution test with halved timings
     await page.goto('https://192.168.2.111:8443/');
     await page.setViewportSize({ width: 700, height: 800 });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     
     // Login with halved timing
     await page.getByRole('textbox', { name: 'Email' }).fill(testUser.email);
     await page.getByRole('textbox', { name: 'Password' }).fill(testUser.password);
     await page.getByRole('button', { name: 'Login' }).click();
-    await page.waitForTimeout(1500); // Halved from 3000ms
+    await page.waitForTimeout(1000); // Lightning fast: 1 second
     
     // Super rapid script creation (1.5ms delays)
     await page.getByText('+').click();

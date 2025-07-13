@@ -19,6 +19,7 @@ use axum::middleware::Next;
 use axum::extract::Request;
 use axum::response::Response;
 use chrono;
+use sqlx::Row;
 
 use backend::auth::{hash_password, verify_password, generate_token, AuthUser, rate_limit_middleware};
 use backend::error::AppError;
