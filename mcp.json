@@ -14,6 +14,24 @@
         "@playwright/mcp@0.0.29",
         "--config=playwright.config.js"
       ]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "env": {
+        "ALLOWED_DIRECTORIES": "/home/admins/projects/pessoa"
+      }
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@hisma/server-puppeteer"],
+      "env": {
+        "PUPPETEER_HEADLESS": "false"
+      }
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
     }
   }
 } 

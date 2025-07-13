@@ -13,6 +13,9 @@
     "mcp:test": "npx @playwright/mcp@0.0.29 --config=playwright.config.js"
   },
   "dependencies": {
+    "@hisma/server-puppeteer": "^0.6.5",
+    "@modelcontextprotocol/server-filesystem": "^2025.7.1",
+    "@modelcontextprotocol/server-sequential-thinking": "^2025.7.1",
     "@playwright/mcp": "^0.0.29",
     "@tiptap/extension-text-align": "^2.11.9"
   },
