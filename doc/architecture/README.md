@@ -167,12 +167,43 @@ const editor = useEditor({
 
 ## 🛠️ Backend Architecture
 
-### 🏗️ Service Architecture
+### 🏗️ Current Architecture Issues
 
-The backend follows a modern service-oriented architecture with dependency injection:
+**⚠️ CRITICAL: The backend currently suffers from major architectural violations that require immediate refactoring:**
 
 ```rust
-// Service Manager - Central service orchestration
+// PROBLEM: 719-line main.rs god object (src/main.rs)
+// Contains: endpoints, config, middleware, main logic - violates SRP
+async fn main() -> Result<()> {
+    // ... 700+ lines of mixed concerns
+}
+
+// PROBLEM: 1071-line lib.rs MEGA god object (src/lib.rs)  
+// Contains: database ops, HTML parsing, AI integration, layouts
+pub async fn create_script_from_parsed_with_pages(/* 188 lines */) -> Result<Uuid> {
+    // ... massive function spanning multiple abstraction levels
+}
+
+// PROBLEM: Mixed concerns in auth.rs (444 lines)
+// Contains: auth + rate limiting + validation - should be separated
+pub struct RateLimiter { /* rate limiting mixed with auth */ }
+```
+
+### 🚨 Critical Security Issues
+
+```rust
+// CRITICAL VULNERABILITY: Weak password validation (auth.rs:35)
+static ref PASSWORD_REGEX: Regex = Regex::new(r"^.{8,}$")
+    .expect("PASSWORD_REGEX compilation failed");
+// ☠️ Only checks length >=8, allows "12345678" despite comments claiming complexity
+```
+
+### ✅ Well-Implemented Components
+
+**ServiceManager is actually EXCELLENT** - this shows the team can write clean code:
+
+```rust
+// ✅ GOOD: ServiceManager (259 lines) - Proper dependency injection
 pub struct ServiceManager {
     pub database_pool: Arc<PgPool>,
     pub rate_limiter: Arc<RateLimiter>,
@@ -180,35 +211,65 @@ pub struct ServiceManager {
     service_handles: Vec<JoinHandle<()>>,
 }
 
-// Background services
 impl ServiceManager {
-    async fn start_background_services(&mut self) -> Result<()> {
-        // 1. Async database writer
-        let writer_handle = tokio::spawn(run_async_db_writer(/*...*/));
-        
-        // 2. Snapshotting service (500ms intervals)
-        let snapshot_handle = tokio::spawn(run_snapshotting_service(/*...*/));
-        
-        // 3. Rate limiter cleanup
-        let cleanup_handle = tokio::spawn(rate_limiter_cleanup(/*...*/));
-        
-        // 4. WebSocket session cleanup
-        let ws_cleanup_handle = tokio::spawn(websocket_cleanup(/*...*/));
-        
-        // Store handles for graceful shutdown
-        self.service_handles.extend([
-            writer_handle, snapshot_handle, cleanup_handle, ws_cleanup_handle
-        ]);
-    }
+    // ✅ Proper dependency injection and service initialization
+    pub async fn new(pool: PgPool, rate_limit_window: Duration, rate_limit_max: usize) -> Result<Self>
+    
+    // ✅ Graceful shutdown with proper cleanup
+    pub async fn shutdown(self) -> Result<()>
+    
+    // ✅ Comprehensive health checks
+    pub async fn health_check(&self) -> ServiceHealthStatus
+    
+    // ✅ Clean getter methods for dependency injection
+    pub fn get_database_pool(&self) -> PgPool
+    pub fn get_rate_limiter(&self) -> Arc<RateLimiter>
+    pub fn get_persistence_sender(&self) -> mpsc::Sender<YjsPersistenceEvent>
 }
+```
+
+### 🎯 Refactoring Strategy
+
+**Use ServiceManager as the architectural model:**
+
+```rust
+// TODO: Apply ServiceManager patterns to break up god objects
+pub mod handlers;     // Extract from main.rs (719 lines → ~50 lines each)
+pub mod database;     // Extract from lib.rs database operations
+pub mod html_parser;  // Extract from lib.rs HTML parsing utilities  
+pub mod ai_service;   // Extract from lib.rs AI integration
+pub mod layout_service; // Extract from lib.rs layout management
+
+// TODO: Follow ServiceManager's clean patterns:
+// - Single responsibility per module
+// - Dependency injection instead of tight coupling
+// - Proper error handling with Result<T>
+// - Health checks for monitoring
+// - Graceful shutdown handling
 ```
 
 ### 🔗 API Architecture
 
-The backend exposes REST APIs and WebSocket endpoints:
+**⚠️ CURRENT ISSUE: All endpoints are embedded in main.rs god object**
 
 ```rust
-// REST API routes
+// PROBLEM: 719-line main.rs contains all endpoint handlers inline
+// Should be extracted to separate handler modules
+
+// Current bloated structure in main.rs:
+async fn register(State(pool): State<Arc<PgPool>>, Json(payload): Json<RegisterPayload>) -> Result<Json<String>, AppError> {
+    // ... 25 lines of business logic mixed with HTTP handling
+}
+
+async fn login(State(pool): State<Arc<PgPool>>, Json(payload): Json<LoginPayload>) -> Result<Json<String>, AppError> {
+    // ... 20 lines of business logic mixed with HTTP handling
+}
+
+async fn list_scripts(State(pool): State<Arc<PgPool>>, AuthUser{user_id}: AuthUser) -> Result<Json<ScriptsResponse>, AppError> {
+    // ... and 15+ more endpoint handlers in main.rs
+}
+
+// TODO: Extract to proper handler modules
 Router::new()
     .route("/api/scripts", get(list_scripts).post(create_script))
     .route("/api/scripts/:id", get(get_script).patch(update_script))
@@ -228,21 +289,32 @@ Router::new()
 
 ### 🔐 Authentication & Security
 
+**🚨 CRITICAL SECURITY VULNERABILITY: Weak password validation allows "12345678"**
+
 ```rust
-// JWT-based authentication
+// CURRENT BROKEN IMPLEMENTATION (auth.rs:35)
+static ref PASSWORD_REGEX: Regex = Regex::new(r"^.{8,}$")
+    .expect("PASSWORD_REGEX compilation failed");
+// ☠️ Despite comments claiming "complex requirements", only checks length >=8
+
+// PROPER IMPLEMENTATION NEEDED:
+static ref PASSWORD_REGEX: Regex = Regex::new(
+    r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+).expect("PASSWORD_REGEX compilation failed");
+
+// JWT-based authentication (working correctly)
 pub struct AuthUser {
     pub user_id: Uuid,
-    pub email: String,
-    pub role: String,
+    // NOTE: email and role removed from actual implementation
 }
 
-// WebSocket authentication
+// WebSocket authentication (working correctly)
 pub struct WsAuthUser {
     pub user_id: Uuid,
-    pub token: String,
+    // NOTE: token removed from actual implementation
 }
 
-// Rate limiting
+// Rate limiting (PROBLEM: mixed with auth concerns in auth.rs)
 pub struct RateLimiter {
     // IP-based rate limiting with configurable windows
     requests: Arc<Mutex<HashMap<String, Vec<Instant>>>>,
@@ -701,14 +773,22 @@ sequenceDiagram
 
 ### 🛡️ Security Measures
 
-#### 🔐 Authentication & Authorization
-- **JWT tokens**: Secure stateless authentication
-- **Role-based access**: User, admin roles
-- **Script permissions**: Owner, shared (read/write), public
-- **WebSocket authentication**: Token-based WebSocket auth
+#### 🚨 CRITICAL SECURITY ISSUES
+- **⚠️ VULNERABLE**: Password validation only checks length >=8 (allows "12345678")
+- **⚠️ VULNERABLE**: Rate limiter uses x-forwarded-for header without validation (IP spoofing)
+- **⚠️ ARCHITECTURAL**: Mixed security concerns across modules
 
-#### 🚨 Rate Limiting
+#### 🔐 Authentication & Authorization (Partially Working)
+- **✅ JWT tokens**: Secure stateless authentication (working)
+- **✅ Role-based access**: User, admin roles (working)
+- **✅ Script permissions**: Owner, shared (read/write), public (working)
+- **✅ WebSocket authentication**: Token-based WebSocket auth (working)
+- **❌ Password security**: CRITICAL vulnerability allowing weak passwords
+
+#### 🚨 Rate Limiting (Flawed Implementation)
 ```rust
+// PROBLEM: Located in auth.rs instead of separate security module
+// PROBLEM: Uses x-forwarded-for without validation (IP spoofing risk)
 pub struct RateLimiter {
     requests: Arc<Mutex<HashMap<String, Vec<Instant>>>>,
     window: Duration,
@@ -717,6 +797,7 @@ pub struct RateLimiter {
 
 impl RateLimiter {
     pub async fn check(&self, ip: &str) -> Result<(), RateLimitError> {
+        // VULNERABILITY: ip comes from x-forwarded-for header without validation
         let mut requests = self.requests.lock().await;
         let now = Instant::now();
         
@@ -737,11 +818,12 @@ impl RateLimiter {
 }
 ```
 
-#### 🔒 Data Protection
-- **Password hashing**: Argon2 with salt
-- **SQL injection prevention**: Prepared statements
-- **XSS protection**: Input sanitization
-- **CSRF protection**: Token-based CSRF protection
+#### 🔒 Data Protection (Mixed Results)
+- **✅ Password hashing**: Argon2 with salt (working correctly)
+- **✅ SQL injection prevention**: Prepared statements (working correctly)
+- **✅ Error sanitization**: Database errors properly hidden (working correctly)
+- **❌ Input validation**: Weak password requirements (critical vulnerability)
+- **❌ IP validation**: No validation of forwarded headers (spoofing risk)
 
 ## ⚡ Performance Architecture
 

@@ -48,50 +48,111 @@ alwaysApply: true
 - Hardcoded secrets/configs duplicated across files
 
 ## JSON Tracking System
-Maintain `BRUTAL_REVIEW_TRACKING.json` with:
+Maintain `BRUTAL_REVIEW_TRACKING.json` with scalable multi-file structure:
 ```json
 {
   "execution_metrics": { 
-    "files_analyzed": 0, 
+    "files_analyzed": 0,
+    "total_files_discovered": 0,
     "dead_lines_eliminated": 0, 
     "bloat_kb_removed": 0,
     "comments_assassinated": 0,
     "critical_blockers": 0,
-    "overall_verdict": "ANALYZING"
+    "major_issues": 0,
+    "overall_verdict": "ANALYZING",
+    "last_updated": "2025-01-15T10:30:00Z"
   },
-  "file_execution_log": { 
-    "filename": { 
+  "files": {
+    "src/auth/login.rs": { 
       "status": "EXECUTED", 
       "dead_lines": 47, 
+      "bloat_kb": 12.3,
       "critical_issues": 2,
-      "analysis_details": "Complete findings here"
+      "major_issues": 5,
+      "minor_issues": 8,
+      "comments_killed": 12,
+      "analysis_timestamp": "2025-01-15T10:30:00Z",
+      "depends_on": ["src/auth/types.rs", "src/database/connection.rs"],
+      "imported_by": ["src/auth/mod.rs"],
+      "exports_unused": ["validateEmailFormat", "TokenConfig"],
+      "imports_unused": ["serde_json", "regex"]
+    },
+    "src/auth/register.rs": {
+      "status": "PENDING",
+      "depends_on": ["src/auth/login.rs"]
     }
   },
-  "critical_blockers": { 
+  "issues": {
     "SEC-001": { 
       "type": "SQL_INJECTION", 
-      "file": "auth.rs", 
+      "severity": "CRITICAL",
+      "file": "src/auth/login.rs", 
       "line": 89,
-      "blocks_deployment": true 
+      "description": "Raw SQL string concatenation",
+      "blocks_deployment": true,
+      "cross_file_instances": ["src/user/queries.rs:156"]
+    },
+    "ARCH-001": {
+      "type": "CIRCULAR_DEPENDENCY",
+      "severity": "CRITICAL", 
+      "files": ["src/auth/login.rs", "src/user/model.rs", "src/auth/types.rs"],
+      "description": "Circular import chain prevents testing",
+      "blocks_deployment": true
+    },
+    "BLOAT-001": {
+      "type": "OVERENGINEERING",
+      "severity": "MAJOR",
+      "file": "src/auth/login.rs",
+      "lines": "45-89",
+      "description": "Abstract factory for simple token creation",
+      "bloat_kb": 8.2
     }
   },
-  "cross_file_patterns": { 
-    "pattern_name": { 
-      "files": [], 
-      "issue": "", 
-      "impact": "" 
+  "patterns": {
+    "database_connection_chaos": {
+      "type": "ANTI_PATTERN",
+      "files": ["src/auth/login.rs", "src/user/model.rs"],
+      "description": "Each module creates own DB connection pool",
+      "impact": "3x memory usage, connection exhaustion",
+      "severity": "MAJOR"
+    },
+    "validation_anarchy": {
+      "type": "INCONSISTENCY", 
+      "files": ["src/auth/login.rs", "src/auth/register.rs", "src/user/validation.rs"],
+      "description": "3 different validation approaches for same domain",
+      "impact": "Inconsistent UX, code duplication"
     }
   },
-  "dependency_graph": { 
-    "nodes": [], 
-    "edges": [] 
+  "dependency_graph": {
+    "nodes": [
+      {"id": "src/auth/login.rs", "type": "module", "size": 234},
+      {"id": "src/auth/types.rs", "type": "module", "size": 89}
+    ],
+    "edges": [
+      {"from": "src/auth/login.rs", "to": "src/auth/types.rs", "type": "imports"},
+      {"from": "src/user/model.rs", "to": "src/auth/login.rs", "type": "circular"}
+    ]
   },
   "execution_queue": [
     { 
       "priority": 1, 
-      "action": "Break circular deps", 
-      "target": "ARCH-001" 
+      "action": "Break circular dependency", 
+      "target": "ARCH-001",
+      "affected_files": ["src/auth/login.rs", "src/user/model.rs"],
+      "estimated_effort": "2 days"
+    },
+    {
+      "priority": 2,
+      "action": "Fix SQL injection",
+      "target": "SEC-001", 
+      "affected_files": ["src/auth/login.rs"],
+      "estimated_effort": "4 hours"
     }
+  ],
+  "next_files_to_analyze": [
+    "src/auth/register.rs",
+    "src/user/model.rs", 
+    "src/database/connection.rs"
   ]
 }
 ```
