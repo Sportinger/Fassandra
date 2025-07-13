@@ -888,12 +888,13 @@ fn parse_html_to_blocks(html_content: &str) -> Result<Vec<(String, String)>> {
 
 // === Script Layout Management Functions ===
 
-/// Gets all layouts for a specific script.
-///
+// Script Layout Functions - RESTORED (SQLx issues fixed)
+/// Get all layouts for a specific script
+/// 
 /// # Arguments
-/// * `pool` - Reference to a PostgreSQL connection pool.
-/// * `script_id` - The ID of the script.
-///
+/// * `pool` - Database connection pool
+/// * `script_id` - UUID of the script to get layouts for
+/// 
 /// # Returns
 /// * `Result<Vec<models::script_layout::ScriptLayout>>` - Vector of layouts on success, or an AppError on failure.
 pub async fn get_script_layouts(pool: &PgPool, script_id: Uuid) -> Result<Vec<models::script_layout::ScriptLayout>> {
@@ -902,7 +903,7 @@ pub async fn get_script_layouts(pool: &PgPool, script_id: Uuid) -> Result<Vec<mo
             "SELECT id, script_id, name, description, created_by, created_at, updated_at, is_default, layout_config 
              FROM script_layouts 
              WHERE script_id = $1 
-             ORDER BY COALESCE(is_default, false) DESC, created_at ASC"
+             ORDER BY is_default DESC, created_at ASC"
         )
         .bind(script_id)
         .fetch_all(pool),
@@ -910,12 +911,12 @@ pub async fn get_script_layouts(pool: &PgPool, script_id: Uuid) -> Result<Vec<mo
     ).await
 }
 
-/// Gets the default layout for a script.
-///
+/// Get the default layout for a specific script
+/// 
 /// # Arguments
-/// * `pool` - Reference to a PostgreSQL connection pool.
-/// * `script_id` - The ID of the script.
-///
+/// * `pool` - Database connection pool
+/// * `script_id` - UUID of the script to get the default layout for
+/// 
 /// # Returns
 /// * `Result<Option<models::script_layout::ScriptLayout>>` - The default layout if it exists, or None.
 pub async fn get_default_script_layout(pool: &PgPool, script_id: Uuid) -> Result<Option<models::script_layout::ScriptLayout>> {
@@ -923,7 +924,7 @@ pub async fn get_default_script_layout(pool: &PgPool, script_id: Uuid) -> Result
         || sqlx::query_as::<_, models::script_layout::ScriptLayout>(
             "SELECT id, script_id, name, description, created_by, created_at, updated_at, is_default, layout_config 
              FROM script_layouts 
-             WHERE script_id = $1 AND COALESCE(is_default, false) = true
+             WHERE script_id = $1 AND is_default = true
              LIMIT 1"
         )
         .bind(script_id)
@@ -932,14 +933,14 @@ pub async fn get_default_script_layout(pool: &PgPool, script_id: Uuid) -> Result
     ).await
 }
 
-/// Creates a new layout for a script.
-///
+/// Create a new script layout
+/// 
 /// # Arguments
-/// * `pool` - Reference to a PostgreSQL connection pool.
-/// * `script_id` - The ID of the script.
-/// * `request` - The layout creation request.
-/// * `user_id` - The ID of the user creating the layout.
-///
+/// * `pool` - Database connection pool
+/// * `script_id` - UUID of the script this layout belongs to
+/// * `request` - Layout creation request data
+/// * `user_id` - UUID of the user creating the layout
+/// 
 /// # Returns
 /// * `Result<models::script_layout::ScriptLayout>` - The created layout on success, or an AppError on failure.
 pub async fn create_script_layout(
@@ -949,19 +950,15 @@ pub async fn create_script_layout(
     user_id: Uuid
 ) -> Result<models::script_layout::ScriptLayout> {
     let mut tx = pool.begin().await
-        .map_err(|e| {
-            tracing::error!("💾 Failed to begin transaction for creating script layout: {}", e);
-            AppError::from(e)
-        })?;
+        .map_err(|e| AppError::Internal(Error::msg(e.to_string())))?;
     
-    // If this is set as default, unset other defaults first
+    // If this is being set as the default, unset any existing default
     if request.is_default.unwrap_or(false) {
         sqlx::query("UPDATE script_layouts SET is_default = false WHERE script_id = $1")
             .bind(script_id)
             .execute(&mut *tx)
             .await
             .map_err(|e| {
-                tracing::error!("💾 Failed to unset default layouts for script {}: {}", script_id, e);
                 AppError::from(e)
             })?;
     }
@@ -988,14 +985,14 @@ pub async fn create_script_layout(
     Ok(layout)
 }
 
-/// Updates an existing script layout.
-///
+/// Update an existing script layout
+/// 
 /// # Arguments
-/// * `pool` - Reference to a PostgreSQL connection pool.
-/// * `layout_id` - The ID of the layout to update.
-/// * `request` - The layout update request.
-/// * `user_id` - The ID of the user updating the layout.
-///
+/// * `pool` - Database connection pool
+/// * `layout_id` - UUID of the layout to update
+/// * `request` - Layout update request data
+/// * `_user_id` - UUID of the user updating the layout (for future authorization)
+/// 
 /// # Returns
 /// * `Result<models::script_layout::ScriptLayout>` - The updated layout on success, or an AppError on failure.
 pub async fn update_script_layout(
@@ -1007,13 +1004,13 @@ pub async fn update_script_layout(
     let mut tx = pool.begin().await
         .map_err(|e| AppError::Internal(Error::msg(e.to_string())))?;
     
-    // Get current layout to check script_id for default handling
+    // First, get the script_id for this layout (for permission checks later)
     let current_layout = sqlx::query!("SELECT script_id FROM script_layouts WHERE id = $1", layout_id)
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(Error::msg(e.to_string())))?;
     
-    // If setting as default, unset other defaults first
+    // If this is being set as the default, unset any existing default for this script
     if let Some(true) = request.is_default {
         sqlx::query("UPDATE script_layouts SET is_default = false WHERE script_id = $1")
             .bind(current_layout.script_id)
@@ -1048,14 +1045,14 @@ pub async fn update_script_layout(
     Ok(layout)
 }
 
-/// Deletes a script layout.
-///
+/// Delete a script layout
+/// 
 /// # Arguments
-/// * `pool` - Reference to a PostgreSQL connection pool.
-/// * `layout_id` - The ID of the layout to delete.
-///
+/// * `pool` - Database connection pool
+/// * `layout_id` - UUID of the layout to delete
+/// 
 /// # Returns
-/// * `Result<()>` - Ok on success, or an AppError on failure.
+/// * `Result<()>` - Success or an AppError on failure.
 pub async fn delete_script_layout(pool: &PgPool, layout_id: Uuid) -> Result<()> {
     sqlx::query("DELETE FROM script_layouts WHERE id = $1")
         .bind(layout_id)
@@ -1065,6 +1062,7 @@ pub async fn delete_script_layout(pool: &PgPool, layout_id: Uuid) -> Result<()> 
     
     Ok(())
 }
+
 
 pub async fn health_check() -> &'static str {
     "OK"

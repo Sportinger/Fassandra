@@ -85,7 +85,7 @@ pub async fn create_script(
         title.trim(),
         Some(user_id),
         Some(Utc::now()),
-        false,
+        Some(false),
         None::<String>
     )
     .fetch_one(&*pool)
@@ -104,7 +104,7 @@ pub async fn get_user_scripts(
         r#"
         SELECT DISTINCT s.id, s.title, s.created_by, s.created_at, s.is_public, s.thumbnail FROM scripts s
         WHERE s.created_by = $1
-           OR s.is_public = true
+           OR s.is_public = TRUE
            OR EXISTS (
                SELECT 1 FROM script_shares ss 
                WHERE ss.script_id = s.id 
@@ -186,13 +186,14 @@ pub struct ContentSnapshotRequest {
 
 /// Store content snapshot for reliable persistence
 /// POST /api/scripts/:script_id/snapshot
+#[axum::debug_handler]
 pub async fn store_content_snapshot(
     State(pool): State<Arc<PgPool>>,
     Path(script_id): Path<Uuid>,
-    Json(request): Json<ContentSnapshotRequest>,
     auth_user: AuthUser,
+    Json(request): Json<ContentSnapshotRequest>,
 ) -> impl IntoResponse {
-    debug!("Storing content snapshot for script {}: {} chars", script_id, request.content.len());
+    tracing::debug!("Storing content snapshot for script {}: {} chars", script_id, request.content.len());
     
     // Input validation
     if request.content.len() > 10_000_000 {  // 10MB limit

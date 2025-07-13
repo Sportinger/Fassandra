@@ -79,7 +79,7 @@ test.describe('Pessoa Complete Workflow + Real Database Verification', () => {
     await page.getByRole('textbox', { name: 'Password' }).fill(testUser.password);
     await page.getByRole('button', { name: 'Login' }).click();
     
-    await page.waitForTimeout(1000); // Lightning fast: 1 second
+    await page.waitForTimeout(3000); // Restored from lightning fast to reasonable 3 seconds
     await expect(page.locator('text=Scripts')).toBeVisible();
     await expect(page.getByText('+')).toBeVisible();
     console.log('✅ Login successful');
@@ -88,16 +88,16 @@ test.describe('Pessoa Complete Workflow + Real Database Verification', () => {
     console.log(`📝 Step 2: Create script "${scriptName}" (super fast timing)...`);
     
     await page.getByText('+').click();
-    await page.waitForTimeout(1.5); // Halved from 3ms
+    await page.waitForTimeout(6); // Restored from halved timing (was 3ms doubled)
     
     await page.getByRole('button', { name: 'Create New Script' }).click();
-    await page.waitForTimeout(1.5); // Halved from 3ms
+    await page.waitForTimeout(6); // Restored from halved timing (was 3ms doubled)
     
     await page.getByRole('textbox', { name: 'New script name' }).fill(scriptName);
-    await page.waitForTimeout(1.5); // Halved from 3ms
+    await page.waitForTimeout(6); // Restored from halved timing (was 3ms doubled)
     
     await page.getByRole('button', { name: 'Create' }).click();
-    await page.waitForTimeout(1.5); // Halved from 3ms
+    await page.waitForTimeout(6); // Restored from halved timing (was 3ms doubled)
     
     await expect(page.getByRole('heading', { name: scriptName }).first()).toBeVisible();
     console.log(`✅ Script "${scriptName}" created successfully`);
@@ -106,7 +106,7 @@ test.describe('Pessoa Complete Workflow + Real Database Verification', () => {
     console.log('📖 Step 3: Open editor (super fast timing)...');
     
     await page.getByRole('heading', { name: scriptName }).first().click();
-    await page.waitForTimeout(1.5); // Halved from 3ms
+    await page.waitForTimeout(6); // Restored from halved timing (was 3ms doubled)
     
     // Extract script ID from URL
     await page.waitForFunction(() => window.location.href.includes('editor'));
@@ -141,8 +141,8 @@ FADE TO BLACK.`;
     await page.getByRole('textbox').click();
     await page.getByRole('textbox').fill(testContent);
     
-    // Halved wait time for auto-save via WebSocket
-    await page.waitForTimeout(300); // Halved from 600ms
+    // Reasonable wait time for auto-save via WebSocket
+    await page.waitForTimeout(1200); // Restored from halved timing (was 600ms)
     console.log('✅ Content written and auto-saved');
     
     // Step 5: Navigate Back (instant)
@@ -490,29 +490,29 @@ lightning-fast performance!
     await page.getByRole('textbox', { name: 'Email' }).fill(testUser.email);
     await page.getByRole('textbox', { name: 'Password' }).fill(testUser.password);
     await page.getByRole('button', { name: 'Login' }).click();
-    await page.waitForTimeout(1000); // Lightning fast: 1 second
+    await page.waitForTimeout(3000); // Restored from lightning fast to reasonable 3 seconds
     
-    // Super rapid script creation (1.5ms delays)
+    // Reasonable script creation timing
     await page.getByText('+').click();
-    await page.waitForTimeout(1.5);
+    await page.waitForTimeout(6);
     await page.getByRole('button', { name: 'Create New Script' }).click();
-    await page.waitForTimeout(1.5);
+    await page.waitForTimeout(6);
     await page.getByRole('textbox', { name: 'New script name' }).fill(scriptName);
-    await page.waitForTimeout(1.5);
+    await page.waitForTimeout(6);
     await page.getByRole('button', { name: 'Create' }).click();
-    await page.waitForTimeout(1.5);
+    await page.waitForTimeout(6);
     
-    // Super rapid editor opening
+    // Reasonable editor opening
     await page.getByRole('heading', { name: scriptName }).first().click();
-    await page.waitForTimeout(1.5);
+    await page.waitForTimeout(6);
     
     // Content writing with halved save wait
-    const quickContent = `Speed test ${timestamp} - OPTIMIZED timing (halved)`;
+    const quickContent = `Speed test ${timestamp} - RESTORED timing`;
     await page.getByRole('textbox').click();
     await page.getByRole('textbox').fill(quickContent);
-    await page.waitForTimeout(300); // Halved from 600ms
+    await page.waitForTimeout(1200); // Restored from halved timing (was 600ms)
     
-    // Instant navigation and logout
+    // Navigation and logout
     await page.getByRole('main').getByRole('button', { name: 'Scripts' }).click();
     await page.getByRole('banner').getByRole('button', { name: '☰' }).click();
     await page.getByRole('button', { name: 'Logout' }).click();

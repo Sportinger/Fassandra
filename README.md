@@ -1,7 +1,5 @@
 # Pessoa: AI-Powered Collaborative Scriptwriting Platform
 
-<img src="doc/images/pessoa-logo.png" alt="Pessoa Logo" width="200"/>
-
 **Pessoa** is a real-time collaborative scriptwriting platform designed specifically for theater professionals. Write together, edit simultaneously, and let AI help structure your scripts.
 
 ## ✨ Key Features
@@ -23,7 +21,7 @@
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/your-org/pessoa.git
 cd pessoa
 
 # Copy environment template
@@ -34,7 +32,7 @@ docker compose up -d
 
 # Access the application
 # 🌐 Web: https://localhost:8080
-# 🔧 Admin: http://localhost:5050 (pgAdmin)
+# 🔧 Admin Database: http://localhost:5050 (pgAdmin)
 ```
 
 ### 2. First Login
@@ -72,7 +70,7 @@ Browser (HTTPS) → Nginx Frontend → Rust Backend → PostgreSQL
 **Tech Stack:**
 - **Frontend**: React 18 + TypeScript + TipTap Editor + YJS
 - **Backend**: Rust + Axum + SQLx + Tokio
-- **Database**: PostgreSQL 15 + Redis (sessions)
+- **Database**: PostgreSQL 15
 - **Real-time**: WebSocket + YJS CRDTs
 - **AI**: Google Gemini API
 - **Infrastructure**: Docker + Nginx + SSL/TLS
@@ -92,9 +90,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 - **📖 Documentation**: [Complete Manual](doc/README.md)
-- **🐛 Bug Reports**: [GitHub Issues](https://github.com/your-org/pessoa/issues)
-- **💬 Community**: [Discord Server](https://discord.gg/your-invite)
-- **📧 Email**: support@pessoa.theater
+- **🐛 Bug Reports**: Create an issue in this repository
+- **💬 Community**: Join our development discussions
+- **📧 Email**: dev@pessoa.theater
 
 ---
 

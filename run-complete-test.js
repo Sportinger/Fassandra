@@ -373,7 +373,7 @@ function runTest(testFile, description) {
     const startTime = Date.now();
     
     // Run the test with enhanced logging
-    const result = execSync(`npx playwright test ${testFile} --reporter=line --timeout=1000`, {
+    const result = execSync(`npx playwright test ${testFile} --reporter=line --timeout=60000`, {
       cwd: process.cwd(),
       stdio: 'pipe',
       encoding: 'utf8'

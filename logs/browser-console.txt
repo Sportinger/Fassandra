@@ -1,0 +1,28 @@
+=== BROWSER CONSOLE LOGS ===
+Test: Complete workflow + Database verification
+Time: 2025-07-13T23:27:45.924Z
+Script: MCP-1752449258254 (9a7dce32-3516-4f50-8f93-24cca233889b)
+Total Logs: 153
+Total Errors: 0
+
+=== RECENT CONSOLE MESSAGES ===
+[2025-07-13T23:27:45.535Z] LOG: [ScriptList] Starting to fetch scripts
+[2025-07-13T23:27:45.536Z] LOG: [API] Requesting: GET /api/scripts
+[2025-07-13T23:27:45.545Z] LOG: [API] Response: 200 OK
+[2025-07-13T23:27:45.546Z] LOG: [ScriptList] Fetched 5 scripts
+[2025-07-13T23:27:45.546Z] LOG: [ScriptList] Found 1 scripts without thumbnails, generating...
+[2025-07-13T23:27:45.546Z] LOG: [API] Requesting: POST /api/s/thumbnails/generate
+[2025-07-13T23:27:45.560Z] LOG: [API] Response: 200 OK
+[2025-07-13T23:27:45.561Z] LOG: [ScriptList] Fetched 5 scripts
+[2025-07-13T23:27:45.561Z] LOG: [ScriptList] Found 1 scripts without thumbnails, generating...
+[2025-07-13T23:27:45.561Z] LOG: [API] Requesting: POST /api/s/thumbnails/generate
+[2025-07-13T23:27:45.562Z] LOG: [API] Response: 200 OK
+[2025-07-13T23:27:45.562Z] LOG: [ScriptList] Generated 1 thumbnails
+[2025-07-13T23:27:45.562Z] LOG: [API] Requesting: GET /api/scripts
+[2025-07-13T23:27:45.565Z] LOG: [API] Response: 200 OK
+[2025-07-13T23:27:45.565Z] LOG: [ScriptList] Generated 0 thumbnails
+[2025-07-13T23:27:45.569Z] LOG: [API] Response: 200 OK
+[2025-07-13T23:27:45.803Z] LOG: AuthProvider setToken called: {newToken: null, newUser: undefined, userToSet: null}
+[2025-07-13T23:27:45.803Z] LOG: [Auth] setToken called - token: NO, user: NO USER
+[2025-07-13T23:27:45.803Z] LOG: [Auth] Token removed from both storages
+[2025-07-13T23:27:45.904Z] VERBOSE: [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o

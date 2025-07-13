@@ -89,7 +89,7 @@ pub fn extract_text_with_pages_from_docx(docx_bytes: &[u8]) -> Result<Vec<TextWi
                             RunChild::Text(t) => {
                                 paragraph_text.push_str(&t.text);
                             }
-                            RunChild::Break(br) => {
+                            RunChild::Break(_br) => {
                                 // Check if this is a page break
                                 // Note: docx-rs might not expose all break types directly
                                 // We'll detect potential page breaks by checking for specific patterns

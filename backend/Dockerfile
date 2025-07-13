@@ -15,7 +15,7 @@ ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld"
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 ARG DATABASE_URL="postgres://dummyuser:dummypass@dummyhost:5432/dummydb"
 ENV DATABASE_URL=${DATABASE_URL}
-ENV SQLX_OFFLINE=true
+# SQLX_OFFLINE not needed in planner stage - only downloads dependencies
 
 # Copy backend's Cargo.toml and Cargo.lock (from build context root)
 COPY Cargo.toml ./Cargo.toml
@@ -64,6 +64,7 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
 # Default SQLX_OFFLINE to true. It can be overridden for specific commands if necessary,
 # but the final build relies on it being true if .sqlx is prepared.
+# Re-enabled with updated cache
 ENV SQLX_OFFLINE=true
 
 # Copy pre-built artifacts and manifests from the planner stage,

@@ -1,5 +1,4 @@
 use std::time::Duration;
-use anyhow::Context;
 use sqlx::{PgPool, Transaction, Postgres};
 use tokio::time::timeout;
 use uuid::Uuid;

@@ -19,7 +19,7 @@ pub struct Script {
     pub created_at: Option<DateTime<Utc>>,
     /// Whether the script is publicly accessible
     #[serde(default)]
-    pub is_public: bool,
+    pub is_public: Option<bool>,
     /// Base64-encoded thumbnail image for DIN A4 preview
     pub thumbnail: Option<String>,
 } 
