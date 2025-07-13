@@ -7,11 +7,11 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use tower_http::trace::TraceLayer;
 use tower_http::cors::{CorsLayer, AllowOrigin};
-use axum::http::{Method, HeaderValue, HeaderMap, header};
+use axum::http::{Method, HeaderValue, header};
 use tower::ServiceBuilder;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use anyhow::{Context, Result};
-use std::time::Duration;
+
 use tower_http::limit::RequestBodyLimitLayer;
 use tokio::sync::mpsc;
 use std::sync::Arc;
@@ -20,7 +20,7 @@ use axum::extract::Request;
 use axum::response::Response;
 use chrono;
 
-use backend::auth::{hash_password, verify_password, generate_token, AuthUser, RateLimiter, rate_limit_middleware};
+use backend::auth::{hash_password, verify_password, generate_token, AuthUser, rate_limit_middleware};
 use backend::error::AppError;
 use backend::{create_script, create_block, update_block, get_script_with_blocks, get_block_history, delete_script, update_script_content_from_html, get_script_layouts, get_default_script_layout, create_script_layout, update_script_layout, delete_script_layout};
 use backend::api::scripts::{get_user_scripts, store_content_snapshot};
@@ -33,8 +33,8 @@ use backend::models::script_layout::{ScriptLayout, CreateScriptLayoutRequest, Up
 use backend::handlers::script_handlers::script_routes;
 use backend::handlers::page_break_handlers::create_page_break_router;
 use backend::persistence_event::YjsPersistenceEvent;
-use backend::async_db_writer::run_async_db_writer;
-use backend::snapshotting_service::run_snapshotting_service;
+
+
 
 static MIGRATOR: Migrator = sqlx::migrate!();
 
