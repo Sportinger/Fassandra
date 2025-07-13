@@ -19,21 +19,17 @@ alwaysApply: true
 - **Priority**: Real-time collaboration works + mobile responsive
 - **Fast Dev Goal**: Login → Create → Edit → Works = SUCCESS
 
-## ⚡ Fast Dev MCP Commands (Essential Only)
+## ⚡ Fast Dev Tools (When Needed)
+- **Code**: `read_file`, `grep_search` 
+- **Browser**: `navigate`, `snapshot`, `click`, `console_messages`
+- **Database**: `execute_query`
+- **Logs**: `logs/error.log`, `logs/combined.log`, `backend/backend.log` + browser logs via Playwright
 
-### Instant Code Analysis
-- `mcp_filesystem_read_file` - Quick file check
-- `mcp_filesystem_read_multiple_files` - Fast parallel analysis
-- `grep_search` - Find exact code patterns instantly
-
-### Lightning Browser Testing  
-- `mcp_playwright-test_browser_navigate` - Quick UI navigation
-- `mcp_playwright-test_browser_snapshot` - Instant page state
-- `mcp_playwright-test_browser_click` - Fast user interaction test
-- `mcp_playwright-test_browser_console_messages` - Error detection
-
-### Rapid Database Check
-- `mcp_database_execute_query` - Quick data verification
+### Browser Logs via MCP:
+```bash
+mcp_playwright-test_browser_console_messages
+```
+**Shows**: Auth flow, API calls, WebSocket activity, errors, DOM warnings
 
 ## 🚀 Fast Dev Workflow
 
@@ -107,6 +103,7 @@ node run-complete-test.js --workflow
 - ✅ Content editing works
 - ✅ Database saves content
 - ✅ Real-time sync works
+- ✅ All logs clean (backend + frontend + browser)
 
 ### Success Criteria
 - **Green test** = Continue coding
@@ -114,11 +111,12 @@ node run-complete-test.js --workflow
 
 ### If Test Fails
 1. **Read error** (usually obvious)
-2. **Apply fix** (minimal change)
-3. **Re-run test** 
-4. **Repeat until green**
+2. **Check logs instantly**: backend + frontend + browser logs via Playwright
+3. **Apply fix** (minimal change)
+4. **Re-run test** 
+5. **Repeat until green**
 
-**No lengthy debugging sessions. Fast fix → fast test → fast progress.**
+**No lengthy debugging sessions. Fast logs → fast fix → fast test → fast progress.**
 
 ## 🎭 Theater Professional Mindset
 
