@@ -197,3 +197,66 @@ Maintain `BRUTAL_REVIEW_TRACKING.json` with scalable multi-file structure:
 - Next recommended actions
 
 **Remember**: Theater professionals depend on lean, honest code. **Show no mercy to waste. ONE FILE AT A TIME. SILENCE IN CHAT. EVERYTHING IN JSON.**
+
+# Playwright MCP Configuration for Cursor
+
+## Testing Guidelines
+- Always resize browser screen to 700px width for better visibility during testing
+- Use tab index starting from 1 instead of 0
+- Ensure proper element selection and interaction
+
+## MCP Servers Configuration
+
+### For UI Testing and Iteration (with vision):
+```json
+{
+  "mcpServers": {
+    "playwright-vision": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@0.0.29",
+        "--config=playwright.config.js",
+        "--vision"
+      ]
+    }
+  }
+}
+```
+
+### For Automated Testing (without vision):
+```json
+{
+  "mcpServers": {
+    "playwright-test": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@0.0.29",
+        "--config=playwright.config.js"
+      ]
+    }
+  }
+}
+```
+
+## Usage Instructions
+
+### For UI Iteration:
+1. Enable the "playwright-vision" MCP server
+2. Use prompts like: "Please use playwright MCP to view the UI. Identify areas to improve for UI and iterate it until it looks perfect. Make sure the width of browser in MCP to be 700 pixel."
+
+### For Automated Testing:
+1. Enable the "playwright-test" MCP server  
+2. Use prompts like: "Now let's test application using the playwright MCP. First let's test if you can login successfully and then test if users can successfully add to-dos and mark things as completed."
+
+### Creating Reusable Tests:
+After successful testing, use: "Now let's create a reusable playwright UI test based on the flow above so I can run as automated test every time."
+
+## Testing Scenarios to Cover
+- Login/Authentication flow
+- User registration
+- Adding/editing/deleting items
+- UI responsiveness
+- Error handling
+- Navigation flows
+- Form validation
+- Session management

@@ -5,7 +5,7 @@ ADD COLUMN page_number INTEGER DEFAULT 1 NOT NULL;
 
 -- Create index for efficient page-based queries
 CREATE INDEX idx_blocks_script_id_page_number 
-ON blocks(script_id, page_number, block_order);
+ON blocks(script_id, page_number);
 
 -- Create index for page-based content retrieval
 CREATE INDEX idx_blocks_page_number 

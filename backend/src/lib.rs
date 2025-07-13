@@ -8,7 +8,6 @@
 pub mod error;
 pub mod error_helpers;
 pub mod auth;
-pub mod ws;
 pub mod analysis;
 pub mod gemini_api;
 pub mod api;
@@ -20,6 +19,7 @@ pub mod async_db_writer;
 pub mod services;
 pub mod service_manager;
 pub mod snapshotting_service;
+pub mod ws;
 
 #[cfg(test)]
 mod test_yjs;
