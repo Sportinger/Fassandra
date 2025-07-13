@@ -1,15 +1,15 @@
 {
   "execution_metrics": { 
-    "files_analyzed": 25,
-    "total_files_discovered": 25,
-    "dead_lines_eliminated": 264,
-    "bloat_kb_removed": 111.7,
-    "comments_assassinated": 182,
-    "critical_blockers": 17,
-    "major_issues": 54,
-    "minor_issues": 82,
-    "overall_verdict": "ANALYZING",
-    "last_updated": "2025-01-15T13:45:00Z"
+    "files_analyzed": 26,
+    "total_files_discovered": 26,
+    "dead_lines_eliminated": 294,
+    "bloat_kb_removed": 116.8,
+    "comments_assassinated": 184,
+    "critical_blockers": 20,
+    "major_issues": 56,
+    "minor_issues": 84,
+    "overall_verdict": "CRITICAL_BLOCKERS_FOUND",
+    "last_updated": "2025-01-15T14:00:00Z"
   },
   "files": {
     "backend/src/main.rs": { 
@@ -330,6 +330,20 @@
       "comments_killed": 0,
       "analysis_timestamp": "2025-01-15T13:45:00Z",
       "depends_on": ["sqlx", "uuid", "serde_json", "chrono", "axum", "tracing", "serde", "anyhow"],
+      "imported_by": ["backend/src/api/mod.rs"],
+      "exports_unused": [],
+      "imports_unused": []
+    },
+    "backend/src/api/ws.rs": {
+      "status": "EXECUTED",
+      "dead_lines": 30,
+      "bloat_kb": 3.4,
+      "critical_issues": 3,
+      "major_issues": 2,
+      "minor_issues": 2,
+      "comments_killed": 2,
+      "analysis_timestamp": "2025-01-15T14:00:00Z",
+      "depends_on": ["axum", "serde", "sqlx", "uuid", "std", "chrono", "tracing", "serde_json"],
       "imported_by": ["backend/src/api/mod.rs"],
       "exports_unused": [],
       "imports_unused": []
@@ -964,6 +978,65 @@
       "lines": "39-55",
       "description": "Complex user scripts query with EXISTS subquery could be optimized",
       "bloat_kb": 0.2
+    },
+    "SEC-018": {
+      "type": "INFORMATION_LEAKAGE",
+      "severity": "CRITICAL",
+      "file": "backend/src/api/ws.rs",
+      "lines": "76, 84, 89",
+      "description": "WebSocket error messages expose internal error details via e.to_string()",
+      "blocks_deployment": true,
+      "cross_file_instances": []
+    },
+    "SEC-019": {
+      "type": "MISSING_AUTHORIZATION",
+      "severity": "CRITICAL",
+      "file": "backend/src/api/ws.rs",
+      "lines": "65-95",
+      "description": "No authorization checks on WebSocket messages - any client can send script updates",
+      "blocks_deployment": true,
+      "cross_file_instances": []
+    },
+    "SEC-020": {
+      "type": "FUNCTIONALITY_DISABLED",
+      "severity": "CRITICAL",
+      "file": "backend/src/api/ws.rs",
+      "lines": "96-124",
+      "description": "Core WebSocket functionality completely disabled - major UX failure",
+      "blocks_deployment": true,
+      "cross_file_instances": []
+    },
+    "ARCH-030": {
+      "type": "MIXED_CONCERNS",
+      "severity": "MAJOR",
+      "file": "backend/src/api/ws.rs",
+      "lines": "1-136",
+      "description": "WebSocket handling mixed with script update logic and origin validation",
+      "bloat_kb": 1.2
+    },
+    "ARCH-031": {
+      "type": "HARDCODED_CONFIGURATION",
+      "severity": "MAJOR",
+      "file": "backend/src/api/ws.rs",
+      "lines": "32-38",
+      "description": "Default domain and origin configuration hardcoded in WebSocket handler",
+      "bloat_kb": 0.3
+    },
+    "MAINT-033": {
+      "type": "DEAD_CODE_COMMENTS",
+      "severity": "MINOR",
+      "file": "backend/src/api/ws.rs",
+      "lines": "8, 96-124",
+      "description": "Large commented-out code blocks and dead import comments instead of version control",
+      "bloat_kb": 1.8
+    },
+    "MAINT-034": {
+      "type": "ABANDONED_TODO_COMMENTS",
+      "severity": "MINOR",
+      "file": "backend/src/api/ws.rs",
+      "lines": "96",
+      "description": "TODO comment about SQLx cache issue indicates incomplete implementation",
+      "bloat_kb": 0.1
     }
   },
   "patterns": {
@@ -980,6 +1053,13 @@
       "description": "Authorization logic duplicated across handlers",
       "impact": "Security inconsistency, maintenance burden",
       "severity": "MAJOR"
+    },
+    "missing_authorization_pattern": {
+      "type": "SECURITY_ANTI_PATTERN",
+      "files": ["backend/src/api/scripts.rs"],
+      "description": "Critical API endpoints lack authorization checks allowing unauthorized operations",
+      "impact": "Data breach, unauthorized script modification/deletion",
+      "severity": "CRITICAL"
     },
     "information_leakage_pattern": {
       "type": "SECURITY_PATTERN",
@@ -1064,6 +1144,20 @@
       "description": "Clean module organization with proper documentation",
       "impact": "Good maintainability and code organization",
       "severity": "POSITIVE"
+    },
+    "disabled_functionality_pattern": {
+      "type": "CRITICAL_FAILURE",
+      "files": ["backend/src/api/ws.rs"],
+      "description": "Core WebSocket functionality completely disabled with large commented-out code blocks",
+      "impact": "Real-time collaboration features non-functional, major UX failure",
+      "severity": "CRITICAL"
+    },
+    "websocket_security_holes": {
+      "type": "SECURITY_PATTERN",
+      "files": ["backend/src/api/ws.rs"],
+      "description": "WebSocket endpoints lack authorization and expose internal errors",
+      "impact": "Unauthorized access to script updates, information disclosure",
+      "severity": "CRITICAL"
     }
   },
   "dependency_graph": {
@@ -1092,7 +1186,8 @@
       {"id": "backend/src/analysis/parser.rs", "type": "module", "size": 247},
       {"id": "backend/src/analysis/errors.rs", "type": "module", "size": 12},
       {"id": "backend/src/api/mod.rs", "type": "module", "size": 7},
-      {"id": "backend/src/api/scripts.rs", "type": "module", "size": 153}
+      {"id": "backend/src/api/scripts.rs", "type": "module", "size": 153},
+      {"id": "backend/src/api/ws.rs", "type": "module", "size": 136}
     ],
     "edges": [
       {"from": "backend/src/main.rs", "to": "backend/src/lib.rs", "type": "imports"},
@@ -1139,292 +1234,332 @@
       {"from": "backend/src/api/mod.rs", "to": "backend/src/api/scripts.rs", "type": "exports"},
       {"from": "backend/src/api/mod.rs", "to": "backend/src/api/ws.rs", "type": "exports"},
       {"from": "backend/src/api/scripts.rs", "to": "backend/src/models/script.rs", "type": "imports"},
-      {"from": "backend/src/api/scripts.rs", "to": "backend/src/error.rs", "type": "imports"}
+      {"from": "backend/src/api/scripts.rs", "to": "backend/src/error.rs", "type": "imports"},
+      {"from": "backend/src/api/ws.rs", "to": "backend/src/error.rs", "type": "imports"}
     ]
   },
-  "execution_queue": [
+      "execution_queue": [
     { 
       "priority": 1, 
+      "action": "Re-enable WebSocket functionality", 
+      "target": "SEC-020",
+      "affected_files": ["backend/src/api/ws.rs"],
+      "estimated_effort": "1 day"
+    },
+    { 
+      "priority": 2, 
+      "action": "Add authorization checks to WebSocket endpoints", 
+      "target": "SEC-019",
+      "affected_files": ["backend/src/api/ws.rs"],
+      "estimated_effort": "6 hours"
+    },
+    { 
+      "priority": 3, 
+      "action": "Sanitize WebSocket error messages", 
+      "target": "SEC-018",
+      "affected_files": ["backend/src/api/ws.rs"],
+      "estimated_effort": "3 hours"
+    },
+    { 
+      "priority": 4, 
+      "action": "Add authorization checks to API script endpoints", 
+      "target": "SEC-016",
+      "affected_files": ["backend/src/api/scripts.rs"],
+      "estimated_effort": "8 hours"
+    },
+    { 
+      "priority": 5, 
+      "action": "Sanitize database error messages in API responses", 
+      "target": "SEC-015",
+      "affected_files": ["backend/src/api/scripts.rs"],
+      "estimated_effort": "4 hours"
+    },
+    { 
+      "priority": 6, 
+      "action": "Replace unchecked SQL queries with safe alternatives", 
+      "target": "SEC-017",
+      "affected_files": ["backend/src/api/scripts.rs"],
+      "estimated_effort": "6 hours"
+    },
+    { 
+      "priority": 7, 
       "action": "Fix HTML XSS vulnerability in snapshotting service", 
       "target": "SEC-013",
       "affected_files": ["backend/src/snapshotting_service.rs"],
       "estimated_effort": "6 hours"
     },
     {
-      "priority": 2,
+      "priority": 8,
       "action": "Fix regex ReDoS vulnerability in snapshotting service",
       "target": "SEC-014",
       "affected_files": ["backend/src/snapshotting_service.rs"],
       "estimated_effort": "4 hours"
     },
     { 
-      "priority": 3, 
+      "priority": 9, 
       "action": "Fix HTML XSS vulnerability in thumbnail generation", 
       "target": "SEC-012",
       "affected_files": ["backend/src/thumbnail.rs"],
       "estimated_effort": "4 hours"
     },
     {
-      "priority": 4,
+      "priority": 10,
       "action": "Fix API key exposure in error messages",
       "target": "SEC-010",
       "affected_files": ["backend/src/gemini_api.rs"],
       "estimated_effort": "3 hours"
     },
     {
-      "priority": 5,
+      "priority": 11,
       "action": "Sanitize Gemini API error messages",
       "target": "SEC-011", 
       "affected_files": ["backend/src/gemini_api.rs"],
       "estimated_effort": "2 hours"
     },
     {
-      "priority": 6,
+      "priority": 12,
       "action": "Fix file upload vulnerability",
       "target": "SEC-006",
       "affected_files": ["backend/src/handlers/script_handlers.rs"],
       "estimated_effort": "4 hours"
     },
     {
-      "priority": 5,
+      "priority": 13,
       "action": "Add file upload rate limiting",
       "target": "SEC-009",
       "affected_files": ["backend/src/handlers/script_handlers.rs"],
       "estimated_effort": "2 hours"
     },
     {
-      "priority": 6,
+      "priority": 14,
       "action": "Sanitize error messages",
       "target": "SEC-007", 
       "affected_files": ["backend/src/handlers/script_handlers.rs", "backend/src/handlers/page_break_handlers.rs"],
       "estimated_effort": "3 hours"
     },
     {
-      "priority": 7,
+      "priority": 15,
       "action": "Fix IP spoofing in rate limiter",
       "target": "SEC-004",
       "affected_files": ["backend/src/auth.rs"],
       "estimated_effort": "2 hours"
     },
     {
-      "priority": 8,
+      "priority": 16,
       "action": "Strengthen password validation",
       "target": "SEC-003",
       "affected_files": ["backend/src/auth.rs"],
       "estimated_effort": "3 hours"
     },
     {
-      "priority": 9,
+      "priority": 17,
       "action": "Fix XSS vulnerability",
       "target": "SEC-002",
       "affected_files": ["backend/src/lib.rs"],
       "estimated_effort": "4 hours"
     },
     {
-      "priority": 10,
+      "priority": 18,
       "action": "Configure security headers",
       "target": "SEC-001",
       "affected_files": ["backend/src/main.rs"],
       "estimated_effort": "2 hours"
     },
     {
-      "priority": 11,
+      "priority": 19,
       "action": "Sanitize validation error messages",
       "target": "SEC-005",
       "affected_files": ["backend/src/error.rs"],
       "estimated_effort": "2 hours"
     },
     {
-      "priority": 12,
+      "priority": 20,
       "action": "Fix N+1 queries in thumbnail generation",
       "target": "PERF-004",
       "affected_files": ["backend/src/thumbnail.rs"],
       "estimated_effort": "6 hours"
     },
     {
-      "priority": 13,
+      "priority": 21,
       "action": "Optimize thumbnail string operations",
       "target": "PERF-005",
       "affected_files": ["backend/src/thumbnail.rs"],
       "estimated_effort": "3 hours"
     },
     {
-      "priority": 14,
+      "priority": 22,
       "action": "Separate thumbnail generation concerns",
       "target": "ARCH-015",
       "affected_files": ["backend/src/thumbnail.rs"],
       "estimated_effort": "1 day"
     },
     {
-      "priority": 15,
+      "priority": 23,
       "action": "Extract hardcoded thumbnail constants",
       "target": "ARCH-016",
       "affected_files": ["backend/src/thumbnail.rs"],
       "estimated_effort": "2 hours"
     },
     {
-      "priority": 16,
+      "priority": 24,
       "action": "Implement repository pattern in thumbnail module",
       "target": "ARCH-017",
       "affected_files": ["backend/src/thumbnail.rs"],
       "estimated_effort": "1 day"
     },
     {
-      "priority": 17,
+      "priority": 25,
       "action": "Extract schema construction logic",
       "target": "ARCH-013",
       "affected_files": ["backend/src/gemini_api.rs"],
       "estimated_effort": "1 day"
     },
     {
-      "priority": 18,
+      "priority": 26,
       "action": "Cache schema construction",
       "target": "PERF-002",
       "affected_files": ["backend/src/gemini_api.rs"],
       "estimated_effort": "6 hours"
     },
     {
-      "priority": 19,
+      "priority": 27,
       "action": "Optimize JSON parsing",
       "target": "PERF-003",
       "affected_files": ["backend/src/gemini_api.rs"],
       "estimated_effort": "4 hours"
     },
     {
-      "priority": 20,
+      "priority": 28,
       "action": "Standardize Gemini API error handling",
       "target": "ARCH-014",
       "affected_files": ["backend/src/gemini_api.rs"],
       "estimated_effort": "4 hours"
     },
     {
-      "priority": 21,
+      "priority": 29,
       "action": "Extract hardcoded API constants",
       "target": "ARCH-012",
       "affected_files": ["backend/src/gemini_api.rs"],
       "estimated_effort": "2 hours"
     },
     {
-      "priority": 22,
+      "priority": 30,
       "action": "Refactor global state in WebSocket module",
       "target": "ARCH-010",
       "affected_files": ["backend/src/ws.rs"],
       "estimated_effort": "1 day"
     },
     {
-      "priority": 23,
+      "priority": 31,
       "action": "Cache WebSocket authorization queries",
       "target": "PERF-001",
       "affected_files": ["backend/src/ws.rs"],
       "estimated_effort": "4 hours"
     },
     {
-      "priority": 24,
+      "priority": 32,
       "action": "Break down script handlers god object",
       "target": "ARCH-007",
       "affected_files": ["backend/src/handlers/script_handlers.rs"],
       "estimated_effort": "2 days"
     },
     {
-      "priority": 25,
+      "priority": 33,
       "action": "Refactor lib.rs god object",
       "target": "ARCH-002",
       "affected_files": ["backend/src/lib.rs"],
       "estimated_effort": "3 days"
     },
     {
-      "priority": 26,
+      "priority": 34,
       "action": "Implement repository pattern",
       "target": "ARCH-003",
       "affected_files": ["backend/src/lib.rs"],
       "estimated_effort": "2 days"
     },
     {
-      "priority": 27,
+      "priority": 35,
       "action": "Centralize authorization logic",
       "target": "ARCH-008",
       "affected_files": ["backend/src/handlers/script_handlers.rs", "backend/src/handlers/page_break_handlers.rs"],
       "estimated_effort": "1 day"
     },
     {
-      "priority": 28,
+      "priority": 36,
       "action": "Refactor main.rs god object",
       "target": "ARCH-001",
       "affected_files": ["backend/src/main.rs"],
       "estimated_effort": "1 day"
     },
     {
-      "priority": 29,
+      "priority": 37,
       "action": "Separate auth concerns",
       "target": "ARCH-004",
       "affected_files": ["backend/src/auth.rs"],
       "estimated_effort": "1 day"
     },
     {
-      "priority": 30,
+      "priority": 38,
       "action": "Standardize error handling",
       "target": "ARCH-005",
       "affected_files": ["backend/src/error.rs"],
       "estimated_effort": "6 hours"
     },
     {
-      "priority": 31,
+      "priority": 39,
       "action": "Extract hardcoded config",
       "target": "ARCH-006",
       "affected_files": ["backend/src/service_manager.rs"],
       "estimated_effort": "4 hours"
     },
     {
-      "priority": 32,
+      "priority": 40,
       "action": "Remove dead health function",
       "target": "PERF-001",
       "affected_files": ["backend/src/main.rs"],
       "estimated_effort": "1 hour"
     },
     {
-      "priority": 33,
+      "priority": 41,
       "action": "Remove unused health_check",
       "target": "PERF-002",
       "affected_files": ["backend/src/service_manager.rs"],
       "estimated_effort": "1 hour"
     },
     {
-      "priority": 34,
+      "priority": 42,
       "action": "Optimize rate limiter cleanup",
       "target": "PERF-003",
       "affected_files": ["backend/src/auth.rs"],
       "estimated_effort": "2 hours"
     },
     {
-      "priority": 35,
+      "priority": 43,
       "action": "Remove unused HashMap import",
       "target": "CLEAN-001",
       "affected_files": ["backend/src/handlers/script_handlers.rs"],
       "estimated_effort": "1 hour"
     },
     {
-      "priority": 36,
+      "priority": 44,
       "action": "Remove tower_http::trace import",
       "target": "CLEAN-002",
       "affected_files": ["backend/src/main.rs"],
       "estimated_effort": "1 hour"
     },
     {
-      "priority": 37,
+      "priority": 45,
       "action": "Remove tower_http::cors import",
       "target": "CLEAN-003",
       "affected_files": ["backend/src/lib.rs"],
       "estimated_effort": "1 hour"
     },
     {
-      "priority": 38,
+      "priority": 46,
       "action": "Clean up dead code blocks",
       "target": "CLEAN-004",
       "affected_files": ["backend/src/lib.rs", "backend/src/main.rs", "backend/src/auth.rs"],
       "estimated_effort": "3 hours"
     }
-  ],
-  "next_files_to_analyze": [
-    "backend/src/api/ws.rs"
   ]
 } 
