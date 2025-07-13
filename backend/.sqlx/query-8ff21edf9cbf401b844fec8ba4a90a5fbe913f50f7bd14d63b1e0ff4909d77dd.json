@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, update_data\n        FROM yjs_document_updates\n        WHERE script_id = $1 AND id > $2\n        ORDER BY created_at ASC, id ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "update_data",
+        "type_info": "Bytea"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "8ff21edf9cbf401b844fec8ba4a90a5fbe913f50f7bd14d63b1e0ff4909d77dd"
+}

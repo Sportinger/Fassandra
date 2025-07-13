@@ -1,8 +1,23 @@
 {
+  "name": "pessoa",
+  "version": "1.0.0",
+  "description": "Theater script editor with AI integration",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "playwright:install": "playwright install",
+    "playwright:codegen": "playwright codegen",
+    "mcp:vision": "npx @playwright/mcp@0.0.29 --config=playwright.config.js --vision",
+    "mcp:test": "npx @playwright/mcp@0.0.29 --config=playwright.config.js"
+  },
   "dependencies": {
+    "@playwright/mcp": "^0.0.29",
     "@tiptap/extension-text-align": "^2.11.9"
   },
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "@vitest/coverage-v8": "^3.1.2",
     "@vitest/ui": "^3.1.2",
     "jest-environment-jsdom": "^29.7.0",
