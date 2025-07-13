@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "@playwright/mcp@0.0.29",
-        "--config=playwright.config.js",
+        "--config=playwright.config.json",
         "--vision"
       ]
     },
@@ -12,14 +12,26 @@
       "command": "npx",
       "args": [
         "@playwright/mcp@0.0.29",
-        "--config=playwright.config.js"
+        "--config=playwright.config.json"
       ]
     },
     "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "args": [
+        "@modelcontextprotocol/server-filesystem",
+        "/home/admins/projects/pessoa"
+      ]
+    },
+    "database": {
+      "command": "npx",
+      "args": ["-y", "@ahmetbarut/mcp-database-server"],
       "env": {
-        "ALLOWED_DIRECTORIES": "/home/admins/projects/pessoa"
+        "DB_TYPE": "postgres",
+        "DB_HOST": "localhost",
+        "DB_PORT": "5432",
+        "DB_NAME": "pessoa_db",
+        "DB_USER": "pessoa_user",
+        "DB_PASSWORD": "dev_password_123"
       }
     },
     "puppeteer": {
@@ -32,6 +44,17 @@
     "sequential-thinking": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "web-search": {
+      "command": "npx",
+      "args": ["-y", "@just-every/mcp-deep-search"],
+      "env": {
+        "ENV_FILE": "/home/admins/projects/pessoa/.env"
+      }
+    },
+    "browser-tools": {
+      "command": "npx", 
+      "args": ["-y", "@agentdeskai/browser-tools-mcp"]
     }
   }
 } 
