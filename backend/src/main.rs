@@ -420,6 +420,7 @@ async fn delete_script_endpoint(
 
 // === Script Layout Endpoints ===
 
+// Script Layout Endpoints - RESTORED
 /// Gets all layouts for a script.
 async fn get_script_layouts_endpoint(
     State(pool): State<Arc<PgPool>>,
@@ -708,6 +709,7 @@ fn api_routes_arc_state(persistence_event_tx: mpsc::Sender<YjsPersistenceEvent>)
         .route("/scripts/:id/content", patch(update_script_content_endpoint))
         .route("/scripts/:id/snapshot", post(store_content_snapshot))
         .route("/scripts/:id/blocks", post(create_block_endpoint))
+        // Script Layout Routes - RESTORED
         .route("/scripts/:id/layouts", get(get_script_layouts_endpoint).post(create_script_layout_endpoint))
         .route("/scripts/:id/layouts/default", get(get_default_layout_endpoint))
         .route("/scripts/:script_id/layouts/:layout_id", patch(update_script_layout_endpoint).delete(delete_script_layout_endpoint))

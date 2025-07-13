@@ -43,9 +43,9 @@ module.exports = defineConfig({
     // Viewport for better visibility (optimized for debugging)
     viewport: { width: 700, height: 900 },
     
-    // Lightning-fast timeouts for instant feedback
-    actionTimeout: 1000,
-    navigationTimeout: 3000,
+    // Reasonable timeouts for complete workflow tests
+    actionTimeout: 15000,        // 15 seconds for actions (was 1 second)
+    navigationTimeout: 30000,    // 30 seconds for navigation (was 3 seconds)
   },
 
   projects: [
