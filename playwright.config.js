@@ -12,10 +12,17 @@ module.exports = defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   
+  // Screenshot and debugging configuration
+  outputDir: './debug-screenshots/playwright-tests',
+  
   use: {
     baseURL: 'https://192.168.2.111:8443',
     trace: 'on-first-retry',
     ignoreHTTPSErrors: true,
+    
+    // Screenshot configuration for debugging
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
     
     // Anti-bot measures
     userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -33,7 +40,7 @@ module.exports = defineConfig({
       'Cache-Control': 'max-age=0'
     },
     
-    // Viewport for better visibility
+    // Viewport for better visibility (optimized for debugging)
     viewport: { width: 700, height: 900 },
     
     // Slower interactions to appear more human-like
@@ -43,10 +50,13 @@ module.exports = defineConfig({
 
   projects: [
     {
-      name: 'chromium',
+      name: 'chrome-debug',
       use: { 
         ...devices['Desktop Chrome'],
+        // Chrome-specific configuration for debugging
         launchOptions: {
+          headless: false, // Show browser for debugging
+          slowMo: 100,     // Slow down for better debugging visibility
           args: [
             '--disable-blink-features=AutomationControlled',
             '--no-first-run',
@@ -60,7 +70,11 @@ module.exports = defineConfig({
             '--ignore-certificate-errors',
             '--ignore-ssl-errors',
             '--ignore-certificate-errors-spki-list',
-            '--ignore-certificate-errors-ssl-errors'
+            '--ignore-certificate-errors-ssl-errors',
+            // Additional debugging flags
+            '--disable-dev-shm-usage',
+            '--no-sandbox',
+            '--disable-setuid-sandbox'
           ]
         }
       },
