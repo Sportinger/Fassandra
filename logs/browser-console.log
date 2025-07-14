@@ -1,129 +1,129 @@
 {
   "testName": "Complete workflow + Database verification",
-  "timestamp": "2025-07-13T23:27:45.924Z",
-  "scriptId": "9a7dce32-3516-4f50-8f93-24cca233889b",
-  "scriptName": "MCP-1752449258254",
+  "timestamp": "2025-07-14T09:44:20.177Z",
+  "scriptId": "525e9a91-fe4c-4b0e-887d-7043dde7ae8a",
+  "scriptName": "MCP-1752486251284",
   "totalLogs": 153,
   "totalErrors": 0,
   "logs": [
     {
       "type": "log",
       "text": "[ScriptList] Starting to fetch scripts",
-      "timestamp": "2025-07-13T23:27:45.535Z",
+      "timestamp": "2025-07-14T09:44:19.744Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[API] Requesting: GET /api/scripts",
-      "timestamp": "2025-07-13T23:27:45.536Z",
+      "timestamp": "2025-07-14T09:44:19.744Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[API] Response: 200 OK",
-      "timestamp": "2025-07-13T23:27:45.545Z",
+      "timestamp": "2025-07-14T09:44:19.747Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[ScriptList] Fetched 5 scripts",
-      "timestamp": "2025-07-13T23:27:45.546Z",
+      "timestamp": "2025-07-14T09:44:19.747Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[ScriptList] Found 1 scripts without thumbnails, generating...",
-      "timestamp": "2025-07-13T23:27:45.546Z",
+      "timestamp": "2025-07-14T09:44:19.748Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[API] Requesting: POST /api/s/thumbnails/generate",
-      "timestamp": "2025-07-13T23:27:45.546Z",
+      "timestamp": "2025-07-14T09:44:19.748Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[API] Response: 200 OK",
-      "timestamp": "2025-07-13T23:27:45.560Z",
+      "timestamp": "2025-07-14T09:44:19.758Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[ScriptList] Fetched 5 scripts",
-      "timestamp": "2025-07-13T23:27:45.561Z",
+      "timestamp": "2025-07-14T09:44:19.759Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[ScriptList] Found 1 scripts without thumbnails, generating...",
-      "timestamp": "2025-07-13T23:27:45.561Z",
+      "timestamp": "2025-07-14T09:44:19.759Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[API] Requesting: POST /api/s/thumbnails/generate",
-      "timestamp": "2025-07-13T23:27:45.561Z",
+      "timestamp": "2025-07-14T09:44:19.759Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[API] Response: 200 OK",
-      "timestamp": "2025-07-13T23:27:45.562Z",
+      "timestamp": "2025-07-14T09:44:19.760Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[ScriptList] Generated 1 thumbnails",
-      "timestamp": "2025-07-13T23:27:45.562Z",
+      "timestamp": "2025-07-14T09:44:19.761Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[API] Requesting: GET /api/scripts",
-      "timestamp": "2025-07-13T23:27:45.562Z",
+      "timestamp": "2025-07-14T09:44:19.762Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[API] Response: 200 OK",
-      "timestamp": "2025-07-13T23:27:45.565Z",
+      "timestamp": "2025-07-14T09:44:19.764Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[ScriptList] Generated 0 thumbnails",
-      "timestamp": "2025-07-13T23:27:45.565Z",
+      "timestamp": "2025-07-14T09:44:19.764Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "[API] Response: 200 OK",
-      "timestamp": "2025-07-13T23:27:45.569Z",
+      "timestamp": "2025-07-14T09:44:19.764Z",
       "url": "https://192.168.2.111:8443/scripts"
     },
     {
       "type": "log",
       "text": "AuthProvider setToken called: {newToken: null, newUser: undefined, userToSet: null}",
-      "timestamp": "2025-07-13T23:27:45.803Z",
+      "timestamp": "2025-07-14T09:44:20.013Z",
       "url": "https://192.168.2.111:8443/"
     },
     {
       "type": "log",
       "text": "[Auth] setToken called - token: NO, user: NO USER",
-      "timestamp": "2025-07-13T23:27:45.803Z",
+      "timestamp": "2025-07-14T09:44:20.013Z",
       "url": "https://192.168.2.111:8443/"
     },
     {
       "type": "log",
       "text": "[Auth] Token removed from both storages",
-      "timestamp": "2025-07-13T23:27:45.803Z",
+      "timestamp": "2025-07-14T09:44:20.013Z",
       "url": "https://192.168.2.111:8443/"
     },
     {
       "type": "verbose",
       "text": "[DOM] Input elements should have autocomplete attributes (suggested: \"current-password\"): (More info: https://goo.gl/9p2vKq) %o",
-      "timestamp": "2025-07-13T23:27:45.904Z",
+      "timestamp": "2025-07-14T09:44:20.113Z",
       "url": "https://192.168.2.111:8443/"
     }
   ],
@@ -140,7 +140,7 @@
     "errorTypes": [],
     "urls": [
       "https://192.168.2.111:8443/",
-      "https://192.168.2.111:8443/editor/9a7dce32-3516-4f50-8f93-24cca233889b",
+      "https://192.168.2.111:8443/editor/525e9a91-fe4c-4b0e-887d-7043dde7ae8a",
       "https://192.168.2.111:8443/scripts"
     ]
   }
