@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT script_id, last_processed_update_id, last_snapshot_at\n            FROM script_snapshots_meta\n            WHERE script_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "script_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "last_processed_update_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_snapshot_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "cf4a10f493a84bcf023e2742b4ec90760d910c81ef1b68b4ab9cff7316fda9fd"
+}

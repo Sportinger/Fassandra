@@ -9,7 +9,7 @@ use anyhow::Result;
 use crate::persistence_event::YjsPersistenceEvent;
 use crate::auth::RateLimiter;
 use crate::async_db_writer::run_async_db_writer;
-use crate::snapshotting_service::run_snapshotting_service;
+use crate::snapshotting_service_v2::run_snapshotting_service;
 
 /// 🚀 SERVICE MANAGER: Centralized service initialization and lifecycle management
 /// This solves the tight coupling problem by providing a single point for service dependency injection
@@ -140,6 +140,11 @@ impl ServiceManager {
     /// Gets the persistence event sender
     pub fn get_persistence_sender(&self) -> mpsc::Sender<YjsPersistenceEvent> {
         self.persistence_tx.clone()
+    }
+    
+    /// Gets script services container for dependency injection
+    pub fn get_script_services(&self) -> crate::handlers::script_handlers::ScriptServices {
+        crate::create_script_services(self.database_pool.clone())
     }
     
     /// Performs graceful shutdown of all services

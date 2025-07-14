@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE scripts \n        SET is_public = NOT is_public \n        WHERE id = $1 AND created_by = $2\n        RETURNING is_public\n        ",
+  "query": "\n            UPDATE scripts \n            SET is_public = NOT is_public \n            WHERE id = $1 AND created_by = $2\n            RETURNING is_public\n            ",
   "describe": {
     "columns": [
       {
@@ -19,5 +19,5 @@
       true
     ]
   },
-  "hash": "5f121bd824a2de3f256051566157a7e595746d511d3f78c4ebf00d1970d99d7b"
+  "hash": "cecf61ad0ae96153ec41f10b02f6e55202fc06ec863b47bece71d72fb2edc53b"
 }

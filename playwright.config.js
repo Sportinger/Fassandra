@@ -83,8 +83,8 @@ module.exports = defineConfig({
 
   // Development server configuration
   webServer: {
-    command: 'echo "Using existing server at https://192.168.2.111:8443"',
-    url: 'https://192.168.2.111:8443',
+                    command: 'echo "Using existing server at https://192.168.2.111:8443"',
+        url: 'https://192.168.2.111:8443',
     reuseExistingServer: true,
     ignoreHTTPSErrors: true,
   },

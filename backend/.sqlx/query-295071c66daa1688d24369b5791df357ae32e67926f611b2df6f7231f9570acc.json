@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM script_snapshots_meta\n            WHERE script_id = $1 AND last_snapshot_at NOT IN (\n                SELECT last_snapshot_at FROM script_snapshots_meta\n                WHERE script_id = $1\n                ORDER BY last_snapshot_at DESC\n                LIMIT $2\n            )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "295071c66daa1688d24369b5791df357ae32e67926f611b2df6f7231f9570acc"
+}

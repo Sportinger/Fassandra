@@ -62,9 +62,8 @@ ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld"
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
-# Default SQLX_OFFLINE to true. It can be overridden for specific commands if necessary,
-# but the final build relies on it being true if .sqlx is prepared.
-# Re-enabled with updated cache
+# Default SQLX_OFFLINE to true to use cached query data during build
+# This ensures the build doesn't fail if the database is not available.
 ENV SQLX_OFFLINE=true
 
 # Copy pre-built artifacts and manifests from the planner stage,

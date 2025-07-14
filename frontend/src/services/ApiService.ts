@@ -40,10 +40,18 @@ export class ApiService {
     private token: string | null = null;
 
     constructor(baseUrl?: string) {
-        this.baseUrl = baseUrl || 
-            (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) ||
+        // Handle empty strings properly - empty string means use relative URLs
+        const envBaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) ||
             (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) ||
             '';
+        
+        // Handle quoted empty strings and clean up
+        const cleanEnvUrl = envBaseUrl.replace(/^["']|["']$/g, '').trim();
+        
+        this.baseUrl = baseUrl || (cleanEnvUrl !== '' ? cleanEnvUrl : '');
+        
+        // Debug logging
+        console.log('[ApiService] Base URL set to:', JSON.stringify(this.baseUrl));
     }
 
     /**
@@ -191,5 +199,5 @@ export class ApiService {
     }
 }
 
-// Export a singleton instance
+// Export a singleton instance that uses environment variables or relative URLs
 export const apiService = new ApiService(); 
