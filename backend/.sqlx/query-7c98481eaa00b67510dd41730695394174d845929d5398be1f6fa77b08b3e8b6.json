@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO script_shares (script_id, shared_with_user_id, permission, created_by)\n        VALUES ($1, $2, $3, $4)\n        ON CONFLICT (script_id, shared_with_user_id) \n        DO UPDATE SET permission = $3\n        RETURNING *\n        ",
+  "query": "\n            INSERT INTO script_shares (script_id, shared_with_user_id, permission, created_by)\n            VALUES ($1, $2, $3, $4)\n            ON CONFLICT (script_id, shared_with_user_id) \n            DO UPDATE SET permission = $3\n            RETURNING *\n            ",
   "describe": {
     "columns": [
       {
@@ -51,5 +51,5 @@
       true
     ]
   },
-  "hash": "3ad5e76a5e4805ebd8598b9d9cbe94590987abc443a952747c1828686d388527"
+  "hash": "7c98481eaa00b67510dd41730695394174d845929d5398be1f6fa77b08b3e8b6"
 }

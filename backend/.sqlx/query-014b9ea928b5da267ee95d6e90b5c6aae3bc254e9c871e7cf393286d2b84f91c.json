@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT ss.*, u.username\n        FROM script_shares ss\n        JOIN users u ON ss.shared_with_user_id = u.id\n        WHERE ss.script_id = $1\n        ORDER BY ss.created_at DESC\n        ",
+  "query": "\n            SELECT ss.*, u.username\n            FROM script_shares ss\n            JOIN users u ON ss.shared_with_user_id = u.id\n            WHERE ss.script_id = $1\n            ORDER BY ss.created_at DESC\n            ",
   "describe": {
     "columns": [
       {
@@ -54,5 +54,5 @@
       false
     ]
   },
-  "hash": "72486920161fe03541a29e67953ea0349489057e4bc887746dd0582c85fc6f27"
+  "hash": "014b9ea928b5da267ee95d6e90b5c6aae3bc254e9c871e7cf393286d2b84f91c"
 }

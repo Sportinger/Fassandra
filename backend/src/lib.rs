@@ -18,8 +18,15 @@ pub mod persistence_event;
 pub mod async_db_writer;
 pub mod services;
 pub mod service_manager;
-pub mod snapshotting_service;
+pub mod snapshotting_service_v2;
 pub mod ws;
+pub mod repositories;
+pub mod domain;
+pub mod application;
+pub mod config;
+pub mod auth_helpers;
+pub mod middleware;
+pub mod server;
 
 #[cfg(test)]
 mod test_yjs;
@@ -1094,6 +1101,55 @@ pub async fn delete_script_layout(pool: &PgPool, layout_id: Uuid) -> Result<()> 
     Ok(())
 }
 
+
+/// Creates application services with proper dependency injection
+/// 
+/// This function wires up the application services layer with all necessary dependencies.
+/// It follows the dependency injection pattern to ensure clean separation of concerns.
+/// 
+/// # Arguments
+/// * `pool` - Database connection pool
+/// 
+/// # Returns
+/// * `handlers::script_handlers::ScriptServices` - Configured application services
+pub fn create_script_services(pool: std::sync::Arc<PgPool>) -> handlers::script_handlers::ScriptServices {
+    // Create repository layer
+    let script_repo = std::sync::Arc::new(repositories::script_repository::PostgresScriptRepository::new(pool.clone()));
+    let user_repo = std::sync::Arc::new(repositories::user_repository::PostgresUserRepository::new(pool.clone()));
+    let block_repo = std::sync::Arc::new(repositories::block_repository::PostgresBlockRepository::new(pool.clone()));
+    let yjs_repo = std::sync::Arc::new(repositories::yjs_update_repository::PostgresYjsUpdateRepository::new(pool.clone()));
+    let snapshot_repo = std::sync::Arc::new(repositories::snapshot_repository::PostgresSnapshotRepository::new(pool.clone()));
+
+    // Create domain services layer
+    let script_domain_service = std::sync::Arc::new(domain::script_service::ScriptService::new(
+        script_repo.clone(),
+        user_repo.clone(),
+        block_repo.clone(),
+    ));
+
+    // Create application services layer
+    let script_service = std::sync::Arc::new(application::ScriptApplicationService::new(
+        script_domain_service.clone(),
+        pool.clone(),
+    ));
+
+    let sharing_service = std::sync::Arc::new(application::ScriptSharingApplicationService::new(
+        script_domain_service.clone(),
+        pool.clone(),
+    ));
+
+    let thumbnail_service = std::sync::Arc::new(application::ThumbnailApplicationService::new(
+        script_domain_service.clone(),
+        pool.clone(),
+    ));
+
+    // Return the services container
+    handlers::script_handlers::ScriptServices {
+        script_service,
+        sharing_service,
+        thumbnail_service,
+    }
+}
 
 pub async fn health_check() -> &'static str {
     "OK"

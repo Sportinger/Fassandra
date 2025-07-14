@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE scripts SET title = $2, is_public = $3, thumbnail = $4 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9dc0ef9d5517c1eb6618da442e23c4ad2ae29ea06ed3af16524a5abbca4915ea"
+}
