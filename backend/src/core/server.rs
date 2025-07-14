@@ -1,0 +1,216 @@
+use axum::{routing::{get, post, patch, delete}, Router, serve, extract::{State, Path}, Json, response::IntoResponse, http::StatusCode};
+use axum::http::{Method, HeaderValue, header};
+use std::net::SocketAddr;
+use std::env;
+use std::sync::Arc;
+use sqlx::PgPool;
+use tokio::sync::mpsc;
+use tower_http::trace::TraceLayer;
+use tower_http::cors::{CorsLayer, AllowOrigin};
+use tower_http::limit::RequestBodyLimitLayer;
+use tower::ServiceBuilder;
+use anyhow::{Context, Result};
+use uuid::Uuid;
+
+use crate::networking::websocket;
+use crate::handlers::page_break_handlers::create_page_break_router;
+use crate::handlers::script::script_routes;
+use crate::handlers::auth::{health_with_service_manager, register, login, receive_console_logs};
+use crate::auth::{rate_limit_middleware, AuthUser};
+use crate::services::persistence_event::YjsPersistenceEvent;
+use crate::infrastructure::Config;
+use crate::infrastructure::middleware::create_security_headers_middleware;
+use crate::models::script::Script;
+
+/// Script create request payload
+#[derive(serde::Deserialize)]
+pub struct ScriptCreateRequest {
+    pub title: String,
+}
+
+/// Script update request payload
+#[derive(serde::Deserialize)]
+pub struct ScriptUpdate {
+    pub title: String,
+}
+
+/// Content snapshot request payload
+#[derive(serde::Deserialize)]
+pub struct ContentSnapshotRequest {
+    pub content: String,
+    pub format: String, // "html" or "json"
+}
+
+/// Maximum request body size (50MB)
+const MAX_REQUEST_BODY_SIZE: usize = 50 * 1024 * 1024;
+
+/// Creates a database connection pool
+pub async fn create_database_pool(config: &Config) -> Result<PgPool> {
+    let database_url = &config.database_url;
+    
+    PgPool::connect(database_url)
+        .await
+        .context("Failed to connect to database")
+}
+
+/// Runs database migrations
+pub async fn run_migrations(pool: &PgPool) -> Result<()> {
+    sqlx::migrate!("./migrations")
+        .run(pool)
+        .await
+        .context("Failed to run migrations")?;
+    
+    Ok(())
+}
+
+/// Creates CORS layer with appropriate settings
+fn create_cors_layer() -> Result<CorsLayer> {
+    let cors_origin = env::var("CORS_ORIGIN").unwrap_or_else(|_| "http://localhost:3000".to_string());
+    
+    let cors = CorsLayer::new()
+        .allow_origin(cors_origin.parse::<HeaderValue>().context("Invalid CORS origin")?)
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+        .allow_headers([
+            header::AUTHORIZATION,
+            header::ACCEPT,
+            header::CONTENT_TYPE,
+        ])
+        .allow_credentials(true);
+    
+    Ok(cors)
+}
+
+/// Creates the main application router
+pub fn create_router(
+    service_manager: &crate::core::service_manager::ServiceManager,
+    config: Arc<Config>,
+) -> Router {
+    let database_pool = service_manager.get_database_pool();
+    let script_services = service_manager.get_script_services();
+    let cors = create_cors_layer().expect("Failed to create CORS layer");
+    
+    Router::new()
+        .route("/health", get(health_with_service_manager))
+        .route("/register", post(register))
+        .route("/login", post(login))
+        .nest("/api", api_routes_with_services(service_manager.get_persistence_sender(), script_services.clone()))
+        .nest("/api/s", script_routes(service_manager.get_rate_limiter()).with_state(script_services))
+        .with_state(Arc::new(database_pool))
+        .layer(
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_http())
+                .layer(cors)
+                .layer(axum::middleware::from_fn_with_state(service_manager.get_rate_limiter(), rate_limit_middleware))
+                .layer(RequestBodyLimitLayer::new(MAX_REQUEST_BODY_SIZE)),
+        )
+        .layer(axum::middleware::from_fn(create_security_headers_middleware(config)))
+}
+
+/// Wrapper functions for API endpoints that need AuthUser extraction
+
+/// Wrapper for get_user_scripts to use ScriptServices
+async fn get_user_scripts_wrapper(
+    State(services): State<crate::handlers::script::ScriptServices>,
+    auth_user: AuthUser,
+) -> Result<Json<Vec<Script>>, crate::error::AppError> {
+    let scripts = services.script_service.list_user_scripts(auth_user.user_id).await?;
+    Ok(Json(scripts))
+}
+
+/// Wrapper for create_script to use ScriptServices
+async fn create_script_wrapper(
+    State(services): State<crate::handlers::script::ScriptServices>,
+    auth_user: AuthUser,
+    Json(request): Json<ScriptCreateRequest>,
+) -> Result<Json<Script>, crate::error::AppError> {
+    let script = services.script_service.create_script(request.title, auth_user.user_id).await?;
+    Ok(Json(script))
+}
+
+/// Wrapper for update_script to use ScriptServices
+async fn update_script_wrapper(
+    State(services): State<crate::handlers::script::ScriptServices>,
+    Path(script_id): Path<Uuid>,
+    auth_user: AuthUser,
+    Json(script_update): Json<ScriptUpdate>,
+) -> Result<Json<Script>, crate::error::AppError> {
+    let script = services.script_service.update_script(script_id, script_update.title, auth_user.user_id).await?;
+    Ok(Json(script))
+}
+
+/// Wrapper for delete_script to use ScriptServices
+async fn delete_script_wrapper(
+    State(services): State<crate::handlers::script::ScriptServices>,
+    Path(script_id): Path<Uuid>,
+    auth_user: AuthUser,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    services.script_service.delete_script(script_id, auth_user.user_id).await?;
+    Ok(Json(serde_json::json!({"success": true})))
+}
+
+/// Wrapper for store_content_snapshot to use ScriptServices
+async fn store_content_snapshot_wrapper(
+    State(services): State<crate::handlers::script::ScriptServices>,
+    Path(script_id): Path<Uuid>,
+    auth_user: AuthUser,
+    Json(request): Json<ContentSnapshotRequest>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    services.script_service.store_content_snapshot(script_id, request.content, request.format, auth_user.user_id).await?;
+    Ok(Json(serde_json::json!({"success": true, "message": "Content snapshot stored successfully"})))
+}
+
+/// Wrapper for get_content_snapshot to use ScriptServices
+async fn get_content_snapshot_wrapper(
+    State(services): State<crate::handlers::script::ScriptServices>,
+    Path(script_id): Path<Uuid>,
+    auth_user: AuthUser,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let snapshot = services.script_service.get_content_snapshot(script_id, auth_user.user_id).await?;
+    Ok(Json(serde_json::json!({
+        "script_id": snapshot.script_id,
+        "content": snapshot.content,
+        "format": snapshot.format,
+        "created_at": snapshot.created_at
+    })))
+}
+
+/// API routes that use ScriptServices for CRUD operations
+fn api_routes_with_services(
+    persistence_event_tx: mpsc::Sender<YjsPersistenceEvent>,
+    script_services: crate::handlers::script::ScriptServices,
+) -> Router<Arc<PgPool>> {
+    // Routes that use ScriptServices
+    let script_crud_routes = Router::new()
+        .route("/scripts", get(get_user_scripts_wrapper).post(create_script_wrapper))
+        .route("/scripts/:id", patch(update_script_wrapper).delete(delete_script_wrapper))
+        .route("/scripts/:id/snapshot", post(store_content_snapshot_wrapper).get(get_content_snapshot_wrapper))
+        .with_state(script_services);
+    
+    // Routes that use Arc<PgPool> state
+    let pool_based_routes = Router::new()
+        .route("/debug/console-logs", post(receive_console_logs))
+        .merge(websocket::ws_routes(persistence_event_tx.clone()))
+        .merge(create_page_break_router());
+    
+    // Combine both route sets
+    Router::new()
+        .merge(script_crud_routes)
+        .merge(pool_based_routes)
+}
+
+/// Starts the HTTP server
+pub async fn start_server(config: &Config, app: Router) -> Result<()> {
+    let bind_addr = format!("0.0.0.0:{}", config.backend_port);
+    let addr: SocketAddr = bind_addr.parse()
+        .context("Invalid server address")?;
+    
+    tracing::info!("🚀 Server starting on {}", addr);
+    
+    let listener = tokio::net::TcpListener::bind(&addr).await
+        .context("Failed to bind to address")?;
+    
+    serve(listener, app).await
+        .context("Server failed to start")?;
+    
+    Ok(())
+} 

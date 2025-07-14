@@ -12,7 +12,7 @@ pub struct Edit {
     /// Unique identifier for the edit
     pub id: Uuid,
     /// Reference to the block that was edited
-    pub block_id: Uuid,
+    pub block_id: Option<Uuid>,
     /// Reference to the user who made the edit
     pub user_id: Option<Uuid>,
     /// The new content after the edit

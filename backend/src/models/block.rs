@@ -23,4 +23,6 @@ pub struct Block {
     pub block_order: i32,
     /// Page number where this block appears in the script (1-based)
     pub page_number: i32,
+    /// Additional metadata for the block stored as JSON
+    pub metadata: Option<serde_json::Value>,
 } 
