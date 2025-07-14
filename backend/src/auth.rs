@@ -28,10 +28,13 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use tracing;
 use serde_qs;
+use std::net::{IpAddr, SocketAddr};
+use std::str::FromStr;
 
 lazy_static! {
     static ref USERNAME_REGEX: Regex = Regex::new(r"^[a-zA-Z0-9_-]{3,20}$")
         .expect("USERNAME_REGEX compilation failed - invalid regex pattern");
+    // 🔒 SECURITY: Basic password length validation - detailed validation done programmatically
     static ref PASSWORD_REGEX: Regex = Regex::new(r"^.{8,}$")
         .expect("PASSWORD_REGEX compilation failed - invalid regex pattern");
 }
@@ -370,18 +373,104 @@ impl RateLimiter {
 ///
 /// # Returns
 /// * `Result<Response, StatusCode>` - The response or a rate limit error.
+/// Extract client IP address with security validation to prevent spoofing
+fn extract_client_ip(request: &Request<Body>) -> String {
+    // 🔒 SECURITY: Secure IP extraction to prevent rate limit bypass
+    
+    // First, try to get the actual connection IP from extensions
+    if let Some(connect_info) = request.extensions().get::<axum::extract::ConnectInfo<SocketAddr>>() {
+        let socket_addr = connect_info.0;
+        let connection_ip = socket_addr.ip();
+        
+        // 🔒 SECURITY: Only trust X-Forwarded-For if we're behind a trusted proxy
+        // For production, you should configure trusted proxy IP ranges
+        let trust_proxy = env::var("TRUST_PROXY").unwrap_or_else(|_| "false".to_string()) == "true";
+        
+        if trust_proxy {
+            // Extract and validate the first IP from X-Forwarded-For
+            if let Some(forwarded_header) = request.headers().get("x-forwarded-for") {
+                if let Ok(forwarded_str) = forwarded_header.to_str() {
+                    // Take the first IP (client IP) from the comma-separated list
+                    if let Some(first_ip) = forwarded_str.split(',').next() {
+                        let cleaned_ip = first_ip.trim();
+                        // Validate that it's a proper IP address
+                        if let Ok(parsed_ip) = IpAddr::from_str(cleaned_ip) {
+                            // Additional validation: reject private IPs if they come from public connections
+                            if is_valid_client_ip(&parsed_ip, &connection_ip) {
+                                return parsed_ip.to_string();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Fall back to actual connection IP
+        return connection_ip.to_string();
+    }
+    
+    // Final fallback (should not happen in normal operation)
+    tracing::warn!("Unable to extract client IP, using fallback");
+    "unknown".to_string()
+}
+
+/// Validate that the client IP is reasonable given the connection IP
+fn is_valid_client_ip(client_ip: &IpAddr, connection_ip: &IpAddr) -> bool {
+    // 🔒 SECURITY: Prevent private IP spoofing from public connections
+    
+    // If connection comes from public internet, reject private IP claims
+    if is_public_ip(connection_ip) && is_private_ip(client_ip) {
+        tracing::warn!("Rejecting private IP {} from public connection {}", client_ip, connection_ip);
+        return false;
+    }
+    
+    // If connection is from localhost, be more permissive (development)
+    if connection_ip.is_loopback() {
+        return true;
+    }
+    
+    // Allow valid public IPs
+    if is_public_ip(client_ip) {
+        return true;
+    }
+    
+    // Allow private IPs from private connections
+    if is_private_ip(connection_ip) && is_private_ip(client_ip) {
+        return true;
+    }
+    
+    false
+}
+
+/// Check if IP is a public internet address
+fn is_public_ip(ip: &IpAddr) -> bool {
+    !ip.is_loopback() && !is_private_ip(ip)
+}
+
+/// Check if IP is in private address space
+fn is_private_ip(ip: &IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(ipv4) => {
+            ipv4.is_private() || ipv4.is_loopback()
+        }
+        IpAddr::V6(ipv6) => {
+            ipv6.is_loopback() || 
+            // Check for IPv6 private ranges (simplified)
+            ipv6.segments()[0] == 0xfd00 || // Unique local addresses
+            ipv6.segments()[0] == 0xfe80    // Link-local addresses
+        }
+    }
+}
+
 pub async fn rate_limit_middleware(
     State(rate_limiter): State<Arc<RateLimiter>>,
     request: Request<Body>,
     next: Next,
 ) -> std::result::Result<Response, AppError> {
-    let ip = request
-        .headers()
-        .get("x-forwarded-for")
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or("unknown");
-
-    rate_limiter.check(ip).await?;
+    // 🔒 SECURITY: Use secure IP extraction instead of trusting headers
+    let client_ip = extract_client_ip(&request);
+    
+    rate_limiter.check(&client_ip).await?;
 
     Ok(next.run(request).await)
 }
@@ -395,13 +484,29 @@ pub async fn rate_limit_middleware(
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct RegisterPayload {
     #[validate(email(message = "Invalid email format"))]
-    email: String,
+    pub email: String,
     #[validate(length(min = 3, max = 30, message = "Username must be between 3 and 30 characters"))]
     #[validate(regex(path = "USERNAME_REGEX", message = "Username can only contain letters, numbers, and underscores"))]
-    username: String,
+    pub username: String,
     #[validate(length(min = 8, message = "Password must be at least 8 characters long"))]
-    #[validate(regex(path = "PASSWORD_REGEX", message = "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"))]
-    password: String,
+    #[validate(regex(path = "PASSWORD_REGEX", message = "Password must be at least 8 characters long"))]
+    pub password: String,
+}
+
+impl RegisterPayload {
+    /// Custom validation for password strength that can't be done with regex
+    pub fn validate_password_strength(&self) -> Result<()> {
+        let has_lower = self.password.chars().any(|c| c.is_lowercase());
+        let has_upper = self.password.chars().any(|c| c.is_uppercase());
+        let has_digit = self.password.chars().any(|c| c.is_digit(10));
+        let has_special = self.password.chars().any(|c| "@$!%*?&".contains(c));
+        
+        if has_lower && has_upper && has_digit && has_special {
+            Ok(())
+        } else {
+            Err(AppError::BadRequest("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)".to_string()))
+        }
+    }
 }
 
 /// Payload for user login requests.

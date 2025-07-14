@@ -4,6 +4,16 @@ use sqlx::PgPool;
 use crate::{error::AppError, models::script::Script};
 use tracing::{info, error};
 
+/// Escapes HTML special characters to prevent XSS attacks
+fn escape_html(input: &str) -> String {
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#x27;")
+}
+
 /// Generates a simple DIN A4 ratio thumbnail showing script content
 /// 
 /// Creates a compact preview of the script content with DIN A4 proportions
@@ -57,77 +67,77 @@ fn format_block_content(block_type: &str, content: &str) -> String {
                 "dialogue" => {
                     if let (Some(speaker), Some(line)) = (json.get("speaker"), json.get("line")) {
                         format!("<strong>{}:</strong> {}", 
-                            speaker.as_str().unwrap_or("Speaker"), 
-                            line.as_str().unwrap_or(""))
+                            escape_html(speaker.as_str().unwrap_or("Speaker")), 
+                            escape_html(line.as_str().unwrap_or("")))
                     } else {
-                        content.to_string()
+                        escape_html(content)
                     }
                 }
                 "monologue" => {
                     if let (Some(speaker), Some(lines)) = (json.get("speaker"), json.get("lines")) {
                         let lines_text = if let Some(arr) = lines.as_array() {
                             arr.iter()
-                                .map(|v| v.as_str().unwrap_or(""))
+                                .map(|v| escape_html(v.as_str().unwrap_or("")))
                                 .collect::<Vec<_>>()
                                 .join("<br/>")
                         } else {
-                            lines.as_str().unwrap_or("").to_string()
+                            escape_html(lines.as_str().unwrap_or(""))
                         };
                         format!("<strong>{}:</strong><br/>{}", 
-                            speaker.as_str().unwrap_or("Speaker"), 
+                            escape_html(speaker.as_str().unwrap_or("Speaker")), 
                             lines_text)
                     } else {
-                        content.to_string()
+                        escape_html(content)
                     }
                 }
                 "stage_direction" => {
                     if let Some(desc) = json.get("description").or_else(|| json.get("text")) {
-                        format!("<em>({})</em>", desc.as_str().unwrap_or(""))
+                        format!("<em>({})</em>", escape_html(desc.as_str().unwrap_or("")))
                     } else {
-                        format!("<em>({})</em>", content)
+                        format!("<em>({})</em>", escape_html(content))
                     }
                 }
                 "joint_dialogue" => {
                     if let (Some(speakers), Some(line)) = (json.get("speakers"), json.get("line")) {
                         let speakers_text = if let Some(arr) = speakers.as_array() {
                             arr.iter()
-                                .map(|v| v.as_str().unwrap_or(""))
+                                .map(|v| escape_html(v.as_str().unwrap_or("")))
                                 .collect::<Vec<_>>()
                                 .join("/")
                         } else {
-                            speakers.as_str().unwrap_or("Speakers").to_string()
+                            escape_html(speakers.as_str().unwrap_or("Speakers"))
                         };
-                        format!("<strong>{}:</strong> {}", speakers_text, line.as_str().unwrap_or(""))
+                        format!("<strong>{}:</strong> {}", speakers_text, escape_html(line.as_str().unwrap_or("")))
                     } else {
-                        content.to_string()
+                        escape_html(content)
                     }
                 }
                 "reading" => {
                     if let (Some(speaker), Some(text)) = (json.get("speaker"), json.get("reading_text")) {
                         format!("<strong>{}:</strong> <em>(Reading)</em> {}", 
-                            speaker.as_str().unwrap_or("Reader"), 
-                            text.as_str().unwrap_or(""))
+                            escape_html(speaker.as_str().unwrap_or("Reader")), 
+                            escape_html(text.as_str().unwrap_or("")))
                     } else {
-                        content.to_string()
+                        escape_html(content)
                     }
                 }
                 "paragraph" => {
                     // For paragraphs, the content might be double-JSON-encoded
                     if let Some(text) = json.as_str() {
-                        text.to_string()
+                        escape_html(text)
                     } else {
-                        content.to_string()
+                        escape_html(content)
                     }
                 }
-                _ => content.to_string()
+                _ => escape_html(content)
             }
-            Err(_) => content.to_string()
+            Err(_) => escape_html(content)
         }
     } else {
         // Plain text content
         match block_type {
-            "stage_direction" => format!("<em>({})</em>", content),
-            _ => content.to_string()
+            "stage_direction" => format!("<em>({})</em>", escape_html(content)),
+            _ => escape_html(content)
         }
     }
 }
