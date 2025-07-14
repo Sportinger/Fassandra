@@ -87,8 +87,8 @@ async fn get_page_breaks(
     .fetch_optional(pool.as_ref())
     .await
     .map_err(|e| {
-        error!("Database error checking script access: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Database error"})))
+        error!("Script access check failed");
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Service temporarily unavailable"})))
     })?;
 
     let script = match script_access {
@@ -108,8 +108,8 @@ async fn get_page_breaks(
         .fetch_one(pool.as_ref())
         .await
         .map_err(|e| {
-            error!("Database error checking script sharing: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Database error"})))
+            error!("Script sharing check failed");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Service temporarily unavailable"})))
         })?
         .count.unwrap_or(0) > 0;
 
@@ -128,8 +128,8 @@ async fn get_page_breaks(
     .fetch_all(pool.as_ref())
     .await
     .map_err(|e| {
-        error!("Database error fetching blocks: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Database error"})))
+        error!("Block data retrieval failed");
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Service temporarily unavailable"})))
     })?;
 
     let block_info: Vec<BlockPageInfo> = blocks
@@ -207,8 +207,8 @@ async fn update_page_breaks(
         .fetch_one(pool.as_ref())
         .await
         .map_err(|e| {
-            error!("Database error checking script sharing: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Database error"})))
+            error!("Script sharing verification failed");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Service temporarily unavailable"})))
         })?
         .count.unwrap_or(0) > 0;
 
@@ -217,9 +217,9 @@ async fn update_page_breaks(
     }
 
     // Start transaction for atomic updates
-    let mut tx = pool.as_ref().begin().await.map_err(|e| {
-        error!("Failed to begin transaction: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Database error"})))
+    let mut tx = pool.as_ref().begin().await    .map_err(|e| {
+        error!("Transaction initialization failed");
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Service temporarily unavailable"})))
     })?;
 
     // Update page numbers for each block
@@ -232,16 +232,16 @@ async fn update_page_breaks(
         )
         .execute(&mut *tx)
         .await
-        .map_err(|e| {
-            error!("Failed to update block page number: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Database error"})))
-        })?;
+                        .map_err(|e| {
+                    error!("Block update failed");
+                    (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Service temporarily unavailable"})))
+                })?;
     }
 
     // Commit transaction
-    tx.commit().await.map_err(|e| {
-        error!("Failed to commit transaction: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Database error"})))
+    tx.commit().await    .map_err(|e| {
+        error!("Transaction commit failed");
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Service temporarily unavailable"})))
     })?;
 
     info!(%user_id, %script_id, "Successfully updated page breaks");

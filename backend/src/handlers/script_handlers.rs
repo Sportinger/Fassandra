@@ -542,7 +542,7 @@ fn validate_docx_structure(data: &[u8]) -> bool {
             true
         },
         Err(e) => {
-            warn!("Failed to parse file as ZIP archive: {}", e);
+            warn!("ZIP archive parsing failed");
             false
         }
     }
