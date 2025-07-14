@@ -5,19 +5,18 @@
     "dead_lines_eliminated": 324,
     "bloat_kb_removed": 120.2,
     "comments_assassinated": 186,
-    "critical_blockers": 0,
+    "critical_blockers": 2,
     "major_issues": 54,
     "minor_issues": 82,
-    "overall_verdict": "ALL_CRITICAL_SECURITY_ISSUES_RESOLVED",
-    "last_updated": "2025-01-31T21:45:00Z",
+    "overall_verdict": "CRITICAL_SECURITY_REDUCED_TO_2",
+    "last_updated": "2025-01-31T21:30:00Z",
     "recent_work_completed": {
       "websocket_connectivity_fixes": "COMPLETED - Fixed WebSocket protocol mismatch, proper HTTPS proxy routing, eliminated 'Working Offline' popup",
       "content_persistence_fixes": "COMPLETED - Fixed content loading from blocks table to script_snapshots_meta table",
       "test_infrastructure": "COMPLETED - Created comprehensive test suite with database verification and cleanup",
       "database_cleanup": "COMPLETED - Fixed foreign key constraint issues in test cleanup",
       "security_vulnerabilities_batch_1": "COMPLETED - Fixed 13 critical security vulnerabilities including authorization, XSS, ReDoS, and information leakage",
-      "security_vulnerabilities_batch_2": "COMPLETED - Fixed hardcoded security headers, implemented configurable security middleware",
-      "security_vulnerabilities_batch_3": "COMPLETED - Fixed all remaining error message sanitization issues in handlers"
+      "security_vulnerabilities_batch_2": "COMPLETED - Fixed hardcoded security headers, implemented configurable security middleware"
     }
   },
   "files": {
@@ -448,7 +447,28 @@
       "fixed_date": "2025-01-31T21:00:00Z",
       "notes": "validate_docx_structure() validates ZIP signature, internal structure, and content patterns"
     },
-
+    "SEC-007": {
+      "type": "INFORMATION_LEAKAGE",
+      "severity": "CRITICAL",
+      "file": "backend/src/handlers/script_handlers.rs",
+      "line": 234,
+      "description": "Detailed error messages leak system information",
+      "blocks_deployment": true,
+      "cross_file_instances": ["backend/src/handlers/page_break_handlers.rs:134"],
+      "status": "REMAINING",
+      "notes": "Still needs generic error message sanitization"
+    },
+    "SEC-008": {
+      "type": "INFORMATION_LEAKAGE",
+      "severity": "CRITICAL",
+      "file": "backend/src/handlers/page_break_handlers.rs",
+      "line": 134,
+      "description": "Error messages expose internal system details",
+      "blocks_deployment": true,
+      "cross_file_instances": ["backend/src/handlers/script_handlers.rs:234"],
+      "status": "REMAINING",
+      "notes": "Still needs generic error message sanitization"
+    },
     "SEC-009": {
       "type": "MISSING_RATE_LIMITING",
       "severity": "CRITICAL",
@@ -1241,7 +1261,22 @@
       "completed_date": "2025-01-31T21:30:00Z",
       "notes": "parse_html_to_blocks() now validates against dangerous patterns - basic protection implemented"
     },
-
+    { 
+      "priority": 1, 
+      "action": "Sanitize handler error messages", 
+      "target": "SEC-007",
+      "affected_files": ["backend/src/handlers/script_handlers.rs", "backend/src/handlers/page_break_handlers.rs"],
+      "estimated_effort": "3 hours",
+      "status": "PENDING"
+    },
+    { 
+      "priority": 2, 
+      "action": "Sanitize page break handler error messages", 
+      "target": "SEC-008",
+      "affected_files": ["backend/src/handlers/page_break_handlers.rs"],
+      "estimated_effort": "2 hours",
+      "status": "PENDING"
+    },
     {
       "priority": "COMPLETED",
       "action": "Strengthen password validation",
