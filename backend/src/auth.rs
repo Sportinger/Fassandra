@@ -100,7 +100,7 @@ pub fn generate_token(
         &claims,
         &EncodingKey::from_secret(&jwt_secret()?),
     )
-    .map_err(|e| AppError::Internal(Error::msg(e.to_string())))
+    .map_err(|_| AppError::Internal(Error::msg("Failed to generate authentication token")))
 }
 
 /// Verifies a JWT token and returns the claims if valid.
@@ -144,7 +144,7 @@ pub fn hash_password(password: &str) -> Result<String> {
     let argon2 = Argon2::default();
     let password_hash = argon2
         .hash_password(password.as_bytes(), &salt)
-        .map_err(|e| AppError::Internal(Error::msg(e.to_string())))?
+        .map_err(|_| AppError::Internal(Error::msg("Failed to hash password")))?
         .to_string();
     Ok(password_hash)
 }

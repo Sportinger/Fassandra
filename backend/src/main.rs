@@ -1,6 +1,8 @@
 use axum::{routing::{get, post, patch}, Router, Json, extract::State, extract::Path, response::IntoResponse, serve};
 use std::net::SocketAddr;
 use std::env;
+use std::pin::Pin;
+use std::future::Future;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use sqlx::migrate::Migrator;
 use serde::{Deserialize, Serialize};
@@ -26,13 +28,56 @@ use backend::auth::{hash_password, verify_password, generate_token, AuthUser, ra
 use backend::error::AppError;
 use backend::{create_script, create_block, update_block, get_script_with_blocks, get_block_history, delete_script, update_script_content_from_html, get_script_layouts, get_default_script_layout, create_script_layout, update_script_layout, delete_script_layout};
 use backend::api::scripts::{get_user_scripts, store_content_snapshot};
+use backend::handlers::script_handlers::script_routes;
+
+// 🔒 SECURITY: Helper functions for authorization checks
+async fn check_script_access(pool: &PgPool, script_id: Uuid, user_id: Uuid) -> Result<bool, AppError> {
+    let row = sqlx::query(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM scripts s
+            WHERE s.id = $1 
+            AND (
+                s.created_by = $2           -- User owns the script
+                OR s.is_public = true       -- Script is public
+                OR EXISTS (                 -- Script is shared with user
+                    SELECT 1 FROM script_shares ss 
+                    WHERE ss.script_id = s.id 
+                    AND ss.shared_with_user_id = $2
+                )
+            )
+        ) as has_access
+        "#
+    )
+    .bind(script_id)
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|_| AppError::Internal(anyhow::Error::msg("Database access error")))?;
+
+    let has_access: bool = row.get("has_access");
+    Ok(has_access)
+}
+
+async fn check_script_ownership(pool: &PgPool, script_id: Uuid, user_id: Uuid) -> Result<bool, AppError> {
+    let row = sqlx::query(
+        "SELECT EXISTS(SELECT 1 FROM scripts WHERE id = $1 AND created_by = $2) as owns_script"
+    )
+    .bind(script_id)
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|_| AppError::Internal(anyhow::Error::msg("Database access error")))?;
+
+    let owns_script: bool = row.get("owns_script");
+    Ok(owns_script)
+}
 use backend::ws;
 use backend::models::script::Script;
 use backend::models::block::Block;
 use backend::models::edit::Edit;
 use backend::models::user::User;
 use backend::models::script_layout::{ScriptLayout, CreateScriptLayoutRequest, UpdateScriptLayoutRequest};
-use backend::handlers::script_handlers::script_routes;
 use backend::handlers::page_break_handlers::create_page_break_router;
 use backend::persistence_event::YjsPersistenceEvent;
 
@@ -99,6 +144,13 @@ struct Config {
     database_url: String,
     db_max_connections: u32,
     backend_port: u16,
+    // 🔒 SECURITY: Configurable security headers
+    csp_policy: String,
+    hsts_max_age: String,
+    hsts_include_subdomains: bool,
+    x_frame_options: String,
+    referrer_policy: String,
+    permissions_policy: String,
 }
 
 impl Config {
@@ -118,6 +170,20 @@ impl Config {
                 .map(|val| val.parse::<u16>())
                 .unwrap_or(Ok(3001))
                 .context("Invalid BACKEND_PORT value")?,
+            // 🔒 SECURITY: Configurable security headers with secure defaults
+            csp_policy: env::var("CSP_POLICY").unwrap_or_else(|_| {
+                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' wss: ws:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+                .to_string()
+            }),
+            hsts_max_age: env::var("HSTS_MAX_AGE").unwrap_or_else(|_| "31536000".to_string()),
+            hsts_include_subdomains: env::var("HSTS_INCLUDE_SUBDOMAINS")
+                .map(|val| val.to_lowercase() == "true")
+                .unwrap_or(true),
+            x_frame_options: env::var("X_FRAME_OPTIONS").unwrap_or_else(|_| "DENY".to_string()),
+            referrer_policy: env::var("REFERRER_POLICY")
+                .unwrap_or_else(|_| "strict-origin-when-cross-origin".to_string()),
+            permissions_policy: env::var("PERMISSIONS_POLICY")
+                .unwrap_or_else(|_| "geolocation=(), microphone=(), camera=()".to_string()),
         })
     }
 }
@@ -265,7 +331,12 @@ struct CreateBlockPayload { block_type: String, content: String }
 ///
 /// # Returns
 /// * `Result<Json<Uuid>, AppError>` - The new block's ID as JSON on success, or an AppError on failure.
-async fn create_block_endpoint(State(pool): State<Arc<PgPool>>, AuthUser{user_id: _}: AuthUser, Path(script_id): Path<Uuid>, Json(payload): Json<CreateBlockPayload>) -> Result<Json<Uuid>, AppError> {
+async fn create_block_endpoint(State(pool): State<Arc<PgPool>>, AuthUser{user_id}: AuthUser, Path(script_id): Path<Uuid>, Json(payload): Json<CreateBlockPayload>) -> Result<Json<Uuid>, AppError> {
+    // 🔒 SECURITY: Check if user has access to this script before allowing block creation
+    if !check_script_access(pool.as_ref(), script_id, user_id).await? {
+        return Err(AppError::Forbidden("Access denied to this script".to_string()));
+    }
+    
     let id = create_block(pool.as_ref(), script_id, &payload.block_type, &payload.content, None).await?;
     Ok(Json(id))
 }
@@ -279,7 +350,12 @@ async fn create_block_endpoint(State(pool): State<Arc<PgPool>>, AuthUser{user_id
 ///
 /// # Returns
 /// * `Result<Json<ScriptWithBlocks>, AppError>` - The script and its blocks as JSON on success, or an AppError on failure.
-async fn get_script_endpoint(State(pool): State<Arc<PgPool>>, AuthUser{user_id: _}: AuthUser, Path(script_id): Path<Uuid>) -> Result<Json<ScriptWithBlocks>, AppError> {
+async fn get_script_endpoint(State(pool): State<Arc<PgPool>>, AuthUser{user_id}: AuthUser, Path(script_id): Path<Uuid>) -> Result<Json<ScriptWithBlocks>, AppError> {
+    // 🔒 SECURITY: Check if user has access to this script
+    if !check_script_access(pool.as_ref(), script_id, user_id).await? {
+        return Err(AppError::Forbidden("Access denied to this script".to_string()));
+    }
+    
     let (script, blocks) = get_script_with_blocks(pool.as_ref(), script_id).await?;
     Ok(Json(ScriptWithBlocks { script, blocks }))
 }
@@ -333,10 +409,15 @@ async fn block_history_endpoint(State(pool): State<Arc<PgPool>>, AuthUser{..}: A
 /// * `Result<Json<Script>, AppError>` - The updated script as JSON on success, or an AppError on failure.
 async fn update_script_title_endpoint(
     State(pool): State<Arc<PgPool>>,
-    AuthUser{user_id: _}: AuthUser, // Ensure user is authenticated, but user_id not used for auth check
+    AuthUser{user_id}: AuthUser, // 🔒 SECURITY: Use user_id for authorization check
     Path(script_id): Path<Uuid>,
     Json(payload): Json<CreateScriptPayload>, // Assuming CreateScriptPayload contains { title: String }
 ) -> Result<Json<Script>, AppError> {
+    // 🔒 SECURITY: Check if user owns this script before allowing update
+    if !check_script_ownership(pool.as_ref(), script_id, user_id).await? {
+        return Err(AppError::Forbidden("You can only update scripts you own".to_string()));
+    }
+    
     let script = sqlx::query_as!(
         Script,
         r#"UPDATE scripts SET title = $1 WHERE id = $2 
@@ -412,9 +493,14 @@ async fn update_script_content_endpoint(
 /// * `Result<StatusCode, AppError>` - HTTP 204 No Content on success, or an AppError on failure.
 async fn delete_script_endpoint(
     State(pool): State<Arc<PgPool>>,
-    AuthUser{user_id: _}: AuthUser, // Ensure user is authenticated
+    AuthUser{user_id}: AuthUser, // 🔒 SECURITY: Use user_id for authorization check
     Path(script_id): Path<Uuid>,
 ) -> Result<axum::http::StatusCode, AppError> {
+    // 🔒 SECURITY: Check if user owns this script before allowing deletion
+    if !check_script_ownership(pool.as_ref(), script_id, user_id).await? {
+        return Err(AppError::Forbidden("You can only delete scripts you own".to_string()));
+    }
+    
     // Call the delete_script function from lib.rs (or wherever it's appropriately defined without user checks)
     // Assuming `backend::delete_script` is the function from `lib.rs`.
     // The `use backend::{... delete_script ...}` statement would be needed if not already present.
@@ -429,9 +515,14 @@ async fn delete_script_endpoint(
 /// Gets all layouts for a script.
 async fn get_script_layouts_endpoint(
     State(pool): State<Arc<PgPool>>,
-    AuthUser{user_id: _}: AuthUser,
+    AuthUser{user_id}: AuthUser,
     Path(script_id): Path<Uuid>
 ) -> Result<Json<Vec<ScriptLayout>>, AppError> {
+    // 🔒 SECURITY: Check if user has access to this script before returning layouts
+    if !check_script_access(pool.as_ref(), script_id, user_id).await? {
+        return Err(AppError::Forbidden("Access denied to this script".to_string()));
+    }
+    
     let layouts = get_script_layouts(pool.as_ref(), script_id).await?;
     Ok(Json(layouts))
 }
@@ -439,9 +530,14 @@ async fn get_script_layouts_endpoint(
 /// Gets the default layout for a script.
 async fn get_default_layout_endpoint(
     State(pool): State<Arc<PgPool>>,
-    AuthUser{user_id: _}: AuthUser,
+    AuthUser{user_id}: AuthUser,
     Path(script_id): Path<Uuid>
 ) -> Result<Json<Option<ScriptLayout>>, AppError> {
+    // 🔒 SECURITY: Check if user has access to this script before returning default layout
+    if !check_script_access(pool.as_ref(), script_id, user_id).await? {
+        return Err(AppError::Forbidden("Access denied to this script".to_string()));
+    }
+    
     let layout = get_default_script_layout(pool.as_ref(), script_id).await?;
     Ok(Json(layout))
 }
@@ -471,9 +567,14 @@ async fn update_script_layout_endpoint(
 /// Deletes a script layout.
 async fn delete_script_layout_endpoint(
     State(pool): State<Arc<PgPool>>,
-    AuthUser{user_id: _}: AuthUser,
-    Path((_script_id, layout_id)): Path<(Uuid, Uuid)>
+    AuthUser{user_id}: AuthUser,
+    Path((script_id, layout_id)): Path<(Uuid, Uuid)>
 ) -> Result<axum::http::StatusCode, AppError> {
+    // 🔒 SECURITY: Check if user owns this script before allowing layout deletion
+    if !check_script_ownership(pool.as_ref(), script_id, user_id).await? {
+        return Err(AppError::Forbidden("You can only delete layouts for scripts you own".to_string()));
+    }
+    
     delete_script_layout(pool.as_ref(), layout_id).await?;
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
@@ -500,57 +601,75 @@ async fn receive_console_logs(
 }
 
 /// Security headers middleware to protect against common web vulnerabilities
-async fn security_headers_middleware(
-    request: Request,
-    next: Next,
-) -> Response {
-    let mut response = next.run(request).await;
-    
-    let headers = response.headers_mut();
-    
-    // Content Security Policy - restrict sources to prevent XSS
-    headers.insert(
-        header::HeaderName::from_static("content-security-policy"),
-        HeaderValue::from_static("default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' wss: ws:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
-    );
-    
-    // X-Content-Type-Options - prevent MIME type sniffing
-    headers.insert(
-        header::HeaderName::from_static("x-content-type-options"),
-        HeaderValue::from_static("nosniff")
-    );
-    
-    // X-Frame-Options - prevent clickjacking
-    headers.insert(
-        header::HeaderName::from_static("x-frame-options"),
-        HeaderValue::from_static("DENY")
-    );
-    
-    // X-XSS-Protection - enable XSS filtering
-    headers.insert(
-        header::HeaderName::from_static("x-xss-protection"),
-        HeaderValue::from_static("1; mode=block")
-    );
-    
-    // Strict-Transport-Security - enforce HTTPS
-    headers.insert(
-        header::HeaderName::from_static("strict-transport-security"),
-        HeaderValue::from_static("max-age=31536000; includeSubDomains; preload")
-    );
-    
-    // Referrer-Policy - control referrer information
-    headers.insert(
-        header::HeaderName::from_static("referrer-policy"),
-        HeaderValue::from_static("strict-origin-when-cross-origin")
-    );
-    
-    // Permissions-Policy - control browser features
-    headers.insert(
-        header::HeaderName::from_static("permissions-policy"),
-        HeaderValue::from_static("geolocation=(), microphone=(), camera=()")
-    );
-    
-    response
+/// 🔒 SECURITY: Now uses configurable headers instead of hardcoded values
+fn create_security_headers_middleware(config: Arc<Config>) -> impl Fn(Request, Next) -> Pin<Box<dyn Future<Output = Response> + Send>> + Clone {
+    move |request: Request, next: Next| {
+        let config = config.clone();
+        Box::pin(async move {
+            let mut response = next.run(request).await;
+            
+            let headers = response.headers_mut();
+            
+            // Content Security Policy - configurable to allow environment-specific policies
+            headers.insert(
+                header::HeaderName::from_static("content-security-policy"),
+                HeaderValue::from_str(&config.csp_policy).unwrap_or_else(|_| {
+                    HeaderValue::from_static("default-src 'self'") // Safe fallback
+                })
+            );
+            
+            // X-Content-Type-Options - prevent MIME type sniffing
+            headers.insert(
+                header::HeaderName::from_static("x-content-type-options"),
+                HeaderValue::from_static("nosniff")
+            );
+            
+            // X-Frame-Options - configurable clickjacking protection
+            headers.insert(
+                header::HeaderName::from_static("x-frame-options"),
+                HeaderValue::from_str(&config.x_frame_options).unwrap_or_else(|_| {
+                    HeaderValue::from_static("DENY") // Safe fallback
+                })
+            );
+            
+            // X-XSS-Protection - enable XSS filtering (legacy browsers)
+            headers.insert(
+                header::HeaderName::from_static("x-xss-protection"),
+                HeaderValue::from_static("1; mode=block")
+            );
+            
+            // Strict-Transport-Security - configurable HTTPS enforcement
+            let hsts_value = if config.hsts_include_subdomains {
+                format!("max-age={}; includeSubDomains; preload", config.hsts_max_age)
+            } else {
+                format!("max-age={}", config.hsts_max_age)
+            };
+            headers.insert(
+                header::HeaderName::from_static("strict-transport-security"),
+                HeaderValue::from_str(&hsts_value).unwrap_or_else(|_| {
+                    HeaderValue::from_static("max-age=31536000; includeSubDomains; preload") // Safe fallback
+                })
+            );
+            
+            // Referrer-Policy - configurable referrer information control
+            headers.insert(
+                header::HeaderName::from_static("referrer-policy"),
+                HeaderValue::from_str(&config.referrer_policy).unwrap_or_else(|_| {
+                    HeaderValue::from_static("strict-origin-when-cross-origin") // Safe fallback
+                })
+            );
+            
+            // Permissions-Policy - configurable browser features control
+            headers.insert(
+                header::HeaderName::from_static("permissions-policy"),
+                HeaderValue::from_str(&config.permissions_policy).unwrap_or_else(|_| {
+                    HeaderValue::from_static("geolocation=(), microphone=(), camera=()") // Safe fallback
+                })
+            );
+            
+            response
+        })
+    }
 }
 
 /// Define a constant for the body limit (e.g., 20 MB)
@@ -661,12 +780,13 @@ async fn main() -> Result<()> {
 
     // 🚀 CLEAN ROUTER: Define router using ServiceManager (eliminates tight coupling)
     let database_pool = service_manager.get_database_pool();
+    let config = Arc::new(config); // 🔒 SECURITY: Share config for middleware and server setup
     let app_router = Router::new()
         .route("/health", get(health_with_service_manager))
         .route("/register", post(register))
         .route("/login", post(login))
         .nest("/api", api_routes_arc_state(service_manager.get_persistence_sender()))
-        .nest("/api/s", script_routes(database_pool.clone()).with_state(database_pool.clone()))
+        .nest("/api/s", script_routes(service_manager.get_rate_limiter()).with_state(database_pool.clone()))
         .with_state(Arc::new(database_pool))
         .layer(
             ServiceBuilder::new()
@@ -675,7 +795,7 @@ async fn main() -> Result<()> {
                 .layer(axum::middleware::from_fn_with_state(service_manager.get_rate_limiter(), rate_limit_middleware))
                 .layer(RequestBodyLimitLayer::new(MAX_REQUEST_BODY_SIZE)),
         )
-        .layer(axum::middleware::from_fn(security_headers_middleware));
+        .layer(axum::middleware::from_fn(create_security_headers_middleware(config.clone())));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.backend_port));
     tracing::info!("🚀 Backend server listening on {} with ServiceManager", addr);

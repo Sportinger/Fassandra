@@ -259,7 +259,7 @@ body.mobile-device {
 
 /* === MOBILE TEXT CONSTRAINT OVERRIDE === */
 @media (max-width: 768px) {
-  /* Force all text to wrap within screen bounds */
+  /* 🎭 THEATER PRIORITY: Force all text to wrap within screen bounds with consistent typography */
   * {
     max-width: 100% !important;
     overflow-wrap: break-word !important;
@@ -269,45 +269,58 @@ body.mobile-device {
     box-sizing: border-box !important;
   }
   
-  /* Specific ProseMirror mobile constraints */
+  /* 🎭 THEATER PRIORITY: Consistent ProseMirror mobile typography for script readability */
   .ProseMirror {
     width: calc(100% - 8px) !important;
     max-width: calc(100% - 8px) !important;
     margin: 0 auto !important;
-    padding: 4px !important;
-    font-size: 15px !important;
-    line-height: 1.4 !important;
+    padding: 6px !important; /* Slightly more padding for better readability */
+    font-size: 16px !important; /* Standardized to 16px to prevent iOS zoom */
+    line-height: 1.5 !important; /* Optimal line height for script reading */
     overflow-x: hidden !important;
     white-space: pre-wrap !important;
+    /* 🎭 THEATER OPTIMIZATION: Enhanced mobile text rendering */
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+    text-rendering: optimizeLegibility !important;
   }
   
+  /* 🎭 THEATER PRIORITY: Consistent paragraph styling for script readability */
   .ProseMirror p {
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0.3em 0 !important;
-    font-size: 15px !important;
-    line-height: 1.4 !important;
+    margin: 0.4em 0 !important; /* Slightly more spacing for better readability */
+    font-size: 16px !important; /* Consistent with parent */
+    line-height: 1.5 !important; /* Consistent with parent */
     white-space: pre-wrap !important;
+    /* 🎭 THEATER OPTIMIZATION: Consistent text properties */
+    word-spacing: normal !important;
+    letter-spacing: normal !important;
   }
 }
 
+/* 🎭 THEATER PRIORITY: Enhanced mobile device orientation optimizations */
 body.mobile-device.landscape {
-  /* Landscape mobile optimizations */
+  /* Landscape mobile optimizations for rehearsal room tablet usage */
+  --mobile-font-scale: 0.95; /* Slightly smaller font in landscape for more content */
+  --mobile-line-height: 1.4; /* Tighter line height in landscape */
 }
 
 body.mobile-device.portrait {
-  /* Portrait mobile optimizations */
+  /* Portrait mobile optimizations for handheld script reading */
+  --mobile-font-scale: 1.0; /* Standard font size in portrait */
+  --mobile-line-height: 1.5; /* Comfortable line height for reading */
 }
 
-/* === MOBILE CONSISTENT LINE BREAKS === */
+/* === 🎭 THEATER PRIORITY: MOBILE CONSISTENT LINE BREAKS === */
 .mobile-page .ProseMirror,
 .mobile-editor-content .ProseMirror {
   /* Consistent text rendering across all mobile devices */
   -webkit-text-size-adjust: 100% !important;
   text-size-adjust: 100% !important;
   
-  /* Force consistent line height and spacing */
-  line-height: 1.6 !important;
+  /* 🎭 THEATER OPTIMIZATION: Force consistent line height and spacing */
+  line-height: var(--mobile-line-height, 1.5) !important; /* Use CSS custom property with fallback */
   
   /* Optimal reading width for mobile */
   max-width: 100% !important;
@@ -318,42 +331,47 @@ body.mobile-device.portrait {
   overflow-wrap: break-word !important;
   hyphens: auto !important;
   
-  /* Mobile font optimization */
-  font-size: 16px !important; /* Prevent zoom on iOS */
+  /* 🎭 THEATER OPTIMIZATION: Mobile font optimization for script readability */
+  font-size: calc(16px * var(--mobile-font-scale, 1.0)) !important; /* Responsive to orientation */
   font-kerning: auto !important;
   text-rendering: optimizeLegibility !important;
+  /* 🎭 THEATER PRIORITY: Prevent font size adjustment on device rotation */
+  -webkit-text-size-adjust: none !important;
+  text-size-adjust: none !important;
 }
 
-/* === MOBILE PARAGRAPH CONSISTENCY === */
+/* === 🎭 THEATER PRIORITY: MOBILE PARAGRAPH CONSISTENCY === */
 .mobile-page .ProseMirror p,
 .mobile-editor-content .ProseMirror p {
-  /* Consistent paragraph spacing across devices */
-  margin: 0.5em 0 !important;
-  line-height: 1.6 !important;
-  font-size: 16px !important;
+  /* 🎭 THEATER OPTIMIZATION: Consistent paragraph spacing across devices */
+  margin: 0.4em 0 !important; /* Consistent with main mobile styles */
+  line-height: var(--mobile-line-height, 1.5) !important; /* Responsive to orientation */
+  font-size: calc(16px * var(--mobile-font-scale, 1.0)) !important; /* Responsive to orientation */
   
   /* Text wrapping consistency */
   word-wrap: break-word !important;
   overflow-wrap: break-word !important;
   hyphens: auto !important;
   
-  /* Prevent widow/orphan inconsistencies */
+  /* 🎭 THEATER OPTIMIZATION: Prevent widow/orphan inconsistencies for better script reading */
   widows: 2 !important;
   orphans: 2 !important;
   
-  /* Mobile text optimization */
+  /* 🎭 THEATER OPTIMIZATION: Mobile text optimization for consistent rendering */
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
+  word-spacing: normal !important;
+  letter-spacing: normal !important;
 }
 
-/* === MOBILE DIALOGUE CONSISTENCY === */
+/* === 🎭 THEATER PRIORITY: MOBILE DIALOGUE CONSISTENCY === */
 .mobile-page .ProseMirror [data-type="dialogue-block"],
 .mobile-editor-content .ProseMirror [data-type="dialogue-block"] {
-  /* Force stacked layout for mobile consistency */
+  /* 🎭 THEATER OPTIMIZATION: Force stacked layout for mobile consistency */
   display: block !important;
   flex-direction: column !important;
   
-  /* Consistent spacing */
+  /* 🎭 THEATER OPTIMIZATION: Consistent spacing for dialogue blocks */
   margin: 1em 0 !important;
   
   /* Text wrapping */
@@ -363,64 +381,95 @@ body.mobile-device.portrait {
   /* Full width utilization */
   width: 100% !important;
   max-width: 100% !important;
+  
+  /* 🎭 THEATER PRIORITY: Consistent padding for touch interaction */
+  padding: 8px 4px !important;
 }
 
 .mobile-page .ProseMirror [data-type="speaker"],
 .mobile-editor-content .ProseMirror [data-type="speaker"] {
-  /* Mobile speaker consistency */
+  /* 🎭 THEATER OPTIMIZATION: Mobile speaker consistency for clear character identification */
   display: block !important;
   width: 100% !important;
-  margin-bottom: 0.25em !important;
+  margin-bottom: 0.3em !important; /* Slightly more space for clarity */
   
-  /* Consistent text properties */
+  /* 🎭 THEATER OPTIMIZATION: Consistent text properties for speaker names */
   font-weight: bold !important;
-  font-size: 16px !important;
-  line-height: 1.4 !important;
+  font-size: calc(16px * var(--mobile-font-scale, 1.0)) !important; /* Responsive to orientation */
+  line-height: var(--mobile-line-height, 1.5) !important; /* Consistent with paragraphs */
   
   /* Prevent overflow */
   word-wrap: break-word !important;
   overflow-wrap: break-word !important;
+  
+  /* 🎭 THEATER PRIORITY: Speaker name visual emphasis */
+  color: var(--speaker-color, #2563eb) !important; /* Blue color for speaker names */
+  text-transform: uppercase !important; /* Traditional theater script format */
 }
 
 .mobile-page .ProseMirror [data-type="dialogue-text"],
 .mobile-editor-content .ProseMirror [data-type="dialogue-text"] {
-  /* Mobile dialogue text consistency */
+  /* 🎭 THEATER OPTIMIZATION: Mobile dialogue text consistency for script readability */
   display: block !important;
   width: 100% !important;
   
-  /* Consistent text properties */
-  font-size: 16px !important;
-  line-height: 1.6 !important;
+  /* 🎭 THEATER OPTIMIZATION: Consistent text properties for dialogue */
+  font-size: calc(16px * var(--mobile-font-scale, 1.0)) !important; /* Responsive to orientation */
+  line-height: var(--mobile-line-height, 1.5) !important; /* Consistent with other text */
   
   /* Prevent overflow */
   word-wrap: break-word !important;
   overflow-wrap: break-word !important;
+  
+  /* 🎭 THEATER PRIORITY: Dialogue text spacing for readability */
+  margin-top: 0.2em !important;
+  padding-left: 1em !important; /* Indent dialogue text slightly */
 }
 
-/* === MOBILE FOCUS AND SELECTION === */
+/* === 🎭 THEATER PRIORITY: MOBILE FOCUS AND SELECTION === */
 .mobile-page .ProseMirror:focus,
 .mobile-editor-content .ProseMirror:focus {
   outline: none !important;
   border: none !important;
+  /* 🎭 THEATER OPTIMIZATION: Subtle focus indication for mobile editing */
+  box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.3) !important;
 }
 
 .mobile-page .ProseMirror ::selection,
 .mobile-editor-content .ProseMirror ::selection {
-  background-color: rgba(59, 130, 246, 0.3) !important;
+  background-color: rgba(59, 130, 246, 0.4) !important; /* Slightly more visible selection */
   color: inherit !important;
+  /* 🎭 THEATER OPTIMIZATION: Ensure selected text remains readable */
+  text-shadow: none !important;
 }
 
-/* === MOBILE TYPOGRAPHY RESET === */
+/* 🎭 THEATER PRIORITY: Mobile selection for dialogue elements */
+.mobile-page .ProseMirror [data-type="speaker"]::selection,
+.mobile-editor-content .ProseMirror [data-type="speaker"]::selection {
+  background-color: rgba(34, 197, 94, 0.4) !important; /* Green selection for speakers */
+}
+
+.mobile-page .ProseMirror [data-type="dialogue-text"]::selection,
+.mobile-editor-content .ProseMirror [data-type="dialogue-text"]::selection {
+  background-color: rgba(168, 85, 247, 0.3) !important; /* Purple selection for dialogue */
+}
+
+/* === 🎭 THEATER PRIORITY: MOBILE TYPOGRAPHY RESET === */
 .mobile-page,
 .mobile-editor-content {
-  /* Reset typography for consistency */
+  /* 🎭 THEATER OPTIMIZATION: Reset typography for consistency across devices */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   
   /* Prevent layout shifts */
   box-sizing: border-box;
   
-  /* Smooth scrolling */
+  /* 🎭 THEATER OPTIMIZATION: Smooth scrolling for script navigation */
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+  
+  /* 🎭 THEATER PRIORITY: Optimized for theater script reading */
+  font-variant-ligatures: common-ligatures;
+  font-feature-settings: "kern" 1, "liga" 1;
+  text-rendering: optimizeLegibility;
 }

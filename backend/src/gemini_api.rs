@@ -138,21 +138,57 @@ struct UploadedFile {
 pub enum GeminiApiError {
     #[error("Missing environment variable: {0}")]
     MissingEnvVar(String),
-    #[error("Reqwest error: {0}")]
-    Reqwest(#[from] reqwest::Error),
-    #[error("API returned an error: Status {status}, Body: {body}")]
+    #[error("HTTP request failed: {0}")]
+    HttpRequest(String), // 🔒 SECURITY: Sanitized HTTP error without exposing URLs/keys
+    #[error("API returned an error: Status {status}")]
     ApiError {
         status: reqwest::StatusCode,
-        body: String,
+        // 🔒 SECURITY: Removed body field to prevent information leakage
     },
     #[error("Failed to deserialize API response: {0}")]
-    Deserialization(#[from] serde_json::Error),
+    Deserialization(String), // 🔒 SECURITY: Sanitized deserialization error
     #[error("No valid response candidate found")]
     NoCandidate,
-    #[error("Failed to parse structured script from API response: {0}")]
-    StructureParsing(String),
+    #[error("Failed to parse structured script from API response")]
+    StructureParsing(String), // 🔒 SECURITY: Sanitized parsing error
     #[error("File upload failed: {0}")]
     FileUpload(String),
+}
+
+/// 🔒 SECURITY: Sanitize reqwest errors to prevent API key exposure in URLs
+impl From<reqwest::Error> for GeminiApiError {
+    fn from(err: reqwest::Error) -> Self {
+        // Log the actual error server-side for debugging
+        tracing::error!("HTTP request error: {}", err);
+        
+        // Return sanitized error message without URL/key information
+        let sanitized_message = if err.is_timeout() {
+            "Request timeout"
+        } else if err.is_connect() {
+            "Connection failed"
+        } else if err.is_request() {
+            "Invalid request"
+        } else if err.is_decode() {
+            "Response decode error"
+        } else if err.is_redirect() {
+            "Redirect error"
+        } else {
+            "HTTP request failed"
+        };
+        
+        GeminiApiError::HttpRequest(sanitized_message.to_string())
+    }
+}
+
+/// 🔒 SECURITY: Sanitize serde_json errors to prevent data exposure
+impl From<serde_json::Error> for GeminiApiError {
+    fn from(err: serde_json::Error) -> Self {
+        // Log the actual error server-side for debugging
+        tracing::error!("JSON deserialization error: {}", err);
+        
+        // Return sanitized error message
+        GeminiApiError::Deserialization("JSON format error".to_string())
+    }
 }
 
 // --- API Client Function ---
@@ -200,10 +236,10 @@ pub async fn upload_docx_to_gemini(
 
     if !initiate_response.status().is_success() {
         let status = initiate_response.status();
-        let _body = initiate_response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
-        // 🔒 SECURITY: Sanitize error messages to prevent information leakage
-        tracing::error!("Upload initiation failed with status: {}", status);
-        return Err(GeminiApiError::FileUpload(format!("Upload initiation failed: Status {}", status)));
+        let body = initiate_response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
+        // 🔒 SECURITY: Log detailed error server-side but return sanitized message
+        tracing::error!("Upload initiation failed with status: {}, body: {}", status, body);
+        return Err(GeminiApiError::ApiError { status });
     }
 
     // Extract upload URL from response headers
@@ -225,10 +261,10 @@ pub async fn upload_docx_to_gemini(
 
     if !upload_response.status().is_success() {
         let status = upload_response.status();
-        let _body = upload_response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
-        // 🔒 SECURITY: Sanitize error messages to prevent information leakage
-        tracing::error!("File upload failed with status: {}", status);
-        return Err(GeminiApiError::FileUpload(format!("File upload failed: Status {}", status)));
+        let body = upload_response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
+        // 🔒 SECURITY: Log detailed error server-side but return sanitized message
+        tracing::error!("File upload failed with status: {}, body: {}", status, body);
+        return Err(GeminiApiError::ApiError { status });
     }
 
     let upload_result: FileUploadResponse = upload_response.json().await?;
@@ -344,29 +380,14 @@ pub async fn call_gemini_for_docx_parsing(
         .query(&[("key", api_key)]) // API key as query parameter
         .json(&request_payload)
         .send()
-        .await
-        .map_err(|e| {
-            // 🔒 SECURITY: Sanitize error messages to prevent API key exposure
-            let sanitized_error = if e.is_timeout() {
-                "Request timeout occurred"
-            } else if e.is_connect() {
-                "Connection error occurred"
-            } else if e.is_request() {
-                "Request body error occurred"
-            } else {
-                "HTTP request failed"
-            };
-            
-            tracing::error!("Gemini API request failed: {}", sanitized_error);
-            GeminiApiError::FileUpload(sanitized_error.to_string())
-        })?;
+        .await?; // 🔒 SECURITY: Error sanitization now handled by From<reqwest::Error> impl
 
     if !response.status().is_success() {
         let status = response.status();
-        let _body = response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
-        // 🔒 SECURITY: Sanitize error messages to prevent information leakage
-        tracing::error!("Gemini API request failed with status: {}", status);
-        return Err(GeminiApiError::FileUpload(format!("API request failed with status: {}", status)));
+        let body = response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
+        // 🔒 SECURITY: Log detailed error server-side but return sanitized message
+        tracing::error!("Gemini API request failed with status: {}, body: {}", status, body);
+        return Err(GeminiApiError::ApiError { status });
     }
 
     let response_body = response.json::<GeminiResponse>().await?;
@@ -565,29 +586,14 @@ pub async fn call_gemini_for_parsing(
         .query(&[("key", api_key)]) // API key as query parameter
         .json(&request_payload)
         .send()
-        .await
-        .map_err(|e| {
-            // 🔒 SECURITY: Sanitize error messages to prevent API key exposure
-            let sanitized_error = if e.is_timeout() {
-                "Request timeout occurred"
-            } else if e.is_connect() {
-                "Connection error occurred"
-            } else if e.is_request() {
-                "Request body error occurred"
-            } else {
-                "HTTP request failed"
-            };
-            
-            tracing::error!("Gemini API request failed: {}", sanitized_error);
-            GeminiApiError::FileUpload(sanitized_error.to_string())
-        })?;
+        .await?; // 🔒 SECURITY: Error sanitization now handled by From<reqwest::Error> impl
 
     if !response.status().is_success() {
         let status = response.status();
-        let _body = response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
-        // 🔒 SECURITY: Sanitize error messages to prevent information leakage
-        tracing::error!("Gemini API request failed with status: {}", status);
-        return Err(GeminiApiError::FileUpload(format!("API request failed with status: {}", status)));
+        let body = response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
+        // 🔒 SECURITY: Log detailed error server-side but return sanitized message
+        tracing::error!("Gemini API request failed with status: {}, body: {}", status, body);
+        return Err(GeminiApiError::ApiError { status });
     }
 
     let response_body = response.json::<GeminiResponse>().await?;

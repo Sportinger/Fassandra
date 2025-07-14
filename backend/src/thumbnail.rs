@@ -34,6 +34,12 @@ pub fn generate_script_thumbnail(_script: &Script, content_preview: &str) -> Str
         .take(6) // Reduced from 10 to 6 blocks for the 9:16 format
         .collect();
     
+    // 🔒 SECURITY: Escape HTML content to prevent XSS attacks in SVG thumbnails
+    let escaped_blocks: Vec<String> = content_blocks
+        .iter()
+        .map(|block| escape_html(block))
+        .collect();
+    
     // Create SVG content in 9:16 format with transparent background
     let svg_content = format!(
         "<svg width=\"150\" height=\"267\" xmlns=\"http://www.w3.org/2000/svg\">\
@@ -50,7 +56,7 @@ background: transparent;\
 \">{}</div>\
 </foreignObject>\
 </svg>",
-        content_blocks.join("<br/><br/>")
+        escaped_blocks.join("<br/><br/>")
     );
     
     // Encode as base64 data URL
@@ -178,7 +184,7 @@ pub async fn update_script_thumbnail(pool: &PgPool, script_id: Uuid) -> Result<S
     .await
     .map_err(|e| {
         error!("Failed to update script thumbnail in database: {}", e);
-        AppError::Internal(anyhow::Error::msg(e.to_string()))
+        AppError::Internal(anyhow::Error::msg("Failed to update script thumbnail"))
     })?;
     
     info!("Successfully updated thumbnail for script: {}", script_id);
@@ -195,7 +201,7 @@ pub async fn generate_missing_thumbnails(pool: &PgPool) -> Result<usize, AppErro
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
+    .map_err(|_| AppError::Internal(anyhow::Error::msg("Failed to fetch scripts for thumbnail generation")))?;
     
     let mut count = 0;
     for script in scripts_without_thumbnails {
@@ -219,7 +225,7 @@ pub async fn regenerate_all_thumbnails(pool: &PgPool) -> Result<usize, AppError>
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| AppError::Internal(anyhow::Error::msg(e.to_string())))?;
+    .map_err(|_| AppError::Internal(anyhow::Error::msg("Failed to fetch scripts for thumbnail regeneration")))?;
     
     let total_scripts = all_scripts.len();
     info!("Found {} scripts to process for thumbnail regeneration", total_scripts);

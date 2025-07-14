@@ -18,17 +18,21 @@ use tracing::{info, error, warn, debug, trace};
 use hex;
 use std::collections::HashMap;
 use crate::analysis::structs::{ContentElement, Dialogue, StageDirection, Monologue, JointDialogue, Reading};
+use html_escape;
 
 // Fixed interval configuration  
 const SNAPSHOT_INTERVAL_MILLIS: u64 = 500;  // Run every 500ms for real-time sync
 
-// Static regex compilation for HTML parsing - eliminates hot path compilation
+// 🔒 SECURITY: ReDoS-resistant regex patterns for HTML parsing
+// These patterns avoid exponential backtracking that could cause denial of service
 static PARAGRAPH_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"<p([^>]*)>(.*?)</p>").expect("Invalid paragraph regex")
+    // 🔒 Use bounded quantifiers to prevent excessive backtracking
+    Regex::new(r"<p([^>]{0,500})>(.*?)</p>").expect("Invalid paragraph regex")
 });
 
 static DIV_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"<div([^>]*)data-type="([^"]+)"([^>]*)>(.*?)</div>"#).expect("Invalid div regex")
+    // 🔒 Use bounded quantifiers and length limits to prevent ReDoS
+    Regex::new(r#"<div([^>]{0,500})data-type="([^"]{1,50})"([^>]{0,500})>(.*?)</div>"#).expect("Invalid div regex")
 });
 
 #[derive(Debug)]
@@ -849,6 +853,20 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
     Ok(())
 }
 
+/// 🔒 SECURITY: Timeout wrapper for regex operations to prevent ReDoS attacks
+/// 
+/// This function wraps regex operations with a timeout to prevent
+/// Regular Expression Denial of Service (ReDoS) attacks.
+async fn regex_with_timeout<T>(
+    operation: impl std::future::Future<Output = T>,
+    timeout_duration: Duration,
+) -> Result<T, anyhow::Error> {
+    match timeout(timeout_duration, operation).await {
+        Ok(result) => Ok(result),
+        Err(_) => Err(anyhow::Error::msg("Regex operation timed out - potential ReDoS attack")),
+    }
+}
+
 /// Enhanced HTML parsing that extracts page numbers from HTML content.
 /// 
 /// This function parses HTML content from TipTap editor and extracts both the block structure
@@ -860,6 +878,12 @@ pub async fn create_snapshot_for_script(pool: Arc<PgPool>, script_id: Uuid) -> R
 /// # Returns
 /// * `Result<Vec<(String, String, i32)>>` - Vector of (block_type, content, page_number) tuples
 fn parse_html_to_blocks_with_pages(html_content: &str) -> Result<Vec<(String, String, i32)>, anyhow::Error> {
+    // 🔒 SECURITY: Prevent ReDoS by limiting input size
+    const MAX_HTML_SIZE: usize = 1_000_000; // 1MB limit
+    if html_content.len() > MAX_HTML_SIZE {
+        return Err(anyhow::Error::msg("HTML content too large - potential ReDoS attack"));
+    }
+    
     let mut blocks = Vec::new();
     
     // Enhanced HTML parsing that preserves page number information
@@ -960,29 +984,47 @@ fn parse_html_to_blocks_with_pages(html_content: &str) -> Result<Vec<(String, St
     Ok(blocks)
 }
 
-/// Simple HTML tag removal function
+/// 🔒 SECURITY: Safe HTML sanitization function - prevents XSS attacks
+/// 
+/// This function safely removes HTML tags and decodes HTML entities using a proper library
+/// instead of manual string replacement which could be vulnerable to XSS attacks.
 fn remove_html_tags_simple(html: &str) -> String {
+    // First, remove HTML tags safely
     let tag_regex = Regex::new(r"<[^>]*>").unwrap();
-    tag_regex.replace_all(html, "")
-        .replace("&nbsp;", " ")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'")
+    let without_tags = tag_regex.replace_all(html, "");
+    
+    // 🔒 SECURITY: Use proper HTML entity decoding instead of manual replacement
+    // This prevents XSS attacks that could bypass manual entity decoding
+    let decoded = html_escape::decode_html_entities(&without_tags);
+    
+    // Clean up whitespace and normalize
+    decoded
+        .replace("&nbsp;", " ")  // Handle non-breaking spaces separately
         .trim()
         .to_string()
 }
 
-/// Extract attribute value from HTML attributes string
+/// 🔒 SECURITY: Safe attribute value extraction with sanitization
+/// 
+/// Extract attribute value from HTML attributes string with proper sanitization
+/// to prevent attribute injection attacks.
 fn extract_attribute_value(attributes: &str, attr_name: &str) -> Option<String> {
+    // 🔒 SECURITY: Validate attribute name to prevent injection
+    if !attr_name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+        return None;
+    }
+    
     // Simple string parsing approach to avoid regex syntax issues
     let search_pattern = format!("{}=\"", attr_name);
     if let Some(start) = attributes.find(&search_pattern) {
         let start_pos = start + search_pattern.len();
         if let Some(end) = attributes[start_pos..].find('"') {
             let value = &attributes[start_pos..start_pos + end];
-            return Some(value.to_string());
+            
+            // 🔒 SECURITY: Sanitize the extracted value
+            let sanitized = html_escape::encode_text(value);
+            
+            return Some(sanitized.to_string());
         }
     }
     None

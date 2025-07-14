@@ -63,9 +63,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     let initialViewportHeight = window.innerHeight;
     let initialVisualViewportHeight = window.visualViewport?.height || window.innerHeight;
 
-    // Detect iOS Safari
+    // 🎭 THEATER PRIORITY: Enhanced mobile browser detection for iPad/iPhone theater professionals
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    const isChromeMobile = /Chrome/.test(navigator.userAgent) && /Mobile/.test(navigator.userAgent);
+
+    // 🎭 ENHANCED: Better orientation and device detection
+    const isLandscape = window.innerWidth > window.innerHeight;
+    const deviceType = isIOS ? (navigator.userAgent.includes('iPad') ? 'iPad' : 'iPhone') : 'Android';
 
     const detectKeyboard = () => {
       // Use Visual Viewport API if available (modern browsers)
@@ -73,51 +79,103 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         const currentVisualHeight = window.visualViewport.height;
         const heightDifference = initialVisualViewportHeight - currentVisualHeight;
         
-        console.log('[Mobile Keyboard] Visual Viewport detection:', {
+        console.log('[🎭 Mobile Keyboard] Visual Viewport detection:', {
           initial: initialVisualViewportHeight,
           current: currentVisualHeight,
           difference: heightDifference,
           isIOS,
-          isSafari
+          isSafari,
+          isAndroid,
+          isChromeMobile,
+          deviceType,
+          isLandscape,
+          orientation: isLandscape ? 'landscape' : 'portrait'
         });
 
-        // Adjust threshold for iOS Safari (can have smaller changes)
-        const threshold = isIOS && isSafari ? 100 : 150;
+        // 🎭 THEATER OPTIMIZATION: Enhanced device-specific threshold tuning
+        let threshold = 150; // Default threshold
+        if (isIOS && isSafari) {
+          threshold = isLandscape ? 80 : 100; // Lower threshold for iOS Safari landscape
+        } else if (isIOS && !isSafari) {
+          threshold = isLandscape ? 100 : 120; // iOS Chrome/other browsers
+        } else if (isAndroid && isChromeMobile) {
+          threshold = isLandscape ? 140 : 180; // Android Chrome landscape vs portrait
+        } else if (isAndroid) {
+          threshold = isLandscape ? 120 : 160; // Other Android browsers
+        }
+        
         const keyboardVisible = heightDifference > threshold;
-        setKeyboardHeight(keyboardVisible ? heightDifference : 0);
+        // 🎭 ENHANCED: Smarter keyboard height calculation
+        const calculatedHeight = keyboardVisible ? Math.max(heightDifference, isLandscape ? 180 : 200) : 0;
+        
+        console.log(`[🎭 Mobile Keyboard] ${keyboardVisible ? 'OPEN' : 'CLOSED'}: height difference ${heightDifference}px, threshold ${threshold}px (${deviceType} ${isLandscape ? 'landscape' : 'portrait'})`);
+        setKeyboardHeight(calculatedHeight);
       } else {
         // Fallback: detect via window.innerHeight changes
         const currentHeight = window.innerHeight;
         const heightDifference = initialViewportHeight - currentHeight;
         
-        console.log('[Mobile Keyboard] Window height detection:', {
+        console.log('[🎭 Mobile Keyboard] Window height detection:', {
           initial: initialViewportHeight,
           current: currentHeight,
           difference: heightDifference,
           isIOS,
-          isSafari
+          isSafari,
+          isAndroid,
+          deviceType,
+          isLandscape,
+          orientation: isLandscape ? 'landscape' : 'portrait'
         });
 
-        // Adjust threshold for iOS
-        const threshold = isIOS ? 100 : 150;
+        // 🎭 THEATER OPTIMIZATION: Enhanced threshold for orientation
+        let threshold = 150;
+        if (isIOS) {
+          threshold = isLandscape ? 80 : 100; // iOS devices - lower for landscape
+        } else if (isAndroid) {
+          threshold = isLandscape ? 140 : 180; // Android devices - adjust for nav bars
+        }
+        
         const keyboardVisible = heightDifference > threshold;
-        setKeyboardHeight(keyboardVisible ? heightDifference : 0);
+        const calculatedHeight = keyboardVisible ? Math.max(heightDifference, isLandscape ? 180 : 200) : 0;
+        
+        console.log(`[🎭 Mobile Keyboard] ${keyboardVisible ? 'OPEN' : 'CLOSED'}: height difference ${heightDifference}px, threshold ${threshold}px (${deviceType} ${isLandscape ? 'landscape' : 'portrait'})`);
+        setKeyboardHeight(calculatedHeight);
       }
+    };
+
+    // 🎭 ENHANCED: Debounced detection for smoother experience
+    let detectTimeout: NodeJS.Timeout;
+    const debouncedDetect = () => {
+      clearTimeout(detectTimeout);
+      detectTimeout = setTimeout(detectKeyboard, 50); // 50ms debounce
     };
 
     // Listen for viewport changes
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', detectKeyboard);
+      window.visualViewport.addEventListener('resize', debouncedDetect);
     }
     
     // Fallback resize listener
-    window.addEventListener('resize', detectKeyboard);
+    window.addEventListener('resize', debouncedDetect);
 
-    // Special handling for iOS Safari
+    // 🎭 ENHANCED: Better iOS Safari handling with smoother transitions
     if (isIOS && isSafari) {
-      // iOS Safari also needs focusin/focusout events
-      const handleFocusIn = () => {
-        setTimeout(detectKeyboard, 300); // Delay for keyboard animation
+      const handleFocusIn = (event: FocusEvent) => {
+        const target = event.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+          // 🎭 THEATER PRIORITY: Ensure focused element is visible above keyboard
+          setTimeout(() => {
+            debouncedDetect();
+            // Scroll focused element into view with theater-friendly padding
+            if (target.scrollIntoView) {
+              target.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center',
+                inline: 'nearest'
+              });
+            }
+          }, 300); // Delay for keyboard animation
+        }
       };
       
       const handleFocusOut = () => {
@@ -130,30 +188,36 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       document.addEventListener('focusout', handleFocusOut);
       
       return () => {
+        clearTimeout(detectTimeout);
         document.removeEventListener('focusin', handleFocusIn);
         document.removeEventListener('focusout', handleFocusOut);
         if (window.visualViewport) {
-          window.visualViewport.removeEventListener('resize', detectKeyboard);
+          window.visualViewport.removeEventListener('resize', debouncedDetect);
         }
-        window.removeEventListener('resize', detectKeyboard);
+        window.removeEventListener('resize', debouncedDetect);
       };
     }
 
-    // Also listen for orientationchange
-    window.addEventListener('orientationchange', () => {
+    // 🎭 ENHANCED: Better orientation change handling for theater rehearsals
+    const handleOrientationChange = () => {
       setTimeout(() => {
         initialViewportHeight = window.innerHeight;
         initialVisualViewportHeight = window.visualViewport?.height || window.innerHeight;
-        detectKeyboard();
+        // Smooth transition after orientation change
+        setKeyboardHeight(0); // Reset first
+        setTimeout(debouncedDetect, 100); // Then detect again
       }, 500); // Delay to allow orientation to complete
-    });
+    };
+
+    window.addEventListener('orientationchange', handleOrientationChange);
 
     return () => {
+      clearTimeout(detectTimeout);
       if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', detectKeyboard);
+        window.visualViewport.removeEventListener('resize', debouncedDetect);
       }
-      window.removeEventListener('resize', detectKeyboard);
-      window.removeEventListener('orientationchange', detectKeyboard);
+      window.removeEventListener('resize', debouncedDetect);
+      window.removeEventListener('orientationchange', handleOrientationChange);
     };
   }, [windowWidth]);
 

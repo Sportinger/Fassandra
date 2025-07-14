@@ -11,21 +11,56 @@ import { ConnectionStatus } from '../types';
 // Removed mobile debug utilities - development utility
 // Removed console forwarder - development utility
 
-// Helper function to detect Chrome browser (including Brave)
+// Helper function to detect Chrome browser (including mobile Chrome and iOS Chrome)
 const isChrome = () => {
-  return (/Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent)) || 
-         /Brave/.test(navigator.userAgent) || 
-         /CriOS/.test(navigator.userAgent); // Chrome on iOS
+  const userAgent = navigator.userAgent;
+  return (/Chrome/.test(userAgent) && !/Edg/.test(userAgent)) || 
+         /Brave/.test(userAgent) || 
+         /CriOS/.test(userAgent); // Chrome on iOS
 };
 
 // Helper function to detect Firefox browser
 const isFirefox = () => {
-  return /Firefox/.test(navigator.userAgent);
+  return /Firefox/.test(navigator.userAgent) || /FxiOS/.test(navigator.userAgent); // Firefox on iOS
 };
 
-// Helper function to detect Safari browser
+// Helper function to detect Safari browser (including mobile Safari)
 const isSafari = () => {
-  return /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+  const userAgent = navigator.userAgent;
+  // 🎭 THEATER PRIORITY: Enhanced mobile Safari detection for iPads/iPhones
+  const isMobileSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent) && /Mobile/.test(userAgent);
+  const isDesktopSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent) && !/Mobile/.test(userAgent);
+  const isIOSWebView = /AppleWebKit/.test(userAgent) && !/Safari/.test(userAgent) && /Mobile/.test(userAgent);
+  
+  return isMobileSafari || isDesktopSafari || isIOSWebView;
+};
+
+// 🎭 NEW: Enhanced mobile browser detection for theater professionals
+const getMobileBrowserType = () => {
+  const userAgent = navigator.userAgent;
+  
+  if (/iPad/.test(userAgent)) return 'iPad';
+  if (/iPhone/.test(userAgent)) return 'iPhone';
+  if (/iPod/.test(userAgent)) return 'iPod';
+  if (/Android/.test(userAgent) && /Mobile/.test(userAgent)) return 'Android Mobile';
+  if (/Android/.test(userAgent) && /Tablet/.test(userAgent)) return 'Android Tablet';
+  if (/Android/.test(userAgent)) return 'Android';
+  
+  return 'Mobile Device';
+};
+
+// 🎭 NEW: iOS version detection for WebSocket compatibility
+const getIOSVersion = () => {
+  const userAgent = navigator.userAgent;
+  const match = userAgent.match(/OS (\d+)_(\d+)_?(\d+)?/);
+  if (match) {
+    return {
+      major: parseInt(match[1], 10),
+      minor: parseInt(match[2], 10),
+      patch: parseInt(match[3] || '0', 10)
+    };
+  }
+  return null;
 };
 
 interface UseYjsConnectionProps {
@@ -80,12 +115,19 @@ export const useYjsConnection = ({
       isSafari: isSafari(),
       isMobile: isMobile(),
       userAgent: navigator.userAgent,
+      // 🎭 THEATER PRIORITY: Enhanced mobile browser detection for iPad/iPhone users
+      mobileBrowserType: isMobile() ? getMobileBrowserType() : 'Desktop',
+      iosVersion: isMobile() && /iOS|iPhone|iPad|iPod/.test(navigator.userAgent) ? getIOSVersion() : null,
+      isIOSWebView: /AppleWebKit/.test(navigator.userAgent) && !/Safari/.test(navigator.userAgent) && /Mobile/.test(navigator.userAgent),
     };
 
     console.log(`[YJS] 🚀 Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id})`);
-    console.log('[YJS] Browser info:', browserInfo);
-    console.log('[YJS] Mobile detection:', {
+    console.log('[YJS] Enhanced browser info:', browserInfo);
+    console.log('[YJS] 🎭 Theater mobile detection:', {
       isMobile: isMobile(),
+      mobileBrowserType: browserInfo.mobileBrowserType,
+      iosVersion: browserInfo.iosVersion,
+      isIOSWebView: browserInfo.isIOSWebView,
       windowWidth: window.innerWidth,
       windowHeight: window.innerHeight,
       hostname: window.location.hostname,
@@ -93,9 +135,10 @@ export const useYjsConnection = ({
     });
     console.log('[YJS] Initializing connection...');
     
-    // Removed console forwarder for mobile debugging - development utility
+    // 🎭 THEATER PRIORITY: Enhanced mobile debug logging for field troubleshooting
     if (isMobile()) {
-      console.log('[YJS] Mobile device detected - debug logging enabled');
+      console.log(`[YJS] 🎭 ${browserInfo.mobileBrowserType} device detected - enabling theater-optimized WebSocket configuration`);
+      logDebugInfo('Editor', `Theater Mobile Setup: ${browserInfo.mobileBrowserType}, iOS: ${browserInfo.iosVersion ? browserInfo.iosVersion.major + '.' + browserInfo.iosVersion.minor : 'N/A'}`);
     }
     
     logDebugInfo('Editor', `Initializing Yjs/Provider for script: ${scriptId}, user: ${user.username} (${user.id}), browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : browserInfo.isSafari ? 'Safari' : 'Other'}, mobile: ${browserInfo.isMobile}`);
@@ -186,46 +229,70 @@ export const useYjsConnection = ({
     // Set up WebSocket provider with auth and mobile fallback
     const roomName = scriptId;
     
-    // Chrome/Safari/Mobile-specific WebSocket configuration with manual URL construction
+    // 🎭 THEATER PRIORITY: Enhanced mobile WebSocket configuration for iPad/iPhone collaboration
     if (browserInfo.isChrome || browserInfo.isSafari || isMobile()) {
-      const browserType = isMobile() ? 'Mobile' : (browserInfo.isChrome ? 'Chrome' : 'Safari');
-      console.log(`[YJS] Applying ${browserType}-specific WebSocket configuration`);
-      logDebugInfo('Editor', `Applying ${browserType}-specific WebSocket configuration`);
+      const deviceType = isMobile() ? browserInfo.mobileBrowserType : (browserInfo.isChrome ? 'Chrome' : 'Safari');
+      console.log(`[YJS] 🎭 Applying ${deviceType}-optimized WebSocket configuration`);
+      logDebugInfo('Editor', `Applying ${deviceType}-optimized WebSocket configuration`);
 
-      // Manually construct WebSocket URL with token as query parameter for compatibility
+      // 🎭 THEATER PRIORITY: Enhanced URL construction for mobile browser compatibility
       const cleanToken = token.trim(); // Remove any trailing whitespace/slash
-      const wsUrlWithToken = `${wsBaseUrl}/${roomName}?token=${encodeURIComponent(cleanToken)}`;
-      console.log(`[YJS] 🔗 ${browserType}: Connecting to WebSocket: ${wsUrlWithToken.replace(cleanToken, 'TOKEN_HIDDEN')}`);
-      console.log(`[YJS] 🛠️ ${browserType}: Full WebSocket URL construction:`, {
+      let wsUrlWithToken = `${wsBaseUrl}/${roomName}?token=${encodeURIComponent(cleanToken)}`;
+      
+      // 🎭 MOBILE FIX: Special handling for iOS devices that may have WebSocket URL encoding issues
+      if (browserInfo.iosVersion && browserInfo.iosVersion.major >= 15) {
+        // iOS 15+ has better WebSocket support, use standard encoding
+        wsUrlWithToken = `${wsBaseUrl}/${roomName}?token=${encodeURIComponent(cleanToken)}`;
+        console.log(`[YJS] 🎭 ${deviceType}: Using iOS 15+ optimized WebSocket URL`);
+      } else if (browserInfo.iosVersion && browserInfo.iosVersion.major < 15) {
+        // iOS < 15 may have encoding issues, try alternative approach
+        wsUrlWithToken = `${wsBaseUrl}/${roomName}?auth_token=${encodeURIComponent(cleanToken)}`;
+        console.log(`[YJS] 🎭 ${deviceType}: Using iOS legacy WebSocket URL (iOS ${browserInfo.iosVersion.major})`);
+      } else if (browserInfo.isIOSWebView) {
+        // iOS WebView (e.g., in-app browsers) may need special handling
+        wsUrlWithToken = `${wsBaseUrl}/${roomName}?auth=${cleanToken}`;
+        console.log(`[YJS] 🎭 ${deviceType}: Using iOS WebView compatible URL`);
+      }
+      
+      console.log(`[YJS] 🔗 ${deviceType}: Connecting to WebSocket: ${wsUrlWithToken.replace(cleanToken, 'TOKEN_HIDDEN')}`);
+      console.log(`[YJS] 🛠️ ${deviceType}: Full WebSocket URL construction:`, {
         baseUrl: wsBaseUrl,
         roomName,
         cleanToken: cleanToken.substring(0, 10) + '...',
         tokenLength: cleanToken.length,
-        isMobile: isMobile(),
+        deviceType: deviceType,
+        iosVersion: browserInfo.iosVersion,
+        isIOSWebView: browserInfo.isIOSWebView,
         hostname: window.location.hostname,
       });
-      console.log(`[YJS] 🚀 ${browserType}: About to create WebSocketProvider...`);
-      logDebugInfo('Editor', `${browserType}: Connecting to WebSocket with manual token in URL`);
+      console.log(`[YJS] 🚀 ${deviceType}: About to create WebSocketProvider...`);
+      logDebugInfo('Editor', `${deviceType}: Connecting to WebSocket with mobile-optimized token handling`);
       
+      // 🎭 THEATER PRIORITY: Mobile-optimized connection parameters for rehearsal environments
       const providerConfig = {
         connect: true,
-        // Don't use params for Chrome/Safari/Mobile - we put the token directly in the URL
-        maxBackoffTime: isMobile() ? 3000 : 8000, // Shorter timeout for mobile
-        resyncInterval: isMobile() ? 8000 : 12000, // More frequent for mobile
+        // Don't use params for mobile browsers - we put the token directly in the URL
+        maxBackoffTime: isMobile() ? 
+          (browserInfo.mobileBrowserType === 'iPhone' ? 2000 : 3000) : 8000, // Faster retry for iPhone
+        resyncInterval: isMobile() ? 
+          (browserInfo.mobileBrowserType === 'iPad' ? 6000 : 8000) : 12000, // More frequent sync for mobile
+        // 🎭 NEW: Mobile-specific timeouts for theater rehearsal environments
+        connectTimeout: isMobile() ? 10000 : 15000, // Shorter timeout for mobile
+        maxReconnectAttempts: isMobile() ? 8 : 5, // More attempts for mobile (network instability)
       };
 
       try {
-        console.log(`[YJS] 🔨 ${browserType}: Creating WebSocketProvider with config:`, providerConfig);
+        console.log(`[YJS] 🔨 ${deviceType}: Creating WebSocketProvider with config:`, providerConfig);
         const currentProvider = new WebsocketProvider(wsUrlWithToken, '', currentDoc, providerConfig);
-        console.log(`[YJS] ✅ ${browserType}: WebSocket provider created successfully with token in URL`);
-        console.log(`[YJS] 🔧 ${browserType}: Setting up WebSocket provider handlers...`);
+        console.log(`[YJS] ✅ ${deviceType}: WebSocket provider created successfully with token in URL`);
+        console.log(`[YJS] 🔧 ${deviceType}: Setting up WebSocket provider handlers...`);
         setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
-        console.log(`[YJS] 📡 ${browserType}: Setting provider state...`);
+        console.log(`[YJS] 📡 ${deviceType}: Setting provider state...`);
         setProvider(currentProvider);
-        console.log(`[YJS] 🎉 ${browserType}: WebSocket setup complete!`);
+        console.log(`[YJS] 🎉 ${deviceType}: WebSocket setup complete!`);
       } catch (error) {
-        console.error(`[YJS] ❌ ${browserType}: Failed to create WebSocket provider with token in URL:`, error);
-        setErrorMessage(`${browserType} WebSocket connection failed. You can still edit locally.`);
+        console.error(`[YJS] ❌ ${deviceType}: Failed to create WebSocket provider with token in URL:`, error);
+        setErrorMessage(`${deviceType} WebSocket connection failed. You can still edit locally.`);
         setStatus('disconnected');
         // Don't set provider to null - let editor work in local mode
         setProvider(null);
@@ -360,15 +427,31 @@ const setupWebSocketProviderHandlers = (
         setErrorMessage('Firefox WebSocket connection issue. Retrying...');
       }
     } else {
-      // Generic error handling
+      // 🎭 THEATER PRIORITY: Enhanced mobile error handling for rehearsal environments
       if (isMobile()) {
-        console.log('Mobile browser WebSocket error - providing mobile-specific guidance');
-        logDebugInfo('Editor', 'Mobile browser WebSocket error');
-        if (connectionAttempts >= 2) {
+        const deviceType = (browserInfo as any).mobileBrowserType || 'Mobile Device';
+        console.log(`🎭 ${deviceType} WebSocket error - providing theater-specific guidance`);
+        logDebugInfo('Editor', `${deviceType} WebSocket error (attempt ${connectionAttempts})`);
+        
+        if (connectionAttempts >= 3) {
           setIsMobileFallback(true);
-          setErrorMessage('Mobile connection unstable. Working in offline mode. Try refreshing or switching to WiFi.');
+          // 🎭 THEATER GUIDANCE: Specific troubleshooting for mobile rehearsal scenarios
+          if (deviceType === 'iPhone' || deviceType === 'iPad') {
+            setErrorMessage(`🎭 ${deviceType} connection unstable. Working offline. Tip: Try switching from cellular to WiFi, or close other apps using internet.`);
+          } else if (deviceType.includes('Android')) {
+            setErrorMessage(`🎭 ${deviceType} connection unstable. Working offline. Tip: Try enabling "Desktop site" mode or clearing browser cache.`);
+          } else {
+            setErrorMessage('🎭 Mobile connection unstable. Working in offline mode. Try refreshing or switching to WiFi.');
+          }
+        } else if (connectionAttempts === 2) {
+          // 🎭 THEATER GUIDANCE: Second attempt - provide specific help
+          if (deviceType === 'iPhone' || deviceType === 'iPad') {
+            setErrorMessage(`🎭 ${deviceType}: Connection issue. Checking iOS Safari compatibility... (attempt ${connectionAttempts})`);
+          } else {
+            setErrorMessage(`🎭 ${deviceType}: Connection issue. Checking mobile browser compatibility... (attempt ${connectionAttempts})`);
+          }
         } else {
-          setErrorMessage('Mobile connection issue. Retrying...');
+          setErrorMessage(`🎭 ${deviceType}: Connecting to rehearsal session... (attempt ${connectionAttempts})`);
         }
       } else if (connectionAttempts >= 3) {
         console.log('Enabling fallback mode for unreliable connection');
