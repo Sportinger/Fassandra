@@ -34,11 +34,11 @@ import type {
 } from '../types/index';
 import { storeContentSnapshot } from '../../../api';
 
-// 🔧 FIXED: Use relative path for WebSocket to go through Vite proxy
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 
-  (typeof window !== 'undefined' 
-    ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`
-    : '/api/collab');
+// 🔧 FIXED: Always use proxy route for WebSocket to avoid direct backend connection issues
+// The frontend proxy (vite.config.ts) handles forwarding /api requests to backend
+const WS_BASE_URL = typeof window !== 'undefined' 
+  ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`
+  : '/api/collab';
 
 // 🔧 FIXED: Reduce console spam - only log important events
 const debugLog = (message: string, ...args: any[]) => {
@@ -143,6 +143,20 @@ export const useEditorCore = ({
         const userCount = Math.max(0, awarenessStates.size - 1);
         setActiveUserCount(userCount);
         debugLog(`[Collaboration] Active users: ${userCount} (excluding self)`);
+        
+        // 🎭 THEATER PRIORITY: Enhanced collaboration awareness for theater teams
+        const activeUsers = Array.from(awarenessStates.values())
+          .filter((state: any) => state.user && state.user.name !== stableUser?.username)
+          .map((state: any) => ({
+            name: state.user.name,
+            color: state.user.color,
+            lastSeen: Date.now(),
+            isTyping: state.cursor ? true : false
+          }));
+        
+        if (activeUsers.length > 0) {
+          console.log('🎭 [Theater Collaboration] Active team members:', activeUsers.map(u => `${u.name}${u.isTyping ? ' (typing)' : ''}`).join(', '));
+        }
       }
     };
 

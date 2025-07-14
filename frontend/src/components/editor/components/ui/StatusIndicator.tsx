@@ -4,18 +4,22 @@
  */
 
 import React from 'react';
-import type { ConnectionStatus } from '../../types/index';
+import type { ConnectionStatus } from '../../types';
 
 interface StatusIndicatorProps {
   status: ConnectionStatus;
   message?: string;
   className?: string;
+  activeUserCount?: number;
+  isMobile?: boolean;
 }
 
 export const StatusIndicator: React.FC<StatusIndicatorProps> = ({ 
   status, 
   message, 
-  className = '' 
+  className = '',
+  activeUserCount = 0,
+  isMobile = false
 }) => {
   const getStatusColor = (status: ConnectionStatus): string => {
     switch (status) {
@@ -32,38 +36,71 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
     }
   };
 
+  // 🎭 THEATER PRIORITY: Enhanced status messages for theater professionals
   const getStatusText = (status: ConnectionStatus): string => {
     switch (status) {
       case 'connected':
-        return 'Connected';
+        return activeUserCount > 0 
+          ? `🎭 Rehearsal Active (${activeUserCount + 1} ${activeUserCount === 0 ? 'person' : 'people'})`
+          : '🎭 Ready for Collaboration';
       case 'connecting':
-        return 'Connecting...';
+        return isMobile ? '🎭 Mobile: Connecting to rehearsal...' : '🎭 Connecting to rehearsal...';
       case 'syncing':
-        return 'Syncing...';
+        return '🎭 Syncing script changes...';
       case 'disconnected':
-        return 'Disconnected';
+        return isMobile ? '🎭 Mobile: Working offline' : '🎭 Working offline';
       case 'error':
-        return 'Connection Error';
+        return isMobile ? '🎭 Mobile: Connection issue' : '🎭 Connection issue';
       default:
-        return 'Unknown';
+        return '🎭 Theater collaboration platform';
     }
   };
 
-  return (
-    <div 
-      className={`status-indicator ${className}`}
-      style={{
-        position: 'fixed',
+  // 🎭 ENHANCED: Dynamic positioning for mobile vs desktop
+  const getIndicatorStyle = () => {
+    const baseStyle = {
+      background: getStatusColor(status),
+      color: 'white',
+      padding: isMobile ? '6px 12px' : '8px 16px',
+      borderRadius: '6px',
+      fontSize: isMobile ? '12px' : '14px',
+      fontWeight: '500' as const,
+      zIndex: 1000,
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+      backdropFilter: 'blur(8px)',
+      transition: 'all 0.3s ease',
+      // 🎭 THEATER STYLING: Better visual hierarchy
+      border: status === 'connected' ? '1px solid rgba(255, 255, 255, 0.2)' : 'none',
+    };
+
+    if (isMobile) {
+      return {
+        ...baseStyle,
+        position: 'fixed' as const,
+        top: '10px',
+        left: '10px',
+        right: '10px',
+        textAlign: 'center' as const,
+        transform: 'none',
+      };
+    } else {
+      return {
+        ...baseStyle,
+        position: 'fixed' as const,
         top: '60px',
         left: '50%',
         transform: 'translateX(-50%)',
-        background: getStatusColor(status),
-        color: 'white',
-        padding: '8px 16px',
-        borderRadius: '4px',
-        fontSize: '14px',
-        zIndex: 1000,
-      }}
+      };
+    }
+  };
+
+  // 🎭 ENHANCED: Pulse animation for active collaboration
+  const shouldPulse = status === 'connected' && activeUserCount > 0;
+
+  return (
+    <div 
+      className={`status-indicator ${className} ${shouldPulse ? 'pulse-animation' : ''}`}
+      style={getIndicatorStyle()}
     >
       <span className="status-dot" style={{
         display: 'inline-block',
@@ -72,8 +109,26 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
         borderRadius: '50%',
         backgroundColor: 'currentColor',
         marginRight: '8px',
+        // 🎭 ENHANCED: Animated dot for active sessions
+        animation: shouldPulse ? 'pulseGlow 2s infinite' : 'none',
       }} />
       {message || getStatusText(status)}
+      
+      {/* 🎭 THEATER FEATURE: Show active collaborators count */}
+      {status === 'connected' && activeUserCount > 0 && (
+        <span style={{
+          marginLeft: '8px',
+          fontSize: isMobile ? '10px' : '12px',
+          opacity: 0.9,
+          background: 'rgba(255, 255, 255, 0.2)',
+          padding: '2px 6px',
+          borderRadius: '10px',
+        }}>
+          +{activeUserCount}
+        </span>
+      )}
+      
+
     </div>
   );
 }; 
