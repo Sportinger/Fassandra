@@ -41,7 +41,7 @@ impl BlockRepository for PostgresBlockRepository {
     async fn find_by_script_id(&self, script_id: Uuid) -> Result<Vec<Block>, AppError> {
         let blocks = sqlx::query_as!(
             Block,
-            "SELECT id, script_id, block_type, content, block_order, page_number, created_at FROM blocks WHERE script_id = $1 ORDER BY block_order ASC",
+            "SELECT id, script_id, block_type, content, block_order, page_number, created_at, metadata FROM blocks WHERE script_id = $1 ORDER BY block_order ASC",
             script_id
         )
         .fetch_all(self.pool.as_ref())
@@ -53,14 +53,15 @@ impl BlockRepository for PostgresBlockRepository {
     
     async fn create(&self, block: &Block) -> Result<(), AppError> {
         sqlx::query!(
-            "INSERT INTO blocks (id, script_id, block_type, content, block_order, page_number, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            "INSERT INTO blocks (id, script_id, block_type, content, block_order, page_number, created_at, metadata) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
             block.id,
             block.script_id,
             block.block_type,
             block.content,
             block.block_order,
             block.page_number,
-            block.created_at
+            block.created_at,
+            block.metadata
         )
         .execute(self.pool.as_ref())
         .await
@@ -71,12 +72,13 @@ impl BlockRepository for PostgresBlockRepository {
     
     async fn update(&self, block: &Block) -> Result<(), AppError> {
         sqlx::query!(
-            "UPDATE blocks SET block_type = $2, content = $3, block_order = $4, page_number = $5 WHERE id = $1",
+            "UPDATE blocks SET block_type = $2, content = $3, block_order = $4, page_number = $5, metadata = $6 WHERE id = $1",
             block.id,
             block.block_type,
             block.content,
             block.block_order,
-            block.page_number
+            block.page_number,
+            block.metadata
         )
         .execute(self.pool.as_ref())
         .await

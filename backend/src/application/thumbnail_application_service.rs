@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::domain::script_service::ScriptService;
 use crate::error::AppError;
-use crate::thumbnail::{update_script_thumbnail, generate_missing_thumbnails, regenerate_all_thumbnails};
+use crate::services::thumbnail::{update_script_thumbnail, generate_missing_thumbnails, regenerate_all_thumbnails};
 
 /// Application service for thumbnail operations
 pub struct ThumbnailApplicationService {

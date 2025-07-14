@@ -4,6 +4,5 @@
 //! and produce appropriate responses for the application's API.
 
 pub mod page_break_handlers;
-pub mod script_handlers;
-pub mod auth;
-pub mod script; 
+pub mod script;
+pub mod auth; 

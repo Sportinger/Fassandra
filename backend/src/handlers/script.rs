@@ -1,307 +1,258 @@
-use axum::{extract::{State, Path}, Json, response::IntoResponse};
+//! Handlers for script-related API endpoints.
+//!
+//! Clean HTTP controllers that delegate business logic to application services.
+//! Each handler focuses solely on HTTP concerns: request/response mapping, status codes, and error handling.
+
+use axum::{
+    extract::{Multipart, Path, State},
+    http::StatusCode,
+    response::{IntoResponse, Json},
+    routing::{get, post, patch, delete},
+    Router,
+    middleware,
+};
+use serde_json::json;
+use tracing::{error, info, warn};
 use std::sync::Arc;
-use sqlx::PgPool;
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::auth::AuthUser;
+
+use crate::analysis::structs::Script as ParsedScript;
+use crate::auth::{AuthUser, RateLimiter, rate_limit_middleware};
 use crate::error::AppError;
-use crate::models::{script::Script, block::Block, edit::Edit, script_layout::{ScriptLayout, CreateScriptLayoutRequest, UpdateScriptLayoutRequest}};
-use crate::api::scripts::{get_user_scripts, store_content_snapshot, get_content_snapshot};
-use crate::{create_script, create_block, update_block, get_script_with_blocks, get_block_history, delete_script, update_script_content_from_html, get_script_layouts, get_default_script_layout, create_script_layout, update_script_layout, delete_script_layout};
-use crate::auth_helpers::{check_script_access, check_script_ownership};
+use crate::models::script_share::{ShareScriptRequest, ScriptShare};
+use crate::application::{
+    ScriptApplicationService,
+    ScriptSharingApplicationService,
+    ThumbnailApplicationService,
+};
 
-/// Response structure for listing scripts.
-#[derive(Serialize)]
-pub struct ScriptsResponse(pub Vec<Script>);
-
-/// Response structure for a script with its blocks.
-#[derive(Serialize)]
-pub struct ScriptWithBlocks { 
-    pub script: Script, 
-    pub blocks: Vec<Block> 
+/// Application services container for script operations
+#[derive(Clone)]
+pub struct ScriptServices {
+    pub script_service: Arc<ScriptApplicationService>,
+    pub sharing_service: Arc<ScriptSharingApplicationService>,
+    pub thumbnail_service: Arc<ThumbnailApplicationService>,
 }
 
-/// Payload for creating a new script.
-#[derive(Deserialize)]
-pub struct CreateScriptPayload { 
-    pub title: String 
-}
-
-/// Payload for creating a new block.
-#[derive(Deserialize)]
-pub struct CreateBlockPayload { 
-    pub block_type: String, 
-    pub content: String 
-}
-
-/// Payload for updating a block's content.
-#[derive(Deserialize)]
-pub struct UpdateBlockPayload { 
-    pub content: String 
-}
-
-/// Payload for updating script content.
-#[derive(Deserialize)]
-pub struct UpdateScriptContentPayload { 
-    pub content: String // HTML content from TipTap editor
-}
-
-/// Lists all scripts for the authenticated user.
+/// Creates a router for script-related endpoints with rate limiting protection.
+///
+/// Sets up the routes for script upload and processing with appropriate security middleware.
+/// File upload endpoints get additional rate limiting to prevent abuse.
 ///
 /// # Arguments
-/// * `State(pool)` - Shared PostgreSQL connection pool.
-/// * `AuthUser` - The authenticated user.
+/// * `rate_limiter` - Rate limiter instance for protecting endpoints
 ///
 /// # Returns
-/// * `Result<Json<ScriptsResponse>, AppError>` - List of scripts as JSON on success, or an AppError on failure.
-pub async fn list_scripts(State(pool): State<Arc<PgPool>>, AuthUser{user_id}: AuthUser) -> Result<Json<ScriptsResponse>, AppError> {
-    let response = get_user_scripts(
-        State(Arc::new(pool.as_ref().clone())),
-        user_id
-    ).await?;
-    let scripts = response.0; // Extract the Vec<Script> from Json wrapper
-    Ok(Json(ScriptsResponse(scripts)))
+/// * `Router<ScriptServices>` - Configured router with script routes and security middleware
+pub fn script_routes(rate_limiter: Arc<RateLimiter>) -> Router<ScriptServices> {
+    Router::new()
+        // 🔒 SECURITY: Apply stricter rate limiting to file upload endpoint
+        .route("/upload", post(upload_and_parse_script)
+            .layer(middleware::from_fn_with_state(rate_limiter.clone(), rate_limit_middleware)))
+        .route("/create_script_from_parsed", post(create_script_from_parsed_handler))
+        .route("/:script_id/share", post(share_script))
+        .route("/:script_id/shares", get(get_script_shares))
+        .route("/:script_id/shares/:share_id", delete(remove_script_share))
+        .route("/:script_id/public", patch(toggle_script_public))
+        // 🔒 SECURITY: Apply rate limiting to resource-intensive thumbnail operations
+        .route("/:script_id/thumbnail", post(generate_thumbnail)
+            .layer(middleware::from_fn_with_state(rate_limiter.clone(), rate_limit_middleware)))
+        .route("/thumbnails/generate", post(generate_all_thumbnails)
+            .layer(middleware::from_fn_with_state(rate_limiter.clone(), rate_limit_middleware)))
+        .route("/thumbnails/regenerate", post(regenerate_all_thumbnails_endpoint)
+            .layer(middleware::from_fn_with_state(rate_limiter, rate_limit_middleware)))
 }
 
-/// Endpoint to create a new script.
-///
-/// # Arguments
-/// * `State(pool)` - Shared PostgreSQL connection pool.
-/// * `AuthUser` - The authenticated user.
-/// * `Json(payload)` - Script creation payload.
-///
-/// # Returns
-/// * `Result<Json<Script>, AppError>` - The new script as JSON on success, or an AppError on failure.
-pub async fn create_script_endpoint(State(pool): State<Arc<PgPool>>, AuthUser{user_id}: AuthUser, Json(payload): Json<CreateScriptPayload>) -> Result<Json<Script>, AppError> {
-    let script = create_script(pool.as_ref(), &payload.title, user_id).await?;
-    Ok(Json(script))
+/// Request payload for creating a script from parsed data.
+#[derive(serde::Deserialize, Debug)]
+pub struct CreateScriptFromParsedPayload {
+    parsed_script: ParsedScript,
 }
 
-/// Endpoint to create a new block for a script.
+/// Handles creating a script entry and associated blocks from parsed data.
 ///
-/// # Arguments
-/// * `State(pool)` - Shared PostgreSQL connection pool.
-/// * `AuthUser` - The authenticated user.
-/// * `Path(script_id)` - The script ID.
-/// * `Json(payload)` - Block creation payload.
-///
-/// # Returns
-/// * `Result<Json<Uuid>, AppError>` - The new block's ID as JSON on success, or an AppError on failure.
-pub async fn create_block_endpoint(State(pool): State<Arc<PgPool>>, AuthUser{user_id}: AuthUser, Path(script_id): Path<Uuid>, Json(payload): Json<CreateBlockPayload>) -> Result<Json<Uuid>, AppError> {
-    // 🔒 SECURITY: Check if user has access to this script before allowing block creation
-    if !check_script_access(pool.as_ref(), script_id, user_id).await? {
-        return Err(AppError::Forbidden("Access denied to this script".to_string()));
-    }
-    
-    let id = create_block(pool.as_ref(), script_id, &payload.block_type, &payload.content, None).await?;
-    Ok(Json(id))
-}
-
-/// Endpoint to fetch a script and its blocks.
-///
-/// # Arguments
-/// * `State(pool)` - Shared PostgreSQL connection pool.
-/// * `AuthUser` - The authenticated user.
-/// * `Path(script_id)` - The script ID.
-///
-/// # Returns
-/// * `Result<Json<ScriptWithBlocks>, AppError>` - The script and its blocks as JSON on success, or an AppError on failure.
-pub async fn get_script_endpoint(State(pool): State<Arc<PgPool>>, AuthUser{user_id}: AuthUser, Path(script_id): Path<Uuid>) -> Result<Json<ScriptWithBlocks>, AppError> {
-    // 🔒 SECURITY: Check if user has access to this script
-    if !check_script_access(pool.as_ref(), script_id, user_id).await? {
-        return Err(AppError::Forbidden("Access denied to this script".to_string()));
-    }
-    
-    let (script, blocks) = get_script_with_blocks(pool.as_ref(), script_id).await?;
-    Ok(Json(ScriptWithBlocks { script, blocks }))
-}
-
-/// Endpoint to update a block's content.
-///
-/// # Arguments
-/// * `State(pool)` - Shared PostgreSQL connection pool.
-/// * `AuthUser` - The authenticated user.
-/// * `Path(block_id)` - The block ID.
-/// * `Json(payload)` - Update payload.
-///
-/// # Returns
-/// * `Result<impl IntoResponse, AppError>` - No content on success, or an AppError on failure.
-pub async fn update_block_endpoint(State(pool): State<Arc<PgPool>>, AuthUser{user_id}: AuthUser, Path(block_id): Path<Uuid>, Json(payload): Json<UpdateBlockPayload>) -> Result<impl IntoResponse, AppError> {
-    update_block(pool.as_ref(), block_id, &payload.content, user_id).await?;
-    Ok(axum::http::StatusCode::NO_CONTENT)
-}
-
-/// Endpoint to fetch the edit history for a block.
-///
-/// # Arguments
-/// * `State(pool)` - Shared PostgreSQL connection pool.
-/// * `AuthUser` - The authenticated user.
-/// * `Path(block_id)` - The block ID.
-///
-/// # Returns
-/// * `Result<Json<Vec<Edit>>, AppError>` - List of edits as JSON on success, or an AppError on failure.
-pub async fn block_history_endpoint(State(pool): State<Arc<PgPool>>, AuthUser{..}: AuthUser, Path(block_id): Path<Uuid>) -> Result<Json<Vec<Edit>>, AppError> {
-    let edits = get_block_history(pool.as_ref(), block_id).await?;
-    Ok(Json(edits))
-}
-
-/// Endpoint to update a script's title.
-///
-/// # Arguments
-/// * `State(pool)` - Shared PostgreSQL connection pool.
-/// * `AuthUser` - The authenticated user.
-/// * `Path(script_id)` - The script ID.
-/// * `Json(payload)` - Script update payload (only title is used).
-///
-/// # Returns
-/// * `Result<Json<Script>, AppError>` - The updated script as JSON on success, or an AppError on failure.
-pub async fn update_script_title_endpoint(
-    State(pool): State<Arc<PgPool>>,
-    AuthUser{user_id}: AuthUser, // 🔒 SECURITY: Use user_id for authorization check
-    Path(script_id): Path<Uuid>,
-    Json(payload): Json<CreateScriptPayload>, // Assuming CreateScriptPayload contains { title: String }
-) -> Result<Json<Script>, AppError> {
-    // 🔒 SECURITY: Check if user owns this script before allowing update
-    if !check_script_ownership(pool.as_ref(), script_id, user_id).await? {
-        return Err(AppError::Forbidden("You can only update scripts you own".to_string()));
-    }
-    
-    let script = sqlx::query_as!(
-        Script,
-        r#"UPDATE scripts SET title = $1 WHERE id = $2 
-        RETURNING id, title, created_by, created_at, COALESCE(is_public, false) as "is_public!", thumbnail"#,
-        payload.title,
-        script_id
-    )
-    .fetch_one(pool.as_ref())
-    .await
-    .map_err(|e| match e {
-        sqlx::Error::RowNotFound => AppError::NotFound("Script not found".to_string()),
-        _ => AppError::Db(e), // Convert other sqlx errors to AppError::Db
-    })?;
-    Ok(Json(script))
-}
-
-/// Endpoint to update a script's content from the TipTap editor.
-///
-/// This endpoint receives HTML content from the TipTap editor and converts it
-/// into structured blocks in the database, providing persistence for collaborative edits.
-///
-/// # Arguments
-/// * `State(pool)` - Shared PostgreSQL connection pool.
-/// * `AuthUser` - The authenticated user.
-/// * `Path(script_id)` - The script ID.
-/// * `Json(payload)` - Content update payload containing HTML.
-///
-/// # Returns
-/// * `Result<impl IntoResponse, AppError>` - HTTP 204 No Content on success, or an AppError on failure.
-pub async fn update_script_content_endpoint(
-    State(pool): State<Arc<PgPool>>,
+/// Delegates to ScriptApplicationService for business logic.
+#[axum::debug_handler]
+async fn create_script_from_parsed_handler(
+    State(services): State<ScriptServices>,
     AuthUser{user_id}: AuthUser,
-    Path(script_id): Path<Uuid>,
-    Json(payload): Json<UpdateScriptContentPayload>,
-) -> Result<impl IntoResponse, AppError> {
-    tracing::info!("💾 Received content update for script {}: {} characters", script_id, payload.content.len());
-    
-    // Convert HTML to blocks and update the database
-    update_script_content_from_html(pool.as_ref(), script_id, &payload.content, user_id).await?;
-    
-    tracing::info!("✅ Successfully updated script content for script {}", script_id);
-    Ok(axum::http::StatusCode::NO_CONTENT)
+    Json(payload): Json<CreateScriptFromParsedPayload>,
+) -> Result<Json<Uuid>, AppError> {
+    info!(user_id = %user_id, "Creating script from parsed data");
+
+    let script_id = services.script_service
+        .create_script_from_parsed(&payload.parsed_script, user_id)
+        .await?;
+
+    info!(script_id = %script_id, user_id = %user_id, "Successfully created script");
+    Ok(Json(script_id))
 }
 
-/// Endpoint to delete a script.
+/// Handles script file upload and parsing via Gemini API.
 ///
-/// # Arguments
-/// * `State(pool)` - Shared PostgreSQL connection pool.
-/// * `AuthUser` - The authenticated user (ensures the endpoint is protected).
-/// * `Path(script_id)` - The ID of the script to delete.
+/// Processes multipart form data and delegates to ScriptApplicationService.
+#[axum::debug_handler]
+async fn upload_and_parse_script(
+    State(services): State<ScriptServices>,
+    mut multipart: Multipart,
+) -> Result<Json<ParsedScript>, impl IntoResponse> {
+    // Extract file from multipart form
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        error!("Failed to read multipart field: {}", e);
+        (StatusCode::BAD_REQUEST, Json(json!({"error": "Invalid upload format"})))
+    })? {
+        if field.name() == Some("file") {
+            let filename = field.file_name().unwrap_or("unknown").to_string();
+            let content_type = field.content_type().unwrap_or("").to_string();
+            
+            info!("Processing uploaded file: {}", filename);
+
+            // Read file data
+            let data = field.bytes().await.map_err(|e| {
+                error!("Failed to read file data: {}", e);
+                (StatusCode::BAD_REQUEST, Json(json!({"error": "Unable to process uploaded file"})))
+            })?;
+
+            // Delegate to application service
+            let parsed_script = services.script_service
+                .upload_and_parse_script(data.to_vec(), &filename, &content_type)
+                .await
+                .map_err(|e| {
+                    error!("Script upload failed: {}", e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Script parsing failed"})))
+                })?;
+
+            info!("Successfully parsed script with {} sections", parsed_script.sections.len());
+            return Ok(Json(parsed_script));
+        }
+    }
+
+    // No file found in multipart data
+    warn!("No file found in multipart data");
+    Err((StatusCode::BAD_REQUEST, Json(json!({"error": "No file provided"}))))
+}
+
+/// Shares a script with another user.
 ///
-/// # Returns
-/// * `Result<StatusCode, AppError>` - HTTP 204 No Content on success, or an AppError on failure.
-pub async fn delete_script_endpoint(
-    State(pool): State<Arc<PgPool>>,
-    AuthUser{user_id}: AuthUser, // 🔒 SECURITY: Use user_id for authorization check
+/// Delegates to ScriptSharingApplicationService for business logic.
+pub async fn share_script(
+    State(services): State<ScriptServices>,
+    AuthUser { user_id }: AuthUser,
     Path(script_id): Path<Uuid>,
-) -> Result<axum::http::StatusCode, AppError> {
-    // 🔒 SECURITY: Check if user owns this script before allowing deletion
-    if !check_script_ownership(pool.as_ref(), script_id, user_id).await? {
-        return Err(AppError::Forbidden("You can only delete scripts you own".to_string()));
-    }
-    
-    // Call the delete_script function from lib.rs (or wherever it's appropriately defined without user checks)
-    // Assuming `backend::delete_script` is the function from `lib.rs`.
-    // The `use backend::{... delete_script ...}` statement would be needed if not already present.
-    // For now, let's assume `delete_script` is brought into scope correctly.
-    crate::delete_script(pool.as_ref(), script_id).await?;
-    Ok(axum::http::StatusCode::NO_CONTENT)
+    Json(request): Json<ShareScriptRequest>,
+) -> Result<Json<ScriptShare>, AppError> {
+    info!(user_id = %user_id, script_id = %script_id, "Sharing script");
+
+    let share = services.sharing_service
+        .share_script(script_id, user_id, request)
+        .await?;
+
+    info!(user_id = %user_id, script_id = %script_id, "Successfully shared script");
+    Ok(Json(share))
 }
 
-// === Script Layout Endpoints ===
+/// Gets all shares for a script.
+///
+/// Delegates to ScriptSharingApplicationService for business logic.
+pub async fn get_script_shares(
+    State(services): State<ScriptServices>,
+    AuthUser { user_id }: AuthUser,
+    Path(script_id): Path<Uuid>,
+) -> Result<Json<Vec<(ScriptShare, String)>>, AppError> {
+    info!(user_id = %user_id, script_id = %script_id, "Getting script shares");
 
-/// Gets all layouts for a script.
-pub async fn get_script_layouts_endpoint(
-    State(pool): State<Arc<PgPool>>,
-    AuthUser{user_id}: AuthUser,
-    Path(script_id): Path<Uuid>
-) -> Result<Json<Vec<ScriptLayout>>, AppError> {
-    // 🔒 SECURITY: Check if user has access to this script before returning layouts
-    if !check_script_access(pool.as_ref(), script_id, user_id).await? {
-        return Err(AppError::Forbidden("Access denied to this script".to_string()));
-    }
-    
-    let layouts = get_script_layouts(pool.as_ref(), script_id).await?;
-    Ok(Json(layouts))
+    let shares = services.sharing_service
+        .get_script_shares(script_id, user_id)
+        .await?;
+
+    info!(user_id = %user_id, script_id = %script_id, share_count = shares.len(), "Retrieved script shares");
+    Ok(Json(shares))
 }
 
-/// Gets the default layout for a script.
-pub async fn get_default_layout_endpoint(
-    State(pool): State<Arc<PgPool>>,
-    AuthUser{user_id}: AuthUser,
-    Path(script_id): Path<Uuid>
-) -> Result<Json<Option<ScriptLayout>>, AppError> {
-    // 🔒 SECURITY: Check if user has access to this script before returning default layout
-    if !check_script_access(pool.as_ref(), script_id, user_id).await? {
-        return Err(AppError::Forbidden("Access denied to this script".to_string()));
-    }
-    
-    let layout = get_default_script_layout(pool.as_ref(), script_id).await?;
-    Ok(Json(layout))
+/// Removes a script share.
+///
+/// Delegates to ScriptSharingApplicationService for business logic.
+pub async fn remove_script_share(
+    State(services): State<ScriptServices>,
+    AuthUser { user_id }: AuthUser,
+    Path((script_id, share_id)): Path<(Uuid, Uuid)>,
+) -> Result<StatusCode, AppError> {
+    info!(user_id = %user_id, script_id = %script_id, share_id = %share_id, "Removing script share");
+
+    services.sharing_service
+        .remove_script_share(script_id, share_id, user_id)
+        .await?;
+
+    info!(user_id = %user_id, script_id = %script_id, share_id = %share_id, "Successfully removed script share");
+    Ok(StatusCode::NO_CONTENT)
 }
 
-/// Creates a new layout for a script.
-pub async fn create_script_layout_endpoint(
-    State(pool): State<Arc<PgPool>>,
+/// Toggles a script's public status.
+///
+/// Delegates to ScriptSharingApplicationService for business logic.
+pub async fn toggle_script_public(
+    State(services): State<ScriptServices>,
+    AuthUser { user_id }: AuthUser,
+    Path(script_id): Path<Uuid>,
+) -> Result<Json<bool>, AppError> {
+    info!(user_id = %user_id, script_id = %script_id, "Toggling script public status");
+
+    let new_status = services.sharing_service
+        .toggle_script_public(script_id, user_id)
+        .await?;
+
+    info!(user_id = %user_id, script_id = %script_id, public_status = new_status, "Successfully toggled script public status");
+    Ok(Json(new_status))
+}
+
+/// Generates a thumbnail for a specific script.
+///
+/// Delegates to ThumbnailApplicationService for business logic.
+async fn generate_thumbnail(
+    State(services): State<ScriptServices>,
     AuthUser{user_id}: AuthUser,
     Path(script_id): Path<Uuid>,
-    Json(request): Json<CreateScriptLayoutRequest>
-) -> Result<Json<ScriptLayout>, AppError> {
-    let layout = create_script_layout(pool.as_ref(), script_id, &request, user_id).await?;
-    Ok(Json(layout))
+) -> Result<Json<String>, AppError> {
+    info!(user_id = %user_id, script_id = %script_id, "Generating thumbnail");
+
+    let thumbnail = services.thumbnail_service
+        .generate_thumbnail(script_id, user_id)
+        .await?;
+
+    info!(user_id = %user_id, script_id = %script_id, "Successfully generated thumbnail");
+    Ok(Json(thumbnail))
 }
 
-/// Updates an existing script layout.
-pub async fn update_script_layout_endpoint(
-    State(pool): State<Arc<PgPool>>,
+/// Generates thumbnails for all scripts that don't have one.
+///
+/// Delegates to ThumbnailApplicationService for business logic.
+async fn generate_all_thumbnails(
+    State(services): State<ScriptServices>,
     AuthUser{user_id}: AuthUser,
-    Path((_script_id, layout_id)): Path<(Uuid, Uuid)>,
-    Json(request): Json<UpdateScriptLayoutRequest>
-) -> Result<Json<ScriptLayout>, AppError> {
-    let layout = update_script_layout(pool.as_ref(), layout_id, &request, user_id).await?;
-    Ok(Json(layout))
+) -> Result<Json<usize>, AppError> {
+    info!(user_id = %user_id, "Generating thumbnails for all scripts without thumbnails");
+
+    let count = services.thumbnail_service
+        .generate_missing_thumbnails(user_id)
+        .await?;
+
+    info!(user_id = %user_id, count = count, "Successfully generated missing thumbnails");
+    Ok(Json(count))
 }
 
-/// Deletes a script layout.
-pub async fn delete_script_layout_endpoint(
-    State(pool): State<Arc<PgPool>>,
+/// Regenerates thumbnails for ALL scripts (forces refresh).
+///
+/// Delegates to ThumbnailApplicationService for business logic.
+async fn regenerate_all_thumbnails_endpoint(
+    State(services): State<ScriptServices>,
     AuthUser{user_id}: AuthUser,
-    Path((script_id, layout_id)): Path<(Uuid, Uuid)>
-) -> Result<axum::http::StatusCode, AppError> {
-    // 🔒 SECURITY: Check if user owns this script before allowing layout deletion
-    if !check_script_ownership(pool.as_ref(), script_id, user_id).await? {
-        return Err(AppError::Forbidden("You can only delete layouts for scripts you own".to_string()));
-    }
-    
-    delete_script_layout(pool.as_ref(), layout_id).await?;
-    Ok(axum::http::StatusCode::NO_CONTENT)
-} 
+) -> Result<Json<usize>, AppError> {
+    info!(user_id = %user_id, "Regenerating all thumbnails");
+
+    let count = services.thumbnail_service
+        .regenerate_all_thumbnails(user_id)
+        .await?;
+
+    info!(user_id = %user_id, count = count, "Successfully regenerated all thumbnails");
+    Ok(Json(count))
+}

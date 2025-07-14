@@ -1,14 +1,26 @@
-// Services module for the snapshot processing pipeline
-// 
-// This module contains the services extracted from the monolithic snapshotting_service.rs
-// Each service has a single responsibility and can be tested independently.
+//! Services module for the Pessoa theater collaboration platform.
+//!
+//! This module contains various service implementations including:
+//! - Thumbnail generation for script previews
+//! - Asynchronous database operations and batch processing
+//! - Y.js document persistence and event handling
+//! - Snapshotting service for document state management
+//! - Background task processing and coordination
+//!
+//! # Service Architecture
+//! - Stateless service design for scalability
+//! - Asynchronous processing for performance
+//! - Event-driven architecture for real-time updates
+//! - Proper error handling and recovery mechanisms
+//! - Database transaction management for consistency
 
-pub mod yjs_processor_service;
-pub mod content_extractor_service;
-pub mod html_parser_service;
-pub mod snapshot_coordinator_service;
+pub mod thumbnail;
+pub mod async_db_writer;
+pub mod persistence_event;
+pub mod snapshotting_service_v2;
 
-pub use yjs_processor_service::YjsProcessorService;
-pub use content_extractor_service::ContentExtractorService;
-pub use html_parser_service::HtmlParserService;
-pub use snapshot_coordinator_service::SnapshotCoordinatorService; 
+// Re-export key service components
+pub use thumbnail::*;
+pub use async_db_writer::*;
+pub use persistence_event::*;
+pub use snapshotting_service_v2::*;

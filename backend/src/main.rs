@@ -3,9 +3,9 @@ use sqlx::{postgres::PgPoolOptions, migrate::Migrator};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use anyhow::{Context, Result};
 
-use backend::config::{Config, update_admin_user_password};
-use backend::server::{create_router, start_server};
-use backend::service_manager;
+use backend::infrastructure::{Config, update_admin_user_password};
+use backend::core::{create_router, start_server};
+use backend::core::service_manager;
 
 static MIGRATOR: Migrator = sqlx::migrate!();
 
@@ -70,9 +70,9 @@ async fn main() -> Result<()> {
     let service_manager = service_manager::create_production_service_manager(pool.clone())
         .await
         .context("Failed to initialize ServiceManager")?;
-
+    
     tracing::info!("✅ ServiceManager initialized with all background services");
-
+    
     // Create and configure the HTTP router
     let config = Arc::new(config);
     let app_router = create_router(&service_manager, config.clone());
@@ -91,8 +91,8 @@ async fn main() -> Result<()> {
     match server_result {
         Ok(_) => {
             tracing::info!("✅ Backend server shutdown completed successfully");
-            Ok(())
-        }
+    Ok(())
+}
         Err(e) => {
             tracing::error!("❌ Server error: {}", e);
             Err(e)

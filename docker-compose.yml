@@ -22,6 +22,9 @@ services:
 
   backend:
     container_name: ${CONTAINER_PREFIX:-dev_}pessoa_backend
+    depends_on:
+      db:
+        condition: service_healthy
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -44,9 +47,6 @@ services:
       ADMIN_PLACEHOLDER_HASH: ${ADMIN_PLACEHOLDER_HASH}
     ports:
       - "${BACKEND_PORT:-3001}:3001"
-    depends_on:
-      db:
-        condition: service_healthy
     volumes:
       - ./backend:/app
       - cargo_cache:/usr/local/cargo/registry
