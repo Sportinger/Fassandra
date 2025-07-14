@@ -11,6 +11,7 @@ import { useEditorCore } from '../hooks/useEditorCore';
 import { PageCanvas } from './page/PageCanvas';
 import { Toolbar } from './toolbar/Toolbar';
 import { LoadingSpinner } from './ui/LoadingSpinner';
+import { StatusIndicator } from './ui/StatusIndicator';
 import { SinglePageView, MultiPageView } from '../ViewModes';
 import { AudioTranscription } from './AudioTranscription';
 // Removed DemoModeManager import - development utility
@@ -445,12 +446,14 @@ export const Editor: React.FC<EditorProps> = ({
         // Removed demo mode props - development utility
       />
       
-      {/* Status indicator for mobile */}
-      {isMobile && (
-        <div className="mobile-status-indicator">
-          <span>📱 Mobile optimized view</span>
-          <span>Status: {connectionStatus}</span>
-        </div>
+      {/* 🎭 THEATER ENHANCEMENT: Enhanced collaboration status indicator */}
+      {(connectionStatus !== 'connected' || activeUserCount > 0 || isMobile) && (
+        <StatusIndicator 
+          status={connectionStatus}
+          activeUserCount={activeUserCount}
+          isMobile={isMobile}
+          message={errorMessage || undefined}
+        />
       )}
       
       {/* Removed demo mode status indicator - development utility */}

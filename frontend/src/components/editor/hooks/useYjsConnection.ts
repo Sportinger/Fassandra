@@ -155,17 +155,12 @@ export const useYjsConnection = ({
     console.log('[YJS Debug] Y.Doc created and default fragment initialized');
     setYdoc(currentDoc);
 
-    // Use host-accessible URL for browser WebSocket connections
-    const envWsUrl = import.meta.env.VITE_WS_BASE_URL;
-    const fallbackWsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`;
+    // 🔧 FIXED: Always use frontend proxy route for reliable WebSocket connections
+    // This ensures all WebSocket traffic goes through the Vite proxy (vite.config.ts)
+    // which forwards to the backend, avoiding direct backend connection issues
+    const wsBaseUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`;
     
-    // ALL browsers (including mobile) should use the frontend proxy to avoid CORS issues
-    // Mobile browsers connecting directly to :3001 can cause network/firewall problems
-    const wsBaseUrl = envWsUrl || fallbackWsUrl; // Always use proxy route through frontend
-    
-    console.log(`[YJS] 🌍 Environment WS URL: ${envWsUrl}`);
-    console.log(`[YJS] 🔄 Fallback WS URL: ${fallbackWsUrl}`);
-    console.log(`[YJS] ✅ Final WebSocket Base URL: ${wsBaseUrl}`);
+    console.log(`[YJS] ✅ Using Proxy WebSocket URL: ${wsBaseUrl}`);
     console.log(`[YJS] 🔍 Current location:`, {
       protocol: window.location.protocol,
       host: window.location.host,
