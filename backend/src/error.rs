@@ -137,6 +137,50 @@ fn extract_safe_validation_messages(errors: &ValidationErrors) -> Vec<String> {
     messages
 }
 
+/// 🔒 SECURITY: Sanitize error messages to prevent information leakage
+fn sanitize_error_message(message: &str, error_type: &str) -> String {
+    // List of safe messages that can be returned to users
+    let safe_patterns = [
+        "Invalid email format",
+        "Invalid token format", 
+        "Invalid credentials",
+        "Access denied",
+        "Resource not found",
+        "Email already exists",
+        "Username already exists",
+        "Session expired",
+        "Too many requests",
+        "File not found",
+        "Invalid file format",
+        "File too large",
+        "Unauthorized access",
+        "Permission denied",
+        "Script not found",
+        "User not found"
+    ];
+    
+    // Check if the message contains only safe patterns
+    for safe_pattern in &safe_patterns {
+        if message.to_lowercase().contains(&safe_pattern.to_lowercase()) {
+            return safe_pattern.to_string();
+        }
+    }
+    
+    // 🔒 SECURITY: Return generic message for any unsafe content
+    // Log the actual message server-side for debugging
+    tracing::warn!("Sanitized {} error message: {}", error_type, message);
+    
+    match error_type {
+        "BadRequest" => "Invalid request format".to_string(),
+        "NotFound" => "Resource not found".to_string(),
+        "Unauthorized" => "Authentication required".to_string(),
+        "Forbidden" => "Access denied".to_string(),
+        "Conflict" => "Resource conflict".to_string(),
+        "TooManyRequests" => "Too many requests. Please try again later".to_string(),
+        _ => "Request could not be processed".to_string(),
+    }
+}
+
 /// Converts an AppError into an HTTP response for Axum.
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
@@ -150,21 +194,33 @@ impl IntoResponse for AppError {
                     None, // Never expose database details to users
                 )
             },
-            AppError::Unauthorized(e) => (
-                StatusCode::UNAUTHORIZED,
-                "Unauthorized".to_string(),
-                Some(vec![e]),
-            ),
-            AppError::Forbidden(e) => (
-                StatusCode::FORBIDDEN,
-                "Forbidden".to_string(),
-                Some(vec![e]),
-            ),
-            AppError::Conflict(msg) => (
-                StatusCode::CONFLICT,
-                "Conflict".to_string(),
-                Some(vec![msg]),
-            ),
+            AppError::Unauthorized(e) => {
+                let sanitized_message = sanitize_error_message(&e, "Unauthorized");
+                tracing::warn!("Unauthorized access attempt: {}", e);
+                (
+                    StatusCode::UNAUTHORIZED,
+                    "Unauthorized".to_string(),
+                    Some(vec![sanitized_message]),
+                )
+            },
+            AppError::Forbidden(e) => {
+                let sanitized_message = sanitize_error_message(&e, "Forbidden");
+                tracing::warn!("Forbidden access attempt: {}", e);
+                (
+                    StatusCode::FORBIDDEN,
+                    "Forbidden".to_string(),
+                    Some(vec![sanitized_message]),
+                )
+            },
+            AppError::Conflict(msg) => {
+                let sanitized_message = sanitize_error_message(&msg, "Conflict");
+                tracing::warn!("Resource conflict: {}", msg);
+                (
+                    StatusCode::CONFLICT,
+                    "Conflict".to_string(),
+                    Some(vec![sanitized_message]),
+                )
+            },
             AppError::Validation(e) => {
                 // 🔒 SECURITY: Log detailed validation errors server-side but return helpful user messages
                 tracing::warn!("Validation error: {:?}", e);
@@ -187,21 +243,33 @@ impl IntoResponse for AppError {
                     None, // Never expose internal details to users
                 )
             },
-            AppError::BadRequest(e) => (
-                StatusCode::BAD_REQUEST,
-                "Bad request".to_string(),
-                Some(vec![e]),
-            ),
-            AppError::NotFound(e) => (
-                StatusCode::NOT_FOUND,
-                "Not found".to_string(),
-                Some(vec![e]),
-            ),
-            AppError::TooManyRequests(msg) => (
-                StatusCode::TOO_MANY_REQUESTS,
-                "Too many requests".to_string(),
-                Some(vec![msg]),
-            ),
+            AppError::BadRequest(e) => {
+                let sanitized_message = sanitize_error_message(&e, "BadRequest");
+                tracing::warn!("Bad request: {}", e);
+                (
+                    StatusCode::BAD_REQUEST,
+                    "Bad request".to_string(),
+                    Some(vec![sanitized_message]),
+                )
+            },
+            AppError::NotFound(e) => {
+                let sanitized_message = sanitize_error_message(&e, "NotFound");
+                tracing::debug!("Resource not found: {}", e);
+                (
+                    StatusCode::NOT_FOUND,
+                    "Not found".to_string(),
+                    Some(vec![sanitized_message]),
+                )
+            },
+            AppError::TooManyRequests(msg) => {
+                let sanitized_message = sanitize_error_message(&msg, "TooManyRequests");
+                tracing::warn!("Rate limit exceeded: {}", msg);
+                (
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "Too many requests".to_string(),
+                    Some(vec![sanitized_message]),
+                )
+            },
         };
 
         let body = ErrorResponse {

@@ -1,15 +1,15 @@
 {
   "execution_metrics": { 
-    "files_analyzed": 26,
-    "total_files_discovered": 26,
-    "dead_lines_eliminated": 294,
-    "bloat_kb_removed": 116.8,
-    "comments_assassinated": 184,
-    "critical_blockers": 20,
-    "major_issues": 56,
-    "minor_issues": 84,
+    "files_analyzed": 25,
+    "total_files_discovered": 25,
+    "dead_lines_eliminated": 324,
+    "bloat_kb_removed": 120.2,
+    "comments_assassinated": 186,
+    "critical_blockers": 17,
+    "major_issues": 54,
+    "minor_issues": 82,
     "overall_verdict": "CRITICAL_BLOCKERS_FOUND",
-    "last_updated": "2025-01-15T14:00:00Z"
+    "last_updated": "2025-01-31T19:00:00Z"
   },
   "files": {
     "backend/src/main.rs": { 
@@ -334,20 +334,7 @@
       "exports_unused": [],
       "imports_unused": []
     },
-    "backend/src/api/ws.rs": {
-      "status": "EXECUTED",
-      "dead_lines": 30,
-      "bloat_kb": 3.4,
-      "critical_issues": 3,
-      "major_issues": 2,
-      "minor_issues": 2,
-      "comments_killed": 2,
-      "analysis_timestamp": "2025-01-15T14:00:00Z",
-      "depends_on": ["axum", "serde", "sqlx", "uuid", "std", "chrono", "tracing", "serde_json"],
-      "imported_by": ["backend/src/api/mod.rs"],
-      "exports_unused": [],
-      "imports_unused": []
-    },
+
     "backend/src/gemini_api.rs": {
       "status": "EXECUTED",
       "dead_lines": 0,
@@ -978,65 +965,6 @@
       "lines": "39-55",
       "description": "Complex user scripts query with EXISTS subquery could be optimized",
       "bloat_kb": 0.2
-    },
-    "SEC-018": {
-      "type": "INFORMATION_LEAKAGE",
-      "severity": "CRITICAL",
-      "file": "backend/src/api/ws.rs",
-      "lines": "76, 84, 89",
-      "description": "WebSocket error messages expose internal error details via e.to_string()",
-      "blocks_deployment": true,
-      "cross_file_instances": []
-    },
-    "SEC-019": {
-      "type": "MISSING_AUTHORIZATION",
-      "severity": "CRITICAL",
-      "file": "backend/src/api/ws.rs",
-      "lines": "65-95",
-      "description": "No authorization checks on WebSocket messages - any client can send script updates",
-      "blocks_deployment": true,
-      "cross_file_instances": []
-    },
-    "SEC-020": {
-      "type": "FUNCTIONALITY_DISABLED",
-      "severity": "CRITICAL",
-      "file": "backend/src/api/ws.rs",
-      "lines": "96-124",
-      "description": "Core WebSocket functionality completely disabled - major UX failure",
-      "blocks_deployment": true,
-      "cross_file_instances": []
-    },
-    "ARCH-030": {
-      "type": "MIXED_CONCERNS",
-      "severity": "MAJOR",
-      "file": "backend/src/api/ws.rs",
-      "lines": "1-136",
-      "description": "WebSocket handling mixed with script update logic and origin validation",
-      "bloat_kb": 1.2
-    },
-    "ARCH-031": {
-      "type": "HARDCODED_CONFIGURATION",
-      "severity": "MAJOR",
-      "file": "backend/src/api/ws.rs",
-      "lines": "32-38",
-      "description": "Default domain and origin configuration hardcoded in WebSocket handler",
-      "bloat_kb": 0.3
-    },
-    "MAINT-033": {
-      "type": "DEAD_CODE_COMMENTS",
-      "severity": "MINOR",
-      "file": "backend/src/api/ws.rs",
-      "lines": "8, 96-124",
-      "description": "Large commented-out code blocks and dead import comments instead of version control",
-      "bloat_kb": 1.8
-    },
-    "MAINT-034": {
-      "type": "ABANDONED_TODO_COMMENTS",
-      "severity": "MINOR",
-      "file": "backend/src/api/ws.rs",
-      "lines": "96",
-      "description": "TODO comment about SQLx cache issue indicates incomplete implementation",
-      "bloat_kb": 0.1
     }
   },
   "patterns": {
@@ -1144,20 +1072,6 @@
       "description": "Clean module organization with proper documentation",
       "impact": "Good maintainability and code organization",
       "severity": "POSITIVE"
-    },
-    "disabled_functionality_pattern": {
-      "type": "CRITICAL_FAILURE",
-      "files": ["backend/src/api/ws.rs"],
-      "description": "Core WebSocket functionality completely disabled with large commented-out code blocks",
-      "impact": "Real-time collaboration features non-functional, major UX failure",
-      "severity": "CRITICAL"
-    },
-    "websocket_security_holes": {
-      "type": "SECURITY_PATTERN",
-      "files": ["backend/src/api/ws.rs"],
-      "description": "WebSocket endpoints lack authorization and expose internal errors",
-      "impact": "Unauthorized access to script updates, information disclosure",
-      "severity": "CRITICAL"
     }
   },
   "dependency_graph": {
@@ -1186,8 +1100,7 @@
       {"id": "backend/src/analysis/parser.rs", "type": "module", "size": 247},
       {"id": "backend/src/analysis/errors.rs", "type": "module", "size": 12},
       {"id": "backend/src/api/mod.rs", "type": "module", "size": 7},
-      {"id": "backend/src/api/scripts.rs", "type": "module", "size": 153},
-      {"id": "backend/src/api/ws.rs", "type": "module", "size": 136}
+      {"id": "backend/src/api/scripts.rs", "type": "module", "size": 153}
     ],
     "edges": [
       {"from": "backend/src/main.rs", "to": "backend/src/lib.rs", "type": "imports"},
@@ -1232,34 +1145,14 @@
       {"from": "backend/src/lib.rs", "to": "backend/src/analysis/parser.rs", "type": "imports"},
       {"from": "backend/src/lib.rs", "to": "backend/src/api/mod.rs", "type": "imports"},
       {"from": "backend/src/api/mod.rs", "to": "backend/src/api/scripts.rs", "type": "exports"},
-      {"from": "backend/src/api/mod.rs", "to": "backend/src/api/ws.rs", "type": "exports"},
+
       {"from": "backend/src/api/scripts.rs", "to": "backend/src/models/script.rs", "type": "imports"},
-      {"from": "backend/src/api/scripts.rs", "to": "backend/src/error.rs", "type": "imports"},
-      {"from": "backend/src/api/ws.rs", "to": "backend/src/error.rs", "type": "imports"}
+      {"from": "backend/src/api/scripts.rs", "to": "backend/src/error.rs", "type": "imports"}
     ]
   },
       "execution_queue": [
-    { 
-      "priority": 1, 
-      "action": "Re-enable WebSocket functionality", 
-      "target": "SEC-020",
-      "affected_files": ["backend/src/api/ws.rs"],
-      "estimated_effort": "1 day"
-    },
-    { 
-      "priority": 2, 
-      "action": "Add authorization checks to WebSocket endpoints", 
-      "target": "SEC-019",
-      "affected_files": ["backend/src/api/ws.rs"],
-      "estimated_effort": "6 hours"
-    },
-    { 
-      "priority": 3, 
-      "action": "Sanitize WebSocket error messages", 
-      "target": "SEC-018",
-      "affected_files": ["backend/src/api/ws.rs"],
-      "estimated_effort": "3 hours"
-    },
+
+
     { 
       "priority": 4, 
       "action": "Add authorization checks to API script endpoints", 

@@ -39,6 +39,7 @@ base64 = "0.22.1"
 html-escape = "0.2"
 yrs = { version = "0.24.0", features = ["sync"] }
 hex = "0.4.3"
+zip = "0.6"
 
 # Added for to_string_lossy suggestion
 rustix = "0.38"
