@@ -139,6 +139,10 @@ export const storeContentSnapshot = async (scriptId: string, content: string, fo
     return apiService.post(`/api/scripts/${scriptId}/snapshot`, { content, format }, { scriptId, content });
 };
 
+export const getContentSnapshot = async (scriptId: string): Promise<{script_id: string, content: string, format: string, created_at: string | null}> => {
+    return apiService.get(`/api/scripts/${scriptId}/snapshot`, { scriptId });
+};
+
 // --- Page Breaks --- //
 
 export interface PageBreakInfo {

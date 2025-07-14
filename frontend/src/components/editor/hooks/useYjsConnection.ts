@@ -155,20 +155,23 @@ export const useYjsConnection = ({
     console.log('[YJS Debug] Y.Doc created and default fragment initialized');
     setYdoc(currentDoc);
 
-    // 🔧 FIXED: Always use frontend proxy route for reliable WebSocket connections
-    // This ensures all WebSocket traffic goes through the Vite proxy (vite.config.ts)
-    // which forwards to the backend, avoiding direct backend connection issues
-    const wsBaseUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`;
+    // 🔧 SECURE ARCHITECTURE: WebSocket through HTTPS Frontend Proxy
+    // All traffic (HTTP + WebSocket) goes through frontend SSL termination  
+    // Frontend proxy (vite.config.ts) forwards to backend with ws: true enabled
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsBaseUrl = `${wsProtocol}//${window.location.host}/api/collab`;
     
-    console.log(`[YJS] ✅ Using Proxy WebSocket URL: ${wsBaseUrl}`);
+    console.log(`[YJS] ✅ Using Secure Proxy WebSocket URL: ${wsBaseUrl}`);
+    console.log(`[YJS] 🔒 WebSocket goes through HTTPS frontend proxy for security`);
     console.log(`[YJS] 🔍 Current location:`, {
       protocol: window.location.protocol,
       host: window.location.host,
       hostname: window.location.hostname,
       port: window.location.port,
-      pathname: window.location.pathname
+      pathname: window.location.pathname,
+      wsProtocol: wsProtocol
     });
-    logDebugInfo('Editor', `WebSocket Base URL: ${wsBaseUrl}`);
+    logDebugInfo('Editor', `WebSocket Base URL: ${wsBaseUrl} (via secure frontend proxy)`);
 
     // 🔧 DISABLED: Offline storage - always fetch from backend instead of IndexedDB
     console.log(`[YJS] Skipping IndexedDB persistence - always fetching from backend`);

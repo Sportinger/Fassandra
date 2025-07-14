@@ -250,3 +250,91 @@ pub async fn store_content_snapshot(
         }
     }
 } 
+
+/// GET /api/scripts/:id/snapshot - Get the latest content snapshot
+pub async fn get_content_snapshot(
+    State(pool): State<Arc<PgPool>>,
+    AuthUser { user_id }: AuthUser,
+    Path(script_id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>> {
+    // 🔒 SECURITY: Check if user has access to this script
+    let script_access = sqlx::query!(
+        "SELECT created_by FROM scripts WHERE id = $1",
+        script_id
+    )
+    .fetch_optional(pool.as_ref())
+    .await
+    .map_err(|e| {
+        tracing::error!("Database error checking script access: {}", e);
+        AppError::Internal(anyhow::Error::msg("Database error"))
+    })?;
+
+    let script = match script_access {
+        Some(script) => script,
+        None => {
+            return Err(AppError::NotFound("Script not found".to_string()));
+        }
+    };
+
+    // Check if user owns the script or has access via sharing
+    let has_access = script.created_by == Some(user_id) ||
+        sqlx::query!(
+            "SELECT COUNT(*) as count FROM script_shares WHERE script_id = $1 AND shared_with_user_id = $2",
+            script_id,
+            user_id
+        )
+        .fetch_one(pool.as_ref())
+        .await
+        .map_err(|e| {
+            tracing::error!("Database error checking script sharing: {}", e);
+            AppError::Internal(anyhow::Error::msg("Database error"))
+        })?.count.unwrap_or(0) > 0;
+
+    if !has_access {
+        return Err(AppError::Forbidden("Access denied".to_string()));
+    }
+
+    // Get the latest content snapshot using dynamic query to avoid cache issues
+    let snapshot_result = sqlx::query_as::<_, (Option<String>, Option<String>, chrono::DateTime<chrono::Utc>)>(
+        "SELECT content_snapshot, snapshot_format, created_at FROM script_snapshots_meta WHERE script_id = $1 AND content_snapshot IS NOT NULL ORDER BY created_at DESC LIMIT 1"
+    )
+    .bind(script_id)
+    .fetch_optional(pool.as_ref())
+    .await
+    .map_err(|e| {
+        tracing::error!("Database error fetching content snapshot: {}", e);
+        AppError::Internal(anyhow::Error::msg("Database error"))
+    })?;
+
+    match snapshot_result {
+        Some((content_snapshot, snapshot_format, created_at)) => {
+            if let Some(content) = content_snapshot {
+                tracing::info!("🎯 Retrieved content snapshot for script {}: {} chars", script_id, content.len());
+                Ok(Json(serde_json::json!({
+                    "script_id": script_id,
+                    "content": content,
+                    "format": snapshot_format.unwrap_or_else(|| "html".to_string()),
+                    "created_at": created_at
+                })))
+            } else {
+                // No content in snapshot
+                Ok(Json(serde_json::json!({
+                    "script_id": script_id,
+                    "content": "",
+                    "format": "html",
+                    "created_at": null
+                })))
+            }
+        }
+        None => {
+            // No snapshot found - return empty content
+            tracing::info!("⚠️ No content snapshot found for script {}, returning empty content", script_id);
+            Ok(Json(serde_json::json!({
+                "script_id": script_id,
+                "content": "",
+                "format": "html",
+                "created_at": null
+            })))
+        }
+    }
+} 

@@ -22,7 +22,7 @@ import { DialogueBlock } from '../extensions/DialogueBlock';
 import { Speaker } from '../extensions/Speaker';
 import { DialogueText } from '../extensions/DialogueText';
 import { FontSize } from '../FontSizeExtension';
-import { getScriptWithBlocks } from '../../../api';
+import { getScriptWithBlocks, getContentSnapshot } from '../../../api';
 import { convertBlocksToTiptapContent, extractSpeakerNames } from '../utils/contentConverters';
 import { isYDocEmpty } from '../utils/formatters';
 import type { 
@@ -34,8 +34,9 @@ import type {
 } from '../types/index';
 import { storeContentSnapshot } from '../../../api';
 
-// 🔧 FIXED: Always use proxy route for WebSocket to avoid direct backend connection issues
-// The frontend proxy (vite.config.ts) handles forwarding /api requests to backend
+// 🔧 SECURE ARCHITECTURE: WebSocket through HTTPS Frontend Proxy 
+// All traffic (HTTP + WebSocket) goes through frontend SSL termination
+// Frontend proxy (vite.config.ts) forwards to backend with ws: true enabled
 const WS_BASE_URL = typeof window !== 'undefined' 
   ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`
   : '/api/collab';
@@ -300,27 +301,48 @@ export const useEditorCore = ({
     return () => clearInterval(interval);
   }, [editorInstance, stableScriptId, stableToken, contentSnapshot, lastSyncTime]);
 
-  // Load initial content
+  // 🔧 FIXED: Load initial content from latest snapshot instead of outdated blocks
   useEffect(() => {
     if (!editorInstance || !stableScriptId || !stableToken) return;
 
     const loadInitialContent = async () => {
       try {
-        const scriptData = await getScriptWithBlocks(stableScriptId);
+        debugLog('[Editor] 🎯 Loading latest content snapshot instead of blocks...');
         
-        if (scriptData.blocks.length > 0) {
-          const content = convertBlocksToTiptapContent(scriptData.blocks);
-          editorInstance.commands.setContent(content);
+        // First try to get the latest content snapshot
+        const snapshotData = await getContentSnapshot(stableScriptId);
+        
+        if (snapshotData.content && snapshotData.content.trim()) {
+          debugLog(`[Editor] ✅ Found content snapshot: ${snapshotData.content.length} chars`);
+          editorInstance.commands.setContent(snapshotData.content);
           setContentSnapshot(editorInstance.getHTML());
           
-          // 🔧 FIXED: Extract speakers from converted HTML content, not raw blocks
-          const speakers = extractSpeakerNames(content);
+          // Extract speakers from snapshot content
+          const speakers = extractSpeakerNames(snapshotData.content);
           setAvailableSpeakers(Array.from(speakers));
           
-          debugLog('[YJS Sync] ✅ Using TipTap Collaboration extension for all YJS sync (prevents cursor issues)');
+          debugLog('[Editor] ✅ Content loaded from snapshot successfully');
+        } else {
+          debugLog('[Editor] ⚠️ No content snapshot found, falling back to blocks...');
+          
+          // Fallback to blocks if no snapshot exists
+          const scriptData = await getScriptWithBlocks(stableScriptId);
+          
+          if (scriptData.blocks.length > 0) {
+            const content = convertBlocksToTiptapContent(scriptData.blocks);
+            editorInstance.commands.setContent(content);
+            setContentSnapshot(editorInstance.getHTML());
+            
+            const speakers = extractSpeakerNames(content);
+            setAvailableSpeakers(Array.from(speakers));
+            
+            debugLog('[Editor] ✅ Content loaded from blocks fallback');
+          } else {
+            debugLog('[Editor] ⚠️ No content found in either snapshots or blocks');
+          }
         }
       } catch (error) {
-        console.error('[Editor] Failed to load initial content:', error);
+        console.error('[Editor] ❌ Failed to load initial content:', error);
         setErrorMessage('Failed to load script content');
       }
     };
