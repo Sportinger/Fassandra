@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
+import { randomUUID } from 'crypto';
 
 // Helper function to execute REAL MCP database queries
 async function executeDatabaseQuery(query, params = []) {
@@ -46,12 +47,59 @@ async function executeDatabaseQuery(query, params = []) {
 }
 
 test.describe('Pessoa Complete Workflow + Real Database Verification', () => {
+  // Fixed test credentials with dynamic UUID to avoid conflicts
   const testUser = {
-    email: 'a@b.c',
-    password: 'a@b.c'
+    id: randomUUID(), // Proper UUID format
+    email: 'test@test.test',
+    password: 'Test123tEST!"§',
+    username: 'test',
+    role: 'user',
+    // Pre-generated password hash to avoid Rust compilation during test
+    passwordHash: '$argon2id$v=19$m=19456,t=2,p=1$tC+lfcfDIqEqEV2Uo+5lyg$CqG9k5Hm0o6xdiMR8Z5juLNIA1ULwyRRObYP/Y/tP6c'
   };
 
-  test('Complete workflow + Database verification in ONE test', async ({ page }) => {
+  test('Complete workflow + Database verification with fixed user creation/cleanup', async ({ page }) => {
+    // =====================================================
+    // PART 0: USER SETUP AND CREATION
+    // =====================================================
+    
+    console.log('\n🧑 === PART 0: CREATE TEST USER ===');
+    
+    const timestamp = Date.now();
+    
+    console.log(`👤 Creating test user: ${testUser.email}`);
+    
+    // First, cleanup any existing test user and their scripts (foreign key constraints)
+    console.log('🧹 Cleaning up any existing test user and scripts...');
+    
+    // Delete scripts first (foreign key constraint)
+    const deleteExistingScriptsQuery = `DELETE FROM scripts WHERE created_by = (SELECT id FROM users WHERE email = $1)`;
+    await executeDatabaseQuery(deleteExistingScriptsQuery, [testUser.email]);
+    
+    // Then delete the user
+    const deleteExistingUserQuery = `DELETE FROM users WHERE email = $1`;
+    await executeDatabaseQuery(deleteExistingUserQuery, [testUser.email]);
+    
+    // Insert the test user into the database using pre-generated hash
+    const createUserQuery = `
+      INSERT INTO users (id, email, password_hash, role, username, created_at) 
+      VALUES ($1, $2, $3, $4, $5, NOW())
+    `;
+    const createUserResult = await executeDatabaseQuery(createUserQuery, [
+      testUser.id,
+      testUser.email, 
+      testUser.passwordHash,
+      testUser.role,
+      testUser.username
+    ]);
+    
+    if (!createUserResult.success) {
+      console.error('❌ Failed to create test user, skipping test');
+      throw new Error(`User creation failed: ${createUserResult.error}`);
+    }
+    
+    console.log(`✅ Test user created successfully: ${testUser.email}`);
+    
     // =====================================================
     // SETUP: Browser Console Capture
     // =====================================================
@@ -98,10 +146,9 @@ test.describe('Pessoa Complete Workflow + Real Database Verification', () => {
     // Variables to track our test
     let scriptId = null;
     let scriptName = null;
-    let timestamp = Date.now();
     
-    // Step 1: Login (500ms delay - 50% faster than before)
-    console.log('🔑 Step 1: Login (lightning fast 500ms)...');
+    // Step 1: Login with fixed test user (500ms delay - 50% faster than before)
+    console.log(`🔑 Step 1: Login with test user ${testUser.email} (lightning fast 500ms)...`);
     
     await page.goto('https://192.168.2.111:8443');
     await page.fill('input[type="email"]', testUser.email);
@@ -112,7 +159,7 @@ test.describe('Pessoa Complete Workflow + Real Database Verification', () => {
     await page.waitForTimeout(500);
     
     await expect(page.locator('text=Scripts')).toBeVisible();
-    console.log('✅ Login successful');
+    console.log('✅ Login successful with test user');
     
     // Step 2: Create New Script (500ms delay - 50% faster than before)
     console.log('📝 Step 2: Create new script (lightning fast 500ms)...');
@@ -152,7 +199,7 @@ test.describe('Pessoa Complete Workflow + Real Database Verification', () => {
     // Step 3: Write short speed test content
     console.log('✏️  Step 3: Writing short speed test...');
     
-    const quickTestContent = `Speed test ${timestamp} - FAST!`;
+    const quickTestContent = `Speed test ${timestamp} - FAST with user ${testUser.username}!`;
     
     // Wait for editor to be ready
     await expect(page.locator('.ProseMirror')).toBeVisible();
@@ -239,14 +286,14 @@ test.describe('Pessoa Complete Workflow + Real Database Verification', () => {
       const foundContent = contentResult.rows.some(block => 
         block.content && 
         block.content.includes('Speed test') && 
-        block.content.includes('FAST!')
+        block.content.includes('FAST')
       );
       
       if (foundContent) {
         console.log('✅ Test content verified in database!');
       } else {
         console.log('❌ Test content NOT found in database');
-        console.log(`🔍 Looking for content containing: "Speed test" and "FAST!"`);
+        console.log(`🔍 Looking for content containing: "Speed test" and "FAST"`);
         throw new Error('Test content not found in database');
       }
     } else {
@@ -271,14 +318,14 @@ test.describe('Pessoa Complete Workflow + Real Database Verification', () => {
         const foundInSnapshots = snapshotsResult.rows.some(snapshot => 
           snapshot.content_snapshot && 
           snapshot.content_snapshot.includes('Speed test') && 
-          snapshot.content_snapshot.includes('FAST!')
+          snapshot.content_snapshot.includes('FAST')
         );
         
         if (foundInSnapshots) {
           console.log('✅ Test content verified in snapshots!');
         } else {
           console.log('❌ Test content NOT found in snapshots');
-          console.log(`🔍 Looking for content containing: "Speed test" and "FAST!"`);
+          console.log(`🔍 Looking for content containing: "Speed test" and "FAST"`);
           throw new Error('Test content not found in snapshots');
         }
       } else {
@@ -326,20 +373,34 @@ test.describe('Pessoa Complete Workflow + Real Database Verification', () => {
       console.log('❌ Failed to delete test script');
     }
     
+    // Step 9: Delete the test user
+    console.log('🗑️  Step 9: Deleting test user...');
+    
+    const deleteUserQuery = `DELETE FROM users WHERE id = $1`;
+    const deleteUserResult = await executeDatabaseQuery(deleteUserQuery, [testUser.id]);
+    
+    if (deleteUserResult.success) {
+      console.log(`✅ Test user deleted: ${testUser.email}`);
+    } else {
+      console.log(`❌ Failed to delete test user: ${testUser.email}`);
+    }
+    
     // =====================================================
     // FINAL RESULT
     // =====================================================
     
     console.log('\n🎉 **COMPLETE TEST FINISHED!**');
+    console.log('✅ User Creation: Fixed test user created and used (no Rust compilation needed!)');
     console.log('✅ Speed Test: Login 500ms + Create 500ms + Write + 1s wait + Back + Logout = FAST!');
     console.log('✅ Database Verification: Content found in database');
-    console.log('✅ Cleanup: Test script deleted');
-    console.log('🧹 Database clean - no test data left behind');
+    console.log('✅ Cleanup: Test script AND user deleted');
+    console.log('🧹 Database completely clean - no test data left behind');
     
     // Test completed successfully
+    console.log(`👤 User used: ${testUser.email} (ID: ${testUser.id})`);
     console.log(`📋 Script created: ${scriptName} (ID: ${scriptId})`);
-    console.log(`📝 Content: Speed test ${timestamp} - FAST!`);
-    console.log(`⚡ LIGHTNING FAST WORKFLOW + DATABASE VERIFICATION WORKING!`);
+    console.log(`📝 Content: Speed test ${timestamp} - FAST with user ${testUser.username}!`);
+    console.log(`⚡ LIGHTNING FAST WORKFLOW + DATABASE VERIFICATION + COMPLETE ISOLATION WORKING!`);
     
     expect(true).toBe(true); // Test passes
   });
