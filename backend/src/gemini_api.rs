@@ -200,8 +200,10 @@ pub async fn upload_docx_to_gemini(
 
     if !initiate_response.status().is_success() {
         let status = initiate_response.status();
-        let body = initiate_response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
-        return Err(GeminiApiError::FileUpload(format!("Upload initiation failed: Status {}, Body: {}", status, body)));
+        let _body = initiate_response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
+        // 🔒 SECURITY: Sanitize error messages to prevent information leakage
+        tracing::error!("Upload initiation failed with status: {}", status);
+        return Err(GeminiApiError::FileUpload(format!("Upload initiation failed: Status {}", status)));
     }
 
     // Extract upload URL from response headers
@@ -223,8 +225,10 @@ pub async fn upload_docx_to_gemini(
 
     if !upload_response.status().is_success() {
         let status = upload_response.status();
-        let body = upload_response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
-        return Err(GeminiApiError::FileUpload(format!("File upload failed: Status {}, Body: {}", status, body)));
+        let _body = upload_response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
+        // 🔒 SECURITY: Sanitize error messages to prevent information leakage
+        tracing::error!("File upload failed with status: {}", status);
+        return Err(GeminiApiError::FileUpload(format!("File upload failed: Status {}", status)));
     }
 
     let upload_result: FileUploadResponse = upload_response.json().await?;
@@ -342,21 +346,27 @@ pub async fn call_gemini_for_docx_parsing(
         .send()
         .await
         .map_err(|e| {
-            eprintln!("Detailed Reqwest Error: {:?}", e);
-            if e.is_timeout() {
-                eprintln!("Error Type: Request Timeout");
+            // 🔒 SECURITY: Sanitize error messages to prevent API key exposure
+            let sanitized_error = if e.is_timeout() {
+                "Request timeout occurred"
             } else if e.is_connect() {
-                eprintln!("Error Type: Connection Error");
+                "Connection error occurred"
             } else if e.is_request() {
-                eprintln!("Error Type: Request Body Error");
-            }
-            GeminiApiError::Reqwest(e) 
+                "Request body error occurred"
+            } else {
+                "HTTP request failed"
+            };
+            
+            tracing::error!("Gemini API request failed: {}", sanitized_error);
+            GeminiApiError::FileUpload(sanitized_error.to_string())
         })?;
 
     if !response.status().is_success() {
         let status = response.status();
-        let body = response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
-        return Err(GeminiApiError::ApiError { status, body });
+        let _body = response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
+        // 🔒 SECURITY: Sanitize error messages to prevent information leakage
+        tracing::error!("Gemini API request failed with status: {}", status);
+        return Err(GeminiApiError::FileUpload(format!("API request failed with status: {}", status)));
     }
 
     let response_body = response.json::<GeminiResponse>().await?;
@@ -379,11 +389,10 @@ pub async fn call_gemini_for_docx_parsing(
     
     // Parse the response into our ParsedScript structure
     let parsed_script: ParsedScript = serde_json::from_str(&json_text)
-        .map_err(|e| {
-            eprintln!("JSON parsing error: {}", e);
-            eprintln!("Raw response: {}", model_response_text);
-            eprintln!("Extracted JSON: {}", json_text);
-            GeminiApiError::StructureParsing(format!("Failed to parse JSON response: {}", e))
+        .map_err(|_| {
+            // 🔒 SECURITY: Sanitize error messages to prevent data exposure
+            tracing::error!("JSON parsing error occurred during DOCX script parsing");
+            GeminiApiError::StructureParsing("Failed to parse JSON response".to_string())
         })?;
 
     Ok(parsed_script)
@@ -557,26 +566,28 @@ pub async fn call_gemini_for_parsing(
         .json(&request_payload)
         .send()
         .await
-        // Add detailed logging for Reqwest errors
         .map_err(|e| {
-            eprintln!("Detailed Reqwest Error: {:?}", e);
-            // Check for specific error kinds if helpful
-            if e.is_timeout() {
-                eprintln!("Error Type: Request Timeout");
+            // 🔒 SECURITY: Sanitize error messages to prevent API key exposure
+            let sanitized_error = if e.is_timeout() {
+                "Request timeout occurred"
             } else if e.is_connect() {
-                eprintln!("Error Type: Connection Error");
+                "Connection error occurred"
             } else if e.is_request() {
-                eprintln!("Error Type: Request Body Error");
-            } // Add more checks if needed based on reqwest::Error kinds
+                "Request body error occurred"
+            } else {
+                "HTTP request failed"
+            };
             
-            // Return the original error wrapped in our enum
-            GeminiApiError::Reqwest(e) 
+            tracing::error!("Gemini API request failed: {}", sanitized_error);
+            GeminiApiError::FileUpload(sanitized_error.to_string())
         })?;
 
     if !response.status().is_success() {
         let status = response.status();
-        let body = response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
-        return Err(GeminiApiError::ApiError { status, body });
+        let _body = response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
+        // 🔒 SECURITY: Sanitize error messages to prevent information leakage
+        tracing::error!("Gemini API request failed with status: {}", status);
+        return Err(GeminiApiError::FileUpload(format!("API request failed with status: {}", status)));
     }
 
     let response_body = response.json::<GeminiResponse>().await?;
@@ -599,11 +610,10 @@ pub async fn call_gemini_for_parsing(
     
     // Parse the response into our ParsedScript structure
     let parsed_script: ParsedScript = serde_json::from_str(&json_text)
-        .map_err(|e| {
-            eprintln!("JSON parsing error: {}", e);
-            eprintln!("Raw response: {}", model_response_text);
-            eprintln!("Extracted JSON: {}", json_text);
-            GeminiApiError::StructureParsing(format!("Failed to parse JSON response: {}", e))
+        .map_err(|_| {
+            // 🔒 SECURITY: Sanitize error messages to prevent data exposure
+            tracing::error!("JSON parsing error occurred during text script parsing");
+            GeminiApiError::StructureParsing("Failed to parse JSON response".to_string())
         })?;
 
     Ok(parsed_script)

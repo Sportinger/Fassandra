@@ -38,12 +38,24 @@ pub enum AppError {
 impl fmt::Display for AppError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AppError::Db(e) => write!(f, "Database error: {}", e),
+            AppError::Db(_) => {
+                // 🔒 SECURITY: Never expose database error details in display
+                // The actual error is logged separately in IntoResponse
+                write!(f, "Database error")
+            },
             AppError::Unauthorized(e) => write!(f, "Unauthorized: {}", e),
             AppError::Forbidden(e) => write!(f, "Forbidden: {}", e),
             AppError::Conflict(msg) => write!(f, "Conflict: {}", msg),
-            AppError::Validation(e) => write!(f, "Validation error: {}", e),
-            AppError::Internal(e) => write!(f, "Internal error: {}", e),
+            AppError::Validation(_) => {
+                // 🔒 SECURITY: Never expose validation details in display
+                // The actual validation errors are handled separately in IntoResponse
+                write!(f, "Validation error")
+            },
+            AppError::Internal(_) => {
+                // 🔒 SECURITY: Never expose internal error details in display
+                // The actual error is logged separately in IntoResponse
+                write!(f, "Internal error")
+            },
             AppError::BadRequest(e) => write!(f, "Bad request: {}", e),
             AppError::NotFound(e) => write!(f, "Not found: {}", e),
             AppError::TooManyRequests(msg) => write!(f, "Too many requests: {}", msg),
@@ -62,6 +74,67 @@ impl std::error::Error for AppError {}
 struct ErrorResponse {
     error: String,
     details: Option<Vec<String>>,
+}
+
+/// Extract user-friendly validation messages while filtering out internal details
+fn extract_safe_validation_messages(errors: &ValidationErrors) -> Vec<String> {
+    let mut messages = Vec::new();
+    
+    for (field, field_errors) in errors.field_errors() {
+        for error in field_errors {
+            if let Some(message) = &error.message {
+                let message_str = message.to_string();
+                
+                // 🔒 SECURITY: Only return predefined safe messages, filter out internal details
+                match field {
+                    "password" => {
+                        // For password field, provide helpful requirements message
+                        if message_str.contains("Password must contain") {
+                            messages.push(message_str);
+                        } else if message_str.contains("Password must be at least") {
+                            messages.push(message_str);
+                        } else {
+                            // Generic password message for any other password validation failures
+                            messages.push("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)".to_string());
+                        }
+                    },
+                    "email" => {
+                        // For email field, provide helpful message
+                        if message_str.contains("Invalid email") {
+                            messages.push("Please enter a valid email address".to_string());
+                        } else {
+                            messages.push("Please enter a valid email address".to_string());
+                        }
+                    },
+                    "username" => {
+                        // For username field, provide helpful message
+                        if message_str.contains("Username must be between") {
+                            messages.push(message_str);
+                        } else if message_str.contains("Username can only contain") {
+                            messages.push("Username can only contain letters, numbers, and underscores".to_string());
+                        } else {
+                            messages.push("Username must be between 3 and 30 characters and contain only letters, numbers, and underscores".to_string());
+                        }
+                    },
+                    _ => {
+                        // 🔒 SECURITY: For any other fields, don't expose field names or internal details
+                        messages.push("Please check your input and try again".to_string());
+                    }
+                }
+            }
+        }
+    }
+    
+    // If no specific messages were extracted, provide generic feedback
+    if messages.is_empty() {
+        messages.push("Please check your input and try again".to_string());
+    }
+    
+    // Remove duplicates
+    messages.sort();
+    messages.dedup();
+    
+    messages
 }
 
 /// Converts an AppError into an HTTP response for Axum.
@@ -92,16 +165,19 @@ impl IntoResponse for AppError {
                 "Conflict".to_string(),
                 Some(vec![msg]),
             ),
-            AppError::Validation(e) => (
-                StatusCode::BAD_REQUEST,
-                "Validation error".to_string(),
-                Some(
-                    e.field_errors()
-                        .values()
-                        .flat_map(|errors| errors.iter().map(|e| e.message.clone().unwrap_or_default().to_string()))
-                        .collect(),
-                ),
-            ),
+            AppError::Validation(e) => {
+                // 🔒 SECURITY: Log detailed validation errors server-side but return helpful user messages
+                tracing::warn!("Validation error: {:?}", e);
+                
+                // Extract user-friendly validation messages while filtering out internal details
+                let user_messages = extract_safe_validation_messages(&e);
+                
+                (
+                    StatusCode::BAD_REQUEST,
+                    "Validation error".to_string(),
+                    Some(user_messages),
+                )
+            },
             AppError::Internal(e) => {
                 // Log the actual error for debugging (server-side only)
                 tracing::error!("Internal server error: {}", e);

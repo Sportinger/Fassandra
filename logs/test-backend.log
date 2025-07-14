@@ -1,0 +1,272 @@
+warning: unused import: `debug`
+  --> src/api/scripts.rs:15:15
+   |
+15 | use tracing::{debug, info, error, warn};
+   |               ^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused imports: `Deserialize` and `Serialize`
+  --> src/handlers/script_handlers.rs:10:13
+   |
+10 | use serde::{Deserialize, Serialize};
+   |             ^^^^^^^^^^^  ^^^^^^^^^
+
+warning: unused imports: `Value` and `json`
+  --> src/handlers/script_handlers.rs:11:18
+   |
+11 | use serde_json::{json, Value};
+   |                  ^^^^  ^^^^^
+
+warning: unused import: `std::io::Cursor`
+  --> src/handlers/script_handlers.rs:15:5
+   |
+15 | use std::io::Cursor;
+   |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `GeminiApiError`
+  --> src/handlers/script_handlers.rs:21:50
+   |
+21 | use crate::gemini_api::{call_gemini_for_parsing, GeminiApiError};
+   |                                                  ^^^^^^^^^^^^^^
+
+warning: unused import: `uuid::Uuid`
+ --> src/service_manager.rs:6:5
+  |
+6 | use uuid::Uuid;
+  |     ^^^^^^^^^^
+
+warning: type `UploadedFile` is more private than the item `upload_docx_to_gemini`
+   --> src/gemini_api.rs:174:1
+    |
+174 | / pub async fn upload_docx_to_gemini(
+175 | |     http_client: &Client,
+176 | |     docx_bytes: &[u8],
+177 | |     filename: &str,
+178 | | ) -> Result<UploadedFile, GeminiApiError> {
+    | |_________________________________________^ function `upload_docx_to_gemini` is reachable at visibility `pub`
+    |
+note: but type `UploadedFile` is only usable at visibility `pub(self)`
+   --> src/gemini_api.rs:126:1
+    |
+126 | struct UploadedFile {
+    | ^^^^^^^^^^^^^^^^^^^
+    = note: `#[warn(private_interfaces)]` on by default
+
+warning: function `calculate_page_number_for_element` is never used
+   --> src/lib.rs:706:4
+    |
+706 | fn calculate_page_number_for_element(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: fields `name` and `state` are never read
+   --> src/gemini_api.rs:127:5
+    |
+126 | struct UploadedFile {
+    |        ------------ fields in this struct
+127 |     name: String,
+    |     ^^^^
+...
+132 |     state: String,
+    |     ^^^^^
+    |
+    = note: `UploadedFile` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified
+  --> src/services.rs:29:5
+   |
+29 |     async fn get_pool(&self) -> Result<PgPool, AppError>;
+   |     ^^^^^
+   |
+   = note: you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`
+   = note: `#[warn(async_fn_in_trait)]` on by default
+help: you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`, but these cannot be relaxed without a breaking API change
+   |
+29 -     async fn get_pool(&self) -> Result<PgPool, AppError>;
+29 +     fn get_pool(&self) -> impl std::future::Future<Output = Result<PgPool, AppError>> + Send;
+   |
+
+warning: use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified
+  --> src/services.rs:30:5
+   |
+30 |     async fn execute_query(&self, query: &str) -> Result<(), AppError>;
+   |     ^^^^^
+   |
+   = note: you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`
+help: you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`, but these cannot be relaxed without a breaking API change
+   |
+30 -     async fn execute_query(&self, query: &str) -> Result<(), AppError>;
+30 +     fn execute_query(&self, query: &str) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
+   |
+
+warning: use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified
+  --> src/services.rs:35:5
+   |
+35 |     async fn check_rate_limit(&self, ip: &str) -> Result<bool, AppError>;
+   |     ^^^^^
+   |
+   = note: you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`
+help: you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`, but these cannot be relaxed without a breaking API change
+   |
+35 -     async fn check_rate_limit(&self, ip: &str) -> Result<bool, AppError>;
+35 +     fn check_rate_limit(&self, ip: &str) -> impl std::future::Future<Output = Result<bool, AppError>> + Send;
+   |
+
+warning: use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified
+  --> src/services.rs:36:5
+   |
+36 |     async fn cleanup_old_data(&self) -> Result<(), AppError>;
+   |     ^^^^^
+   |
+   = note: you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`
+help: you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`, but these cannot be relaxed without a breaking API change
+   |
+36 -     async fn cleanup_old_data(&self) -> Result<(), AppError>;
+36 +     fn cleanup_old_data(&self) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
+   |
+
+warning: use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified
+  --> src/services.rs:41:5
+   |
+41 |     async fn write_persistence_event(&self, event: YjsPersistenceEvent) -> Result<(), AppError>;
+   |     ^^^^^
+   |
+   = note: you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`
+help: you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`, but these cannot be relaxed without a breaking API change
+   |
+41 -     async fn write_persistence_event(&self, event: YjsPersistenceEvent) -> Result<(), AppError>;
+41 +     fn write_persistence_event(&self, event: YjsPersistenceEvent) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
+   |
+
+warning: use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified
+  --> src/services.rs:47:5
+   |
+47 |     async fn create_snapshot(&self, script_id: Uuid) -> Result<(), AppError>;
+   |     ^^^^^
+   |
+   = note: you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`
+help: you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`, but these cannot be relaxed without a breaking API change
+   |
+47 -     async fn create_snapshot(&self, script_id: Uuid) -> Result<(), AppError>;
+47 +     fn create_snapshot(&self, script_id: Uuid) -> impl std::future::Future<Output = Result<(), AppError>> + Send;
+   |
+
+warning: use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified
+  --> src/services.rs:48:5
+   |
+48 |     async fn run_background_service(&self, interval: Duration);
+   |     ^^^^^
+   |
+   = note: you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`
+help: you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`, but these cannot be relaxed without a breaking API change
+   |
+48 -     async fn run_background_service(&self, interval: Duration);
+48 +     fn run_background_service(&self, interval: Duration) -> impl std::future::Future<Output = ()> + Send;
+   |
+
+warning: unused `std::result::Result` that must be used
+   --> src/snapshotting_service.rs:140:21
+    |
+140 |                     txn.apply_update(update);
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: this `Result` may be an `Err` variant, which should be handled
+    = note: `#[warn(unused_must_use)]` on by default
+help: use `let _ = ...` to ignore the resulting value
+    |
+140 |                     let _ = txn.apply_update(update);
+    |                     +++++++
+
+warning: unused `std::result::Result` that must be used
+   --> src/snapshotting_service.rs:148:29
+    |
+148 | ...                   txn.apply_update(update);
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: this `Result` may be an `Err` variant, which should be handled
+help: use `let _ = ...` to ignore the resulting value
+    |
+148 |                             let _ = txn.apply_update(update);
+    |                             +++++++
+
+warning: unused `std::result::Result` that must be used
+   --> src/snapshotting_service.rs:165:37
+    |
+165 | ...                   txn.apply_update(update);
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: this `Result` may be an `Err` variant, which should be handled
+help: use `let _ = ...` to ignore the resulting value
+    |
+165 |                                     let _ = txn.apply_update(update);
+    |                                     +++++++
+
+warning: unused `std::result::Result` that must be used
+   --> src/snapshotting_service.rs:171:37
+    |
+171 | ...                   txn.apply_update(update);
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: this `Result` may be an `Err` variant, which should be handled
+help: use `let _ = ...` to ignore the resulting value
+    |
+171 |                                     let _ = txn.apply_update(update);
+    |                                     +++++++
+
+warning: unused `std::result::Result` that must be used
+   --> src/snapshotting_service.rs:177:37
+    |
+177 | ...                   txn.apply_update(update);
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: this `Result` may be an `Err` variant, which should be handled
+help: use `let _ = ...` to ignore the resulting value
+    |
+177 |                                     let _ = txn.apply_update(update);
+    |                                     +++++++
+
+warning: `backend` (lib) generated 21 warnings (run `cargo fix --lib -p backend` to apply 6 suggestions)
+warning: unused import: `sqlx::Row`
+  --> src/main.rs:23:5
+   |
+23 | use sqlx::Row;
+   |     ^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: function `health` is never used
+   --> src/main.rs:126:10
+    |
+126 | async fn health() -> &'static str {
+    |          ^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: constant `YJS_PERSISTENCE_QUEUE_CAPACITY` is never used
+   --> src/main.rs:556:7
+    |
+556 | const YJS_PERSISTENCE_QUEUE_CAPACITY: usize = 1024;
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `backend` (bin "backend") generated 3 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running `target/debug/backend`
+[2m2025-07-14T12:51:28.137238Z[0m [32m INFO[0m [2mbackend[0m[2m:[0m Running database migrations...
+[2m2025-07-14T12:51:28.138244Z[0m [32m INFO[0m [2msqlx::postgres::notice[0m[2m:[0m relation "_sqlx_migrations" already exists, skipping
+[2m2025-07-14T12:51:28.139612Z[0m [32m INFO[0m [2mbackend[0m[2m:[0m Database migrations completed successfully.
+[2m2025-07-14T12:51:28.166609Z[0m [33m WARN[0m [2mbackend[0m[2m:[0m Admin user admin@pessoa.local not found after migration. Check migration file.
+[2m2025-07-14T12:51:28.166624Z[0m [32m INFO[0m [2mbackend::service_manager[0m[2m:[0m 🚀 ServiceManager: Initializing services...
+[2m2025-07-14T12:51:28.166714Z[0m [32m INFO[0m [2mbackend::service_manager[0m[2m:[0m ✅ All 4 background services started
+[2m2025-07-14T12:51:28.166723Z[0m [32m INFO[0m [2mbackend::service_manager[0m[2m:[0m ✅ ServiceManager: All services initialized successfully
+[2m2025-07-14T12:51:28.166728Z[0m [32m INFO[0m [2mbackend[0m[2m:[0m ✅ ServiceManager initialized with all background services
+[2m2025-07-14T12:51:28.166727Z[0m [32m INFO[0m [2mbackend::service_manager[0m[2m:[0m 🚀 Starting Async DB Writer service
+[2m2025-07-14T12:51:28.166744Z[0m [32m INFO[0m [2mbackend::async_db_writer[0m[2m:[0m Async DB Writer service started.
+[2m2025-07-14T12:51:28.166765Z[0m [32m INFO[0m [2mbackend::service_manager[0m[2m:[0m 🚀 Starting RateLimiter cleanup service
+[2m2025-07-14T12:51:28.166765Z[0m [32m INFO[0m [2mbackend[0m[2m:[0m Using effective ALLOWED_ORIGINS for CORS: ["http://localhost:8080", "http://localhost:5173"]
+[2m2025-07-14T12:51:28.166771Z[0m [32m INFO[0m [2mbackend::service_manager[0m[2m:[0m 🚀 Starting Snapshotting service
+[2m2025-07-14T12:51:28.166809Z[0m [32m INFO[0m [2mbackend::snapshotting_service[0m[2m:[0m 🚀 Snapshotting Service Task SPAWNED and RUNNING every 500ms for real-time sync!
+[2m2025-07-14T12:51:28.166825Z[0m [32m INFO[0m [2mbackend::service_manager[0m[2m:[0m 🚀 Starting WebSocket session cleanup service (temporarily disabled)
+[2m2025-07-14T12:51:28.167631Z[0m [32m INFO[0m [2mbackend[0m[2m:[0m 🚀 Backend server listening on 0.0.0.0:3001 with ServiceManager
+Error: Address already in use (os error 98)

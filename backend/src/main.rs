@@ -11,6 +11,7 @@ use axum::http::{Method, HeaderValue, header};
 use tower::ServiceBuilder;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use anyhow::{Context, Result};
+use validator::Validate;
 
 use tower_http::limit::RequestBodyLimitLayer;
 use tokio::sync::mpsc;
@@ -21,7 +22,7 @@ use axum::response::Response;
 use chrono;
 use sqlx::Row;
 
-use backend::auth::{hash_password, verify_password, generate_token, AuthUser, rate_limit_middleware};
+use backend::auth::{hash_password, verify_password, generate_token, AuthUser, rate_limit_middleware, RegisterPayload};
 use backend::error::AppError;
 use backend::{create_script, create_block, update_block, get_script_with_blocks, get_block_history, delete_script, update_script_content_from_html, get_script_layouts, get_default_script_layout, create_script_layout, update_script_layout, delete_script_layout};
 use backend::api::scripts::{get_user_scripts, store_content_snapshot};
@@ -137,9 +138,7 @@ async fn health_with_service_manager() -> Result<Json<serde_json::Value>, AppErr
     })))
 }
 
-/// Payload for user registration requests.
-#[derive(Deserialize)]
-struct RegisterPayload { email: String, username: String, password: String }
+// Using RegisterPayload from auth.rs with validation
 
 /// Registers a new user and returns a JWT token.
 ///
@@ -150,6 +149,12 @@ struct RegisterPayload { email: String, username: String, password: String }
 /// # Returns
 /// * `Result<Json<String>, AppError>` - JWT token as JSON on success, or an AppError on failure.
 async fn register(State(pool): State<Arc<PgPool>>, Json(payload): Json<RegisterPayload>) -> Result<Json<String>, AppError> {
+    // 🔒 SECURITY: Validate payload including strong password requirements
+    payload.validate()?;
+    
+    // 🔒 SECURITY: Additional password strength validation
+    payload.validate_password_strength()?;
+    
     let password_hash = hash_password(&payload.password)?;
     
     // Default role for new users - adjust as needed

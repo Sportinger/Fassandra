@@ -96,36 +96,70 @@ async fn upload_and_parse_script(
         .timeout(std::time::Duration::from_secs(60)) // 60 second timeout
         .build()
         .map_err(|e| {
+            // 🔒 SECURITY: Log detailed error server-side but return generic message
             error!("Failed to create HTTP client: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create HTTP client")
+            (StatusCode::INTERNAL_SERVER_ERROR, "Service temporarily unavailable")
         })?;
 
     // Extract the file from the multipart form
     while let Some(field) = multipart.next_field().await.map_err(|e| {
+        // 🔒 SECURITY: Log detailed error server-side but return generic message
         error!("Failed to read multipart field: {}", e);
-        (StatusCode::BAD_REQUEST, "Failed to read multipart data")
+        (StatusCode::BAD_REQUEST, "Invalid upload format")
     })? {
         if field.name() == Some("file") {
             let filename = field.file_name().unwrap_or("unknown").to_string();
+            let content_type = field.content_type().unwrap_or("").to_string();
             info!("Processing uploaded file: {}", filename);
 
             // Read the file data
             let data = field.bytes().await.map_err(|e| {
+                // 🔒 SECURITY: Log detailed error server-side but return generic message
                 error!("Failed to read file data: {}", e);
-                (StatusCode::BAD_REQUEST, "Failed to read file data")
+                (StatusCode::BAD_REQUEST, "Unable to process uploaded file")
             })?;
 
-            // Check if it's a DOCX file
+            // 🔒 SECURITY: Comprehensive file validation
+            
+            // 1. File size validation (10MB limit)
+            const MAX_FILE_SIZE: usize = 10 * 1024 * 1024; // 10MB
+            if data.len() > MAX_FILE_SIZE {
+                warn!("File too large: {} bytes (max: {} bytes)", data.len(), MAX_FILE_SIZE);
+                return Err((StatusCode::BAD_REQUEST, "File size exceeds 10MB limit"));
+            }
+            
+            // 2. Minimum file size validation (empty file check)
+            if data.len() < 100 {
+                warn!("File too small: {} bytes", data.len());
+                return Err((StatusCode::BAD_REQUEST, "File appears to be empty or corrupted"));
+            }
+
+            // 3. Filename extension validation
             if !filename.to_lowercase().ends_with(".docx") {
                 warn!("Unsupported file type: {}", filename);
                 return Err((StatusCode::BAD_REQUEST, "Only DOCX files are supported"));
             }
 
+            // 4. DOCX file signature validation (ZIP magic bytes)
+            if data.len() < 4 || &data[0..2] != b"PK" {
+                warn!("Invalid DOCX file: missing ZIP signature");
+                return Err((StatusCode::BAD_REQUEST, "Invalid DOCX file format"));
+            }
+
+            // 5. MIME type validation from content
+            if !content_type.is_empty() && 
+               !content_type.contains("application/vnd.openxmlformats-officedocument.wordprocessingml.document") &&
+               !content_type.contains("application/zip") {
+                warn!("Invalid MIME type: {}", content_type);
+                return Err((StatusCode::BAD_REQUEST, "Invalid file type. Expected DOCX format."));
+            }
+
             // Extract text with page information from DOCX
             let text_with_pages = extract_text_with_pages_from_docx(&data)
                 .map_err(|e| {
+                    // 🔒 SECURITY: Log detailed error server-side but return generic message
                     error!("Failed to extract text from DOCX: {}", e);
-                    (StatusCode::INTERNAL_SERVER_ERROR, "Failed to extract text from DOCX file")
+                    (StatusCode::BAD_REQUEST, "Invalid or corrupted DOCX file")
                 })?;
 
             info!("Extracted {} text elements with page information", text_with_pages.len());
@@ -137,21 +171,10 @@ async fn upload_and_parse_script(
             let parsed_script = call_gemini_for_parsing(&enhanced_text, &http_client)
                 .await
                 .map_err(|e| {
+                    // 🔒 SECURITY: Log detailed error server-side but return generic message
                     error!("Gemini API call failed: {}", e);
-                    match e {
-                        GeminiApiError::Reqwest(_) => {
-                            (StatusCode::BAD_GATEWAY, "Script parsing failed: Network error")
-                        }
-                        GeminiApiError::Deserialization(_) => {
-                            (StatusCode::INTERNAL_SERVER_ERROR, "Script parsing failed: Parse error")
-                        }
-                        GeminiApiError::ApiError { status, .. } => {
-                            (status, "Script parsing failed: API returned an error")
-                        }
-                        _ => {
-                            (StatusCode::INTERNAL_SERVER_ERROR, "Script parsing failed: Unknown error")
-                        }
-                    }
+                    // Never expose internal system architecture details to users
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Script parsing failed. Please try again.")
                 })?;
 
             info!("Successfully parsed script with {} sections", parsed_script.sections.len());
