@@ -37,7 +37,7 @@ export const Editor: React.FC<EditorProps> = ({
   onNavigateBack 
 }) => {
   // 🔧 CRITICAL FIX: ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
-  const { token, user } = useAuth();
+  const { token, user, tokenReady } = useAuth();
   const { config, isMobile } = useResponsiveDesign();
 
   // 🔧 FIXED: Reduce debug logging to prevent console spam
@@ -91,7 +91,7 @@ export const Editor: React.FC<EditorProps> = ({
 
   // Fetch page breaks when editor is ready
   useEffect(() => {
-    if (!scriptId || !token) return;
+    if (!scriptId || !token || !tokenReady) return;
 
     const fetchPageBreaks = async () => {
       try {
@@ -142,6 +142,18 @@ export const Editor: React.FC<EditorProps> = ({
         
         setPageBreaks(breaks);
         debugLog('[Editor] Loaded page breaks with calculated positions:', breaks);
+        
+        // 🔧 DEMO: If no page breaks exist (all content on page 1), create demo breaks for testing
+        if (breaks.length === 0 && showPageNumbers && response.blocks.length > 10) {
+          const demoBreaks: PageBreak[] = [
+            { id: 'demo-page-2', pageNumber: 2, position: 600 },
+            { id: 'demo-page-3', pageNumber: 3, position: 1200 },
+            { id: 'demo-page-4', pageNumber: 4, position: 1800 },
+          ];
+          setPageBreaks(demoBreaks);
+          debugLog('[Editor] 🎯 Created demo page breaks for testing:', demoBreaks);
+          console.log('📄 Demo page breaks created! All content is currently on page 1. In a real script with multiple pages, these would show actual page transitions.');
+        }
       } catch (error) {
         console.error('Failed to fetch page breaks:', error);
       } finally {
@@ -150,11 +162,11 @@ export const Editor: React.FC<EditorProps> = ({
     };
 
     fetchPageBreaks();
-  }, [scriptId, token, debugLog]);
+      }, [scriptId, token, tokenReady, debugLog]);
 
   // Handle page break changes with real-time synchronization
   const handlePageBreaksChange = async (updatedPageBreaks: PageBreak[]) => {
-    if (!token) return;
+    if (!token || !tokenReady) return;
 
     try {
       setPageBreaks(updatedPageBreaks);
@@ -408,7 +420,7 @@ export const Editor: React.FC<EditorProps> = ({
 
   // 🔧 CRITICAL FIX: EARLY RETURNS MOVED AFTER ALL HOOKS
   // Early return if no auth
-  if (!token || !user) {
+  if (!token || !user || !tokenReady) {
     return (
       <div className="editorContainer">
         <LoadingSpinner size="lg" />

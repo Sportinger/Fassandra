@@ -73,9 +73,34 @@ impl ScriptApplicationService {
 
         // 1. Create the script entry
         let new_script_id = Uuid::new_v4();
-        let raw_title = parsed_script.title.as_deref().unwrap_or("Untitled Script");
-        // Extract just the main title (first line or first few words) to avoid long titles
-        let script_title = Self::extract_main_title(raw_title);
+        // Use filename as title instead of AI-extracted title for uploads
+        let script_title = if let Some(source_filename) = &parsed_script.source_filename {
+            // Extract title from filename: remove .pdf extension and clean up
+            let clean_filename = source_filename
+                .trim_end_matches(".pdf")
+                .trim_end_matches(".PDF")
+                .replace('_', " ")
+                .replace('-', " ");
+            
+            // Capitalize first letter and limit length
+            let mut chars = clean_filename.chars();
+            let title = match chars.next() {
+                None => "Uploaded Script".to_string(),
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+            };
+            
+            // Limit length and add ellipsis if too long
+            if title.len() > 100 {
+                format!("{}...", &title[..97])
+            } else {
+                title
+            }
+        } else {
+            // Fallback for manual scripts or if filename is missing
+            Self::extract_main_title(
+                parsed_script.title.as_deref().unwrap_or("Untitled Script")
+            )
+        };
         let created_at = chrono::Utc::now();
 
         info!(script_id = %new_script_id, title = %script_title, user_id = %user_id, "Inserting script record");
