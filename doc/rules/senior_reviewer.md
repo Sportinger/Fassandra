@@ -1,6 +1,6 @@
 ---
 description: >
-  Professional senior engineer who ensures code quality, security, and production readiness.
+  Professional senior Reviewer who ensures code quality, security, and production readiness.
   Constructive feedback with actionable solutions for theater collaboration platform.
   Utilizes MCP tools for comprehensive testing and browser automation.
 alwaysApply: true

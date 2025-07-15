@@ -182,7 +182,13 @@ impl ContentExtractorService {
                     id: attributes_map.get("data-id").cloned(),
                     speaker: Some(speaker),
                     line: Some(dialogue_text),
+                    lines: None,
+                    reading_text: None,
+                    source: None,
+                    speakers: None,
                     page_number,
+                    scene_number: None, // TODO: Extract from attributes or context
+                    scene_title: None, // TODO: Extract from attributes or context
                     extra: HashMap::new(),
                 }))
             }
@@ -193,7 +199,13 @@ impl ContentExtractorService {
                     id: attributes_map.get("data-id").cloned(),
                     speaker: Some(speaker),
                     line: Some(text_content.to_string()),
+                    lines: None,
+                    reading_text: None,
+                    source: None,
+                    speakers: None,
                     page_number,
+                    scene_number: None, // TODO: Extract from attributes or context
+                    scene_title: None, // TODO: Extract from attributes or context
                     extra: HashMap::new(),
                 }))
             }
@@ -202,7 +214,15 @@ impl ContentExtractorService {
                 Ok(ContentElement::StageDirection(StageDirection {
                     id: attributes_map.get("data-id").cloned(),
                     description: Some(text_content.to_string()),
+                    line: None,
+                    lines: None,
+                    reading_text: None,
+                    source: None,
+                    speaker: None,
+                    speakers: None,
                     page_number,
+                    scene_number: None, // TODO: Extract from attributes or context
+                    scene_title: None, // TODO: Extract from attributes or context
                 }))
             }
             "monologue" => {
@@ -211,19 +231,31 @@ impl ContentExtractorService {
                 Ok(ContentElement::Monologue(Monologue {
                     id: attributes_map.get("data-id").cloned(),
                     speaker: Some(speaker),
-                    lines: vec![text_content.to_string()],
+                    line: None,
+                    lines: Some(vec![text_content.to_string()]),
+                    reading_text: None,
+                    source: None,
+                    speakers: None,
                     page_number,
+                    scene_number: None, // TODO: Extract from attributes or context
+                    scene_title: None, // TODO: Extract from attributes or context
                 }))
             }
             "joint_dialogue" => {
                 let speakers_str = attributes_map.get("data-speakers").cloned().unwrap_or_default();
-                let speakers = speakers_str.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+                let speakers: Vec<String> = speakers_str.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
                 let page_number = self.extract_page_number(&attributes_map);
                 Ok(ContentElement::JointDialogue(JointDialogue {
                     id: attributes_map.get("data-id").cloned(),
-                    speakers,
+                    speaker: Some(speakers_str),
+                    speakers: Some(speakers),
                     line: Some(text_content.to_string()),
+                    lines: None,
+                    reading_text: None,
+                    source: None,
                     page_number,
+                    scene_number: None, // TODO: Extract from attributes or context
+                    scene_title: None, // TODO: Extract from attributes or context
                     extra: HashMap::new(),
                 }))
             }
@@ -238,7 +270,13 @@ impl ContentExtractorService {
                     source,
                     language,
                     reading_text: Some(text_content.to_string()),
+                    description: None,
+                    line: None,
+                    lines: None,
+                    speakers: None,
                     page_number,
+                    scene_number: None, // TODO: Extract from attributes or context
+                    scene_title: None, // TODO: Extract from attributes or context
                 }))
             }
             _ => Err(format!("Unknown Pessoa block type: {}", block_type)),

@@ -5,7 +5,7 @@
 ## ✨ Key Features
 
 - **🤝 Real-time Collaboration**: Multiple users editing simultaneously with live cursor tracking
-- **🤖 AI Script Analysis**: Upload `.docx` files and get instant script structure analysis
+- **🤖 AI Script Analysis**: Upload PDF files and get instant script structure analysis with page-accurate parsing
 - **📱 Mobile-First Design**: Works seamlessly on all devices and screen sizes
 - **🔒 Secure & Private**: JWT authentication with role-based access control
 - **⚡ Lightning Fast**: Sub-second sync with automatic conflict resolution
@@ -44,8 +44,8 @@ Default development credentials:
 ### 3. Upload Your First Script
 
 1. Click "Upload Script" 
-2. Select a `.docx` file
-3. Watch AI analyze and structure your content
+2. Select a PDF file of your theater script
+3. Watch Gemini AI analyze and structure your content with precise page numbers
 4. Start collaborating in real-time!
 
 ## 📚 Complete Documentation

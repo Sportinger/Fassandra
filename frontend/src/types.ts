@@ -50,6 +50,14 @@ export interface Script {
 export type UploadStatus = 'uploading' | 'analyzing' | 'creating' | 'completed' | 'failed';
 
 /**
+ * Extended Script interface for placeholder scripts during upload process.
+ * Includes file data for background processing.
+ */
+export interface PlaceholderScript extends Script {
+  fileData?: File; // File to be uploaded in background
+}
+
+/**
  * Represents a single block of content within a script.
  * @property {string} id - Unique block identifier (UUID).
  * @property {string} script_id - ID of the script this block belongs to.

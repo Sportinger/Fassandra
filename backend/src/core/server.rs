@@ -1,4 +1,4 @@
-use axum::{routing::{get, post, patch}, Router, serve, extract::{State, Path}, Json};
+use axum::{routing::{get, post}, Router, serve, extract::{State, Path}, Json};
 use axum::http::{Method, HeaderValue, header};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
@@ -9,10 +9,8 @@ use std::env;
 use std::sync::Arc;
 use sqlx::PgPool;
 use tokio::sync::mpsc;
-use tracing::{info, error};
 use uuid::Uuid;
 use anyhow::{Context, Result};
-use tokio::net::TcpListener;
 
 use crate::networking::websocket;
 use crate::handlers::page_break_handlers::create_page_break_router;
@@ -176,6 +174,31 @@ async fn get_content_snapshot_wrapper(
     })))
 }
 
+/// Wrapper for get_script_with_blocks to use ScriptServices
+async fn get_script_with_blocks_wrapper(
+    State(services): State<crate::handlers::script::ScriptServices>,
+    Path(script_id): Path<Uuid>,
+    auth_user: AuthUser,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    // Use the script service method that includes authorization
+    let result = services.script_service.get_script_with_blocks(script_id, auth_user.user_id).await?;
+    
+    match result {
+        Some((script, blocks)) => {
+            Ok(Json(serde_json::json!({
+                "id": script.id,
+                "title": script.title,
+                "created_by": script.created_by,
+                "created_at": script.created_at,
+                "is_public": script.is_public,
+                "thumbnail": script.thumbnail,
+                "blocks": blocks
+            })))
+        }
+        None => Err(crate::error::AppError::NotFound("Script not found".to_string()))
+    }
+}
+
 /// API routes that use ScriptServices for CRUD operations
 fn api_routes_with_services(
     persistence_event_tx: mpsc::Sender<YjsPersistenceEvent>,
@@ -184,7 +207,7 @@ fn api_routes_with_services(
     // Routes that use ScriptServices
     let script_crud_routes = Router::new()
         .route("/scripts", get(get_user_scripts_wrapper).post(create_script_wrapper))
-        .route("/scripts/:id", patch(update_script_wrapper).delete(delete_script_wrapper))
+        .route("/scripts/:id", get(get_script_with_blocks_wrapper).patch(update_script_wrapper).delete(delete_script_wrapper))
         .route("/scripts/:id/snapshot", post(store_content_snapshot_wrapper).get(get_content_snapshot_wrapper))
         .with_state(script_services);
     

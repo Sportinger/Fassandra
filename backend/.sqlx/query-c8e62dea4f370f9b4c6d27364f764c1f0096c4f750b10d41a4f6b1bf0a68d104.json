@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE blocks SET block_type = $2, content = $3, block_order = $4, page_number = $5, scene_number = $6, scene_title = $7, metadata = $8 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Varchar",
+        "Varchar",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c8e62dea4f370f9b4c6d27364f764c1f0096c4f750b10d41a4f6b1bf0a68d104"
+}

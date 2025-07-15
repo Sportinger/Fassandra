@@ -23,6 +23,10 @@ pub struct Block {
     pub block_order: i32,
     /// Page number where this block appears in the script (1-based)
     pub page_number: i32,
+    /// Scene number (e.g., "1", "PROLOG", "ACT I")
+    pub scene_number: Option<String>,
+    /// Scene title (e.g., "PROLOG", "DER TOD")
+    pub scene_title: Option<String>,
     /// Additional metadata for the block stored as JSON
     pub metadata: Option<serde_json::Value>,
 } 
