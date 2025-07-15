@@ -160,30 +160,26 @@ impl SnapshotRepository for PostgresSnapshotRepository {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use chrono::Utc;
     use uuid::Uuid;
     
-    // Mock implementation for testing
+    // Simple mock implementation for testing
     pub struct MockSnapshotRepository {
         snapshots: std::sync::Arc<std::sync::Mutex<Vec<SnapshotMeta>>>,
-        next_id: std::sync::Arc<std::sync::Mutex<i64>>,
     }
     
     impl MockSnapshotRepository {
         pub fn new() -> Self {
             Self {
                 snapshots: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
-                next_id: std::sync::Arc::new(std::sync::Mutex::new(1)),
             }
         }
         
         pub fn with_snapshots(snapshots: Vec<SnapshotMeta>) -> Self {
-            let next_id = snapshots.iter().map(|s| s.id).max().unwrap_or(0) + 1;
             Self {
                 snapshots: std::sync::Arc::new(std::sync::Mutex::new(snapshots)),
-                next_id: std::sync::Arc::new(std::sync::Mutex::new(next_id)),
             }
         }
     }
@@ -194,21 +190,17 @@ mod tests {
             let snapshots = self.snapshots.lock().unwrap();
             Ok(snapshots.iter()
                 .filter(|s| s.script_id == script_id)
-                .max_by_key(|s| s.created_at)
+                .max_by_key(|s| s.last_snapshot_at)
                 .cloned())
         }
         
-        async fn upsert_meta(&self, script_id: Uuid, last_processed_update_id: i64, content_snapshot: Option<String>) -> Result<(), AppError> {
+        async fn upsert_meta(&self, script_id: Uuid, last_processed_update_id: i64, _content_snapshot: Option<String>) -> Result<(), AppError> {
             let mut snapshots = self.snapshots.lock().unwrap();
-            let mut next_id = self.next_id.lock().unwrap();
             
             // Remove existing snapshot for this script_id
             snapshots.retain(|s| s.script_id != script_id);
             
             // Add new snapshot
-            let id = *next_id;
-            *next_id += 1;
-            
             snapshots.push(SnapshotMeta {
                 script_id,
                 last_processed_update_id: Some(last_processed_update_id),
@@ -229,18 +221,19 @@ mod tests {
         async fn cleanup_old_snapshots(&self, script_id: Uuid, keep_count: i64) -> Result<(), AppError> {
             let mut snapshots = self.snapshots.lock().unwrap();
             
-            // Get snapshots for this script, sort by created_at desc, keep only the first keep_count
+            // Get snapshots for this script, sort by last_snapshot_at desc, keep only the first keep_count
             let mut script_snapshots: Vec<_> = snapshots.iter()
                 .filter(|s| s.script_id == script_id)
                 .collect();
-            script_snapshots.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+            script_snapshots.sort_by(|a, b| b.last_snapshot_at.cmp(&a.last_snapshot_at));
             
-            let keep_ids: std::collections::HashSet<i64> = script_snapshots.iter()
+            // Keep only the most recent ones
+            let keep_times: std::collections::HashSet<_> = script_snapshots.iter()
                 .take(keep_count as usize)
-                .map(|s| s.id)
+                .map(|s| s.last_snapshot_at)
                 .collect();
             
-            snapshots.retain(|s| s.script_id != script_id || keep_ids.contains(&s.id));
+            snapshots.retain(|s| s.script_id != script_id || keep_times.contains(&s.last_snapshot_at));
             
             Ok(())
         }

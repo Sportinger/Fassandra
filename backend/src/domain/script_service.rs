@@ -119,7 +119,7 @@ impl ScriptService {
     /// Update a script
     pub async fn update_script(&self, request: UpdateScriptRequest) -> Result<ScriptResponse, AppError> {
         // Get existing script
-        let mut script = self.script_repo.find_by_id(request.id).await?;
+        let script = self.script_repo.find_by_id(request.id).await?;
         let mut script = match script {
             Some(script) => script,
             None => return Err(AppError::NotFound("Script not found".to_string())),
@@ -275,7 +275,7 @@ impl ScriptService {
 
         // Business rule: Script must have content to generate thumbnail
         let script = self.script_repo.find_by_id(script_id).await?;
-        let script = script.ok_or_else(|| AppError::NotFound("Script not found".to_string()))?;
+        let _script = script.ok_or_else(|| AppError::NotFound("Script not found".to_string()))?;
 
         // Check if script has blocks with content
         let blocks = self.block_repo.find_by_script_id(script_id).await?;
@@ -316,10 +316,11 @@ impl ScriptService {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::repositories::script_repository::tests::MockScriptRepository;
     use crate::repositories::user_repository::tests::MockUserRepository;
+    use crate::repositories::block_repository::BlockRepository;
     
     // Simple mock for testing - just returns empty results
     struct MockBlockRepository;
@@ -336,18 +337,19 @@ mod tests {
             Ok(vec![])
         }
         
-        async fn create(&self, _block: crate::models::block::Block) -> Result<crate::models::block::Block, crate::error::AppError> {
-            unimplemented!()
+        async fn create(&self, _block: &crate::models::block::Block) -> Result<(), crate::error::AppError> {
+            Ok(())
         }
         
-        async fn update(&self, _block: crate::models::block::Block) -> Result<crate::models::block::Block, crate::error::AppError> {
-            unimplemented!()
+        async fn update(&self, _block: &crate::models::block::Block) -> Result<(), crate::error::AppError> {
+            Ok(())
         }
         
         async fn delete(&self, _id: Uuid) -> Result<(), crate::error::AppError> {
-            unimplemented!()
+            Ok(())
         }
     }
+    
     use crate::models::user::User;
     use chrono::Utc;
     
@@ -381,8 +383,7 @@ mod tests {
         
         let response = result.unwrap();
         assert_eq!(response.title, "Test Script");
-        assert_eq!(response.content, Some("Test content".to_string()));
-        assert_eq!(response.user_id, user.id);
+        assert_eq!(response.created_by, Some(user.id));
     }
     
     #[tokio::test]

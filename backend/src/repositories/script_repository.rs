@@ -144,7 +144,7 @@ impl ScriptRepository for PostgresScriptRepository {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::models::script::Script;
     use chrono::Utc;

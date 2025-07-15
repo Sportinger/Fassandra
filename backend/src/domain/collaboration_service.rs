@@ -1,15 +1,13 @@
-//! Collaboration domain service for business logic.
+//! Collaboration domain service for managing real-time collaboration features.
 //!
-//! Contains the core business logic for real-time collaboration.
+//! This service handles the business logic for collaborative editing, including
+//! user presence, concurrent editing, and conflict resolution.
 
-use std::sync::Arc;
 use uuid::Uuid;
 use crate::error::AppError;
 
 /// Domain service for collaboration operations
-pub struct CollaborationService {
-    // Dependencies will be added as needed
-}
+pub struct CollaborationService;
 
 impl CollaborationService {
     pub fn new() -> Self {

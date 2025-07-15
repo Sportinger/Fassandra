@@ -5,7 +5,7 @@ use yrs::{
     XmlFragment,
     Xml,
 };
-use tracing::{debug, warn, error, trace, info};
+use tracing::{debug, warn, error, info};
 use uuid::Uuid;
 use std::collections::HashMap;
 use crate::analysis::structs::{ContentElement, Dialogue, StageDirection, Monologue, JointDialogue, Reading};
@@ -169,7 +169,7 @@ impl ContentExtractorService {
         text_content: &str,
         elem_ref: &yrs::types::xml::XmlElementRef,
         txn: &yrs::Transaction,
-        script_id: Uuid,
+        _script_id: Uuid,
         current_order: i32,
     ) -> Result<Option<ContentBlock>, anyhow::Error> {
         let content_element_result = match block_type {

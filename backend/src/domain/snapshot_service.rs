@@ -1,15 +1,13 @@
-//! Snapshot domain service for business logic.
+//! Snapshot domain service for managing script snapshots.
 //!
-//! Contains the core business logic for snapshot operations.
+//! This service handles the business logic for script snapshot operations, including
+//! snapshot creation, retrieval, and management.
 
-use std::sync::Arc;
 use uuid::Uuid;
 use crate::error::AppError;
 
 /// Domain service for snapshot operations
-pub struct SnapshotService {
-    // Dependencies will be added as needed
-}
+pub struct SnapshotService;
 
 impl SnapshotService {
     pub fn new() -> Self {

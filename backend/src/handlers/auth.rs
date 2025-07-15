@@ -1,7 +1,7 @@
-use axum::{extract::State, Json, response::IntoResponse};
+use axum::{extract::State, Json};
 use std::sync::Arc;
 use sqlx::PgPool;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use validator::Validate;
 use crate::auth::{hash_password, verify_password, generate_token, RegisterPayload};
 use crate::error::AppError;

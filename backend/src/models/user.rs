@@ -5,19 +5,18 @@ use uuid::Uuid;
 
 /// Represents a user in the system.
 ///
-/// This struct is used for database operations and authentication.
-/// It maps directly to the `users` table in the database.
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+/// This struct maps directly to the `users` table in the database.
+#[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
 pub struct User {
     /// Unique identifier for the user
     pub id: Uuid,
-    /// User's email address (unique)
+    /// Email address (used for login)
     pub email: String,
-    /// User's chosen username
+    /// Username for display
     pub username: String,
-    /// Argon2 hashed password
+    /// Hashed password
     pub password_hash: String,
-    /// User's role (e.g., "user", "admin")
+    /// User role (e.g., "user", "admin")
     pub role: String,
     /// Timestamp when the user was created
     pub created_at: Option<DateTime<Utc>>,

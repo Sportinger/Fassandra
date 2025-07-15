@@ -1,7 +1,7 @@
 use regex::Regex;
 use std::sync::LazyLock;
 use tokio::time::{timeout, Duration};
-use tracing::{debug, warn, error};
+use tracing::{debug, error};
 use uuid::Uuid;
 use std::sync::Arc;
 use sqlx::PgPool;
