@@ -69,7 +69,7 @@ impl SnapshotCoordinatorService {
 
     /// Gets the last processed update ID for a script
     async fn get_last_processed_update_id(&self, script_id: Uuid) -> Result<i64, anyhow::Error> {
-        let last_meta: Option<(i64,)> = sqlx::query_as(
+        let last_meta: Option<(Option<i64>,)> = sqlx::query_as(
             "SELECT last_processed_update_id FROM script_snapshots_meta WHERE script_id = $1"
         )
         .bind(script_id)
@@ -77,7 +77,7 @@ impl SnapshotCoordinatorService {
         .await
         .map_err(|e| anyhow::anyhow!("DB error fetching last snapshot meta for {}: {}", script_id, e))?;
 
-        Ok(last_meta.map_or(0, |(val,)| val))
+        Ok(last_meta.map_or(0, |(val,)| val.unwrap_or(0)))
     }
 
     /// Tries to create blocks from HTML snapshot as fallback
