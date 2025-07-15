@@ -9,6 +9,7 @@ use std::env;
 use thiserror::Error;
 use crate::analysis::structs::Script as ParsedScript;
 use std::collections::HashMap;
+use chrono;
 
 // --- Configuration ---
 
@@ -598,7 +599,7 @@ Filename: {}",
     let generation_config = GenerationConfig {
         response_mime_type: "application/json".to_string(),
         response_schema: create_script_analysis_schema(),
-        max_output_tokens: 32768, // Maximum tokens for comprehensive analysis
+        max_output_tokens: 65536, // Increased from 32768 to handle larger scripts (max for Gemini)
     };
 
     let request_payload = GeminiRequest {
@@ -644,14 +645,49 @@ Filename: {}",
     tracing::info!("Received response from Gemini API ({} chars)", model_response_text.len());
     tracing::debug!("Gemini response preview: {}", &model_response_text[..std::cmp::min(500, model_response_text.len())]);
 
+    // Save raw Gemini response for debugging
+    if let Err(e) = save_debug_response(filename, model_response_text) {
+        tracing::warn!("Failed to save debug response: {}", e);
+    }
+
     // Parse structured JSON response directly (no need for cleaning since we enforced schema)
-    let parsed_script: ParsedScript = serde_json::from_str(model_response_text)
+    let mut parsed_script: ParsedScript = serde_json::from_str(model_response_text)
         .map_err(|e| {
             tracing::error!("Failed to parse structured JSON response: {}", e);
             tracing::error!("Response content: {}", model_response_text);
+            // Save failed response with error info for debugging
+            if let Err(save_err) = save_debug_response(&format!("{}_FAILED", filename), &format!("PARSE_ERROR: {}\n\nRAW_RESPONSE:\n{}", e, model_response_text)) {
+                tracing::warn!("Failed to save failed response debug file: {}", save_err);
+            }
             GeminiApiError::StructureParsing("Structured output parsing failed".to_string())
         })?;
 
+    // Set the source filename so the backend can use it as the title
+    parsed_script.source_filename = Some(filename.to_string());
+
     tracing::info!("Successfully parsed script with {} sections", parsed_script.sections.len());
     Ok(parsed_script)
+}
+
+// Helper function to save Gemini responses for debugging
+fn save_debug_response(filename: &str, response_content: &str) -> Result<(), std::io::Error> {
+    use std::fs;
+    use std::path::Path;
+    
+    // Create debug directory
+    let debug_dir = Path::new("debug_gemini_responses");
+    if !debug_dir.exists() {
+        fs::create_dir_all(debug_dir)?;
+    }
+    
+    // Generate timestamp-based filename
+    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+    let safe_filename = filename.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
+    let debug_file = debug_dir.join(format!("{}_{}.json", timestamp, safe_filename));
+    
+    // Save response content
+    fs::write(&debug_file, response_content)?;
+    
+    tracing::info!("Saved Gemini response debug file: {:?}", debug_file);
+    Ok(())
 } 

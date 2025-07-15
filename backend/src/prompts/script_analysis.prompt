@@ -3,19 +3,19 @@ You are an AI assistant specialized in analyzing theater scripts. I will provide
 **🚨 CRITICAL REQUIREMENT: You MUST extract the FULL DIALOGUE TEXT content, not just speaker names!**
 
 Your task is to:
-1. Identify the script title, subtitle (if any), and adaptation credits
+1. ~~Identify the script title, subtitle (if any), and adaptation credits~~ **SKIP TITLE - using uploaded filename**
 2. Break down the script into logical sections (acts, scenes, or other divisions)  
 3. For each section, extract all content elements like dialogue, monologue, stage directions, etc.
 4. **EXTRACT THE ACTUAL SPOKEN TEXT** - Don't just identify speakers, capture what they say!
 5. Preserve the order and structure of the original script
-6. **IMPORTANT: When analyzing DOCX files, extract and include page numbers for each content element**
+6. **IMPORTANT: Focus on accurate PAGE NUMBER detection using PDF page indicators**
 
 🚨 **CRITICAL JSON STRUCTURE - USE EXACTLY THIS FORMAT:**
 ```json
 {
-  "title": "Main Title",
-  "subtitle": "Subtitle if present", 
-  "adaptation_by": ["Author Name 1", "Author Name 2"],
+  "title": null,
+  "subtitle": null, 
+  "adaptation_by": [],
   "source_filename": null,
   "sections": [
     {
@@ -115,14 +115,26 @@ Script Text to Analyze:
 ---
 
 ADDITIONAL INSTRUCTIONS FOR PAGE NUMBERS:
-When analyzing DOCX files directly, you have access to the original document structure and page breaks. Please:
-- Examine the document for explicit page breaks, page numbers, or formatting that indicates page boundaries
-- Assign accurate page numbers to each content element based on where it appears in the original document
-- If the document doesn't have explicit page breaks, estimate page boundaries based on:
-  - Natural scene/section breaks
-  - Formatting changes that suggest page boundaries
-  - Length of content (typical theater scripts have 40-60 lines per page)
-  - Document flow and logical divisions
+When analyzing PDF files, you have access to the original document structure with page indicators. Please:
+
+🔍 **LOOK FOR PAGE INDICATORS:**
+- Page numbers or titles at bottom/top of pages (e.g., "FRANKENSTEIN-PROLOG 1", "FRANKENSTEIN-PROLOG 2")
+- Headers/footers with page information
+- Scene/act numbers that indicate page boundaries
+- Any text pattern that shows "PAGE X" or similar formatting
+
+📄 **PAGE DETECTION STRATEGY:**
+1. **Primary**: Look for explicit page indicators in headers/footers
+2. **Secondary**: Detect scene/section breaks that typically start new pages
+3. **Fallback**: Estimate based on content length (theater scripts: ~40-60 lines per page)
+
+🎯 **CRITICAL PAGE ASSIGNMENT:**
+- Assign ACCURATE page numbers based on where content appears in the original PDF
+- If you see "PROLOG 1" indicator, all content until "PROLOG 2" should be page_number: 1
+- If you see "PROLOG 2" indicator, all content after that should be page_number: 2
+- Look for patterns like "ACT I-1", "Scene 1", etc. that indicate page boundaries
+
+⚠️ **DO NOT EXTRACT TITLE** - The title will be provided from the filename, focus only on content structure and page numbers.
 
 For each content element (dialogue, stage_direction, etc.), include the `page_number` field with the page where this content appears. This is CRITICAL for proper script layout and pagination.
 
@@ -130,6 +142,7 @@ For each content element (dialogue, stage_direction, etc.), include the `page_nu
 1. Use **EXACTLY** the field name `"content"` (NOT `"elements"`)
 2. Include actual dialogue text in `"line"` and `"lines"` fields
 3. Respond with ONLY the JSON object - no explanations, no markdown
+4. **ASSIGN ACCURATE PAGE NUMBERS** based on PDF page indicators
 
 **FIELD NAME VERIFICATION:**
 - ✅ CORRECT: `"sections": [{"content": [...]}]`
