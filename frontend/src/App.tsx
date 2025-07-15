@@ -24,19 +24,77 @@ interface AppProps {
 type AppView = 'auth' | 'scripts' | 'editor';
 
 /**
+ * Checks if user is authenticated by looking directly at storage
+ * @returns boolean indicating if user has a stored auth token
+ */
+function hasStoredAuth(): boolean {
+  return !!(sessionStorage.getItem('authToken') || localStorage.getItem('authToken'));
+}
+
+/**
+ * Parses the current URL path to determine the initial view and script ID.
+ * @returns Object with view, scriptId, and scriptTitle
+ */
+function parseCurrentRoute(): { view: AppView; scriptId: string | null; scriptTitle: string | null } {
+  const path = window.location.pathname;
+  
+  // Parse editor routes like /editor/123 or /editor/123/title
+  const editorMatch = path.match(/^\/editor\/([^\/]+)(?:\/(.+))?/);
+  if (editorMatch) {
+    return {
+      view: 'editor',
+      scriptId: editorMatch[1],
+      scriptTitle: editorMatch[2] ? decodeURIComponent(editorMatch[2]) : null
+    };
+  }
+  
+  // Scripts route
+  if (path === '/scripts' || path === '/scripts/') {
+    return { view: 'scripts', scriptId: null, scriptTitle: null };
+  }
+  
+  // Root path - default to scripts if we have a token, auth if not
+  if (path === '/' || path === '') {
+    return { view: 'scripts', scriptId: null, scriptTitle: null };
+  }
+  
+  // Unknown routes default to scripts
+  return { view: 'scripts', scriptId: null, scriptTitle: null };
+}
+
+/**
  * Main application component.
  *
  * Manages routing between authentication, script listing, and editor views.
  * Handles conditional rendering based on authentication state and selected script.
+ * Supports URL-based routing with proper authentication checks.
  *
  * @component
  * @returns {JSX.Element} The rendered application
  */
 function App(): JSX.Element {
   const { token } = useAuth()
-  const [currentView, setCurrentView] = useState<AppView>('scripts')
-  const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null)
-  const [selectedScriptTitle, setSelectedScriptTitle] = useState<string | null>(null)
+  
+  // 🔧 FIXED: Initialize view state based on current URL and stored auth status
+  const [currentView, setCurrentView] = useState<AppView>(() => {
+    const route = parseCurrentRoute();
+    const isAuthenticated = hasStoredAuth();
+    // If no stored token, always start with auth view regardless of URL
+    return isAuthenticated ? route.view : 'auth';
+  });
+  
+  const [selectedScriptId, setSelectedScriptId] = useState<string | null>(() => {
+    const route = parseCurrentRoute();
+    const isAuthenticated = hasStoredAuth();
+    return isAuthenticated ? route.scriptId : null;
+  });
+  
+  const [selectedScriptTitle, setSelectedScriptTitle] = useState<string | null>(() => {
+    const route = parseCurrentRoute();
+    const isAuthenticated = hasStoredAuth();
+    return isAuthenticated ? route.scriptTitle : null;
+  });
+  
   const [showLogin, setShowLogin] = useState(true)
   const [isUploaderOpen, setIsUploaderOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -44,24 +102,43 @@ function App(): JSX.Element {
   // 🚀 FIXED: Use correct ScriptListRef type
   const scriptListRef = useRef<ScriptListRef>(null);
 
-  // Effect to handle view transition after login/logout
+  // 🔧 NEW: Effect to handle URL-based route initialization on auth state change
   useEffect(() => {
-    // If we just received a token (logged in) and are still on the auth view,
-    // switch to the scripts view.
-    if (token && currentView === 'auth') {
-      setCurrentView('scripts');
-      // 🔧 FIXED: Always redirect to base URL after login for clean URL
-      window.history.replaceState({ view: 'scripts' }, '', '/');
+    if (token) {
+      // User is authenticated - check if we should restore URL-based route
+      const route = parseCurrentRoute();
+      
+      if (currentView === 'auth') {
+        // Just logged in - navigate to the intended route or scripts
+        setCurrentView(route.view);
+        setSelectedScriptId(route.scriptId);
+        setSelectedScriptTitle(route.scriptTitle);
+        
+        // Update URL to match the intended destination
+        if (route.view === 'editor' && route.scriptId) {
+          const url = route.scriptTitle 
+            ? `/editor/${route.scriptId}/${encodeURIComponent(route.scriptTitle)}`
+            : `/editor/${route.scriptId}`;
+          window.history.replaceState(
+            { view: 'editor', scriptId: route.scriptId, scriptTitle: route.scriptTitle }, 
+            '', 
+            url
+          );
+        } else {
+          // 🔧 FIXED: Redirect to /scripts/ after login, not base URL
+          window.history.replaceState({ view: 'scripts' }, '', '/scripts/');
+        }
+      }
+    } else {
+      // User is not authenticated - force to auth view and clear state
+      if (currentView !== 'auth') {
+        setCurrentView('auth');
+        setSelectedScriptId(null);
+        setSelectedScriptTitle(null);
+        window.history.replaceState({ view: 'auth' }, '', '/');
+      }
     }
-    // If the token disappears (logged out) while in editor or scripts view,
-    // force back to auth view.
-    else if (!token && (currentView === 'editor' || currentView === 'scripts')) {
-      setCurrentView('auth');
-      setSelectedScriptId(null); // Clear selected script on logout
-      setSelectedScriptTitle(null); // Clear selected script title on logout
-      window.history.replaceState({ view: 'auth' }, '', '/');
-    }
-  }, [token, currentView]); // Depend on token and currentView
+  }, [token]); // Only depend on token changes
 
   // Callback function to navigate after script creation
   const handleScriptCreated = (newScriptId: string) => {
@@ -175,7 +252,6 @@ function App(): JSX.Element {
   let viewComponent
   if (!token) {
     // Show Login or Register if not authenticated
-    if (currentView !== 'auth') setCurrentView('auth')
     viewComponent = showLogin ? (
       <>
         <Login />

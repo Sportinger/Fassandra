@@ -58,7 +58,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   // 🚀 NEW: Background upload state
   const [uploadingScripts, setUploadingScripts] = useState<Map<string, Script>>(new Map());
   
-  const { token, setToken, user } = useAuth();
+  const { token, setToken, user, tokenReady } = useAuth();
   const addSlotRef = useRef<HTMLDivElement>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [renamingScriptId, setRenamingScriptId] = useState<string | null>(null);
@@ -489,9 +489,13 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       const errorMsg = err.message || 'Failed to fetch scripts';
       logDebugInfo('ScriptList', `Failed to fetch scripts: ${errorMsg}, status: ${err.status}`);
       setError(errorMsg);
-      if (err.status === 401) { // More specific check for auth errors
-         logDebugInfo('ScriptList', 'Auth error - logging out user');
-         setToken(null); // Auto-logout on auth error
+      
+      // 🔧 FIXED: Don't auto-logout on 401 errors during page refresh
+      // This prevents the scripts page from redirecting to login on refresh
+      // Only show error, let user manually re-authenticate if needed
+      if (err.status === 401) {
+        logDebugInfo('ScriptList', 'Auth error detected - not auto-logging out to preserve page refresh behavior');
+        setError('Authentication expired. Please refresh the page or log in again.');
       }
       console.error(err);
     } finally {
@@ -500,8 +504,11 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   };
 
   useEffect(() => {
-    fetchScripts();
-  }, [token, setToken]);
+    // 🔧 FIXED: Wait for tokenReady to ensure token is set in ApiService before fetching
+    if (token && user && tokenReady) {
+      fetchScripts();
+    }
+  }, [token, user, tokenReady, setToken]);
 
   // Effect to handle refresh trigger
   useEffect(() => {

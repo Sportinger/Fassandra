@@ -11,6 +11,7 @@ const defaultAuthState: AuthState = {
   setToken: () => {},
   theme: 'dark',
   setTheme: () => {},
+  tokenReady: false,
 };
 
 /**
@@ -114,6 +115,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return storedTheme || 'dark';
   });
 
+  // Track when token is ready in ApiService
+  const [tokenReady, setTokenReady] = useState(false);
+
   // Use useCallback for setToken to ensure stable reference
   const setToken = useCallback((newToken: string | null, newUser?: User | null) => {
     const userToSet = newUser !== undefined ? newUser : (newToken ? parseUserFromToken(newToken) : null);
@@ -167,16 +171,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Set initial token in ApiService when component mounts
+  // Set token in ApiService whenever token changes
   useEffect(() => {
-    if (token) {
-      setApiToken(token);
-      logDebugInfo('Auth', 'Initial token set in ApiService on mount');
-    }
-  }, []); // Only run once on mount
+    setApiToken(token);
+    setTokenReady(true);
+    logDebugInfo('Auth', `Token set in ApiService: ${token ? 'YES' : 'NO'}, ready: true`);
+  }, [token]); // Run whenever token changes
 
   // Provide token, user, and setToken function
-  const authValue = React.useMemo(() => ({ token, user, setToken, theme, setTheme }), [token, user, setToken, theme, setTheme]);
+  const authValue = React.useMemo(() => ({ token, user, setToken, theme, setTheme, tokenReady }), [token, user, setToken, theme, setTheme, tokenReady]);
 
   return (
     <AuthContext.Provider value={authValue}>

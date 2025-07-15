@@ -108,6 +108,7 @@ export interface ScriptWithBlocks {
  * @property {(token: string|null, user?: User|null) => void} setToken - Function to update the token and user.
  * @property {'light'|'dark'} theme - Current theme setting.
  * @property {(theme: 'light'|'dark') => void} setTheme - Function to update the theme.
+ * @property {boolean} tokenReady - Whether the token has been set in ApiService and is ready for API calls.
  */
 export interface AuthState {
   token: string | null;
@@ -115,6 +116,7 @@ export interface AuthState {
   setToken: (token: string | null, user?: User | null) => void;
   theme: 'light' | 'dark';
   setTheme: (theme: 'light' | 'dark') => void;
+  tokenReady: boolean;
 }
 
 /**
