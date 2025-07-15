@@ -4,20 +4,21 @@
 //! This service handles complex business logic that spans multiple domains.
 
 use std::sync::Arc;
-use sqlx::PgPool;
-use sqlx::Row;
-use tracing::{info, error, warn};
 use uuid::Uuid;
-use axum::http::StatusCode;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-
+use serde::Serialize;
+use sqlx::{PgPool, Row};
+use tracing::{info, error, warn};
+use anyhow::{Result, Context};
+use crate::error::AppError;
+use crate::models::script::Script;
+use crate::models::block::Block;
+use crate::external::gemini_api::call_gemini_for_parsing;
 use crate::analysis::structs::Script as ParsedScript;
 use crate::analysis::parser::{extract_text_with_pages_from_docx, text_with_pages_to_string_with_page_markers};
-use crate::domain::script_service::ScriptService;
-use crate::error::AppError;
-use crate::external::gemini_api::{call_gemini_for_parsing, GeminiApiError};
-use crate::models::script::Script;
+use crate::domain::script_service::{ScriptService, CreateScriptRequest, UpdateScriptRequest, ScriptResponse};
+use crate::repositories::script_repository::{ScriptRepository, PostgresScriptRepository};
+use crate::repositories::user_repository::{UserRepository, PostgresUserRepository};
+use crate::repositories::block_repository::{BlockRepository, PostgresBlockRepository};
 
 /// Content snapshot data structure
 #[derive(Debug, Serialize)]

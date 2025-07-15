@@ -1,18 +1,10 @@
-//! Utility module for the Pessoa theater collaboration platform.
+//! Utility modules for the backend.
 //!
-//! This module contains utility functions and helper tools including:
-//! - Y.js testing utilities for document synchronization
-//! - Development and debugging helpers
-//! - Common utility functions shared across modules
-//! - Test fixtures and mock data generators
-//!
-//! # Utility Categories
-//! - Testing utilities for Y.js document operations
-//! - Debug helpers for development workflow
-//! - Common data transformation functions
-//! - Validation and formatting utilities
+//! Contains various utility functions and helpers used throughout the backend.
+//! These are general-purpose tools that don't fit into specific domain modules.
 
+/// Test utilities for YJS operations
 pub mod test_yjs;
 
-// Re-export utility functions
-pub use test_yjs::*;
+// Public exports for convenience
+// Note: test_yjs exports are conditional on test configuration

@@ -4,13 +4,19 @@
 //! Handles complex business logic around thumbnail creation and management.
 
 use std::sync::Arc;
-use sqlx::PgPool;
-use tracing::{info, error, warn};
 use uuid::Uuid;
-
-use crate::domain::script_service::ScriptService;
+use sqlx::PgPool;
+use chrono::{DateTime, Utc};
+use serde::Serialize;
+use tracing::{info, error};
+use anyhow::{Result, Context};
 use crate::error::AppError;
+use crate::models::script::Script;
 use crate::services::thumbnail::{update_script_thumbnail, generate_missing_thumbnails, regenerate_all_thumbnails};
+use crate::domain::script_service::ScriptService;
+use crate::repositories::script_repository::{ScriptRepository, PostgresScriptRepository};
+use crate::repositories::user_repository::{UserRepository, PostgresUserRepository};
+use crate::repositories::block_repository::{BlockRepository, PostgresBlockRepository};
 
 /// Application service for thumbnail operations
 pub struct ThumbnailApplicationService {

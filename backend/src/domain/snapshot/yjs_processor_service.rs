@@ -131,7 +131,10 @@ impl YjsProcessorService {
         match Update::decode_v1(payload) {
             Ok(update) => {
                 debug!("Successfully decoded and applying direct V1 update {} for script {}", update_id, script_id);
-                txn.apply_update(update);
+                if let Err(e) = txn.apply_update(update) {
+                    error!("Failed to apply YJS V1 update {} for script {}: {:?}", update_id, script_id, e);
+                    return Err(anyhow::anyhow!("Failed to apply YJS V1 update: {}", e));
+                }
                 return Ok(());
             }
             Err(e_v1) => {
@@ -140,7 +143,10 @@ impl YjsProcessorService {
                 match Update::decode_v2(payload) {
                     Ok(update) => {
                         debug!("Successfully decoded and applying direct V2 update {} for script {}", update_id, script_id);
-                        txn.apply_update(update);
+                        if let Err(e) = txn.apply_update(update) {
+                            error!("Failed to apply YJS V2 update {} for script {}: {:?}", update_id, script_id, e);
+                            return Err(anyhow::anyhow!("Failed to apply YJS V2 update: {}", e));
+                        }
                         return Ok(());
                     }
                     Err(e_v2) => {
@@ -182,17 +188,26 @@ impl YjsProcessorService {
                                 let sv = sv_bytes;
                                 let update_bytes = txn.encode_state_as_update_v1(&sv);
                                 let update = Update::decode_v1(&update_bytes)?;
-                                txn.apply_update(update);
+                                if let Err(e) = txn.apply_update(update) {
+                                    error!("Failed to apply YJS SyncStep1 update {} for script {}: {:?}", update_id, script_id, e);
+                                    return Err(anyhow::anyhow!("Failed to apply YJS SyncStep1 update: {}", e));
+                                }
                             }
                             YrsInnerSyncMessage::SyncStep2(update_payload_bytes) => {
                                 trace!("Handling SyncStep2 for script_id: {}, update_id: {}", script_id, update_id);
                                 let update = Update::decode_v1(&update_payload_bytes)?;
-                                txn.apply_update(update);
+                                if let Err(e) = txn.apply_update(update) {
+                                    error!("Failed to apply YJS SyncStep2 update {} for script {}: {:?}", update_id, script_id, e);
+                                    return Err(anyhow::anyhow!("Failed to apply YJS SyncStep2 update: {}", e));
+                                }
                             }
                             YrsInnerSyncMessage::Update(update_payload_bytes) => {
                                 trace!("Handling Update for script_id: {}, update_id: {}", script_id, update_id);
                                 let update = Update::decode_v1(&update_payload_bytes)?;
-                                txn.apply_update(update);
+                                if let Err(e) = txn.apply_update(update) {
+                                    error!("Failed to apply YJS Update message {} for script {}: {:?}", update_id, script_id, e);
+                                    return Err(anyhow::anyhow!("Failed to apply YJS Update message: {}", e));
+                                }
                             }
                         }
                     }

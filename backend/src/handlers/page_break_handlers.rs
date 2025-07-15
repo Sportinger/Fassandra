@@ -86,7 +86,7 @@ async fn get_page_breaks(
     )
     .fetch_optional(pool.as_ref())
     .await
-    .map_err(|e| {
+    .map_err(|_e| {
         error!("Script access check failed");
         (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Service temporarily unavailable"})))
     })?;
@@ -107,7 +107,7 @@ async fn get_page_breaks(
         )
         .fetch_one(pool.as_ref())
         .await
-        .map_err(|e| {
+        .map_err(|_e| {
             error!("Script sharing check failed");
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Service temporarily unavailable"})))
         })?
@@ -127,7 +127,7 @@ async fn get_page_breaks(
     )
     .fetch_all(pool.as_ref())
     .await
-    .map_err(|e| {
+    .map_err(|_e| {
         error!("Block data retrieval failed");
         (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Service temporarily unavailable"})))
     })?;
@@ -184,8 +184,8 @@ async fn update_page_breaks(
     )
     .fetch_optional(pool.as_ref())
     .await
-    .map_err(|e| {
-        error!("Database error checking script access: {}", e);
+    .map_err(|_e| {
+        error!("Database error checking script access: {}", _e);
         (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Database error"})))
     })?;
 
@@ -206,7 +206,7 @@ async fn update_page_breaks(
         )
         .fetch_one(pool.as_ref())
         .await
-        .map_err(|e| {
+        .map_err(|_e| {
             error!("Script sharing verification failed");
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Service temporarily unavailable"})))
         })?
@@ -217,7 +217,7 @@ async fn update_page_breaks(
     }
 
     // Start transaction for atomic updates
-    let mut tx = pool.as_ref().begin().await    .map_err(|e| {
+    let mut tx = pool.as_ref().begin().await    .map_err(|_e| {
         error!("Transaction initialization failed");
         (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Service temporarily unavailable"})))
     })?;
@@ -232,14 +232,14 @@ async fn update_page_breaks(
         )
         .execute(&mut *tx)
         .await
-                        .map_err(|e| {
+                        .map_err(|_e| {
                     error!("Block update failed");
                     (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Service temporarily unavailable"})))
                 })?;
     }
 
     // Commit transaction
-    tx.commit().await    .map_err(|e| {
+    tx.commit().await    .map_err(|_e| {
         error!("Transaction commit failed");
         (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Service temporarily unavailable"})))
     })?;

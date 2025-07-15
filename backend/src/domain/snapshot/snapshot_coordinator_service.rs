@@ -2,7 +2,7 @@ use std::sync::Arc;
 use sqlx::{PgPool, QueryBuilder};
 use tokio::time::{timeout, Duration};
 use uuid::Uuid;
-use tracing::{info, error, warn, debug, trace};
+use tracing::{info, error, debug, trace};
 
 use super::{YjsProcessorService, ContentExtractorService, HtmlParserService};
 use super::content_extractor_service::ContentBlock;
