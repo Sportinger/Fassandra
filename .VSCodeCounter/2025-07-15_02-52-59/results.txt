@@ -1,0 +1,262 @@
+Date : 2025-07-15 02:52:59
+Directory : /home/admins/projects/pessoa
+Total : 172 files,  20773 codes, 3507 comments, 3669 blanks, all 27949 lines
+
+Languages
++----------------+------------+------------+------------+------------+------------+
+| language       | files      | code       | comment    | blank      | total      |
++----------------+------------+------------+------------+------------+------------+
+| Rust           |         65 |      6,711 |      1,577 |      1,183 |      9,471 |
+| TypeScript JSX |         23 |      4,970 |        558 |        703 |      6,231 |
+| TypeScript     |         36 |      3,633 |        806 |        686 |      5,125 |
+| CSS            |         11 |      3,019 |        280 |        576 |      3,875 |
+| HTML           |          4 |        809 |          5 |        137 |        951 |
+| JavaScript     |          6 |        756 |        124 |        215 |      1,095 |
+| Python         |          1 |        318 |         24 |         88 |        430 |
+| Properties     |          4 |        298 |         53 |         47 |        398 |
+| MS SQL         |         15 |        150 |         53 |         27 |        230 |
+| JSON           |          2 |         98 |          0 |          2 |        100 |
+| Ignore         |          2 |          9 |          7 |          4 |         20 |
+| XML            |          2 |          2 |          0 |          0 |          2 |
+| YAML           |          1 |          0 |         20 |          1 |         21 |
++----------------+------------+------------+------------+------------+------------+
+
+Directories
++------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                             | files      | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                                |        172 |     20,773 |      3,507 |      3,669 |     27,949 |
+| . (Files)                                                                                                        |          5 |        292 |         28 |         65 |        385 |
+| .github                                                                                                          |          1 |          0 |         20 |          1 |         21 |
+| .github/workflows                                                                                                |          1 |          0 |         20 |          1 |         21 |
+| backend                                                                                                          |         81 |      7,182 |      1,655 |      1,297 |     10,134 |
+| backend (Files)                                                                                                  |          2 |        321 |         26 |         88 |        435 |
+| backend/migrations                                                                                               |         14 |        150 |         52 |         26 |        228 |
+| backend/src                                                                                                      |         65 |      6,711 |      1,577 |      1,183 |      9,471 |
+| backend/src (Files)                                                                                              |          2 |         94 |         79 |         24 |        197 |
+| backend/src/analysis                                                                                             |          4 |        217 |        143 |         42 |        402 |
+| backend/src/application                                                                                          |          5 |      1,110 |        158 |        185 |      1,453 |
+| backend/src/auth                                                                                                 |          3 |        385 |        169 |         74 |        628 |
+| backend/src/core                                                                                                 |          4 |        423 |         93 |         81 |        597 |
+| backend/src/domain                                                                                               |         10 |      1,403 |        208 |        275 |      1,886 |
+| backend/src/domain (Files)                                                                                       |          5 |        343 |         99 |         94 |        536 |
+| backend/src/domain/snapshot                                                                                      |          5 |      1,060 |        109 |        181 |      1,350 |
+| backend/src/error                                                                                                |          3 |        433 |        169 |         53 |        655 |
+| backend/src/external                                                                                             |          2 |        480 |         94 |         75 |        649 |
+| backend/src/handlers                                                                                             |          4 |        444 |        132 |         78 |        654 |
+| backend/src/infrastructure                                                                                       |          3 |        150 |         41 |         17 |        208 |
+| backend/src/models                                                                                               |          9 |        152 |         74 |         14 |        240 |
+| backend/src/networking                                                                                           |          2 |        275 |         79 |         54 |        408 |
+| backend/src/prompts                                                                                              |          1 |          0 |         11 |          1 |         12 |
+| backend/src/repositories                                                                                         |          6 |        801 |         69 |        157 |      1,027 |
+| backend/src/services                                                                                             |          5 |        340 |         48 |         50 |        438 |
+| backend/src/utils                                                                                                |          2 |          4 |         10 |          3 |         17 |
+| frontend                                                                                                         |         83 |     12,794 |      1,708 |      2,155 |     16,657 |
+| frontend (Files)                                                                                                 |          7 |        378 |         58 |         53 |        489 |
+| frontend/migrations                                                                                              |          1 |          0 |          1 |          1 |          2 |
+| frontend/public                                                                                                  |          3 |        513 |          5 |         99 |        617 |
+| frontend/src                                                                                                     |         72 |     11,903 |      1,644 |      2,002 |     15,549 |
+| frontend/src (Files)                                                                                             |         12 |      1,844 |        532 |        357 |      2,733 |
+| frontend/src/assets                                                                                              |          1 |          1 |          0 |          0 |          1 |
+| frontend/src/components                                                                                          |         49 |      9,401 |        997 |      1,520 |     11,918 |
+| frontend/src/components (Files)                                                                                  |         13 |      2,773 |        184 |        410 |      3,367 |
+| frontend/src/components/editor                                                                                   |         36 |      6,628 |        813 |      1,110 |      8,551 |
+| frontend/src/components/editor (Files)                                                                           |          5 |        810 |         80 |        104 |        994 |
+| frontend/src/components/editor/ViewModes                                                                         |          3 |        566 |         53 |         75 |        694 |
+| frontend/src/components/editor/components                                                                        |          9 |      2,318 |        188 |        341 |      2,847 |
+| frontend/src/components/editor/components (Files)                                                                |          4 |      1,573 |        105 |        248 |      1,926 |
+| frontend/src/components/editor/components/page                                                                   |          1 |         19 |          5 |          4 |         28 |
+| frontend/src/components/editor/components/toolbar                                                                |          1 |        568 |         60 |         71 |        699 |
+| frontend/src/components/editor/components/ui                                                                     |          3 |        158 |         18 |         18 |        194 |
+| frontend/src/components/editor/config                                                                            |          2 |        146 |         37 |         32 |        215 |
+| frontend/src/components/editor/extensions                                                                        |          4 |        124 |         14 |         21 |        159 |
+| frontend/src/components/editor/hooks                                                                             |          7 |      1,233 |        185 |        197 |      1,615 |
+| frontend/src/components/editor/styles                                                                            |          3 |        926 |        175 |        241 |      1,342 |
+| frontend/src/components/editor/types                                                                             |          1 |        309 |         31 |         69 |        409 |
+| frontend/src/components/editor/utils                                                                             |          2 |        196 |         50 |         30 |        276 |
+| frontend/src/services                                                                                            |          1 |        131 |         39 |         33 |        203 |
+| frontend/src/test                                                                                                |          7 |        258 |         12 |         38 |        308 |
+| frontend/src/test (Files)                                                                                        |          4 |        158 |         11 |         24 |        193 |
+| frontend/src/test/mocks                                                                                          |          3 |        100 |          1 |         14 |        115 |
+| frontend/src/utils                                                                                               |          2 |        268 |         64 |         54 |        386 |
+| tests                                                                                                            |          2 |        505 |         96 |        151 |        752 |
++------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++------------------------------------------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
+| filename                                                                                                         | language       | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
+| /home/admins/projects/pessoa/.github/workflows/deploy.yml                                                        | YAML           |          0 |         20 |          1 |         21 |
+| /home/admins/projects/pessoa/backend/.dockerignore                                                               | Ignore         |          3 |          2 |          0 |          5 |
+| /home/admins/projects/pessoa/backend/migrations/0001_create_tables.sql                                           | MS SQL         |         34 |          6 |          5 |         45 |
+| /home/admins/projects/pessoa/backend/migrations/20250101000001_add_username_role_to_users.sql                    | MS SQL         |          2 |          7 |          3 |         12 |
+| /home/admins/projects/pessoa/backend/migrations/20250117000000_add_script_sharing.sql                            | MS SQL         |         13 |          3 |          2 |         18 |
+| /home/admins/projects/pessoa/backend/migrations/20250118000000_add_thumbnail_to_scripts.sql                      | MS SQL         |          2 |          2 |          1 |          5 |
+| /home/admins/projects/pessoa/backend/migrations/20250128000000_create_script_layouts_table.sql                   | MS SQL         |         46 |          3 |          2 |         51 |
+| /home/admins/projects/pessoa/backend/migrations/20250131000000_add_page_number_to_blocks.sql                     | MS SQL         |          7 |          5 |          3 |         15 |
+| /home/admins/projects/pessoa/backend/migrations/20250503174857_make_blocks_script_id_not_null.sql                | MS SQL         |          2 |          3 |          3 |          8 |
+| /home/admins/projects/pessoa/backend/migrations/20250506002947_add_dev_user.sql                                  | MS SQL         |          8 |          2 |          1 |         11 |
+| /home/admins/projects/pessoa/backend/migrations/20250507000000_create_yjs_document_updates_table.sql             | MS SQL         |          8 |          1 |          1 |         10 |
+| /home/admins/projects/pessoa/backend/migrations/20250507000001_create_script_snapshots_meta_table.sql            | MS SQL         |          5 |          1 |          0 |          6 |
+| /home/admins/projects/pessoa/backend/migrations/20250514160000_add_block_order_to_blocks.sql                     | MS SQL         |          2 |          8 |          0 |         10 |
+| /home/admins/projects/pessoa/backend/migrations/20250514160500_add_metadata_to_blocks.sql                        | MS SQL         |          2 |          1 |          0 |          3 |
+| /home/admins/projects/pessoa/backend/migrations/20250514161500_add_user_id_to_yjs_document_updates.sql           | MS SQL         |         12 |          6 |          2 |         20 |
+| /home/admins/projects/pessoa/backend/migrations/20250710000000_add_content_snapshot_to_script_snapshots_meta.sql | MS SQL         |          7 |          4 |          3 |         14 |
+| /home/admins/projects/pessoa/backend/security_verification.py                                                    | Python         |        318 |         24 |         88 |        430 |
+| /home/admins/projects/pessoa/backend/src/analysis/errors.rs                                                      | Rust           |         10 |          1 |          1 |         12 |
+| /home/admins/projects/pessoa/backend/src/analysis/mod.rs                                                         | Rust           |          3 |          5 |          1 |          9 |
+| /home/admins/projects/pessoa/backend/src/analysis/parser.rs                                                      | Rust           |        108 |        117 |         22 |        247 |
+| /home/admins/projects/pessoa/backend/src/analysis/structs.rs                                                     | Rust           |         96 |         20 |         18 |        134 |
+| /home/admins/projects/pessoa/backend/src/application/mod.rs                                                      | Rust           |          8 |          4 |          2 |         14 |
+| /home/admins/projects/pessoa/backend/src/application/page_break_application_service.rs                           | Rust           |        243 |         45 |         43 |        331 |
+| /home/admins/projects/pessoa/backend/src/application/script_application_service.rs                               | Rust           |        521 |         55 |         80 |        656 |
+| /home/admins/projects/pessoa/backend/src/application/script_sharing_application_service.rs                       | Rust           |        206 |         30 |         34 |        270 |
+| /home/admins/projects/pessoa/backend/src/application/thumbnail_application_service.rs                            | Rust           |        132 |         24 |         26 |        182 |
+| /home/admins/projects/pessoa/backend/src/auth/core.rs                                                            | Rust           |        333 |        150 |         66 |        549 |
+| /home/admins/projects/pessoa/backend/src/auth/helpers.rs                                                         | Rust           |         42 |          3 |          5 |         50 |
+| /home/admins/projects/pessoa/backend/src/auth/mod.rs                                                             | Rust           |         10 |         16 |          3 |         29 |
+| /home/admins/projects/pessoa/backend/src/core/lib.rs                                                             | Rust           |         37 |         12 |          8 |         57 |
+| /home/admins/projects/pessoa/backend/src/core/mod.rs                                                             | Rust           |          6 |         15 |          2 |         23 |
+| /home/admins/projects/pessoa/backend/src/core/server.rs                                                          | Rust           |        169 |         20 |         29 |        218 |
+| /home/admins/projects/pessoa/backend/src/core/service_manager.rs                                                 | Rust           |        211 |         46 |         42 |        299 |
+| /home/admins/projects/pessoa/backend/src/domain/collaboration_service.rs                                         | Rust           |         17 |         11 |          6 |         34 |
+| /home/admins/projects/pessoa/backend/src/domain/content_service.rs                                               | Rust           |         13 |          9 |          5 |         27 |
+| /home/admins/projects/pessoa/backend/src/domain/mod.rs                                                           | Rust           |          9 |          5 |          2 |         16 |
+| /home/admins/projects/pessoa/backend/src/domain/script_service.rs                                                | Rust           |        287 |         63 |         75 |        425 |
+| /home/admins/projects/pessoa/backend/src/domain/snapshot/content_extractor_service.rs                            | Rust           |        407 |         31 |         57 |        495 |
+| /home/admins/projects/pessoa/backend/src/domain/snapshot/html_parser_service.rs                                  | Rust           |        198 |         29 |         41 |        268 |
+| /home/admins/projects/pessoa/backend/src/domain/snapshot/mod.rs                                                  | Rust           |          8 |          4 |          2 |         14 |
+| /home/admins/projects/pessoa/backend/src/domain/snapshot/snapshot_coordinator_service.rs                         | Rust           |        233 |         22 |         49 |        304 |
+| /home/admins/projects/pessoa/backend/src/domain/snapshot/yjs_processor_service.rs                                | Rust           |        214 |         23 |         32 |        269 |
+| /home/admins/projects/pessoa/backend/src/domain/snapshot_service.rs                                              | Rust           |         17 |         11 |          6 |         34 |
+| /home/admins/projects/pessoa/backend/src/error/helpers.rs                                                        | Rust           |        176 |        106 |         26 |        308 |
+| /home/admins/projects/pessoa/backend/src/error/mod.rs                                                            | Rust           |         11 |         16 |          3 |         30 |
+| /home/admins/projects/pessoa/backend/src/error/types.rs                                                          | Rust           |        246 |         47 |         24 |        317 |
+| /home/admins/projects/pessoa/backend/src/external/gemini_api.rs                                                  | Rust           |        474 |         79 |         73 |        626 |
+| /home/admins/projects/pessoa/backend/src/external/mod.rs                                                         | Rust           |          6 |         15 |          2 |         23 |
+| /home/admins/projects/pessoa/backend/src/handlers/auth.rs                                                        | Rust           |         84 |         36 |         15 |        135 |
+| /home/admins/projects/pessoa/backend/src/handlers/mod.rs                                                         | Rust           |          3 |          4 |          1 |          8 |
+| /home/admins/projects/pessoa/backend/src/handlers/page_break_handlers.rs                                         | Rust           |        183 |         43 |         27 |        253 |
+| /home/admins/projects/pessoa/backend/src/handlers/script.rs                                                      | Rust           |        174 |         49 |         35 |        258 |
+| /home/admins/projects/pessoa/backend/src/infrastructure/config.rs                                                | Rust           |         85 |         16 |          5 |        106 |
+| /home/admins/projects/pessoa/backend/src/infrastructure/middleware.rs                                            | Rust           |         61 |          9 |         10 |         80 |
+| /home/admins/projects/pessoa/backend/src/infrastructure/mod.rs                                                   | Rust           |          4 |         16 |          2 |         22 |
+| /home/admins/projects/pessoa/backend/src/lib.rs                                                                  | Rust           |         16 |         31 |          3 |         50 |
+| /home/admins/projects/pessoa/backend/src/main.rs                                                                 | Rust           |         78 |         48 |         21 |        147 |
+| /home/admins/projects/pessoa/backend/src/models/block.rs                                                         | Rust           |         15 |         12 |          1 |         28 |
+| /home/admins/projects/pessoa/backend/src/models/edit.rs                                                          | Rust           |         12 |          9 |          1 |         22 |
+| /home/admins/projects/pessoa/backend/src/models/mod.rs                                                           | Rust           |          8 |          4 |          0 |         12 |
+| /home/admins/projects/pessoa/backend/src/models/script.rs                                                        | Rust           |         14 |         10 |          1 |         25 |
+| /home/admins/projects/pessoa/backend/src/models/script_layout.rs                                                 | Rust           |         31 |         16 |          3 |         50 |
+| /home/admins/projects/pessoa/backend/src/models/script_share.rs                                                  | Rust           |         37 |         14 |          5 |         56 |
+| /home/admins/projects/pessoa/backend/src/models/snapshot_meta.rs                                                 | Rust           |         10 |          0 |          1 |         11 |
+| /home/admins/projects/pessoa/backend/src/models/user.rs                                                          | Rust           |         13 |          9 |          1 |         23 |
+| /home/admins/projects/pessoa/backend/src/models/yjs_update.rs                                                    | Rust           |         12 |          0 |          1 |         13 |
+| /home/admins/projects/pessoa/backend/src/networking/mod.rs                                                       | Rust           |          5 |         16 |          2 |         23 |
+| /home/admins/projects/pessoa/backend/src/networking/websocket.rs                                                 | Rust           |        270 |         63 |         52 |        385 |
+| /home/admins/projects/pessoa/backend/src/prompts/mod.rs                                                          | Rust           |          0 |         11 |          1 |         12 |
+| /home/admins/projects/pessoa/backend/src/repositories/block_repository.rs                                        | Rust           |         77 |          9 |         15 |        101 |
+| /home/admins/projects/pessoa/backend/src/repositories/mod.rs                                                     | Rust           |         10 |          5 |          2 |         17 |
+| /home/admins/projects/pessoa/backend/src/repositories/script_repository.rs                                       | Rust           |        169 |         13 |         35 |        217 |
+| /home/admins/projects/pessoa/backend/src/repositories/snapshot_repository.rs                                     | Rust           |        197 |         17 |         39 |        253 |
+| /home/admins/projects/pessoa/backend/src/repositories/user_repository.rs                                         | Rust           |        135 |         11 |         27 |        173 |
+| /home/admins/projects/pessoa/backend/src/repositories/yjs_update_repository.rs                                   | Rust           |        213 |         14 |         39 |        266 |
+| /home/admins/projects/pessoa/backend/src/services/async_db_writer.rs                                             | Rust           |         48 |          5 |          5 |         58 |
+| /home/admins/projects/pessoa/backend/src/services/mod.rs                                                         | Rust           |          8 |         16 |          2 |         26 |
+| /home/admins/projects/pessoa/backend/src/services/persistence_event.rs                                           | Rust           |          9 |          1 |          1 |         11 |
+| /home/admins/projects/pessoa/backend/src/services/snapshotting_service_v2.rs                                     | Rust           |         71 |          5 |         17 |         93 |
+| /home/admins/projects/pessoa/backend/src/services/thumbnail.rs                                                   | Rust           |        204 |         21 |         25 |        250 |
+| /home/admins/projects/pessoa/backend/src/utils/mod.rs                                                            | Rust           |          1 |          7 |          2 |         10 |
+| /home/admins/projects/pessoa/backend/src/utils/test_yjs.rs                                                       | Rust           |          3 |          3 |          1 |          7 |
+| /home/admins/projects/pessoa/debug-test.js                                                                       | JavaScript     |         25 |          7 |          9 |         41 |
+| /home/admins/projects/pessoa/debug-vision-helper.js                                                              | JavaScript     |         59 |          6 |         14 |         79 |
+| /home/admins/projects/pessoa/frontend/.dockerignore                                                              | Ignore         |          6 |          5 |          4 |         15 |
+| /home/admins/projects/pessoa/frontend/index.html                                                                 | HTML           |         17 |          0 |          1 |         18 |
+| /home/admins/projects/pessoa/frontend/migrations/20250628204208_add_sharing_to_scripts.sql                       | MS SQL         |          0 |          1 |          1 |          2 |
+| /home/admins/projects/pessoa/frontend/nginx-https-multi-domain.conf                                              | Properties     |        125 |         18 |         23 |        166 |
+| /home/admins/projects/pessoa/frontend/nginx-https.conf                                                           | Properties     |         65 |         11 |          9 |         85 |
+| /home/admins/projects/pessoa/frontend/nginx-local.conf                                                           | Properties     |         65 |         11 |          9 |         85 |
+| /home/admins/projects/pessoa/frontend/nginx.conf                                                                 | Properties     |         43 |         13 |          6 |         62 |
+| /home/admins/projects/pessoa/frontend/package.json                                                               | JSON           |         57 |          0 |          1 |         58 |
+| /home/admins/projects/pessoa/frontend/public/microphone_test.html                                                | HTML           |        434 |          5 |         83 |        522 |
+| /home/admins/projects/pessoa/frontend/public/vite.svg                                                            | XML            |          1 |          0 |          0 |          1 |
+| /home/admins/projects/pessoa/frontend/public/websocket_test.html                                                 | HTML           |         78 |          0 |         16 |         94 |
+| /home/admins/projects/pessoa/frontend/src/App.css                                                                | CSS            |         60 |          1 |          9 |         70 |
+| /home/admins/projects/pessoa/frontend/src/App.tsx                                                                | TypeScript JSX |        176 |         52 |         28 |        256 |
+| /home/admins/projects/pessoa/frontend/src/AuthContext.tsx                                                        | TypeScript JSX |        124 |         55 |         24 |        203 |
+| /home/admins/projects/pessoa/frontend/src/api-original.ts                                                        | TypeScript     |        465 |        233 |         84 |        782 |
+| /home/admins/projects/pessoa/frontend/src/api-refactored.ts                                                      | TypeScript     |        111 |         15 |         41 |        167 |
+| /home/admins/projects/pessoa/frontend/src/api.test.ts                                                            | TypeScript     |         23 |          0 |          6 |         29 |
+| /home/admins/projects/pessoa/frontend/src/api.ts                                                                 | TypeScript     |        125 |         15 |         43 |        183 |
+| /home/admins/projects/pessoa/frontend/src/assets/react.svg                                                       | XML            |          1 |          0 |          0 |          1 |
+| /home/admins/projects/pessoa/frontend/src/components/App.test.tsx                                                | TypeScript JSX |          9 |          0 |          1 |         10 |
+| /home/admins/projects/pessoa/frontend/src/components/Auth.module.css                                             | CSS            |        150 |          5 |         23 |        178 |
+| /home/admins/projects/pessoa/frontend/src/components/Breadcrumb.module.css                                       | CSS            |         46 |          0 |          5 |         51 |
+| /home/admins/projects/pessoa/frontend/src/components/Breadcrumb.tsx                                              | TypeScript JSX |         37 |          0 |          4 |         41 |
+| /home/admins/projects/pessoa/frontend/src/components/Header.module.css                                           | CSS            |        193 |          3 |         27 |        223 |
+| /home/admins/projects/pessoa/frontend/src/components/Header.tsx                                                  | TypeScript JSX |        287 |         26 |         44 |        357 |
+| /home/admins/projects/pessoa/frontend/src/components/Login.tsx                                                   | TypeScript JSX |         90 |         19 |         11 |        120 |
+| /home/admins/projects/pessoa/frontend/src/components/Register.tsx                                                | TypeScript JSX |        104 |         19 |          9 |        132 |
+| /home/admins/projects/pessoa/frontend/src/components/ScriptList.module.css                                       | CSS            |        933 |         30 |        150 |      1,113 |
+| /home/admins/projects/pessoa/frontend/src/components/ScriptList.tsx                                              | TypeScript JSX |        751 |         72 |        109 |        932 |
+| /home/admins/projects/pessoa/frontend/src/components/ScriptUploader.module.css                                   | CSS            |         35 |          0 |          3 |         38 |
+| /home/admins/projects/pessoa/frontend/src/components/ScriptUploader.tsx                                          | TypeScript JSX |         88 |          5 |         15 |        108 |
+| /home/admins/projects/pessoa/frontend/src/components/SpeakerNameExtension.ts                                     | TypeScript     |         50 |          5 |          9 |         64 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/FontSizeDropdown.tsx                                 | TypeScript JSX |        178 |         16 |         27 |        221 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/FontSizeExtension.ts                                 | TypeScript     |         58 |          6 |          7 |         71 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/Ruler.tsx                                            | TypeScript JSX |        426 |         42 |         41 |        509 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/SpeakerDropdown.tsx                                  | TypeScript JSX |        133 |          9 |         23 |        165 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/ViewModes/MultiPageView.tsx                          | TypeScript JSX |        387 |         44 |         55 |        486 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/ViewModes/SinglePageView.tsx                         | TypeScript JSX |        177 |          9 |         20 |        206 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/ViewModes/index.ts                                   | TypeScript     |          2 |          0 |          0 |          2 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/components/AudioTranscription.css                    | CSS            |        327 |          5 |         52 |        384 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/components/AudioTranscription.tsx                    | TypeScript JSX |        651 |         28 |        103 |        782 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/components/Editor.tsx                                | TypeScript JSX |        506 |         72 |         79 |        657 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/components/PageBreakIndicator.tsx                    | TypeScript JSX |         89 |          0 |         14 |        103 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/components/page/PageCanvas.tsx                       | TypeScript JSX |         19 |          5 |          4 |         28 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/components/toolbar/Toolbar.tsx                       | TypeScript JSX |        568 |         60 |         71 |        699 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/components/ui/ErrorDisplay.tsx                       | TypeScript JSX |         24 |          4 |          4 |         32 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/components/ui/LoadingSpinner.tsx                     | TypeScript JSX |         21 |          4 |          3 |         28 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/components/ui/StatusIndicator.tsx                    | TypeScript JSX |        113 |         10 |         11 |        134 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/config/constants.ts                                  | TypeScript     |        145 |         33 |         31 |        209 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/config/index.ts                                      | TypeScript     |          1 |          4 |          1 |          6 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/extensions/DialogueBlock.ts                          | TypeScript     |         95 |         10 |         15 |        120 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/extensions/DialogueText.ts                           | TypeScript     |         13 |          2 |          3 |         18 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/extensions/Speaker.ts                                | TypeScript     |         13 |          2 |          3 |         18 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/extensions/index.ts                                  | TypeScript     |          3 |          0 |          0 |          3 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/hooks/index.ts                                       | TypeScript     |          4 |          0 |          0 |          4 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/hooks/useEditorCore.ts                               | TypeScript     |        292 |         38 |         47 |        377 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/hooks/useEditorInstance.ts                           | TypeScript     |        215 |         31 |         25 |        271 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/hooks/useEditorState.ts                              | TypeScript     |         67 |         20 |         14 |        101 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/hooks/useLayoutManagement.ts                         | TypeScript     |        142 |         13 |         31 |        186 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/hooks/useResponsiveDesign.ts                         | TypeScript     |        159 |         22 |         31 |        212 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/hooks/useYjsConnection.ts                            | TypeScript     |        354 |         61 |         49 |        464 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/index.ts                                             | TypeScript     |         15 |          7 |          6 |         28 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/styles/responsive.css                                | CSS            |        502 |         86 |        124 |        712 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/styles/toolbar.css                                   | CSS            |        328 |         51 |         87 |        466 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/styles/variables.css                                 | CSS            |         96 |         38 |         30 |        164 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/types/index.ts                                       | TypeScript     |        309 |         31 |         69 |        409 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/utils/contentConverters.ts                           | TypeScript     |        120 |         23 |         24 |        167 |
+| /home/admins/projects/pessoa/frontend/src/components/editor/utils/formatters.ts                                  | TypeScript     |         76 |         27 |          6 |        109 |
+| /home/admins/projects/pessoa/frontend/src/index.css                                                              | CSS            |        349 |         61 |         66 |        476 |
+| /home/admins/projects/pessoa/frontend/src/main.tsx                                                               | TypeScript JSX |         12 |          7 |          3 |         22 |
+| /home/admins/projects/pessoa/frontend/src/mobile-test.html                                                       | HTML           |        280 |          0 |         37 |        317 |
+| /home/admins/projects/pessoa/frontend/src/services/ApiService.ts                                                 | TypeScript     |        131 |         39 |         33 |        203 |
+| /home/admins/projects/pessoa/frontend/src/test/auth.test.ts                                                      | TypeScript     |         28 |          1 |          4 |         33 |
+| /home/admins/projects/pessoa/frontend/src/test/mocks/api.ts                                                      | TypeScript     |         33 |          0 |          5 |         38 |
+| /home/admins/projects/pessoa/frontend/src/test/mocks/data.ts                                                     | TypeScript     |         30 |          0 |          2 |         32 |
+| /home/admins/projects/pessoa/frontend/src/test/mocks/websocket.ts                                                | TypeScript     |         37 |          1 |          7 |         45 |
+| /home/admins/projects/pessoa/frontend/src/test/scripts.test.ts                                                   | TypeScript     |         41 |          2 |          8 |         51 |
+| /home/admins/projects/pessoa/frontend/src/test/setup.ts                                                          | TypeScript     |         15 |          4 |          4 |         23 |
+| /home/admins/projects/pessoa/frontend/src/test/websocket.test.ts                                                 | TypeScript     |         74 |          4 |          8 |         86 |
+| /home/admins/projects/pessoa/frontend/src/types.ts                                                               | TypeScript     |        112 |         91 |         13 |        216 |
+| /home/admins/projects/pessoa/frontend/src/utils/debug.ts                                                         | TypeScript     |        122 |          6 |         16 |        144 |
+| /home/admins/projects/pessoa/frontend/src/utils/mobile.ts                                                        | TypeScript     |        146 |         58 |         38 |        242 |
+| /home/admins/projects/pessoa/frontend/src/vite-env.d.ts                                                          | TypeScript     |          7 |          2 |          3 |         12 |
+| /home/admins/projects/pessoa/package.json                                                                        | JSON           |         41 |          0 |          1 |         42 |
+| /home/admins/projects/pessoa/reset_database.js                                                                   | JavaScript     |         63 |         11 |         15 |         89 |
+| /home/admins/projects/pessoa/run-complete-test.js                                                                | JavaScript     |        104 |          4 |         26 |        134 |
+| /home/admins/projects/pessoa/tests/mcp-database-verification.spec.js                                             | JavaScript     |        249 |         31 |         65 |        345 |
+| /home/admins/projects/pessoa/tests/pessoa-complete-workflow-with-database-verification.spec.js                   | JavaScript     |        256 |         65 |         86 |        407 |
+| Total                                                                                                            |                |     20,773 |      3,507 |      3,669 |     27,949 |
++------------------------------------------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
