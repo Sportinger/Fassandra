@@ -6,16 +6,10 @@
 use std::sync::Arc;
 use uuid::Uuid;
 use sqlx::PgPool;
-use chrono::{DateTime, Utc};
-use serde::Serialize;
 use tracing::{info, warn};
-use anyhow::{Result, Context};
+use anyhow::Result;
 use crate::error::AppError;
-use crate::models::script::Script;
 use crate::domain::script_service::ScriptService;
-use crate::repositories::script_repository::{ScriptRepository, PostgresScriptRepository};
-use crate::repositories::user_repository::{UserRepository, PostgresUserRepository};
-use crate::repositories::block_repository::{BlockRepository, PostgresBlockRepository};
 
 /// Request payload for updating page breaks
 #[derive(Debug, serde::Deserialize)]

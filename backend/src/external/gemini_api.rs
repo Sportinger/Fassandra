@@ -1,4 +1,7 @@
 //! Handles communication with the Google Gemini API for script analysis.
+//! 
+//! This module provides PDF-based script analysis using Gemini's structured output capabilities.
+//! Supports direct PDF upload to Gemini Files API with enforced JSON schema responses.
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -7,36 +10,33 @@ use thiserror::Error;
 use crate::analysis::structs::Script as ParsedScript;
 use std::collections::HashMap;
 
-//ulla --- Configuration ---
+// --- Configuration ---
 
-// TODO: Determine the correct Gemini API endpoint
-const GEMINI_API_URL_VAR: &str = "GEMINI_API_URL"; // e.g., "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+const GEMINI_API_URL_VAR: &str = "GEMINI_API_URL";
 const GEMINI_API_KEY_VAR: &str = "GEMINI_API_KEY";
 const GEMINI_FILES_API_URL: &str = "https://generativelanguage.googleapis.com/upload/v1beta/files";
 
-// --- Structs for OpenAPI Schema Definition (subset used by Gemini) ---
+// --- Structs for Gemini Structured Output Schema ---
 
-#[derive(Serialize, Debug, Clone)] // REMOVED Default here
+#[derive(Serialize, Debug, Clone)]
 struct Schema {
     #[serde(rename = "type")]
-    schema_type: String, // Changed from SchemaType to String since enum is removed
+    schema_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    format: Option<String>, // e.g., "int64", "double", "date-time"
+    format: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     nullable: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    enum_values: Option<Vec<String>>, // Field name adjusted for clarity
-    // For arrays
+    #[serde(rename = "enum")]
+    enum_values: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    items: Option<Box<Schema>>, // Use Box for recursive type
-    // For objects
+    items: Option<Box<Schema>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     properties: Option<HashMap<String, Schema>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     required: Option<Vec<String>>,
-    // propertyOrdering is mentioned but might not be strictly needed if we match struct order
 }
 
 // --- Structs for API Interaction ---
@@ -44,18 +44,18 @@ struct Schema {
 #[derive(Serialize, Debug)]
 struct GeminiRequest {
     contents: Vec<Content>,
-    #[serde(rename = "generationConfig", skip_serializing_if = "Option::is_none")]
-    generation_config: Option<GenerationConfig>,
+    #[serde(rename = "generationConfig")]
+    generation_config: GenerationConfig,
 }
 
 #[derive(Serialize, Debug)]
 struct GenerationConfig {
     #[serde(rename = "responseMimeType")]
     response_mime_type: String,
-    #[serde(rename = "responseSchema", skip_serializing_if = "Option::is_none")]
-    response_schema: Option<Schema>, // Add the schema field here
-    #[serde(rename = "maxOutputTokens", skip_serializing_if = "Option::is_none")]
-    max_output_tokens: Option<i32>, // Add max output tokens to prevent truncation
+    #[serde(rename = "responseSchema")]
+    response_schema: Schema,
+    #[serde(rename = "maxOutputTokens")]
+    max_output_tokens: i32,
 }
 
 #[derive(Serialize, Debug)]
@@ -84,19 +84,16 @@ struct FileData {
 #[derive(Deserialize, Debug)]
 struct GeminiResponse {
     candidates: Vec<Candidate>,
-    // promptFeedback might also be useful
 }
 
 #[derive(Deserialize, Debug)]
 struct Candidate {
     content: ContentResponse,
-    // finishReason, index, safetyRatings etc.
 }
 
 #[derive(Deserialize, Debug)]
 struct ContentResponse {
     parts: Vec<PartResponse>,
-    // role ("model")
 }
 
 #[derive(Deserialize, Debug)]
@@ -139,29 +136,27 @@ pub enum GeminiApiError {
     #[error("Missing environment variable: {0}")]
     MissingEnvVar(String),
     #[error("HTTP request failed: {0}")]
-    HttpRequest(String), // 🔒 SECURITY: Sanitized HTTP error without exposing URLs/keys
+    HttpRequest(String),
     #[error("API returned an error: Status {status}")]
     ApiError {
         status: reqwest::StatusCode,
-        // 🔒 SECURITY: Removed body field to prevent information leakage
     },
     #[error("Failed to deserialize API response: {0}")]
-    Deserialization(String), // 🔒 SECURITY: Sanitized deserialization error
+    Deserialization(String),
     #[error("No valid response candidate found")]
     NoCandidate,
     #[error("Failed to parse structured script from API response")]
-    StructureParsing(String), // 🔒 SECURITY: Sanitized parsing error
+    StructureParsing(String),
     #[error("File upload failed: {0}")]
     FileUpload(String),
+    #[error("File processing timeout")]
+    FileProcessingTimeout,
 }
 
-/// 🔒 SECURITY: Sanitize reqwest errors to prevent API key exposure in URLs
 impl From<reqwest::Error> for GeminiApiError {
     fn from(err: reqwest::Error) -> Self {
-        // Log the actual error server-side for debugging
         tracing::error!("HTTP request error: {}", err);
         
-        // Return sanitized error message without URL/key information
         let sanitized_message = if err.is_timeout() {
             "Request timeout"
         } else if err.is_connect() {
@@ -180,42 +175,266 @@ impl From<reqwest::Error> for GeminiApiError {
     }
 }
 
-/// 🔒 SECURITY: Sanitize serde_json errors to prevent data exposure
 impl From<serde_json::Error> for GeminiApiError {
     fn from(err: serde_json::Error) -> Self {
-        // Log the actual error server-side for debugging
         tracing::error!("JSON deserialization error: {}", err);
-        
-        // Return sanitized error message
         GeminiApiError::Deserialization("JSON format error".to_string())
     }
 }
 
-// --- API Client Function ---
+// --- Schema Definitions ---
 
-// Load the prompt template at compile time
-// Path is relative to the current file (gemini_api.rs)
-const SCRIPT_ANALYSIS_PROMPT_TEMPLATE: &str = include_str!("../prompts/script_analysis.prompt");
+/// Creates a comprehensive JSON schema for theater script analysis
+fn create_script_analysis_schema() -> Schema {
+    // Content element schema for individual script components
+    let content_element_schema = Schema {
+        schema_type: "object".to_string(),
+        description: Some("Individual script content element".to_string()),
+        properties: Some({
+            let mut props = HashMap::new();
+            
+            // Required type field
+            props.insert("type".to_string(), Schema {
+                schema_type: "string".to_string(),
+                description: Some("Type of script element".to_string()),
+                enum_values: Some(vec![
+                    "dialogue".to_string(),
+                    "monologue".to_string(),
+                    "stage_direction".to_string(),
+                    "joint_dialogue".to_string(),
+                    "reading".to_string(),
+                ]),
+                ..Default::default()
+            });
+            
+            // Page number (required)
+            props.insert("page_number".to_string(), Schema {
+                schema_type: "integer".to_string(),
+                description: Some("Page number in original PDF".to_string()),
+                ..Default::default()
+            });
+            
+            // Scene number (optional)
+            props.insert("scene_number".to_string(), Schema {
+                schema_type: "string".to_string(),
+                description: Some("Scene or section number (e.g., '1', '2', 'PROLOG', 'ACT I')".to_string()),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            // Scene title (optional)
+            props.insert("scene_title".to_string(), Schema {
+                schema_type: "string".to_string(),
+                description: Some("Scene title or name if available".to_string()),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            // Speaker (for dialogue/monologue)
+            props.insert("speaker".to_string(), Schema {
+                schema_type: "string".to_string(),
+                description: Some("Character or speaker name".to_string()),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            // Line (for dialogue)
+            props.insert("line".to_string(), Schema {
+                schema_type: "string".to_string(),
+                description: Some("Spoken dialogue text".to_string()),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            // Lines (for monologue)
+            props.insert("lines".to_string(), Schema {
+                schema_type: "array".to_string(),
+                description: Some("Array of spoken text lines".to_string()),
+                items: Some(Box::new(Schema {
+                    schema_type: "string".to_string(),
+                    ..Default::default()
+                })),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            // Description (for stage directions)
+            props.insert("description".to_string(), Schema {
+                schema_type: "string".to_string(),
+                description: Some("Stage direction description".to_string()),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            // Speakers (for joint dialogue)
+            props.insert("speakers".to_string(), Schema {
+                schema_type: "array".to_string(),
+                description: Some("Multiple speakers for joint dialogue".to_string()),
+                items: Some(Box::new(Schema {
+                    schema_type: "string".to_string(),
+                    ..Default::default()
+                })),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            // Reading text and metadata
+            props.insert("reading_text".to_string(), Schema {
+                schema_type: "string".to_string(),
+                description: Some("Text being read aloud".to_string()),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            props.insert("source".to_string(), Schema {
+                schema_type: "string".to_string(),
+                description: Some("Source of the reading".to_string()),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            props.insert("language".to_string(), Schema {
+                schema_type: "string".to_string(),
+                description: Some("Language if different from main script".to_string()),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            props
+        }),
+        required: Some(vec!["type".to_string(), "page_number".to_string()]),
+        ..Default::default()
+    };
+    
+    // Section schema
+    let section_schema = Schema {
+        schema_type: "object".to_string(),
+        description: Some("Script section (act, scene, etc.)".to_string()),
+        properties: Some({
+            let mut props = HashMap::new();
+            
+            props.insert("section_number".to_string(), Schema {
+                schema_type: "string".to_string(),
+                description: Some("Section number or identifier".to_string()),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            props.insert("title".to_string(), Schema {
+                schema_type: "string".to_string(),
+                description: Some("Section title".to_string()),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            props.insert("participants".to_string(), Schema {
+                schema_type: "array".to_string(),
+                description: Some("Characters appearing in this section".to_string()),
+                items: Some(Box::new(Schema {
+                    schema_type: "string".to_string(),
+                    ..Default::default()
+                })),
+                ..Default::default()
+            });
+            
+            props.insert("setting_note".to_string(), Schema {
+                schema_type: "string".to_string(),
+                description: Some("Setting or location description".to_string()),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            props.insert("content".to_string(), Schema {
+                schema_type: "array".to_string(),
+                description: Some("Content elements in this section".to_string()),
+                items: Some(Box::new(content_element_schema)),
+                ..Default::default()
+            });
+            
+            props
+        }),
+        required: Some(vec!["content".to_string()]),
+        ..Default::default()
+    };
+    
+    // Main script schema
+    Schema {
+        schema_type: "object".to_string(),
+        description: Some("Complete theater script analysis".to_string()),
+        properties: Some({
+            let mut props = HashMap::new();
+            
+            props.insert("title".to_string(), Schema {
+                schema_type: "string".to_string(),
+                description: Some("Main script title".to_string()),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            props.insert("subtitle".to_string(), Schema {
+                schema_type: "string".to_string(),
+                description: Some("Script subtitle".to_string()),
+                nullable: Some(true),
+                ..Default::default()
+            });
+            
+            props.insert("adaptation_by".to_string(), Schema {
+                schema_type: "array".to_string(),
+                description: Some("Authors or adaptors".to_string()),
+                items: Some(Box::new(Schema {
+                    schema_type: "string".to_string(),
+                    ..Default::default()
+                })),
+                ..Default::default()
+            });
+            
+            props.insert("sections".to_string(), Schema {
+                schema_type: "array".to_string(),
+                description: Some("Script sections".to_string()),
+                items: Some(Box::new(section_schema)),
+                ..Default::default()
+            });
+            
+            props
+        }),
+        required: Some(vec![
+            "title".to_string(),
+            "adaptation_by".to_string(),
+            "sections".to_string()
+        ]),
+        ..Default::default()
+    }
+}
 
-/// Uploads a DOCX file to Gemini Files API and returns the file URI.
-///
-/// # Arguments
-/// * `http_client` - A reqwest::Client instance.
-/// * `docx_bytes` - The DOCX file content as bytes.
-/// * `filename` - The original filename for display purposes.
-///
-/// # Returns
-/// * `Ok(String)` containing the file URI on success.
-/// * `Err(GeminiApiError)` if upload fails.
-pub async fn upload_docx_to_gemini(
+impl Default for Schema {
+    fn default() -> Self {
+        Schema {
+            schema_type: "string".to_string(),
+            description: None,
+            format: None,
+            nullable: None,
+            enum_values: None,
+            items: None,
+            properties: None,
+            required: None,
+        }
+    }
+}
+
+// --- API Functions ---
+
+/// Upload a PDF file to Gemini Files API for processing
+pub async fn upload_pdf_to_gemini(
     http_client: &Client,
-    docx_bytes: &[u8],
+    pdf_bytes: &[u8],
     filename: &str,
 ) -> Result<UploadedFile, GeminiApiError> {
     let api_key = env::var(GEMINI_API_KEY_VAR)
         .map_err(|_| GeminiApiError::MissingEnvVar(GEMINI_API_KEY_VAR.to_string()))?;
 
-    // Step 1: Initiate resumable upload
+    tracing::info!("Uploading PDF to Gemini: {} ({} bytes)", filename, pdf_bytes.len());
+
+    // Step 1: Initiate resumable upload for PDF
     let metadata = FileUploadMetadata {
         file: FileMetadata {
             display_name: filename.to_string(),
@@ -227,8 +446,8 @@ pub async fn upload_docx_to_gemini(
         .query(&[("key", &api_key)])
         .header("X-Goog-Upload-Protocol", "resumable")
         .header("X-Goog-Upload-Command", "start")
-        .header("X-Goog-Upload-Header-Content-Length", docx_bytes.len().to_string())
-        .header("X-Goog-Upload-Header-Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        .header("X-Goog-Upload-Header-Content-Length", pdf_bytes.len().to_string())
+        .header("X-Goog-Upload-Header-Content-Type", "application/pdf")
         .header("Content-Type", "application/json")
         .json(&metadata)
         .send()
@@ -237,7 +456,6 @@ pub async fn upload_docx_to_gemini(
     if !initiate_response.status().is_success() {
         let status = initiate_response.status();
         let body = initiate_response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
-        // 🔒 SECURITY: Log detailed error server-side but return sanitized message
         tracing::error!("Upload initiation failed with status: {}, body: {}", status, body);
         return Err(GeminiApiError::ApiError { status });
     }
@@ -249,91 +467,85 @@ pub async fn upload_docx_to_gemini(
         .and_then(|h| h.to_str().ok())
         .ok_or_else(|| GeminiApiError::FileUpload("No upload URL in response headers".to_string()))?;
 
-    // Step 2: Upload the actual file content
+    // Step 2: Upload the PDF file content
     let upload_response = http_client
         .put(upload_url)
-        .header("Content-Length", docx_bytes.len().to_string())
+        .header("Content-Length", pdf_bytes.len().to_string())
         .header("X-Goog-Upload-Offset", "0")
         .header("X-Goog-Upload-Command", "upload, finalize")
-        .body(docx_bytes.to_vec())
+        .body(pdf_bytes.to_vec())
         .send()
         .await?;
 
     if !upload_response.status().is_success() {
         let status = upload_response.status();
         let body = upload_response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
-        // 🔒 SECURITY: Log detailed error server-side but return sanitized message
         tracing::error!("File upload failed with status: {}, body: {}", status, body);
         return Err(GeminiApiError::ApiError { status });
     }
 
     let upload_result: FileUploadResponse = upload_response.json().await?;
+    tracing::info!("Successfully uploaded PDF to Gemini: {}", upload_result.file.uri);
+    
     Ok(upload_result.file)
 }
 
-/// Extracts valid JSON from a response that might have trailing text.
-///
-/// Gemini sometimes returns valid JSON followed by additional text. This function
-/// finds the JSON portion by tracking brace balance.
-fn extract_valid_json(text: &str) -> Result<String, GeminiApiError> {
-    let text = text.trim();
+/// Wait for file to be processed by Gemini
+async fn wait_for_file_processing(
+    http_client: &Client,
+    file_name: &str,
+    max_wait_seconds: u64,
+) -> Result<(), GeminiApiError> {
+    let api_key = env::var(GEMINI_API_KEY_VAR)
+        .map_err(|_| GeminiApiError::MissingEnvVar(GEMINI_API_KEY_VAR.to_string()))?;
     
-    // Find the start of JSON (first '{')
-    let start_pos = text.find('{').ok_or_else(|| {
-        GeminiApiError::StructureParsing("No JSON object found in response".to_string())
-    })?;
+    let file_info_url = format!("https://generativelanguage.googleapis.com/v1beta/{}", file_name);
+    let start_time = std::time::Instant::now();
     
-    // Track brace balance to find the end of the JSON object
-    let mut brace_count = 0;
-    let mut in_string = false;
-    let mut escape_next = false;
-    let mut end_pos = start_pos;
-    
-    for (i, ch) in text[start_pos..].char_indices() {
-        let actual_pos = start_pos + i;
-        
-        if escape_next {
-            escape_next = false;
-            continue;
+    loop {
+        if start_time.elapsed().as_secs() > max_wait_seconds {
+            return Err(GeminiApiError::FileProcessingTimeout);
         }
         
-        match ch {
-            '\\' if in_string => escape_next = true,
-            '"' => in_string = !in_string,
-            '{' if !in_string => {
-                brace_count += 1;
-            },
-            '}' if !in_string => {
-                brace_count -= 1;
-                if brace_count == 0 {
-                    end_pos = actual_pos + 1; // Include the closing brace
-                    break;
+        let response = http_client
+            .get(&file_info_url)
+            .query(&[("key", &api_key)])
+            .send()
+            .await?;
+            
+        if response.status().is_success() {
+            let file_info: serde_json::Value = response.json().await?;
+            if let Some(state) = file_info.get("state").and_then(|s| s.as_str()) {
+                match state {
+                    "ACTIVE" => {
+                        tracing::info!("File processing complete: {}", file_name);
+                        return Ok(());
+                    }
+                    "PROCESSING" => {
+                        tracing::debug!("File still processing: {}", file_name);
+                        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+                        continue;
+                    }
+                    "FAILED" => {
+                        return Err(GeminiApiError::FileUpload("File processing failed".to_string()));
+                    }
+                    _ => {
+                        tracing::warn!("Unknown file state: {}", state);
+                        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+                        continue;
+                    }
                 }
-            },
-            _ => {}
+            }
         }
+        
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
     }
-    
-    if brace_count != 0 {
-        return Err(GeminiApiError::StructureParsing("Unbalanced braces in JSON".to_string()));
-    }
-    
-    Ok(text[start_pos..end_pos].to_string())
 }
 
-/// Calls the Gemini API to parse a DOCX file directly.
-///
-/// # Arguments
-/// * `http_client` - A reqwest::Client instance.
-/// * `docx_bytes` - The DOCX file content as bytes.
-/// * `filename` - The original filename for context.
-///
-/// # Returns
-/// * `Ok(ParsedScript)` containing the structured data parsed by the AI.
-/// * `Err(GeminiApiError)` if any step fails.
-pub async fn call_gemini_for_docx_parsing(
+/// Analyze a PDF theater script using Gemini with structured output
+pub async fn analyze_pdf_script(
     http_client: &Client,
-    docx_bytes: &[u8],
+    pdf_bytes: &[u8],
     filename: &str,
 ) -> Result<ParsedScript, GeminiApiError> {
     let api_key = env::var(GEMINI_API_KEY_VAR)
@@ -341,23 +553,52 @@ pub async fn call_gemini_for_docx_parsing(
     let api_url = env::var(GEMINI_API_URL_VAR)
         .map_err(|_| GeminiApiError::MissingEnvVar(GEMINI_API_URL_VAR.to_string()))?;
 
-    // Upload the DOCX file first
-    let uploaded_file = upload_docx_to_gemini(http_client, docx_bytes, filename).await?;
+    tracing::info!("Starting PDF script analysis for: {}", filename);
 
-    // Wait for file processing if needed
-    // TODO: Add polling logic for file state if required
+    // Upload PDF to Gemini
+    let uploaded_file = upload_pdf_to_gemini(http_client, pdf_bytes, filename).await?;
     
-    // Create prompt that specifically asks for page number information
-    let enhanced_prompt = format!(
-        "Analyze this theater script DOCX file and extract its structure. Pay special attention to page breaks and page numbers in the original document. {}",
-        SCRIPT_ANALYSIS_PROMPT_TEMPLATE.replace("{}", "the uploaded DOCX file")
+    // Wait for file processing
+    wait_for_file_processing(http_client, &uploaded_file.name, 120).await?;
+
+    // Create analysis prompt
+    let analysis_prompt = format!(
+        "Analyze this theater script PDF and extract its complete structure. 
+
+CRITICAL REQUIREMENTS:
+- Extract ALL dialogue text, not just speaker names
+- Include accurate page numbers from the PDF
+- Identify all speakers, scenes, and stage directions
+- Extract scene numbers and titles from stage directions (e.g., '1/ PROLOG', '2/ DER TOD')
+- Preserve the original order and structure
+- For dialogue: include the full spoken text
+- For stage directions: capture complete descriptions AND extract scene info
+- Scene numbers and titles should be extracted precisely
+
+SCENE EXTRACTION RULES:
+- When you see patterns like '1/ PROLOG', '2/ DER TOD', 'ACT I', 'SCENE 2', extract:
+  - scene_number: '1', '2', 'ACT I', 'SCENE 2'
+  - scene_title: 'PROLOG', 'DER TOD', etc.
+- Apply scene_number and scene_title to ALL content elements within that scene
+- Continue using the same scene info until a new scene marker appears
+
+The PDF contains a theater script. Please provide a comprehensive analysis with:
+1. Title and subtitle
+2. All sections (acts, scenes) with proper numbering
+3. Complete dialogue with speaker names and full text
+4. Stage directions with descriptions AND scene markers
+5. Accurate page numbers for all elements
+6. Scene numbers and titles for all content elements
+
+Filename: {}",
+        filename
     );
 
-    // Configure for JSON output with enhanced prompt
+    // Configure structured output
     let generation_config = GenerationConfig {
         response_mime_type: "application/json".to_string(),
-        response_schema: None, // TEMPORARILY DISABLE SCHEMA to test if it's causing the issue
-        max_output_tokens: Some(32768), // Increase to maximum supported by Gemini 1.5 Flash (32K tokens) to prevent truncation
+        response_schema: create_script_analysis_schema(),
+        max_output_tokens: 32768, // Maximum tokens for comprehensive analysis
     };
 
     let request_payload = GeminiRequest {
@@ -369,258 +610,48 @@ pub async fn call_gemini_for_docx_parsing(
                         file_uri: uploaded_file.uri,
                     }
                 },
-                Part::Text { text: enhanced_prompt },
+                Part::Text { text: analysis_prompt },
             ],
         }],
-        generation_config: Some(generation_config),
+        generation_config,
     };
 
+    tracing::info!("Sending PDF analysis request to Gemini API");
     let response = http_client
         .post(&api_url)
-        .query(&[("key", api_key)]) // API key as query parameter
+        .query(&[("key", api_key)])
         .json(&request_payload)
+        .timeout(std::time::Duration::from_secs(300)) // 5 minute timeout
         .send()
-        .await?; // 🔒 SECURITY: Error sanitization now handled by From<reqwest::Error> impl
+        .await?;
 
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
-        // 🔒 SECURITY: Log detailed error server-side but return sanitized message
         tracing::error!("Gemini API request failed with status: {}, body: {}", status, body);
         return Err(GeminiApiError::ApiError { status });
     }
 
-    let response_body = response.json::<GeminiResponse>().await?;
+    let response_body: GeminiResponse = response.json().await?;
 
-    let model_response_text_raw = response_body
+    let model_response_text = response_body
         .candidates
         .get(0)
         .and_then(|c| c.content.parts.get(0))
         .map(|p| p.text.trim())
         .ok_or(GeminiApiError::NoCandidate)?;
 
-    let model_response_text = model_response_text_raw
-        .strip_prefix("```json")
-        .unwrap_or(model_response_text_raw)
-        .strip_suffix("```")
-        .unwrap_or(model_response_text_raw);
+    tracing::info!("Received response from Gemini API ({} chars)", model_response_text.len());
+    tracing::debug!("Gemini response preview: {}", &model_response_text[..std::cmp::min(500, model_response_text.len())]);
 
-    // Extract valid JSON from the response (handle trailing characters)
-    let json_text = extract_valid_json(model_response_text)?;
-    
-    // Parse the response into our ParsedScript structure
-    let parsed_script: ParsedScript = serde_json::from_str(&json_text)
-        .map_err(|_| {
-            // 🔒 SECURITY: Sanitize error messages to prevent data exposure
-            tracing::error!("JSON parsing error occurred during DOCX script parsing");
-            GeminiApiError::StructureParsing("Failed to parse JSON response".to_string())
+    // Parse structured JSON response directly (no need for cleaning since we enforced schema)
+    let parsed_script: ParsedScript = serde_json::from_str(model_response_text)
+        .map_err(|e| {
+            tracing::error!("Failed to parse structured JSON response: {}", e);
+            tracing::error!("Response content: {}", model_response_text);
+            GeminiApiError::StructureParsing("Structured output parsing failed".to_string())
         })?;
 
-    Ok(parsed_script)
-}
-
-/// Calls the Gemini API to parse the script text (legacy function for backward compatibility).
-///
-/// # Arguments
-/// * `http_client` - A reqwest::Client instance.
-/// * `script_text` - The plain text extracted from the DOCX file.
-///
-/// # Returns
-/// * `Ok(ParsedScript)` containing the structured data parsed by the AI.
-/// * `Err(GeminiApiError)` if any step fails.
-pub async fn call_gemini_for_parsing(
-    script_text: &str,
-    http_client: &Client,
-) -> Result<ParsedScript, GeminiApiError> {
-    let api_key = env::var(GEMINI_API_KEY_VAR)
-        .map_err(|_| GeminiApiError::MissingEnvVar(GEMINI_API_KEY_VAR.to_string()))?;
-    let api_url = env::var(GEMINI_API_URL_VAR)
-        .map_err(|_| GeminiApiError::MissingEnvVar(GEMINI_API_URL_VAR.to_string()))?;
-
-    // Format the prompt using the loaded template and the script text
-    let prompt = SCRIPT_ANALYSIS_PROMPT_TEMPLATE.replace("{}", script_text);
-
-    // Create JSON schema for structured output with page numbers
-    let content_schema = Schema {
-        schema_type: "object".to_string(),
-        description: Some("Script content element".to_string()),
-        format: None,
-        nullable: None,
-        enum_values: None,
-        items: None,
-        properties: Some({
-            let mut props = HashMap::new();
-            props.insert("type".to_string(), Schema {
-                schema_type: "string".to_string(),
-                description: Some("Type of content element".to_string()),
-                format: None,
-                nullable: None,
-                enum_values: Some(vec![
-                    "dialogue".to_string(),
-                    "monologue".to_string(), 
-                    "stage_direction".to_string(),
-                    "joint_dialogue".to_string(),
-                    "reading".to_string()
-                ]),
-                items: None,
-                properties: None,
-                required: None,
-            });
-            props.insert("page_number".to_string(), Schema {
-                schema_type: "integer".to_string(),
-                description: Some("Page number where this content appears".to_string()),
-                format: None,
-                nullable: None,
-                enum_values: None,
-                items: None,
-                properties: None,
-                required: None,
-            });
-            props.insert("speaker".to_string(), Schema {
-                schema_type: "string".to_string(),
-                description: Some("Speaker name for dialogue/monologue".to_string()),
-                format: None,
-                nullable: Some(true),
-                enum_values: None,
-                items: None,
-                properties: None,
-                required: None,
-            });
-            props.insert("line".to_string(), Schema {
-                schema_type: "string".to_string(),
-                description: Some("Dialogue line".to_string()),
-                format: None,
-                nullable: Some(true),
-                enum_values: None,
-                items: None,
-                properties: None,
-                required: None,
-            });
-            props.insert("description".to_string(), Schema {
-                schema_type: "string".to_string(),
-                description: Some("Stage direction description".to_string()),
-                format: None,
-                nullable: Some(true),
-                enum_values: None,
-                items: None,
-                properties: None,
-                required: None,
-            });
-            props
-        }),
-        required: Some(vec!["type".to_string(), "page_number".to_string()]),
-    };
-
-    let response_schema = Schema {
-        schema_type: "object".to_string(),
-        description: Some("Parsed theater script".to_string()),
-        format: None,
-        nullable: None,
-        enum_values: None,
-        items: None,
-        properties: Some({
-            let mut props = HashMap::new();
-            props.insert("title".to_string(), Schema {
-                schema_type: "string".to_string(),
-                description: Some("Script title".to_string()),
-                format: None,
-                nullable: None,
-                enum_values: None,
-                items: None,
-                properties: None,
-                required: None,
-            });
-            props.insert("sections".to_string(), Schema {
-                schema_type: "array".to_string(),
-                description: Some("Script sections".to_string()),
-                format: None,
-                nullable: None,
-                enum_values: None,
-                items: Some(Box::new(Schema {
-                    schema_type: "object".to_string(),
-                    description: Some("Script section".to_string()),
-                    format: None,
-                    nullable: None,
-                    enum_values: None,
-                    items: None,
-                    properties: Some({
-                        let mut section_props = HashMap::new();
-                        section_props.insert("content".to_string(), Schema {
-                            schema_type: "array".to_string(),
-                            description: Some("Section content".to_string()),
-                            format: None,
-                            nullable: None,
-                            enum_values: None,
-                            items: Some(Box::new(content_schema.clone())),
-                            properties: None,
-                            required: None,
-                        });
-                        section_props
-                    }),
-                    required: Some(vec!["content".to_string()]),
-                })),
-                properties: None,
-                required: None,
-            });
-            props
-        }),
-        required: Some(vec!["title".to_string(), "sections".to_string()]),
-    };
-
-    // Configure for JSON output with structured schema
-    let generation_config = GenerationConfig {
-        response_mime_type: "application/json".to_string(),
-        response_schema: Some(response_schema),
-        max_output_tokens: Some(32768), // Increase to maximum supported by Gemini 1.5 Flash (32K tokens) to prevent truncation
-    };
-
-    let request_payload = GeminiRequest {
-        contents: vec![Content {
-            parts: vec![Part::Text { text: prompt }], // Send the formatted prompt
-        }],
-        generation_config: Some(generation_config), // Add the config here
-    };
-
-    let response = http_client
-        .post(&api_url)
-        .query(&[("key", api_key)]) // API key as query parameter
-        .json(&request_payload)
-        .send()
-        .await?; // 🔒 SECURITY: Error sanitization now handled by From<reqwest::Error> impl
-
-    if !response.status().is_success() {
-        let status = response.status();
-        let body = response.text().await.unwrap_or_else(|_| "Failed to read error body".to_string());
-        // 🔒 SECURITY: Log detailed error server-side but return sanitized message
-        tracing::error!("Gemini API request failed with status: {}, body: {}", status, body);
-        return Err(GeminiApiError::ApiError { status });
-    }
-
-    let response_body = response.json::<GeminiResponse>().await?;
-
-    let model_response_text_raw = response_body
-        .candidates
-        .get(0)
-        .and_then(|c| c.content.parts.get(0))
-        .map(|p| p.text.trim())
-        .ok_or(GeminiApiError::NoCandidate)?;
-
-    let model_response_text = model_response_text_raw
-        .strip_prefix("```json")
-        .unwrap_or(model_response_text_raw)
-        .strip_suffix("```")
-        .unwrap_or(model_response_text_raw);
-
-    // Extract valid JSON from the response (handle trailing characters)
-    let json_text = extract_valid_json(model_response_text)?;
-    
-    // Parse the response into our ParsedScript structure
-    let parsed_script: ParsedScript = serde_json::from_str(&json_text)
-        .map_err(|_| {
-            // 🔒 SECURITY: Sanitize error messages to prevent data exposure
-            tracing::error!("JSON parsing error occurred during text script parsing");
-            GeminiApiError::StructureParsing("Failed to parse JSON response".to_string())
-        })?;
-
+    tracing::info!("Successfully parsed script with {} sections", parsed_script.sections.len());
     Ok(parsed_script)
 } 

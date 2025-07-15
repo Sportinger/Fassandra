@@ -91,11 +91,14 @@ async fn create_script_from_parsed_handler(
 /// Handles script file upload and parsing via Gemini API.
 ///
 /// Processes multipart form data and delegates to ScriptApplicationService.
+/// Requires authentication to prevent abuse.
 #[axum::debug_handler]
 async fn upload_and_parse_script(
     State(services): State<ScriptServices>,
+    AuthUser { user_id }: AuthUser,
     mut multipart: Multipart,
 ) -> Result<Json<ParsedScript>, impl IntoResponse> {
+    info!(user_id = %user_id, "Starting PDF script upload and analysis");
     // Extract file from multipart form
     while let Some(field) = multipart.next_field().await.map_err(|e| {
         error!("Failed to read multipart field: {}", e);

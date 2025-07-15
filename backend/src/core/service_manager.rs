@@ -3,7 +3,7 @@ use sqlx::PgPool;
 use tokio::sync::mpsc;
 use tokio::time::Duration;
 use tokio::task::JoinHandle;
-use tracing::{info, error};
+// Tracing imports removed - not currently used
 use anyhow::Result;
 
 use crate::services::persistence_event::YjsPersistenceEvent;

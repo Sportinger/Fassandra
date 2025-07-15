@@ -43,13 +43,25 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
               dialogueText = element.line || '';
             } else if (blockType === 'monologue') {
               speakerName = element.speaker || 'Unknown Speaker';
-              dialogueText = (element.lines || []).join('\n');
+              // 🔧 FIX: Check both new and old field structures
+              dialogueText = element.line || (element.lines && Array.isArray(element.lines) ? element.lines.join('\n') : '') || '';
             } else if (blockType === 'joint_dialogue') {
-              speakerName = (element.speakers || []).join('/');
+              // 🔧 FIX: Check both new and old field structures for speakers
+              if (element.speaker && typeof element.speaker === 'string') {
+                // New format: single speaker string with multiple names separated by newlines
+                speakerName = element.speaker.split('\n').filter((s: string) => s.trim()).join('/');
+              } else if (element.speakers && Array.isArray(element.speakers)) {
+                // Old format: array of speaker names
+                speakerName = element.speakers.join('/');
+              } else {
+                speakerName = 'Multiple Speakers';
+              }
               dialogueText = element.line || '';
             } else if (blockType === 'reading') {
               speakerName = element.speaker || 'Reader';
-              dialogueText = `(Reading) ${element.reading_text || ''}`;
+              // 🔧 FIX: Check multiple possible text fields
+              const readingText = element.reading_text || element.line || element.description || '';
+              dialogueText = readingText ? `(Reading) ${readingText}` : '(Reading)';
             }
             
             console.log(`[Content Converter] Creating dialogue block - Speaker: "${speakerName}", Text: "${dialogueText}"`);
@@ -78,13 +90,19 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
         }
         
         case 'stage_direction': {
-          // Parse the JSON content
-          const element = JSON.parse(contentJsonString);
-          const description = element.description || element.text || '';
-          console.log(`[Content Converter] Creating stage direction: "${description}"`);
-          
-          // Create paragraph for stage direction
-          return `<p><em>(${description})</em></p>`;
+          try {
+            // Parse the JSON content
+            const element = JSON.parse(contentJsonString);
+            const description = element.description || element.text || '';
+            console.log(`[Content Converter] Creating stage direction: "${description}"`);
+            
+            // Create paragraph for stage direction
+            return `<p><em>(${description})</em></p>`;
+          } catch (parseError) {
+            console.error(`[Content Converter] Failed to parse stage_direction JSON, falling back to text:`, contentJsonString, parseError);
+            // Fallback: treat as plain text stage direction
+            return `<p><em>(${contentJsonString})</em></p>`;
+          }
         }
         
         case 'paragraph': {

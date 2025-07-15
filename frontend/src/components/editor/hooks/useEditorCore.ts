@@ -322,27 +322,43 @@ export const useEditorCore = ({
           setAvailableSpeakers(Array.from(speakers));
           
           debugLog('[Editor] ✅ Content loaded from snapshot successfully');
+          return; // Exit early on success
         } else {
-          debugLog('[Editor] ⚠️ No content snapshot found, falling back to blocks...');
-          
-          // Fallback to blocks if no snapshot exists
-          const scriptData = await getScriptWithBlocks(stableScriptId);
-          
-          if (scriptData.blocks.length > 0) {
-            const content = convertBlocksToTiptapContent(scriptData.blocks);
-            editorInstance.commands.setContent(content);
-            setContentSnapshot(editorInstance.getHTML());
-            
-            const speakers = extractSpeakerNames(content);
-            setAvailableSpeakers(Array.from(speakers));
-            
-            debugLog('[Editor] ✅ Content loaded from blocks fallback');
-          } else {
-            debugLog('[Editor] ⚠️ No content found in either snapshots or blocks');
-          }
+          debugLog('[Editor] ⚠️ Snapshot exists but is empty, falling back to blocks...');
         }
-      } catch (error) {
-        console.error('[Editor] ❌ Failed to load initial content:', error);
+      } catch (error: any) {
+        // 🔧 FIX: Handle 404 errors gracefully and fall back to blocks
+        if (error.status === 404 || error.message?.includes('404')) {
+          debugLog('[Editor] ⚠️ No content snapshot found (404), falling back to blocks...');
+        } else {
+          console.error('[Editor] ❌ Error loading snapshot:', error);
+          debugLog('[Editor] ⚠️ Snapshot error, falling back to blocks...');
+        }
+      }
+
+      // 🔧 FIX: Fallback logic moved outside try-catch to always execute when snapshot fails
+      try {
+        debugLog('[Editor] 📄 Loading content from blocks as fallback...');
+        const scriptData = await getScriptWithBlocks(stableScriptId);
+        
+        if (scriptData.blocks.length > 0) {
+          debugLog(`[Editor] 📄 Found ${scriptData.blocks.length} blocks, converting to content...`);
+          const content = convertBlocksToTiptapContent(scriptData.blocks);
+          debugLog(`[Editor] 📄 Converted blocks to ${content.length} chars of content`);
+          
+          editorInstance.commands.setContent(content);
+          setContentSnapshot(editorInstance.getHTML());
+          
+          const speakers = extractSpeakerNames(content);
+          setAvailableSpeakers(Array.from(speakers));
+          
+          debugLog('[Editor] ✅ Content loaded from blocks fallback successfully');
+        } else {
+          debugLog('[Editor] ⚠️ No blocks found either - script appears to be empty');
+          setErrorMessage('Script appears to be empty');
+        }
+      } catch (blockError) {
+        console.error('[Editor] ❌ Failed to load blocks as fallback:', blockError);
         setErrorMessage('Failed to load script content');
       }
     };

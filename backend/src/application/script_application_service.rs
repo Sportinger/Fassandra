@@ -6,19 +6,15 @@
 use std::sync::Arc;
 use uuid::Uuid;
 use serde::Serialize;
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use tracing::{info, error, warn};
-use anyhow::{Result, Context};
+use anyhow::Result;
 use crate::error::AppError;
 use crate::models::script::Script;
 use crate::models::block::Block;
-use crate::external::gemini_api::call_gemini_for_parsing;
+use crate::external::gemini_api::analyze_pdf_script;
 use crate::analysis::structs::Script as ParsedScript;
-use crate::analysis::parser::{extract_text_with_pages_from_docx, text_with_pages_to_string_with_page_markers};
-use crate::domain::script_service::{ScriptService, CreateScriptRequest, UpdateScriptRequest, ScriptResponse};
-use crate::repositories::script_repository::{ScriptRepository, PostgresScriptRepository};
-use crate::repositories::user_repository::{UserRepository, PostgresUserRepository};
-use crate::repositories::block_repository::{BlockRepository, PostgresBlockRepository};
+use crate::domain::script_service::ScriptService;
 
 /// Content snapshot data structure
 #[derive(Debug, Serialize)]
@@ -101,50 +97,49 @@ impl ScriptApplicationService {
         for (section_index, section) in parsed_script.sections.iter().enumerate() {
             for (element_index, element) in section.content.iter().enumerate() {
                 tracing::debug!(script_id = %new_script_id, section_index, element_index, "Processing content element for block creation");
-                let (block_type, content_json, page_number) = match element {
-                    crate::analysis::structs::ContentElement::Dialogue(d) => {
-                        ("dialogue", serde_json::to_string(d), d.page_number)
-                    },
-                    crate::analysis::structs::ContentElement::Monologue(m) => {
-                        ("monologue", serde_json::to_string(m), m.page_number)
-                    },
-                    crate::analysis::structs::ContentElement::StageDirection(sd) => {
-                        ("stage_direction", serde_json::to_string(sd), sd.page_number)
-                    },
-                    crate::analysis::structs::ContentElement::JointDialogue(jd) => {
-                        ("joint_dialogue", serde_json::to_string(jd), jd.page_number)
-                    },
-                    crate::analysis::structs::ContentElement::Reading(r) => {
-                        ("reading", serde_json::to_string(r), r.page_number)
-                    },
-                    crate::analysis::structs::ContentElement::Unknown => {
-                        ("unknown", Ok("{}".to_string()), 1) // Default to page 1 for unknown elements
-                    },
-                };
-
-                let content_str = content_json.map_err(|e| {
-                    error!(error = %e, script_id = %new_script_id, section_index, element_index, "Failed to serialize content element");
-                    AppError::Internal(anyhow::anyhow!("Failed to serialize content element"))
+                
+                // Extract metadata using the new helper methods
+                let page_number = element.get_page_number();
+                let scene_number = element.get_scene_number();
+                let scene_title = element.get_scene_title();
+                
+                // Convert to clean content JSON (without metadata)
+                let clean_content_json = element.to_clean_content_json().map_err(|e| {
+                    error!(error = %e, script_id = %new_script_id, section_index, element_index, "Failed to serialize clean content element");
+                    AppError::Internal(anyhow::anyhow!("Failed to serialize clean content element"))
                 })?;
+                
+                // Determine block type
+                let block_type = match element {
+                    crate::analysis::structs::ContentElement::Dialogue(_) => "dialogue",
+                    crate::analysis::structs::ContentElement::Monologue(_) => "monologue",
+                    crate::analysis::structs::ContentElement::StageDirection(_) => "stage_direction",
+                    crate::analysis::structs::ContentElement::JointDialogue(_) => "joint_dialogue",
+                    crate::analysis::structs::ContentElement::Reading(_) => "reading",
+                    crate::analysis::structs::ContentElement::Unknown => "unknown",
+                };
+                
                 let block_created_at = chrono::Utc::now();
                 let block_id = Uuid::new_v4();
 
-                info!(block_id = %block_id, script_id = %new_script_id, block_type = %block_type, page_number, "Inserting block record with AI-provided page number");
-                sqlx::query("INSERT INTO blocks (id, script_id, block_type, content, created_at, block_order, page_number) VALUES ($1, $2, $3, $4, $5, $6, $7)")
+                info!(block_id = %block_id, script_id = %new_script_id, block_type = %block_type, page_number, scene_number = ?scene_number, scene_title = ?scene_title, "Inserting block record with clean JSON content and separate metadata");
+                sqlx::query("INSERT INTO blocks (id, script_id, block_type, content, created_at, block_order, page_number, scene_number, scene_title) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)")
                     .bind(block_id)
                     .bind(new_script_id)
                     .bind(block_type)
-                    .bind(content_str.clone())
+                    .bind(clean_content_json.clone())
                     .bind(block_created_at)
                     .bind((section_index * 1000 + element_index) as i32) // Set proper block order
-                    .bind(page_number) // Use AI-provided page number directly
+                    .bind(page_number) // Store page number in dedicated column
+                    .bind(scene_number.clone()) // Store scene number in dedicated column (clone to avoid move)
+                    .bind(scene_title.clone()) // Store scene title in dedicated column (clone to avoid move)
                     .execute(&mut *tx)
                     .await
                     .map_err(|e| {
-                        error!(error = %e, block_id = %block_id, script_id = %new_script_id, block_type = %block_type, content = %content_str, "Failed to insert block record");
+                        error!(error = %e, block_id = %block_id, script_id = %new_script_id, block_type = %block_type, content = %clean_content_json, "Failed to insert block record");
                         AppError::Db(e)
                     })?;
-                info!(block_id = %block_id, script_id = %new_script_id, page_number, "Block record inserted successfully with AI-provided page number");
+                info!(block_id = %block_id, script_id = %new_script_id, page_number, scene_number = ?scene_number, scene_title = ?scene_title, "Block record inserted successfully with clean JSON content and separate metadata");
             }
         }
 
@@ -161,113 +156,117 @@ impl ScriptApplicationService {
 
     /// Extracts the main title from a potentially long title string.
     /// Takes the first line or first few words to create a clean, short title.
-    fn extract_main_title(raw_title: &str) -> &str {
-        // First, try to get the first line (split by newlines)
+    fn extract_main_title(raw_title: &str) -> String {
+        // Split by newlines and take the first line
         let first_line = raw_title.lines().next().unwrap_or(raw_title);
         
-        // If the first line is still very long, take only the first 5 words
-        let words: Vec<&str> = first_line.split_whitespace().collect();
-        if words.len() > 5 {
-            // Find the position after the 5th word
-            let mut char_count = 0;
-            let mut word_count = 0;
-            for (i, c) in first_line.char_indices() {
-                if c.is_whitespace() {
-                    word_count += 1;
-                    if word_count == 5 {
-                        char_count = i;
-                        break;
-                    }
-                }
-            }
-            if char_count > 0 {
-                &first_line[..char_count]
-            } else {
-                first_line
-            }
+        // If still too long, take first 100 characters
+        if first_line.len() > 100 {
+            format!("{}...", &first_line[..97])
         } else {
-            first_line
+            first_line.trim().to_string()
         }
     }
 
-    /// Uploads and parses a script with comprehensive validation
+    /// Validates file upload for PDF scripts
+    fn validate_pdf_upload(file_data: &[u8], filename: &str, content_type: &str) -> Result<(), AppError> {
+        // File size validation (50MB max)
+        if file_data.len() > 50 * 1024 * 1024 {
+            return Err(AppError::BadRequest("File size exceeds 50MB limit".into()));
+        }
+
+        // Minimum file size (to avoid empty files)
+        if file_data.len() < 1024 {
+            return Err(AppError::BadRequest("File too small to be a valid PDF".into()));
+        }
+
+        // File extension validation
+        if !filename.to_lowercase().ends_with(".pdf") {
+            return Err(AppError::BadRequest("Only PDF files are supported".into()));
+        }
+
+        // MIME type validation
+        let expected_types = [
+            "application/pdf",
+            "application/octet-stream"  // Some browsers use this for PDFs
+        ];
+        if !expected_types.contains(&content_type) {
+            warn!("Unexpected content type for PDF: {}", content_type);
+            // Don't reject based on MIME type alone as it can be unreliable
+        }
+
+        // Basic PDF header validation (PDF files start with %PDF-)
+        if !file_data.starts_with(b"%PDF-") {
+            return Err(AppError::BadRequest("File does not appear to be a valid PDF".into()));
+        }
+
+        Ok(())
+    }
+
+    /// Uploads and analyzes a PDF script using Gemini's structured output
     pub async fn upload_and_parse_script(
         &self,
         file_data: Vec<u8>,
         filename: &str,
         content_type: &str,
     ) -> Result<ParsedScript, AppError> {
-        info!(filename = %filename, "Processing script upload");
+        info!(filename = %filename, size = file_data.len(), "Processing PDF script upload");
 
         // Comprehensive file validation
-        Self::validate_file_upload(&file_data, filename, content_type)?;
+        Self::validate_pdf_upload(&file_data, filename, content_type)?;
 
-        // Extract text with page information
-        let text_with_pages = extract_text_with_pages_from_docx(&file_data)
-            .map_err(|e| {
-                error!("Failed to extract text from DOCX: {}", e);
-                AppError::BadRequest("Invalid or corrupted DOCX file".into())
-            })?;
-
-        info!("Extracted {} text elements with page information", text_with_pages.len());
-
-        // Convert to enhanced text for Gemini processing
-        let enhanced_text = text_with_pages_to_string_with_page_markers(&text_with_pages);
-
-        // Parse via Gemini API
+        // Create HTTP client with extended timeout for file processing
         let http_client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(60))
+            .timeout(std::time::Duration::from_secs(600)) // 10 minutes for PDF processing + analysis
             .build()
             .map_err(|e| {
                 error!("Failed to create HTTP client: {}", e);
                 AppError::Internal(anyhow::anyhow!("Service temporarily unavailable"))
             })?;
 
-        let parsed_script = call_gemini_for_parsing(&enhanced_text, &http_client)
+        info!("Sending PDF to Gemini API for analysis");
+        
+        // Analyze PDF directly with Gemini's structured output
+        let parsed_script = analyze_pdf_script(&http_client, &file_data, filename)
             .await
             .map_err(|e| {
-                error!("Gemini API call failed: {}", e);
-                AppError::Internal(anyhow::anyhow!("Script parsing failed. Please try again."))
+                error!("PDF analysis failed: {}", e);
+                match e {
+                    crate::external::GeminiApiError::MissingEnvVar(var) => {
+                        AppError::Internal(anyhow::anyhow!("Service configuration error: {}", var))
+                    }
+                    crate::external::GeminiApiError::HttpRequest(msg) => {
+                        AppError::Internal(anyhow::anyhow!("Analysis service error: {}", msg))
+                    }
+                    crate::external::GeminiApiError::ApiError { status } => {
+                        AppError::Internal(anyhow::anyhow!("Analysis failed with status: {}", status))
+                    }
+                    crate::external::GeminiApiError::FileProcessingTimeout => {
+                        AppError::BadRequest("PDF processing timeout - file may be too complex or corrupted".into())
+                    }
+                    crate::external::GeminiApiError::StructureParsing(msg) => {
+                        AppError::Internal(anyhow::anyhow!("Failed to parse analysis results: {}", msg))
+                    }
+                    _ => {
+                        AppError::Internal(anyhow::anyhow!("PDF analysis failed"))
+                    }
+                }
             })?;
 
-        info!("Successfully parsed script with {} sections", parsed_script.sections.len());
-        Ok(parsed_script)
+        info!(
+            sections = parsed_script.sections.len(),
+            title = ?parsed_script.title,
+            "Successfully analyzed PDF script"
+        );
+
+        // Set source filename for tracking
+        let mut result_script = parsed_script;
+        result_script.source_filename = Some(filename.to_string());
+
+        Ok(result_script)
     }
 
-    /// Lists all scripts accessible to a user (owned, shared, or public)
-    pub async fn list_user_scripts(&self, user_id: Uuid) -> Result<Vec<Script>, AppError> {
-        info!(user_id = %user_id, "Listing user scripts");
-
-        // User validation is handled by authentication middleware
-        // Business logic doesn't need separate user existence validation
-
-        let scripts = sqlx::query_as::<_, Script>(
-            r#"
-            SELECT DISTINCT s.id, s.title, s.created_by, s.created_at, s.is_public, s.thumbnail 
-            FROM scripts s
-            WHERE s.created_by = $1
-               OR s.is_public = TRUE
-               OR EXISTS (
-                   SELECT 1 FROM script_shares ss 
-                   WHERE ss.script_id = s.id 
-                   AND ss.shared_with_user_id = $1
-               )
-            ORDER BY s.created_at DESC
-            "#
-        )
-        .bind(user_id)
-        .fetch_all(self.pool.as_ref())
-        .await
-        .map_err(|e| {
-            error!("Failed to fetch scripts for user {}: {}", user_id, e);
-            AppError::Internal(anyhow::anyhow!("Failed to fetch scripts"))
-        })?;
-
-        info!(user_id = %user_id, script_count = scripts.len(), "Successfully listed user scripts");
-        Ok(scripts)
-    }
-
-    /// Creates a new script with validation
+    /// Creates a simple script with just a title
     pub async fn create_script(&self, title: String, user_id: Uuid) -> Result<Script, AppError> {
         info!(user_id = %user_id, title = %title, "Creating new script");
 
@@ -305,7 +304,12 @@ impl ScriptApplicationService {
     }
 
     /// Updates a script with ownership verification
-    pub async fn update_script(&self, script_id: Uuid, title: String, user_id: Uuid) -> Result<Script, AppError> {
+    pub async fn update_script(
+        &self,
+        script_id: Uuid,
+        title: String,
+        user_id: Uuid,
+    ) -> Result<Script, AppError> {
         info!(script_id = %script_id, user_id = %user_id, "Updating script");
 
         // Input validation
@@ -316,18 +320,17 @@ impl ScriptApplicationService {
             return Err(AppError::BadRequest("Script title too long".to_string()));
         }
 
-        // Check ownership through domain service
-        if !self.check_script_ownership(script_id, user_id).await? {
-            warn!("User {} attempted to update script {} without ownership", user_id, script_id);
-            return Err(AppError::Forbidden("You can only update scripts you own".to_string()));
+        // Check ownership/access
+        if !self.check_script_access(script_id, user_id).await? {
+            return Err(AppError::Forbidden("Access denied".to_string()));
         }
 
         let script = sqlx::query_as::<_, Script>(
-            "UPDATE scripts SET title = $1 WHERE id = $2 
+            "UPDATE scripts SET title = $2 WHERE id = $1 
              RETURNING id, title, created_by, created_at, is_public, thumbnail"
         )
-        .bind(title.trim())
         .bind(script_id)
+        .bind(title.trim())
         .fetch_one(self.pool.as_ref())
         .await
         .map_err(|e| {
@@ -343,23 +346,46 @@ impl ScriptApplicationService {
     pub async fn delete_script(&self, script_id: Uuid, user_id: Uuid) -> Result<(), AppError> {
         info!(script_id = %script_id, user_id = %user_id, "Deleting script");
 
-        // Check ownership through domain service
-        if !self.check_script_ownership(script_id, user_id).await? {
-            warn!("User {} attempted to delete script {} without ownership", user_id, script_id);
-            return Err(AppError::Forbidden("You can only delete scripts you own".to_string()));
+        // Check ownership/access
+        if !self.check_script_access(script_id, user_id).await? {
+            return Err(AppError::Forbidden("Access denied".to_string()));
         }
 
-        sqlx::query("DELETE FROM scripts WHERE id = $1")
+        let rows_affected = sqlx::query("DELETE FROM scripts WHERE id = $1")
             .bind(script_id)
             .execute(self.pool.as_ref())
             .await
             .map_err(|e| {
                 error!("Failed to delete script {}: {}", script_id, e);
                 AppError::Internal(anyhow::anyhow!("Failed to delete script"))
-            })?;
+            })?
+            .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(AppError::NotFound("Script not found".to_string()));
+        }
 
         info!(script_id = %script_id, user_id = %user_id, "Successfully deleted script");
         Ok(())
+    }
+
+    /// Lists all scripts for a user
+    pub async fn list_user_scripts(&self, user_id: Uuid) -> Result<Vec<Script>, AppError> {
+        let scripts = sqlx::query_as::<_, Script>(
+            "SELECT id, title, created_by, created_at, is_public, thumbnail 
+             FROM scripts 
+             WHERE created_by = $1 
+             ORDER BY created_at DESC"
+        )
+        .bind(user_id)
+        .fetch_all(self.pool.as_ref())
+        .await
+        .map_err(|e| {
+            error!("Failed to list scripts for user {}: {}", user_id, e);
+            AppError::Internal(anyhow::anyhow!("Failed to list scripts"))
+        })?;
+
+        Ok(scripts)
     }
 
     /// Stores a content snapshot for a script
@@ -414,65 +440,102 @@ impl ScriptApplicationService {
     }
 
     /// Retrieves a content snapshot for a script
-    pub async fn get_content_snapshot(&self, script_id: Uuid, user_id: Uuid) -> Result<ContentSnapshot, AppError> {
-        info!(script_id = %script_id, user_id = %user_id, "Retrieving content snapshot");
-
-        // Check access through domain service
+    pub async fn get_content_snapshot(
+        &self,
+        script_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<ContentSnapshot, AppError> {
+        // Check access
         if !self.check_script_access(script_id, user_id).await? {
             return Err(AppError::Forbidden("Access denied".to_string()));
         }
 
-        let snapshot_result = sqlx::query_as::<_, (Option<String>, Option<String>, chrono::DateTime<chrono::Utc>)>(
-            "SELECT content_snapshot, snapshot_format, created_at 
-             FROM script_snapshots_meta 
-             WHERE script_id = $1 AND content_snapshot IS NOT NULL 
-             ORDER BY created_at DESC LIMIT 1"
+        let snapshot_result = sqlx::query_as::<_, (Option<String>, Option<String>, Option<chrono::DateTime<chrono::Utc>>)>(
+            "SELECT content_snapshot, snapshot_format, created_at FROM script_snapshots_meta WHERE script_id = $1"
         )
         .bind(script_id)
         .fetch_optional(self.pool.as_ref())
         .await
         .map_err(|e| {
-            error!("Database error fetching content snapshot for script {}: {}", script_id, e);
-            AppError::Internal(anyhow::anyhow!("Database error"))
+            error!("Failed to get content snapshot for script {}: {}", script_id, e);
+            AppError::Internal(anyhow::anyhow!("Failed to get content snapshot"))
         })?;
 
-        let snapshot = match snapshot_result {
-            Some((content_snapshot, snapshot_format, created_at)) => {
-                if let Some(content) = content_snapshot {
-                    info!("Retrieved content snapshot for script {}: {} chars", script_id, content.len());
-                    ContentSnapshot {
-                        script_id,
-                        content,
-                        format: snapshot_format.unwrap_or_else(|| "html".to_string()),
-                        created_at: Some(created_at),
-                    }
-                } else {
-                    ContentSnapshot {
-                        script_id,
-                        content: String::new(),
-                        format: "html".to_string(),
-                        created_at: None,
-                    }
-                }
-            }
+        match snapshot_result {
+            Some((content_snapshot, snapshot_format, created_at)) => Ok(ContentSnapshot {
+                script_id,
+                content: content_snapshot.unwrap_or_default(),
+                format: snapshot_format.unwrap_or_else(|| "html".to_string()),
+                created_at,
+            }),
+            None => Err(AppError::NotFound("No content snapshot found".to_string())),
+        }
+    }
+
+    /// Retrieves a script with all its blocks for authorized users
+    pub async fn get_script_with_blocks(
+        &self,
+        script_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<(Script, Vec<Block>)>, AppError> {
+        info!(script_id = %script_id, user_id = %user_id, "Getting script with blocks");
+
+        // Check access authorization
+        if !self.check_script_access(script_id, user_id).await? {
+            warn!("User {} attempted to access script {} without permission", user_id, script_id);
+            return Err(AppError::Forbidden("Access denied".to_string()));
+        }
+
+        // Get the script
+        let script = sqlx::query_as::<_, Script>(
+            "SELECT id, title, created_by, created_at, is_public, thumbnail FROM scripts WHERE id = $1"
+        )
+        .bind(script_id)
+        .fetch_optional(self.pool.as_ref())
+        .await
+        .map_err(|e| {
+            error!("Failed to fetch script {}: {}", script_id, e);
+            AppError::Internal(anyhow::anyhow!("Failed to fetch script"))
+        })?;
+
+        let script = match script {
+            Some(s) => s,
             None => {
-                info!("No content snapshot found for script {}, returning empty content", script_id);
-                ContentSnapshot {
-                    script_id,
-                    content: String::new(),
-                    format: "html".to_string(),
-                    created_at: None,
-                }
+                info!(script_id = %script_id, "Script not found");
+                return Ok(None);
             }
         };
 
-        info!(script_id = %script_id, user_id = %user_id, "Successfully retrieved content snapshot");
-        Ok(snapshot)
+        // Get associated blocks ordered by block_order and page_number
+        let blocks = sqlx::query_as::<_, Block>(
+            r#"
+            SELECT id, script_id, block_type, content, created_at, block_order, page_number, scene_number, scene_title, metadata
+            FROM blocks 
+            WHERE script_id = $1 
+            ORDER BY block_order ASC, page_number ASC, created_at ASC
+            "#
+        )
+        .bind(script_id)
+        .fetch_all(self.pool.as_ref())
+        .await
+        .map_err(|e| {
+            error!("Failed to fetch blocks for script {}: {}", script_id, e);
+            AppError::Internal(anyhow::anyhow!("Failed to fetch script blocks"))
+        })?;
+
+        info!(
+            script_id = %script_id, 
+            user_id = %user_id, 
+            blocks_count = blocks.len(),
+            "Successfully retrieved script with blocks"
+        );
+
+        Ok(Some((script, blocks)))
     }
 
-    /// Checks if user has access to a script (owns it, it's public, or shared with them)
+    /// Checks if a user has access to a script (owns it, it's public, or it's shared)
     async fn check_script_access(&self, script_id: Uuid, user_id: Uuid) -> Result<bool, AppError> {
-        let row = sqlx::query(
+        let has_access = sqlx::query_scalar::<_, bool>(
             r#"
             SELECT EXISTS(
                 SELECT 1 FROM scripts s
@@ -486,7 +549,7 @@ impl ScriptApplicationService {
                         AND ss.shared_with_user_id = $2
                     )
                 )
-            ) as has_access
+            )
             "#
         )
         .bind(script_id)
@@ -494,163 +557,10 @@ impl ScriptApplicationService {
         .fetch_one(self.pool.as_ref())
         .await
         .map_err(|e| {
-            error!("Database error checking script access: {}", e);
-            AppError::Internal(anyhow::anyhow!("Database access error"))
+            error!("Failed to check script access for user {}: {}", user_id, e);
+            AppError::Internal(anyhow::anyhow!("Failed to check permissions"))
         })?;
 
-        Ok(row.try_get::<bool, _>("has_access").unwrap_or(false))
-    }
-
-    /// Checks if user owns a script (required for modification operations)
-    async fn check_script_ownership(&self, script_id: Uuid, user_id: Uuid) -> Result<bool, AppError> {
-        let row = sqlx::query(
-            "SELECT EXISTS(SELECT 1 FROM scripts WHERE id = $1 AND created_by = $2) as owns_script"
-        )
-        .bind(script_id)
-        .bind(user_id)
-        .fetch_one(self.pool.as_ref())
-        .await
-        .map_err(|e| {
-            error!("Database error checking script ownership: {}", e);
-            AppError::Internal(anyhow::anyhow!("Database access error"))
-        })?;
-
-        Ok(row.try_get::<bool, _>("owns_script").unwrap_or(false))
-    }
-
-    /// Comprehensive file validation for script uploads
-    fn validate_file_upload(data: &[u8], filename: &str, content_type: &str) -> Result<(), AppError> {
-        // File size validation (10MB limit)
-        const MAX_FILE_SIZE: usize = 10 * 1024 * 1024;
-        if data.len() > MAX_FILE_SIZE {
-            warn!("File too large: {} bytes (max: {} bytes)", data.len(), MAX_FILE_SIZE);
-            return Err(AppError::BadRequest("File size exceeds 10MB limit".into()));
-        }
-
-        // Minimum file size validation
-        if data.len() < 100 {
-            warn!("File too small: {} bytes", data.len());
-            return Err(AppError::BadRequest("File appears to be empty or corrupted".into()));
-        }
-
-        // Filename extension validation
-        if !filename.to_lowercase().ends_with(".docx") {
-            warn!("Unsupported file type: {}", filename);
-            return Err(AppError::BadRequest("Only DOCX files are supported".into()));
-        }
-
-        // File signature validation
-        if data.len() < 4 || &data[0..2] != b"PK" {
-            warn!("Invalid DOCX file: missing ZIP signature");
-            return Err(AppError::BadRequest("Invalid DOCX file format".into()));
-        }
-
-        // DOCX structure validation
-        if !Self::validate_docx_structure(data) {
-            warn!("Invalid DOCX structure detected for file: {}", filename);
-            return Err(AppError::BadRequest("Invalid DOCX file format - corrupted or not a valid DOCX file".into()));
-        }
-
-        // MIME type validation
-        if !content_type.is_empty() {
-            let allowed_mime_types = [
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "application/zip",
-                "application/octet-stream",
-            ];
-
-            let is_valid_mime = allowed_mime_types.iter().any(|&mime| content_type.contains(mime));
-            if !is_valid_mime {
-                warn!("Invalid MIME type: {} for file: {}", content_type, filename);
-                return Err(AppError::BadRequest("Invalid file type. Expected DOCX format.".into()));
-            }
-        }
-
-        // Security validation
-        if Self::contains_suspicious_patterns(data) {
-            warn!("Suspicious content patterns detected in file: {}", filename);
-            return Err(AppError::BadRequest("File content validation failed".into()));
-        }
-
-        Ok(())
-    }
-
-    /// Validates DOCX file structure
-    fn validate_docx_structure(data: &[u8]) -> bool {
-        use std::io::Cursor;
-
-        let reader = Cursor::new(data);
-        let zip_result = zip::ZipArchive::new(reader);
-
-        match zip_result {
-            Ok(mut archive) => {
-                let required_files = [
-                    "[Content_Types].xml",
-                    "word/document.xml",
-                    "_rels/.rels",
-                ];
-
-                for required_file in &required_files {
-                    if archive.by_name(required_file).is_err() {
-                        warn!("Missing required DOCX component: {}", required_file);
-                        return false;
-                    }
-                }
-
-                // Validate Word document structure
-                if let Ok(mut document_file) = archive.by_name("word/document.xml") {
-                    let mut content = String::new();
-                    if let Ok(_) = std::io::Read::read_to_string(&mut document_file, &mut content) {
-                        if !content.contains("<w:document") || !content.contains("http://schemas.openxmlformats.org/wordprocessingml/") {
-                            warn!("word/document.xml does not contain valid Word document structure");
-                            return false;
-                        }
-                    } else {
-                        warn!("Could not read word/document.xml content");
-                        return false;
-                    }
-                }
-
-                true
-            }
-            Err(_) => {
-                warn!("ZIP archive parsing failed");
-                false
-            }
-        }
-    }
-
-    /// Scans for suspicious patterns in file content
-    fn contains_suspicious_patterns(data: &[u8]) -> bool {
-        let sample_size = std::cmp::min(data.len(), 8192);
-        let content_sample = String::from_utf8_lossy(&data[..sample_size]).to_lowercase();
-
-        let suspicious_patterns = [
-            "<script", "javascript:", "vbscript:", "eval(", "document.write",
-            "mz", "#!/", "auto_open", "document_open", "workbook_open",
-            "shell.application", "wscript.shell", "http://", "https://",
-            "ftp://", "base64,", "data:application", "<!--[if",
-            "activex", "clsid:", "progid:",
-        ];
-
-        for pattern in &suspicious_patterns {
-            if content_sample.contains(pattern) {
-                warn!("Detected suspicious pattern in file content: {}", pattern);
-                return true;
-            }
-        }
-
-        // Check for excessive binary content
-        let binary_threshold = sample_size / 10;
-        let binary_bytes = data[..sample_size].iter()
-            .filter(|&&b| b < 32 && b != b'\n' && b != b'\r' && b != b'\t')
-            .count();
-
-        if binary_bytes > binary_threshold {
-            warn!("Excessive binary content detected: {} binary bytes in {} sample", binary_bytes, sample_size);
-            return true;
-        }
-
-        false
+        Ok(has_access)
     }
 } 

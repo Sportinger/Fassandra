@@ -25,7 +25,7 @@ lazy_static = "1.4"
 anyhow = "1.0.81"
 tracing = "0.1"
 serde_qs = "0.12"
-docx-rs = "0.4.17"
+# Removed docx-rs as it's no longer needed with PDF-only processing
 reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
 async-trait = "0.1"
 tokio-tungstenite = "0.24"

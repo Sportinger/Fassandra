@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useAuth } from '../AuthContext';
 import { getScripts, createScript, deleteScript, updateScript, shareScript, getScriptShares, removeScriptShare, toggleScriptPublic, generateAllThumbnails, createScriptFromParsed, ParsedScriptData } from '../api';
-import { Script, ScriptShareWithUser, UploadStatus } from '../types';
-import { PlaceholderScript } from './ScriptUploader'; // Import extended type
+import { Script, ScriptShareWithUser, UploadStatus, PlaceholderScript } from '../types';
 import { logDebugInfo } from '../utils/debug';
 import styles from './ScriptList.module.css';
 
@@ -117,11 +116,11 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       // Stage 3: Upload in progress (20% progress)
       updateUploadStatus({ 
         uploadProgress: 20,
-        uploadSubStage: 'Transferring file to server...'
+        uploadSubStage: 'Transferring PDF to server...'
       });
 
       const formData = new FormData();
-      formData.append('scriptFile', placeholder.fileData);
+      formData.append('file', placeholder.fileData); // PDF file for Gemini processing
 
       // Use relative URL - proxy will handle routing to backend
       const uploadResponse = await fetch('/api/s/upload', {
@@ -134,15 +133,15 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       updateUploadStatus({ 
         uploadStatus: 'analyzing' as UploadStatus, 
         uploadProgress: 35,
-        uploadSubStage: 'File uploaded successfully. Starting content analysis...'
+        uploadSubStage: 'PDF uploaded successfully. Starting AI analysis...'
       });
 
       await new Promise(resolve => setTimeout(resolve, 600));
 
-      // Stage 5: Text extraction (45% progress)
+      // Stage 5: PDF processing (45% progress)
       updateUploadStatus({ 
         uploadProgress: 45,
-        uploadSubStage: 'Extracting text from Word document...'
+        uploadSubStage: 'Processing PDF document with Gemini AI...'
       });
 
       await new Promise(resolve => setTimeout(resolve, 700));
@@ -150,7 +149,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       // Stage 6: Content analysis (55% progress)
       updateUploadStatus({ 
         uploadProgress: 55,
-        uploadSubStage: 'Analyzing script structure and dialogue...'
+        uploadSubStage: 'Analyzing script structure with page numbers...'
       });
 
       await new Promise(resolve => setTimeout(resolve, 900));
@@ -158,7 +157,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       // Stage 7: Speaker detection (65% progress)
       updateUploadStatus({ 
         uploadProgress: 65,
-        uploadSubStage: 'Identifying speakers and characters...'
+        uploadSubStage: 'Extracting dialogue, speakers, and stage directions...'
       });
 
       let parsedData: ParsedScriptData | null = null;
