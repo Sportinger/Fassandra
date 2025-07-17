@@ -1,0 +1,79 @@
+# 🚀 PRODUCTION ENVIRONMENT for mylayer.org
+# For deployment to Hetzner server
+
+services:
+  db:
+    image: postgres:15
+    container_name: ${CONTAINER_PREFIX:-mylayer_}pessoa_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    image: mylayer-backend:latest
+    container_name: ${CONTAINER_PREFIX:-mylayer_}pessoa_backend
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET:-mylayer_jwt_secret_change_this_in_production}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_API_URL: ${GEMINI_API_URL}
+      BACKEND_PORT: 3001
+      APP_DOMAIN: ${APP_DOMAIN}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-20}
+      RUST_LOG: ${RUST_LOG:-info}
+      # Admin user creation
+      ADMIN_EMAIL: admin@mylayer.org
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: mylayer_admin_password_123
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: mylayer-frontend:latest
+    container_name: ${CONTAINER_PREFIX:-mylayer_}pessoa_frontend
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+      - VITE_WS_BASE_URL=${VITE_WS_BASE_URL}
+    ports:
+      - "80:80"     # HTTP (redirects to HTTPS)
+      - "443:443"   # HTTPS
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ${CONTAINER_PREFIX:-mylayer_}pessoa_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    name: ${CONTAINER_PREFIX:-mylayer_}postgres_data
+  pgadmin_data:
+    name: ${CONTAINER_PREFIX:-mylayer_}pgadmin_data 

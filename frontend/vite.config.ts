@@ -3,21 +3,23 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import fs from 'fs';
 
-// Check for SSL certificates in multiple locations
-const sslPaths = [
-  { key: './ssl/dev-key.pem', cert: './ssl/dev-cert.pem' },
-  { key: './ssl/dev/key.pem', cert: './ssl/dev/cert.pem' },
-  { key: '/app/ssl/dev/key.pem', cert: '/app/ssl/dev/cert.pem' }
-];
-
+// Check for SSL certificates in multiple locations (only in development)
 let sslConfig = null;
-for (const paths of sslPaths) {
-  if (fs.existsSync(paths.key) && fs.existsSync(paths.cert)) {
-    sslConfig = {
-      key: fs.readFileSync(paths.key),
-      cert: fs.readFileSync(paths.cert),
-    };
-    break;
+if (process.env.NODE_ENV !== 'production') {
+  const sslPaths = [
+    { key: './ssl/dev-key.pem', cert: './ssl/dev-cert.pem' },
+    { key: './ssl/dev/key.pem', cert: './ssl/dev/cert.pem' },
+    { key: '/app/ssl/dev/key.pem', cert: '/app/ssl/dev/cert.pem' }
+  ];
+
+  for (const paths of sslPaths) {
+    if (fs.existsSync(paths.key) && fs.existsSync(paths.cert)) {
+      sslConfig = {
+        key: fs.readFileSync(paths.key),
+        cert: fs.readFileSync(paths.cert),
+      };
+      break;
+    }
   }
 }
 
@@ -28,11 +30,11 @@ export default defineConfig({
     port: 8080,     // Standard port for hot reload
     host: true,     // Allow access from host to container
     allowedHosts: process.env.VITE_APP_DOMAIN ? [process.env.VITE_APP_DOMAIN] : ['localhost', '192.168.2.111'],
-    // Re-enable HTTPS for consistency with production
-    https: sslConfig || {
+    // Only use HTTPS in development mode
+    https: process.env.NODE_ENV !== 'production' ? (sslConfig || {
       key: fs.readFileSync('/app/ssl/dev/key.pem'),
       cert: fs.readFileSync('/app/ssl/dev/cert.pem'),
-    },
+    }) : false,
     watch: {
       usePolling: true,  // Docker-safe file watching
       interval: 500,     // Polling interval (ms)
