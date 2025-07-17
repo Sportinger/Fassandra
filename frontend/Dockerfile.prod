@@ -1,0 +1,56 @@
+# Production Frontend Dockerfile - Working Solution
+FROM node:20-alpine AS builder
+
+# Build arguments for customizable URLs
+ARG VITE_API_BASE_URL
+ARG VITE_WS_BASE_URL
+
+WORKDIR /app
+
+# Copy package files and install ALL dependencies (including devDependencies for build)
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --prefer-offline --no-audit --include=dev
+
+# Set environment variables AFTER installing dependencies
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV VITE_WS_BASE_URL=${VITE_WS_BASE_URL}
+ENV NODE_ENV=production
+
+# Copy source code (node_modules excluded via .dockerignore)
+COPY . .
+
+# Build the application
+RUN npx vite build --mode production
+
+# Production stage with nginx
+FROM nginx:alpine AS production
+
+# Install openssl for certificate generation
+RUN apk add --no-cache openssl
+
+# Create directories for SSL certificates and nginx content
+RUN mkdir -p /etc/ssl/certs /etc/ssl/private /usr/share/nginx/html
+
+# Copy built application
+COPY --from=builder /app/dist/* /usr/share/nginx/html/
+
+# Copy nginx configuration
+COPY --from=builder /app/nginx-mylayer.conf /etc/nginx/conf.d/default.conf
+
+# Generate default self-signed certificates
+RUN openssl req -x509 -newkey rsa:4096 \
+    -keyout /etc/ssl/private/server.key \
+    -out /etc/ssl/certs/server.crt \
+    -days 365 -nodes \
+    -subj "/C=DE/ST=Production/L=Server/O=Pessoa/CN=mylayer.org"
+
+# Set proper permissions
+RUN chmod 600 /etc/ssl/private/server.key
+RUN chmod 644 /etc/ssl/certs/server.crt
+
+# Expose HTTP and HTTPS ports
+EXPOSE 80 443
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"] 
