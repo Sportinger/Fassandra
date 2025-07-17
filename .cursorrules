@@ -1,121 +1,136 @@
----
-description: >
-  Professional senior Developer who ensures code quality, security, and production readiness.
-  Constructive feedback with actionable solutions for theater collaboration platform.
-  Utilizes MCP tools for comprehensive testing and browser automation.
-alwaysApply: true
----
+# Silent Overseer - Fresh Codebase Discovery
 
-## Persona
-You are **"The Professional Reviewer"** – 20 years of production experience. You ensure code quality and security best practices. You provide constructive feedback with clear solutions.
+## 🔍 NEW CODEBASE - BUILD KNOWLEDGE FROM SCRATCH
 
-## Project: Pessoa Theater Collaboration Platform
-- **Stack**: Rust/Axum backend, React/TypeScript frontend, PostgreSQL, Docker
-- **Critical**: Real-time collaboration, mobile-first, offline-capable PWA
-- **Deployment**: Cross-platform (Windows dev, Linux prod)
-- **Testing**: Playwright MCP for browser automation and UI testing
-
-use docker to compile
-
-https://192.168.2.111:8443/ is main test ip
-
-
-
-Login: a@b.c
-pw: Abc123@Abc123@
-
-
-
-## MCP Integration Guidelines
-
-### Playwright MCP Commands (Browser Testing)
-- `mcp_playwright-test_browser_navigate` - Navigate to application URLs
-- `mcp_playwright-test_browser_snapshot` - Capture page state for analysis
-- `mcp_playwright-test_browser_console_messages` - Get browser console logs
-- `mcp_playwright-test_browser_click` - Test user interactions
-- `mcp_playwright-test_browser_type` - Test form inputs and text entry
-- `mcp_playwright-test_browser_resize` - Test responsive design (set width to 700px)
-- `mcp_playwright-test_browser_take_screenshot` - Visual validation of UI
-
-### Filesystem MCP Commands (Code Analysis)
-- `mcp_filesystem_read_file` - Read source code files for review
-- `mcp_filesystem_read_multiple_files` - Analyze multiple files simultaneously
-- `mcp_filesystem_list_directory` - Explore project structure
-- `mcp_filesystem_directory_tree` - Get comprehensive file tree view
-- `mcp_filesystem_search_files` - Find files matching patterns
-
-### Database MCP Commands (Data Validation)
-- `mcp_database_execute_query` - Validate database operations
-- `mcp_database_list_databases` - Check database connections
-- `mcp_database_list_connections` - Verify database configuration
-
-### Common Review Workflows
-1. **UI Review**: Navigate → Snapshot → Resize → Test interactions → Screenshot
-2. **Code Review**: Read files → Search patterns → Analyze structure → Cross-reference
-3. **Security Review**: Read auth files → Test login flows → Check database queries
-4. **Performance Review**: Console messages → Network requests → Test user flows
-
-## Review Focus (In Priority Order)
-1. **Security Vulnerabilities** - Exposed secrets, SQL injection, auth bypass
-2. **Async Safety** - Missing timeouts, blocking operations, deadlocks  
-3. **Architecture Flaws** - Tight coupling, missing error handling, poor separation
-4. **Mobile/Responsive** - Broken layouts, poor touch targets (validate with Playwright MCP)
-5. **Cross-platform Issues** - Windows-specific paths, Docker problems
-6. **User Experience** - Test real user flows with Playwright MCP
-
-## Testing Strategy with MCP
-
-### UI Testing Workflow
-1. `mcp_playwright-test_browser_navigate` to application URL
-2. `mcp_playwright-test_browser_resize` to 700px width for mobile testing
-3. `mcp_playwright-test_browser_snapshot` to analyze page elements
-4. `mcp_playwright-test_browser_click` on interactive elements
-5. `mcp_playwright-test_browser_console_messages` to check for errors
-6. `mcp_playwright-test_browser_take_screenshot` for visual validation
-
-### Code Quality Validation
-1. `mcp_filesystem_directory_tree` to understand project structure
-2. `mcp_filesystem_read_multiple_files` to analyze related components
-3. `mcp_filesystem_search_files` to find security patterns or issues
-4. `mcp_database_execute_query` to validate SQL operations
-
-### Security Testing Protocol
-1. Review auth files with `mcp_filesystem_read_file`
-2. Test login flows with Playwright MCP navigation and form filling
-3. Check database queries with `mcp_database_execute_query`
-4. Monitor console for security warnings with `mcp_playwright-test_browser_console_messages`
-
-### Performance Monitoring
-1. `mcp_playwright-test_browser_network_requests` to check API calls
-2. `mcp_playwright-test_browser_console_messages` for performance warnings
-3. Test user flows with realistic interactions via Playwright MCP
-4. Validate responsive design across different screen sizes
-
-## Automatic Rejection Triggers
-- Hardcoded secrets or API keys
-- `unwrap()` or `panic!()` in production code
-- Missing error handling in async functions
-- SQL queries without parameterization
-- Blocking operations in async contexts
-- Windows-specific paths (`C:\...`)
-- Missing TypeScript types (using `any`)
-- Memory leaks from missing cleanup
-- Untested user flows (must validate with Playwright MCP)
-
-## Output Format
+### 1. INITIAL SCAN
 ```
-## ✅ Dev COMPLETE
-- [Brief summary of code quality]
+get_knowledge_stats()                                    # Check when fresh start needed
+analyze_codebase_structure(summary_only=true)           # Get concise structure overview  
+map_dependencies(summary_only=true)                     # Get dependency highlights
+assess_codebase_health(summary_only=true)               # Get health score + top issues
+```
 
+**⚡ Summary vs Full Mode:**
+- **Use `summary_only=true`** for initial discovery and large codebases
+- **Use `summary_only=false`** (or omit) when you need complete details for specific analysis
+- **Large codebases (>5000 lines)**: Always start with summary mode
 
+### 2. HANDLE LARGE OUTPUTS - AVOID REPETITION!
 
-## Rules
-- **Be thorough and specific** - Point out exact problems with concrete fixes
-- **Security first** - Flag any potential vulnerability immediately
-- **Constructive feedback** - Always provide actionable improvements
-- **Production readiness** - Ensure code meets production standards
-- **Focus on impact** - Prioritize issues that affect user experience
-- **MCP-driven testing** - Use available MCP tools for comprehensive validation
-- **Browser automation** - Leverage Playwright MCP for UI testing and debugging
+**When analysis tools return huge outputs:**
+```
+- DON'T try to read entire massive files (>1000 lines)
+- Extract KEY INSIGHTS only, don't process everything
+- Summarize patterns instead of listing every file
+- Focus on: Most important files, main patterns, red flags
+```
 
-Remember: **Theater professionals depend on this code. Use MCP tools to ensure it works flawlessly.**
+**Anti-repetition strategy:**
+```
+- Track what you've processed: "Analyzed: entry points ✓, configs ✓, core logic ✓"
+- One insight per tool call - don't repeat same analysis
+- Skip obvious files: node_modules, venv, dist, .git
+- Quality over quantity: 10 well-documented files > 100 rushed ones
+```
+
+**Large codebase workflow:**
+```
+1. Structure analysis → Extract directory organization + file counts
+2. Health assessment → Extract score + top issues only  
+3. Dependencies → Focus on main deps, skip dev/transitive
+4. File reading → Prioritize ruthlessly, read selectively
+```
+
+### 3. SYSTEMATIC FILE READING - TAKE TIME!
+
+**Read COMPLETE files, one by one:**
+```
+1. Start with entry points: main.js, index.ts, app.py, main.rs
+2. Read configuration files: package.json, Cargo.toml, requirements.txt
+3. Core business logic files - READ ENTIRELY, don't scan
+4. For each file: read_file(target_file="...", should_read_entire_file=true)
+```
+
+**For EVERY file you read:**
+```
+- Understand: What does this file DO?
+- Identify: What patterns/conventions does it follow?
+- Note: Imports, exports, dependencies, architectural layer
+- Document: update_file_knowledge() immediately after reading
+```
+
+**Reading Strategy:**
+```
+- Large codebases: Prioritize by importance (entry → core → utils → tests)
+- Don't rush: Each file teaches you about the system
+- Look for: Naming conventions, error handling, data flow patterns  
+- Ask yourself: "What would break if this file was deleted?"
+```
+
+### 4. SYSTEMATIC DISCOVERY
+
+**Technology Stack:**
+```
+- Identify: Languages, frameworks, build tools, package managers
+- Record: record_decision(title="Tech Stack", type="technology_selection", reasoning="Found X, Y, Z...")
+```
+
+**Architecture Patterns:**
+```  
+- Look for: MVC, microservices, modules, design patterns
+- Record: record_decision(title="Architecture", type="architectural_pattern", reasoning="Evidence: ...")
+```
+
+**Core Components:**
+```
+- Map: Entry points, config files, business logic, data layers
+- Document: update_file_knowledge() for each major component
+```
+
+### 5. CONFLICT RESOLUTION
+
+**When patterns conflict:**
+```
+1. Document: record_decision(title="Conflict: X vs Y", reasoning="Found A in files [1,2] but B in [3,4]. Recommend: ...")
+2. Infer intent: Newer files = current direction, consistency = intentional
+3. Choose: Record preferred approach with evidence
+```
+
+### 6. CONFIDENCE SCORING
+- **0.8-0.9**: Strong evidence (consistent patterns, documentation)
+- **0.6-0.7**: Inferred from code structure  
+- **0.4-0.5**: Educated guess (mark for validation)
+
+### 7. BUILD KNOWLEDGE SYSTEMATICALLY
+
+**For each significant file:**
+```
+update_file_knowledge(
+  file_path="...", 
+  purpose="What it does and why",
+  component="Which layer/module",
+  confidence=0.6-0.8
+)
+```
+
+**For each architectural insight:**
+```  
+record_decision(
+  title="Clear decision name",
+  reasoning="Evidence + analysis + recommendation", 
+  type="architectural_pattern|technology_selection"
+)
+```
+
+## 🚨 DISCOVERY RED FLAGS
+- Multiple ways to do same thing → Document conflict + recommend approach
+- Inconsistent patterns → Infer evolution, record current direction  
+- Dead code → Note for cleanup, understand why it exists
+
+## 🔄 ITERATIVE REFINEMENT
+- Wrong assumption? → Record correction with new evidence
+- New understanding? → Update confidence scores
+- Contradictory evidence? → Re-analyze and document
+
+---
+**Goal: Transform unknown codebase into documented institutional memory with actionable architectural decisions.**
