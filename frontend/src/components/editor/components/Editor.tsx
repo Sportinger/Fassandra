@@ -24,6 +24,10 @@ import { getPageBreaks, updatePageBreaks, PageBreakInfo, PageBreakUpdate } from 
 import '../styles/variables.css';
 import '../styles/responsive.css';
 import '../styles/toolbar.css';
+import '../styles/cue-blocks.css';
+import '../styles/scene-blocks.css';
+import '../styles/page-indicators.css';
+import '../styles/search.css';
 
 interface PageBreak {
   id: string;

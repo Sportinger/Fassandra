@@ -1,0 +1,139 @@
+/* Cue Block Styles */
+.cue-block {
+  display: flex;
+  align-items: center;
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition: all 0.2s ease;
+  position: relative;
+  cursor: move; /* Show move cursor */
+}
+
+/* Dragging state */
+.cue-block.ProseMirror-dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+/* Cue type-specific styles */
+.cue-light {
+  background-color: rgba(251, 191, 36, 0.5); /* Amber 50% */
+  border: 1px solid rgba(251, 191, 36, 0.8);
+  color: #92400e; /* Darker text for better contrast */
+}
+
+.cue-light:hover {
+  background-color: rgba(251, 191, 36, 0.7);
+  border-color: rgba(251, 191, 36, 1);
+}
+
+.cue-video {
+  background-color: rgba(59, 130, 246, 0.5); /* Blue 50% */
+  border: 1px solid rgba(59, 130, 246, 0.8);
+  color: #1e3a8a; /* Darker text for better contrast */
+}
+
+.cue-video:hover {
+  background-color: rgba(59, 130, 246, 0.7);
+  border-color: rgba(59, 130, 246, 1);
+}
+
+.cue-sound {
+  background-color: rgba(34, 197, 94, 0.5); /* Green 50% */
+  border: 1px solid rgba(34, 197, 94, 0.8);
+  color: #14532d; /* Darker text for better contrast */
+}
+
+.cue-sound:hover {
+  background-color: rgba(34, 197, 94, 0.7);
+  border-color: rgba(34, 197, 94, 1);
+}
+
+.cue-props {
+  background-color: rgba(168, 85, 247, 0.5); /* Purple 50% */
+  border: 1px solid rgba(168, 85, 247, 0.8);
+  color: #4c1d95; /* Darker text for better contrast */
+}
+
+.cue-props:hover {
+  background-color: rgba(168, 85, 247, 0.7);
+  border-color: rgba(168, 85, 247, 1);
+}
+
+/* Cue number */
+.cue-number {
+  font-weight: 700;
+  font-size: 0.75rem;
+  margin-right: 0.75rem;
+  user-select: none;
+  pointer-events: none;
+  opacity: 0.9;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+}
+
+/* Cue label */
+.cue-label {
+  font-weight: 600;
+  margin-right: 0.5rem;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.025em;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Cue content */
+.cue-content {
+  flex: 1;
+  outline: none;
+  min-width: 200px;
+  cursor: text;
+}
+
+/* Ensure content is editable */
+.cue-block .cue-content:focus {
+  outline: none;
+}
+
+/* Selected/focused state */
+.cue-block.ProseMirror-selectednode {
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .cue-block {
+    border-width: 1px;
+    page-break-inside: avoid;
+  }
+  
+  .cue-label {
+    font-weight: bold;
+  }
+}
+
+/* Mobile responsive styles */
+@media (max-width: 767px) {
+  .cue-block {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+  
+  .cue-number {
+    font-size: 0.6875rem;
+    margin-right: 0.5rem;
+    padding: 0.0625rem 0.25rem;
+  }
+  
+  .cue-label {
+    font-size: 0.6875rem;
+  }
+}

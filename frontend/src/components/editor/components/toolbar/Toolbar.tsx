@@ -7,6 +7,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FontSizeDropdown } from '../../FontSizeDropdown';
 import { SpeakerDropdown } from '../../SpeakerDropdown';
+import { CueDropdown } from '../../CueDropdown';
+import { SearchBox } from '../../SearchBox';
 import type { ToolbarProps, ToolbarContext } from '../../types/index';
 
 // Import the responsive styles
@@ -384,7 +386,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       action: () => {
         console.log('Converting paragraph to dialogue block');
         // Get current paragraph content
-        const { selection } = editor.state;
+        const { selection } = editor!.state;
         const { $from } = selection;
         const currentNode = $from.node();
         
@@ -450,6 +452,48 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       action: () => window.print(),
       contexts: ['default'],
       order: 5
+    },
+    
+    // Cue dropdown (default context)
+    {
+      id: 'cue-dropdown',
+      icon: '🎭',
+      title: 'Insert Cue',
+      action: () => {}, // Handled by dropdown component
+      contexts: ['default'],
+      order: 10,
+      isSpecial: true
+    },
+    
+    // Add Scene button (default context)
+    {
+      id: 'add-scene',
+      icon: '🎬',
+      title: 'Add Scene',
+      action: () => editor?.commands.insertSceneBlock(),
+      contexts: ['default'],
+      order: 11
+    },
+    
+    // Add Page Indicator button (default context)
+    {
+      id: 'add-page',
+      icon: '📄',
+      title: 'Add Page Indicator',
+      action: () => editor?.commands.insertPageIndicator(),
+      contexts: ['default'],
+      order: 12
+    },
+    
+    // Search box (default context)
+    {
+      id: 'search-box',
+      icon: '🔍',
+      title: 'Search',
+      action: () => {}, // Handled by SearchBox component
+      contexts: ['default'],
+      order: 13,
+      isSpecial: true
     },
       ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, showPageNumbers, onTogglePageNumbers]);
 
@@ -647,6 +691,18 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <React.Fragment key={button.id}>
             {button.isSpecial && button.id === 'font-size' ? (
               <FontSizeDropdown 
+                editor={editor}
+                isVisible={isVisible}
+                transitionDelay={isVisible ? `${index * 50}ms` : `${(contextButtons.length - index) * 30}ms`}
+              />
+            ) : button.isSpecial && button.id === 'cue-dropdown' ? (
+              <CueDropdown
+                editor={editor}
+                isVisible={isVisible}
+                transitionDelay={isVisible ? `${index * 50}ms` : `${(contextButtons.length - index) * 30}ms`}
+              />
+            ) : button.isSpecial && button.id === 'search-box' ? (
+              <SearchBox
                 editor={editor}
                 isVisible={isVisible}
                 transitionDelay={isVisible ? `${index * 50}ms` : `${(contextButtons.length - index) * 30}ms`}

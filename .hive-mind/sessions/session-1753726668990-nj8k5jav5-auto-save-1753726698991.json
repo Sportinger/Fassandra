@@ -1,0 +1,81 @@
+{
+  "sessionId": "session-1753726668990-nj8k5jav5",
+  "checkpointId": "checkpoint-1753726698991-zgib2ebgl",
+  "checkpointName": "auto-save-1753726698991",
+  "timestamp": "2025-07-28T18:18:18.991Z",
+  "data": {
+    "timestamp": "2025-07-28T18:18:18.991Z",
+    "changeCount": 5,
+    "changesByType": {
+      "swarm_created": [
+        {
+          "type": "swarm_created",
+          "data": {
+            "swarmId": "swarm-1753726668987-2az1e6m0n",
+            "swarmName": "hive-1753726668976",
+            "objective": "Migrate CueDropdown, SearchBox, Scene indicators, and Comment features from ZURUECK branch to main branch in this React/TypeScript theatre script editor. Current branch is 'main' with clean state, source branch is 'ZURUECK' containing the working features. The main branch has a clean Toolbar.tsx component and TipTap editor setup that needs these features integrated properly. Analyze ZURUECK branch components like CueDropdown.tsx, SearchBox.tsx, scene indicators, and comment functionality, then implement them cleanly in main without the complex page break tracking optimizations. Focus on proper TypeScript integration, TipTap extensions, and toolbar button visibility logic. Ensure features work with existing editor state management and avoid bringing over any problematic performance optimizations that were causing issues.",
+            "workerCount": 20
+          },
+          "timestamp": "2025-07-28T18:17:48.991Z"
+        }
+      ],
+      "agent_activity": [
+        {
+          "type": "agent_activity",
+          "data": {
+            "agentId": "worker-swarm-1753726668987-2az1e6m0n-0",
+            "activity": "spawned",
+            "data": {
+              "type": "researcher",
+              "name": "Researcher Worker 1"
+            }
+          },
+          "timestamp": "2025-07-28T18:17:48.994Z"
+        },
+        {
+          "type": "agent_activity",
+          "data": {
+            "agentId": "worker-swarm-1753726668987-2az1e6m0n-1",
+            "activity": "spawned",
+            "data": {
+              "type": "coder",
+              "name": "Coder Worker 2"
+            }
+          },
+          "timestamp": "2025-07-28T18:17:48.996Z"
+        },
+        {
+          "type": "agent_activity",
+          "data": {
+            "agentId": "worker-swarm-1753726668987-2az1e6m0n-2",
+            "activity": "spawned",
+            "data": {
+              "type": "analyst",
+              "name": "Analyst Worker 3"
+            }
+          },
+          "timestamp": "2025-07-28T18:17:48.998Z"
+        },
+        {
+          "type": "agent_activity",
+          "data": {
+            "agentId": "worker-swarm-1753726668987-2az1e6m0n-3",
+            "activity": "spawned",
+            "data": {
+              "type": "tester",
+              "name": "Tester Worker 4"
+            }
+          },
+          "timestamp": "2025-07-28T18:17:48.999Z"
+        }
+      ]
+    },
+    "statistics": {
+      "tasksProcessed": 0,
+      "tasksCompleted": 0,
+      "memoryUpdates": 0,
+      "agentActivities": 4,
+      "consensusDecisions": 0
+    }
+  }
+}
