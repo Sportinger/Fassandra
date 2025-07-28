@@ -150,7 +150,7 @@ test.describe('Pessoa Complete Workflow + Real Database Verification', () => {
     // Step 1: Login with fixed test user (500ms delay - 50% faster than before)
     console.log(`🔑 Step 1: Login with test user ${testUser.email} (lightning fast 500ms)...`);
     
-    await page.goto('https://192.168.2.111:8443');
+    await page.goto('https://192.168.2.111:8080');
     await page.fill('input[type="email"]', testUser.email);
     await page.fill('input[type="password"]', testUser.password);
     await page.click('button[type="submit"]');

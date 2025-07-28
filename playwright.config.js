@@ -16,7 +16,7 @@ module.exports = defineConfig({
   outputDir: './debug-screenshots/playwright-tests',
   
   use: {
-    baseURL: 'https://192.168.2.111:8443',
+    baseURL: 'https://192.168.2.111:8080',
     trace: 'on-first-retry',
     ignoreHTTPSErrors: true,
     
@@ -83,8 +83,8 @@ module.exports = defineConfig({
 
   // Development server configuration
   webServer: {
-                    command: 'echo "Using existing server at https://192.168.2.111:8443"',
-        url: 'https://192.168.2.111:8443',
+                    command: 'echo "Using existing server at https://192.168.2.111:8080"',
+        url: 'https://192.168.2.111:8080',
     reuseExistingServer: true,
     ignoreHTTPSErrors: true,
   },
