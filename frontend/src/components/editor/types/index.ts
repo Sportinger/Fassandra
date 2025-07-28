@@ -125,7 +125,7 @@ export interface SpeakerDropdownProps extends DropdownProps {
 
 // ===== VIEW MODE TYPES =====
 
-export type ViewMode = 'single-page' | 'multiple-pages';
+export type ViewMode = 'single-page' | 'multiple-pages' | 'virtual-page';
 
 export interface ViewModeProps {
   editor: TipTapEditor | null;

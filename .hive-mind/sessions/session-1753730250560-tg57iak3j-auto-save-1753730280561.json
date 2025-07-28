@@ -1,0 +1,81 @@
+{
+  "sessionId": "session-1753730250560-tg57iak3j",
+  "checkpointId": "checkpoint-1753730280561-rhm30nwpi",
+  "checkpointName": "auto-save-1753730280561",
+  "timestamp": "2025-07-28T19:18:00.562Z",
+  "data": {
+    "timestamp": "2025-07-28T19:18:00.561Z",
+    "changeCount": 5,
+    "changesByType": {
+      "swarm_created": [
+        {
+          "type": "swarm_created",
+          "data": {
+            "swarmId": "swarm-1753730250560-pbp1lb2tb",
+            "swarmName": "hive-1753730250556",
+            "objective": "lets come up with solutions for showing din4 sized pages and have the text flowing. i have made an attempt in multipgae view, but its broken. lets thing about good solutions",
+            "workerCount": 20
+          },
+          "timestamp": "2025-07-28T19:17:30.561Z"
+        }
+      ],
+      "agent_activity": [
+        {
+          "type": "agent_activity",
+          "data": {
+            "agentId": "worker-swarm-1753730250560-pbp1lb2tb-0",
+            "activity": "spawned",
+            "data": {
+              "type": "researcher",
+              "name": "Researcher Worker 1"
+            }
+          },
+          "timestamp": "2025-07-28T19:17:30.562Z"
+        },
+        {
+          "type": "agent_activity",
+          "data": {
+            "agentId": "worker-swarm-1753730250560-pbp1lb2tb-1",
+            "activity": "spawned",
+            "data": {
+              "type": "coder",
+              "name": "Coder Worker 2"
+            }
+          },
+          "timestamp": "2025-07-28T19:17:30.562Z"
+        },
+        {
+          "type": "agent_activity",
+          "data": {
+            "agentId": "worker-swarm-1753730250560-pbp1lb2tb-2",
+            "activity": "spawned",
+            "data": {
+              "type": "analyst",
+              "name": "Analyst Worker 3"
+            }
+          },
+          "timestamp": "2025-07-28T19:17:30.562Z"
+        },
+        {
+          "type": "agent_activity",
+          "data": {
+            "agentId": "worker-swarm-1753730250560-pbp1lb2tb-3",
+            "activity": "spawned",
+            "data": {
+              "type": "tester",
+              "name": "Tester Worker 4"
+            }
+          },
+          "timestamp": "2025-07-28T19:17:30.562Z"
+        }
+      ]
+    },
+    "statistics": {
+      "tasksProcessed": 0,
+      "tasksCompleted": 0,
+      "memoryUpdates": 0,
+      "agentActivities": 4,
+      "consensusDecisions": 0
+    }
+  }
+}
