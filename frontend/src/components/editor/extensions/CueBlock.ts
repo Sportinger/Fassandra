@@ -177,7 +177,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
         const result = commands.insertContent({
           type: this.name,
           attrs: { cueType, cueNumber: '999' }, // Temporary number
-          content: [{ type: 'text', text: '' }], // Start with empty content
+          content: [{ type: 'text', text: ' ' }], // Start with single space instead of empty
         });
         
         // Trigger cue number update

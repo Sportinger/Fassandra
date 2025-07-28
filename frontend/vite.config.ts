@@ -7,6 +7,7 @@ import fs from 'fs';
 let sslConfig = null;
 if (process.env.NODE_ENV !== 'production') {
   const sslPaths = [
+    { key: './ssl/private/server.key', cert: './ssl/certs/server.crt' },
     { key: './ssl/dev-key.pem', cert: './ssl/dev-cert.pem' },
     { key: './ssl/dev/key.pem', cert: './ssl/dev/cert.pem' },
     { key: '/app/ssl/dev/key.pem', cert: '/app/ssl/dev/cert.pem' }
@@ -31,10 +32,7 @@ export default defineConfig({
     host: true,     // Allow access from host to container
     allowedHosts: process.env.VITE_APP_DOMAIN ? [process.env.VITE_APP_DOMAIN] : ['localhost', '192.168.2.111'],
     // Only use HTTPS in development mode
-    https: process.env.NODE_ENV !== 'production' ? (sslConfig || {
-      key: fs.readFileSync('/app/ssl/dev/key.pem'),
-      cert: fs.readFileSync('/app/ssl/dev/cert.pem'),
-    }) : false,
+    https: process.env.NODE_ENV !== 'production' ? sslConfig : false,
     watch: {
       usePolling: true,  // Docker-safe file watching
       interval: 500,     // Polling interval (ms)
