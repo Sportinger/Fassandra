@@ -21,6 +21,9 @@ import { useAuth } from '../../../AuthContext';
 import { DialogueBlock } from '../extensions/DialogueBlock';
 import { Speaker } from '../extensions/Speaker';
 import { DialogueText } from '../extensions/DialogueText';
+import { CueBlock } from '../extensions/CueBlock';
+import { SceneBlock } from '../extensions/SceneBlock';
+import { PageIndicator } from '../extensions/PageIndicator';
 import { FontSize } from '../FontSizeExtension';
 import { getScriptWithBlocks, getContentSnapshot } from '../../../api';
 import { convertBlocksToTiptapContent, extractSpeakerNames } from '../utils/contentConverters';
@@ -205,6 +208,9 @@ export const useEditorCore = ({
             DialogueBlock,
             Speaker,
             DialogueText,
+            CueBlock,
+            SceneBlock,
+            PageIndicator,
             FontSize,
             Color,
             TextStyle,
@@ -228,6 +234,9 @@ export const useEditorCore = ({
             DialogueBlock,
             Speaker,
             DialogueText,
+            CueBlock,
+            SceneBlock,
+            PageIndicator,
             FontSize,
             Color,
             TextStyle,
