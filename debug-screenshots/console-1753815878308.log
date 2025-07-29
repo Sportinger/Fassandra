@@ -1,0 +1,17 @@
+[vite] connecting...
+[vite] connected.
+%cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+[ApiService] Base URL set to: ""
+[Auth] Initial token from storage: NO
+[Auth] Initial user parsed: NO USER
+[Auth] Initial token from storage: NO
+[Auth] Initial user parsed: NO USER
+[Auth] Token set in ApiService: NO, ready: true
+[Auth] Token set in ApiService: NO, ready: true
+[DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o
+[API] Requesting: POST /register
+Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[API] Response: 500 Internal Server Error
+ApiError: API Error: 500 Internal Server Error
+    at ApiService.request (https://192.168.2.111:8080/src/services/ApiService.ts:77:15)
+    at async handleSubmit (https://192.168.2.111:8080/src/components/Register.tsx:40:21)
