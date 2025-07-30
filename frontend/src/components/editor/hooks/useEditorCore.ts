@@ -24,6 +24,7 @@ import { DialogueText } from '../extensions/DialogueText';
 import { CueBlock } from '../extensions/CueBlock';
 import { SceneBlock } from '../extensions/SceneBlock';
 import { PageIndicator } from '../extensions/PageIndicator';
+import { TrailingNode } from '../extensions/TrailingNode';
 import { FontSize } from '../FontSizeExtension';
 import { getScriptWithBlocks, getContentSnapshot } from '../../../api';
 import { convertBlocksToTiptapContent, extractSpeakerNames } from '../utils/contentConverters';
@@ -211,6 +212,10 @@ export const useEditorCore = ({
             CueBlock,
             SceneBlock,
             PageIndicator,
+            TrailingNode.configure({
+              node: 'paragraph',
+              notAfter: ['paragraph'],
+            }),
             FontSize,
             Color,
             TextStyle,
@@ -237,6 +242,10 @@ export const useEditorCore = ({
             CueBlock,
             SceneBlock,
             PageIndicator,
+            TrailingNode.configure({
+              node: 'paragraph',
+              notAfter: ['paragraph'],
+            }),
             FontSize,
             Color,
             TextStyle,

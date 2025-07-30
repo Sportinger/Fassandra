@@ -128,7 +128,7 @@ html, body {
   border-radius: var(--radius-sm);
   position: relative;
   
-  /* Content padding - proportional to page size */
+  /* Content padding - restored full padding */
   padding: var(--content-padding-y) var(--content-padding-x);
   
   /* Typography base */
@@ -383,8 +383,8 @@ html, body {
     box-shadow: none;
     border-radius: 0;
     
-    /* Adjust padding for mobile */
-    padding: var(--space-lg) var(--space-md);
+    /* Adjust padding for mobile - increased for better readability */
+    padding: var(--space-xl) var(--space-lg);
   }
   
   /* Override for multi-page view - keep full page styling even on mobile */

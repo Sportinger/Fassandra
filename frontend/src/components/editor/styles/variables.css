@@ -16,7 +16,7 @@
   --page-height: calc(var(--page-width) * var(--din-a4-ratio));
   
   /* Content padding - proportional to page size */
-  --content-padding-x: clamp(12px, 4vw, 1.5cm);
+  --content-padding-x: clamp(20px, 6vw, 2.5cm);
   --content-padding-y: clamp(16px, 5vh, 2cm);
   
   /* ===== TYPOGRAPHY SCALE ===== */
@@ -106,7 +106,7 @@
 @media (max-width: 767px) {
   :root {
     /* Tighter spacing on mobile */
-    --content-padding-x: var(--space-md);
+    --content-padding-x: var(--space-lg);
     --content-padding-y: var(--space-lg);
     
     /* Larger touch targets */
@@ -132,7 +132,7 @@
   :root {
     /* Full DIN A4 experience */
     --page-width: var(--din-a4-width);
-    --content-padding-x: 1.5cm;
+    --content-padding-x: 2.5cm;
     --content-padding-y: 2cm;
   }
 }
