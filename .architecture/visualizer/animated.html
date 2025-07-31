@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Animated Architecture Visualizer</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background: #1a1a1a;
+            font-family: Arial, sans-serif;
+        }
+        #diagram {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #808080;
+        }
+    </style>
+</head>
+<body>
+    <div id="diagram"></div>
+    
+    <script>
+        mermaid.initialize({ startOnLoad: false });
+        
+        let lastNodes = new Set();
+        
+        async function updateDiagram() {
+            const response = await fetch('/api/architecture/container');
+            const data = await response.json();
+            
+            const container = document.getElementById('diagram');
+            const graphId = 'graph-' + Date.now();
+            
+            mermaid.render(graphId, data.diagram).then(result => {
+                container.innerHTML = result.svg;
+                
+                const svg = container.querySelector('svg');
+                const nodes = svg.querySelectorAll('g.node');
+                const currentNodes = new Set();
+                
+                nodes.forEach(node => {
+                    const nodeId = node.id;
+                    currentNodes.add(nodeId);
+                    
+                    if (!lastNodes.has(nodeId)) {
+                        // This is a new node - animate it!
+                        const rect = node.querySelector('rect, polygon, ellipse');
+                        const text = node.querySelector('text');
+                        
+                        // Initial state
+                        gsap.set(node, {
+                            scale: 0,
+                            opacity: 0,
+                            transformOrigin: "center center"
+                        });
+                        
+                        // Animate in
+                        gsap.to(node, {
+                            scale: 1,
+                            opacity: 1,
+                            duration: 0.8,
+                            ease: "elastic.out(1, 0.5)",
+                            onStart: () => {
+                                if (rect) {
+                                    gsap.set(rect, { filter: "drop-shadow(0 0 30px #4CAF50)" });
+                                }
+                            },
+                            onComplete: () => {
+                                if (rect) {
+                                    gsap.to(rect, {
+                                        filter: "drop-shadow(0 0 0px #4CAF50)",
+                                        duration: 1,
+                                        ease: "power2.out"
+                                    });
+                                }
+                            }
+                        });
+                        
+                        // Animate edges connected to this node
+                        const edges = svg.querySelectorAll('g.edgePath');
+                        edges.forEach(edge => {
+                            const edgeId = edge.id || '';
+                            if (edgeId.includes(nodeId.replace('node-', ''))) {
+                                const path = edge.querySelector('path');
+                                if (path) {
+                                    const length = path.getTotalLength();
+                                    
+                                    gsap.set(path, {
+                                        strokeDasharray: length,
+                                        strokeDashoffset: length,
+                                        stroke: "#4CAF50",
+                                        strokeWidth: 3
+                                    });
+                                    
+                                    gsap.to(path, {
+                                        strokeDashoffset: 0,
+                                        duration: 1,
+                                        ease: "power2.inOut",
+                                        delay: 0.4,
+                                        onComplete: () => {
+                                            gsap.to(path, {
+                                                stroke: "",
+                                                strokeWidth: "",
+                                                duration: 0.5
+                                            });
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
+                });
+                
+                lastNodes = currentNodes;
+            });
+        }
+        
+        // Initial load
+        updateDiagram();
+        
+        // WebSocket for real-time updates
+        const ws = new WebSocket(`ws://${window.location.hostname}:3456`);
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'update') {
+                updateDiagram();
+            }
+        };
+    </script>
+</body>
+</html> 
