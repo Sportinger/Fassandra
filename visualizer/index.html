@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pessoa Architecture - Live Visualizer</title>
+    <!-- Upgrade to Mermaid v11.9.0 -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.9.0/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/panzoom@9.4.3/dist/panzoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+    <style>
+        // ... existing code ...
+    </style>
+</head>
+<body>
+    // ... existing code ...
+    <div id="mermaid" class="diagram-container">
+        <div id="mermaid-container" style="width: 100%; height: 100%;"></div>
+    </div>
+    // ... existing code ...
+
+    <script>
+        let ws;
+        let reconnectInterval;
+        let panzoomInstance = null;
+        let currentView = 'container';
+        let detailsVisible = true;
+        let allData = {};
+        
+        // Initialize Mermaid v11 with proper configuration
+        mermaid.initialize({ 
+            startOnLoad: false,
+            theme: 'default',
+            flowchart: {
+                htmlLabels: true,
+                curve: 'basis',
+                useMaxWidth: false
+            },
+            securityLevel: 'loose'
+        });
+        
+        // ... existing code ...
+
+        async function renderDiagram(diagramText) {
+            if (!diagramText || diagramText.trim() === '') {
+                showUpdateIndicator('No diagram data');
+                return;
+            }
+            
+            const container = document.getElementById('mermaid-container');
+            const graphId = 'mermaid-graph-' + Date.now();
+            
+            try {
+                // Clear previous content
+                container.innerHTML = '';
+                
+                // Create a new div for the diagram
+                const mermaidDiv = document.createElement('div');
+                mermaidDiv.className = 'mermaid';
+                mermaidDiv.id = graphId;
+                container.appendChild(mermaidDiv);
+                
+                // Use mermaid v11 render API
+                const { svg } = await mermaid.render(graphId, diagramText);
+                
+                // Insert the rendered SVG
+                mermaidDiv.innerHTML = svg;
+                
+                // Get the SVG element
+                const svgElement = mermaidDiv.querySelector('svg');
+                if (svgElement) {
+                    // Ensure SVG fills container
+                    svgElement.style.width = '100%';
+                    svgElement.style.height = '100%';
+                    svgElement.style.maxHeight = 'none';
+                    
+                    // Initialize panzoom after a short delay to ensure proper rendering
+                    setTimeout(() => {
+                        if (panzoomInstance) {
+                            panzoomInstance.destroy();
+                        }
+                        
+                        panzoomInstance = panzoom(svgElement, {
+                            maxZoom: 5,
+                            minZoom: 0.1,
+                            initialZoom: 0.9,
+                            bounds: true,
+                            boundsPadding: 0.1,
+                            smoothScroll: false,
+                            zoomDoubleClickSpeed: 1
+                        });
+                        
+                        // Center the diagram
+                        panzoomInstance.moveTo(0, 0);
+                        panzoomInstance.zoomAbs(0, 0, 0.9);
+                    }, 100);
+                    
+                    // Inject animation styles
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        @keyframes fadeIn {
+                            from { opacity: 0; transform: scale(0.8); }
+                            to { opacity: 1; transform: scale(1); }
+                        }
+                        @keyframes pulse {
+                            0% { opacity: 1; }
+                            50% { opacity: 0.6; }
+                            100% { opacity: 1; }
+                        }
+                        ${graphId} .node {
+                            animation: fadeIn 0.3s ease-out;
+                        }
+                        ${graphId} .edgePath {
+                            animation: fadeIn 0.4s ease-out;
+                        }
+                    `;
+                    svgElement.appendChild(style);
+                }
+                
+                showUpdateIndicator('Diagram updated');
+            } catch (error) {
+                console.error('Mermaid rendering error:', error);
+                container.innerHTML = `<div class="error-message">Error rendering diagram: ${error.message}</div>`;
+            }
+        }
+
+        // ... existing code ...
+    </script>
+</body>
+</html> 

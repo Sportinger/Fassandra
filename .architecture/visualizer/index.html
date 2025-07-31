@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pessoa Architecture - Live Visualizer</title>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-    <script src="https://unpkg.com/panzoom@9.4.0/dist/panzoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.9.0/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/panzoom@9.4.3/dist/panzoom.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -59,26 +59,27 @@
             100% { opacity: 1; }
         }
         
-        .tabs {
+        .view-tabs {
             background: #2a2a2a;
-            display: flex;
-            border-bottom: 1px solid #3a3a3a;
             padding: 0 2rem;
+            display: flex;
+            gap: 1rem;
+            border-bottom: 1px solid #3a3a3a;
         }
         
         .tab {
             padding: 0.75rem 1.5rem;
-            cursor: pointer;
-            border: none;
             background: none;
-            color: #888;
+            border: none;
+            color: #999;
+            cursor: pointer;
             font-size: 0.9rem;
-            transition: all 0.2s;
             border-bottom: 2px solid transparent;
+            transition: all 0.3s;
         }
         
         .tab:hover {
-            color: #ccc;
+            color: #e0e0e0;
         }
         
         .tab.active {
@@ -86,721 +87,685 @@
             border-bottom-color: #4CAF50;
         }
         
-        .content {
+        .main-container {
             flex: 1;
-            overflow: auto;
-            padding: 2rem;
-            display: none;
+            display: flex;
+            overflow: hidden;
         }
         
-        .content.active {
-            display: block;
-        }
-        
-        #diagram {
-            background: #808080;
-            border-radius: 8px;
-            padding: 0;
-            min-height: 500px;
+        .diagram-container {
+            flex: 1;
             position: relative;
             overflow: hidden;
-            cursor: grab;
+            background: #808080;
         }
         
-        #diagram.grabbing {
-            cursor: grabbing;
-        }
-        
-        #diagram-container {
+        #mermaid {
             width: 100%;
             height: 100%;
-            min-height: 500px;
             display: flex;
             justify-content: center;
             align-items: center;
-        }
-        
-        /* Animations for new elements */
-        @keyframes nodeAppear {
-            0% {
-                opacity: 0;
-                transform: scale(0.3);
-                filter: brightness(2) drop-shadow(0 0 20px #4CAF50);
-            }
-            50% {
-                filter: brightness(1.5) drop-shadow(0 0 10px #4CAF50);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1);
-                filter: brightness(1) drop-shadow(0 0 0px #4CAF50);
-            }
-        }
-        
-        @keyframes edgeAppear {
-            0% {
-                stroke-dasharray: 1000;
-                stroke-dashoffset: 1000;
-                opacity: 0;
-            }
-            50% {
-                opacity: 1;
-            }
-            100% {
-                stroke-dasharray: 1000;
-                stroke-dashoffset: 0;
-                opacity: 1;
-            }
-        }
-        
-        @keyframes glowPulse {
-            0% {
-                filter: drop-shadow(0 0 5px #4CAF50);
-            }
-            50% {
-                filter: drop-shadow(0 0 20px #4CAF50) drop-shadow(0 0 30px #4CAF50);
-            }
-            100% {
-                filter: drop-shadow(0 0 5px #4CAF50);
-            }
-        }
-        
-        /* Apply animations to new elements */
-        .new-node {
-            animation: nodeAppear 0.8s ease-out forwards;
-        }
-        
-        .new-edge {
-            animation: edgeAppear 1s ease-out forwards;
-        }
-        
-        .highlight-node {
-            animation: glowPulse 2s ease-in-out;
-        }
-        
-        .diagram-controls {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            display: flex;
-            gap: 0.5rem;
-            z-index: 100;
-        }
-        
-        .diagram-btn {
-            background: rgba(0, 0, 0, 0.6);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: background 0.2s;
-        }
-        
-        .diagram-btn:hover {
-            background: rgba(0, 0, 0, 0.8);
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .stat-card {
-            background: #2a2a2a;
-            padding: 1.5rem;
-            border-radius: 8px;
-            border: 1px solid #3a3a3a;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .stat-card.updated {
-            animation: statBounce 0.5s ease-out;
-        }
-        
-        @keyframes statBounce {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(76, 175, 80, 0.5); }
-            100% { transform: scale(1); }
-        }
-        
-        .stat-card h3 {
-            margin: 0 0 0.5rem 0;
-            color: #888;
-            font-size: 0.9rem;
-            font-weight: normal;
-        }
-        
-        .stat-card .value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #4CAF50;
-        }
-        
-        .component-list {
-            background: #2a2a2a;
-            border-radius: 8px;
             overflow: hidden;
         }
         
-        .component-item {
-            padding: 1rem 1.5rem;
+        #mermaid svg {
+            max-width: none !important;
+            max-height: none !important;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .sidebar {
+            width: 400px;
+            background: #2a2a2a;
+            border-left: 1px solid #3a3a3a;
+            overflow-y: auto;
+            transition: transform 0.3s;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(400px);
+        }
+        
+        .sidebar-header {
+            padding: 1rem;
+            background: #333;
             border-bottom: 1px solid #3a3a3a;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: background 0.3s;
         }
         
-        .component-item.new-item {
-            animation: slideIn 0.5s ease-out;
-            background: rgba(76, 175, 80, 0.1);
-        }
-        
-        @keyframes slideIn {
-            0% {
-                transform: translateX(-100%);
-                opacity: 0;
-            }
-            100% {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        
-        .component-item:last-child {
-            border-bottom: none;
-        }
-        
-        .layer-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-        
-        .layer-frontend { background: #2196F3; color: white; }
-        .layer-backend { background: #4CAF50; color: white; }
-        .layer-infrastructure { background: #FF9800; color: white; }
-        .layer-external { background: #9C27B0; color: white; }
-        
-        .refresh-info {
-            color: #666;
-            font-size: 0.8rem;
-        }
-        
-        .error {
-            background: #f44336;
-            color: white;
+        .sidebar-content {
             padding: 1rem;
+        }
+        
+        .section {
+            margin-bottom: 2rem;
+        }
+        
+        .section h3 {
+            color: #4CAF50;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        
+        .stat-card {
+            background: #333;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4CAF50;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #999;
+        }
+        
+        .component-tree {
+            font-family: monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .tree-item {
+            padding: 0.25rem 0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .tree-item:hover {
+            background: #333;
+        }
+        
+        .tree-item.component {
+            padding-left: 1rem;
+        }
+        
+        .tree-item.subcomponent {
+            padding-left: 2rem;
+        }
+        
+        .api-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .api-item {
+            background: #333;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
             border-radius: 4px;
-            margin: 1rem 0;
+            font-size: 0.85rem;
         }
         
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 200px;
-            color: #666;
+        .api-method {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-right: 0.5rem;
         }
         
-        .zoom-info {
-            position: absolute;
-            bottom: 1rem;
-            left: 1rem;
-            color: rgba(255, 255, 255, 0.6);
+        .api-method.GET { background: #4CAF50; }
+        .api-method.POST { background: #2196F3; }
+        .api-method.PUT { background: #FF9800; }
+        .api-method.DELETE { background: #F44336; }
+        .api-method.PATCH { background: #9C27B0; }
+        
+        .api-path {
+            color: #e0e0e0;
+            font-family: monospace;
+        }
+        
+        .api-auth {
+            float: right;
             font-size: 0.8rem;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 0.5rem;
-            border-radius: 4px;
+            color: #999;
         }
         
-        .update-indicator {
+        .search-box {
+            width: 100%;
+            padding: 0.75rem;
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #e0e0e0;
+            margin-bottom: 1rem;
+        }
+        
+        .toggle-sidebar {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .updated-indicator {
             position: absolute;
             top: 1rem;
-            left: 1rem;
+            right: 1rem;
             background: #4CAF50;
             color: white;
             padding: 0.5rem 1rem;
             border-radius: 4px;
-            font-size: 0.9rem;
-            display: none;
-            animation: fadeInOut 2s ease-in-out;
+            opacity: 0;
+            transition: opacity 0.3s;
         }
         
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: translateY(-10px); }
-            20% { opacity: 1; transform: translateY(0); }
-            80% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-10px); }
+        .updated-indicator.show {
+            opacity: 1;
+        }
+
+        /* Animation classes for new elements */
+        @keyframes nodeAppear {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes edgeAppear {
+            from {
+                stroke-dashoffset: 1000;
+                opacity: 0;
+            }
+            to {
+                stroke-dashoffset: 0;
+                opacity: 1;
+            }
+        }
+
+        @keyframes glowPulse {
+            0% { filter: drop-shadow(0 0 5px #4CAF50); }
+            50% { filter: drop-shadow(0 0 20px #4CAF50); }
+            100% { filter: drop-shadow(0 0 5px #4CAF50); }
+        }
+
+        @keyframes statBounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🏛️ Pessoa Architecture Visualizer</h1>
+        <h1>🏛️ Pessoa Architecture Explorer</h1>
         <div class="controls">
             <div class="status">
                 <span class="status-dot"></span>
-                <span id="status-text">Connecting...</span>
+                <span id="connection-status">Live - Real-time</span>
             </div>
+            <button class="toggle-sidebar" onclick="toggleSidebar()">Toggle Details</button>
         </div>
     </div>
     
-    <div class="tabs">
-        <button class="tab active" onclick="switchTab('container')">Container View</button>
-        <button class="tab" onclick="switchTab('stats')">Statistics</button>
-        <button class="tab" onclick="switchTab('components')">Components</button>
-        <button class="tab" onclick="switchTab('deployment')">Deployment</button>
+    <div class="view-tabs">
+        <button class="tab active" onclick="switchView('container')">C4 Container</button>
+        <button class="tab" onclick="switchView('hierarchy')">Component Hierarchy</button>
+        <button class="tab" onclick="switchView('apis')">API Overview</button>
+        <button class="tab" onclick="switchView('context')">Bounded Contexts</button>
     </div>
     
-    <div id="container" class="content active">
-        <div id="diagram">
-            <div class="update-indicator" id="updateIndicator">✨ Diagram updated</div>
-            <div class="diagram-controls">
-                <button class="diagram-btn" onclick="resetZoom()">Reset Zoom</button>
-                <button class="diagram-btn" onclick="zoomIn()">+</button>
-                <button class="diagram-btn" onclick="zoomOut()">-</button>
-            </div>
-            <div id="diagram-container">
-                <div class="loading">Loading architecture...</div>
-            </div>
-            <div class="zoom-info">Use mouse wheel to zoom, drag to pan</div>
+    <div class="main-container">
+        <div class="diagram-container">
+            <div id="mermaid"></div>
+            <div class="updated-indicator" id="update-indicator">✨ Diagram updated</div>
         </div>
-    </div>
-    
-    <div id="stats" class="content">
-        <div class="stats-grid" id="statsGrid">
-            <!-- Stats will be inserted here -->
-        </div>
-    </div>
-    
-    <div id="components" class="content">
-        <div class="component-list" id="componentList">
-            <!-- Components will be inserted here -->
-        </div>
-    </div>
-    
-    <div id="deployment" class="content">
-        <div id="deploymentInfo">
-            <!-- Deployment info will be inserted here -->
-        </div>
-    </div>
-    
-    <script>
-        let currentTab = 'container';
-        let panzoomInstance = null;
-        let savedTransform = null; // Store zoom/pan state
-        let lastDiagramCode = null; // Store last diagram to detect changes
-        let ws = null; // WebSocket connection
-        let reconnectTimer = null;
-        let previousComponents = new Set(); // Track existing components
-        let previousStats = {}; // Track stats for animations
         
-        // Initialize Mermaid with grey theme
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>Architecture Details</h2>
+            </div>
+            <div class="sidebar-content">
+                <input type="text" class="search-box" id="search" placeholder="Search components, APIs, contexts..." onkeyup="handleSearch()">
+                
+                <div class="section">
+                    <h3>📊 Overview</h3>
+                    <div class="stats" id="stats">
+                        <div class="stat-card">
+                            <span class="stat-value">-</span>
+                            <span class="stat-label">Contexts</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value">-</span>
+                            <span class="stat-label">Components</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value">-</span>
+                            <span class="stat-label">APIs</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value">-</span>
+                            <span class="stat-label">Relationships</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section" id="component-section">
+                    <h3>🏗️ Components</h3>
+                    <div class="component-tree" id="components"></div>
+                </div>
+                
+                <div class="section" id="api-section">
+                    <h3>🔌 API Endpoints</h3>
+                    <div class="api-list" id="apis"></div>
+                </div>
+                
+                <div class="section" id="context-section">
+                    <h3>🎯 Bounded Contexts</h3>
+                    <div id="contexts"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let panzoomInstance = null;
+        window.panzoomInstance = null; // Make it globally accessible
+        let ws = null;
+        let currentView = 'container';
+        let currentDiagram = '';
+        let allData = {
+            contexts: [],
+            components: [],
+            apis: [],
+            relationships: []
+        };
+
+        // Initialize Mermaid v11 with proper configuration
         mermaid.initialize({ 
             startOnLoad: false,
             theme: 'neutral',
+            flowchart: {
+                htmlLabels: true,
+                curve: 'basis',
+                useMaxWidth: false,
+                defaultRenderer: 'dagre'
+            },
             themeVariables: {
-                darkMode: false,
+                primaryColor: '#4CAF50',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#2E7D32',
+                lineColor: '#666',
+                secondaryColor: '#2196F3',
+                tertiaryColor: '#FF9800',
                 background: '#808080',
-                primaryColor: '#90a4ae',
-                primaryTextColor: '#000',
-                primaryBorderColor: '#607d8b',
-                lineColor: '#455a64',
-                secondaryColor: '#78909c',
-                tertiaryColor: '#b0bec5',
-                mainBkg: '#eceff1',
-                secondBkg: '#cfd8dc',
-                tertiaryBkg: '#b0bec5'
-            }
+                mainBkg: '#4CAF50',
+                secondBkg: '#2196F3',
+                tertiaryBkg: '#FF9800',
+                noteBkgColor: '#333',
+                noteTextColor: '#fff'
+            },
+            securityLevel: 'loose'
         });
-        
-        function switchTab(tabName) {
-            // Update tabs
+
+        function connectWebSocket() {
+            const wsUrl = window.location.protocol === 'https:' 
+                ? `wss://${window.location.host}` 
+                : `ws://${window.location.host}`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                document.getElementById('connection-status').textContent = 'Live - Real-time';
+                document.querySelector('.status-dot').style.background = '#4CAF50';
+            };
+            
+            ws.onmessage = (event) => {
+                if (event.data === 'update') {
+                    console.log('Database updated, reloading...');
+                    loadData();
+                }
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                document.getElementById('connection-status').textContent = 'Reconnecting...';
+                document.querySelector('.status-dot').style.background = '#FF9800';
+                setTimeout(connectWebSocket, 3000);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        async function loadData() {
+            try {
+                // Load all data in parallel
+                const [diagramRes, statsRes, componentsRes, apisRes, contextsRes] = await Promise.all([
+                    fetch(`/api/diagram/${currentView}`),
+                    fetch('/api/stats'),
+                    fetch('/api/components'),
+                    fetch('/api/apis'),
+                    fetch('/api/contexts')
+                ]);
+
+                const diagram = await diagramRes.text();
+                const stats = await statsRes.json();
+                const components = await componentsRes.json();
+                const apis = await apisRes.json();
+                const contexts = await contextsRes.json();
+
+                // Store all data
+                allData = { contexts, components, apis, relationships: stats.relationships };
+
+                // Update stats
+                updateStats(stats);
+                
+                // Update components tree
+                updateComponents(components);
+                
+                // Update APIs
+                updateAPIs(apis);
+                
+                // Update contexts
+                updateContexts(contexts);
+                
+                // Render diagram if changed
+                if (diagram !== currentDiagram) {
+                    currentDiagram = diagram;
+                    await renderDiagram(diagram);
+                    showUpdateIndicator();
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+
+        function updateStats(stats) {
+            const statsHtml = `
+                <div class="stat-card">
+                    <span class="stat-value">${stats.contexts || 0}</span>
+                    <span class="stat-label">Contexts</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">${stats.components || 0}</span>
+                    <span class="stat-label">Components</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">${stats.endpoints || 0}</span>
+                    <span class="stat-label">APIs</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">${stats.relationships || 0}</span>
+                    <span class="stat-label">Relationships</span>
+                </div>
+            `;
+            document.getElementById('stats').innerHTML = statsHtml;
+        }
+
+        function updateComponents(components) {
+            // Build hierarchical tree
+            const tree = buildComponentTree(components);
+            let html = '';
+            
+            tree.forEach(comp => {
+                html += renderComponentTree(comp, 0);
+            });
+            
+            document.getElementById('components').innerHTML = html || '<p>No components found</p>';
+        }
+
+        function buildComponentTree(components) {
+            const map = {};
+            const roots = [];
+            
+            components.forEach(comp => {
+                map[comp.id] = { ...comp, children: [] };
+            });
+            
+            components.forEach(comp => {
+                if (comp.parent_id && map[comp.parent_id]) {
+                    map[comp.parent_id].children.push(map[comp.id]);
+                } else if (!comp.parent_id) {
+                    roots.push(map[comp.id]);
+                }
+            });
+            
+            return roots;
+        }
+
+        function renderComponentTree(comp, level) {
+            const indent = '  '.repeat(level);
+            let html = `<div class="tree-item" onclick="showComponentDetails(${comp.id})">`;
+            html += `${indent}${level > 0 ? '└─ ' : ''}${comp.name} <span style="color: #666">(${comp.type})</span>`;
+            if (comp.file_path) {
+                html += ` <span style="color: #444; font-size: 0.8rem">${comp.file_path}:${comp.start_line || '?'}</span>`;
+            }
+            html += '</div>';
+            
+            if (comp.children) {
+                comp.children.forEach(child => {
+                    html += renderComponentTree(child, level + 1);
+                });
+            }
+            
+            return html;
+        }
+
+        function updateAPIs(apis) {
+            let html = '';
+            apis.forEach(api => {
+                const authIcon = api.is_authenticated ? '🔒' : '';
+                html += `
+                    <div class="api-item">
+                        <span class="api-method ${api.method}">${api.method}</span>
+                        <span class="api-path">${api.path}</span>
+                        <span class="api-auth">${authIcon}</span>
+                        ${api.description ? `<div style="color: #999; margin-top: 0.25rem">${api.description}</div>` : ''}
+                    </div>
+                `;
+            });
+            
+            document.getElementById('apis').innerHTML = html || '<p>No APIs found</p>';
+        }
+
+        function updateContexts(contexts) {
+            let html = '';
+            contexts.forEach(ctx => {
+                html += `
+                    <div class="api-item">
+                        <h4>${ctx.name}</h4>
+                        <p style="color: #999">${ctx.description || 'No description'}</p>
+                        <p style="color: #666; font-size: 0.85rem">Entry: ${ctx.entry_point || 'Not specified'}</p>
+                        <p style="color: #666; font-size: 0.85rem">Max lines: ${ctx.max_lines || '10000'}</p>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('contexts').innerHTML = html || '<p>No contexts found</p>';
+        }
+
+        async function renderDiagram(diagramText) {
+            const element = document.getElementById('mermaid');
+            element.innerHTML = ''; // Clear previous content
+            
+            try {
+                // Generate unique ID for the diagram
+                const graphId = 'mermaid-' + Date.now();
+                
+                // Create a container div
+                const containerDiv = document.createElement('div');
+                containerDiv.id = graphId;
+                containerDiv.style.width = '100%';
+                containerDiv.style.height = '100%';
+                containerDiv.style.display = 'flex';
+                containerDiv.style.justifyContent = 'center';
+                containerDiv.style.alignItems = 'center';
+                element.appendChild(containerDiv);
+                
+                // Use mermaid v11 render API
+                const { svg } = await mermaid.render(graphId + '-svg', diagramText);
+                
+                // Create wrapper for panzoom
+                const wrapperDiv = document.createElement('div');
+                wrapperDiv.style.position = 'absolute';
+                wrapperDiv.style.width = '100%';
+                wrapperDiv.style.height = '100%';
+                wrapperDiv.innerHTML = svg;
+                containerDiv.appendChild(wrapperDiv);
+                
+                // Get the SVG element
+                const svgElement = wrapperDiv.querySelector('svg');
+                
+                if (svgElement) {
+                    // Dispose previous panzoom instance
+                    if (panzoomInstance) {
+                        panzoomInstance.dispose();
+                    }
+                    
+                    // Make SVG keep its natural size
+                    svgElement.removeAttribute('width');
+                    svgElement.removeAttribute('height');
+                    svgElement.style.position = 'relative';
+                    svgElement.style.display = 'block';
+                    
+                    // Wait for browser to layout
+                    requestAnimationFrame(() => {
+                        // Get actual dimensions after layout
+                        const svgBBox = svgElement.getBBox();
+                        const containerRect = element.getBoundingClientRect();
+                        
+                        // Set viewBox if not present
+                        if (!svgElement.getAttribute('viewBox')) {
+                            svgElement.setAttribute('viewBox', `${svgBBox.x} ${svgBBox.y} ${svgBBox.width} ${svgBBox.height}`);
+                        }
+                        
+                        // Don't set fixed size - let it be responsive
+                        svgElement.style.width = '100%';
+                        svgElement.style.height = '100%';
+                        
+                        // Calculate initial transform BEFORE creating panzoom
+                        const padding = 0.9; // 90% to leave padding
+                        const scaleX = containerRect.width / svgBBox.width;
+                        const scaleY = containerRect.height / svgBBox.height;
+                        const scale = Math.min(scaleX, scaleY) * padding;
+                        
+                        // Calculate center position
+                        const centerX = (containerRect.width - svgBBox.width * scale) / 2;
+                        const centerY = (containerRect.height - svgBBox.height * scale) / 2;
+                        
+                        // Set initial transform on wrapper BEFORE panzoom
+                        wrapperDiv.style.transform = `matrix(${scale}, 0, 0, ${scale}, ${centerX}, ${centerY})`;
+                        
+                        // Initialize panzoom on wrapper - it will respect the existing transform
+                        setTimeout(() => {
+                            panzoomInstance = panzoom(wrapperDiv, {
+                                maxZoom: 10,
+                                minZoom: 0.05,
+                                bounds: false,
+                                smoothScroll: false,
+                                zoomDoubleClickSpeed: 1
+                            });
+                            window.panzoomInstance = panzoomInstance; // Make it globally accessible
+                        }, 50);
+                    });
+                }
+            } catch (error) {
+                console.error('Mermaid rendering error:', error);
+                element.innerHTML = `<div style="color: red; padding: 2rem;">Error rendering diagram: ${error.message}</div>`;
+            }
+        }
+
+        function applyAnimations(svg) {
+            // DISABLED: Animations might interfere with layout
+            return;
+            
+            // Apply animations similar to before
+            const nodes = svg.querySelectorAll('g.node');
+            const edges = svg.querySelectorAll('g.edgePath path');
+            
+            nodes.forEach((node, index) => {
+                node.style.animation = `nodeAppear 0.5s ease-out ${index * 0.1}s forwards`;
+                node.style.opacity = '0';
+                setTimeout(() => { node.style.opacity = '1'; }, index * 100);
+            });
+            
+            edges.forEach((edge, index) => {
+                edge.style.animation = `edgeAppear 0.8s ease-out ${index * 0.05}s forwards`;
+                edge.style.strokeDasharray = '1000';
+                edge.style.opacity = '0';
+                setTimeout(() => { edge.style.opacity = '1'; }, index * 50);
+            });
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+
+        function switchView(view) {
+            currentView = view;
+            
+            // Update active tab
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
             event.target.classList.add('active');
             
-            // Update content
-            document.querySelectorAll('.content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.getElementById(tabName).classList.add('active');
-            
-            currentTab = tabName;
+            // Load new view
             loadData();
         }
-        
-        async function loadData() {
-            try {
-                const response = await fetch('/api/architecture/' + currentTab);
-                const data = await response.json();
-                
-                switch(currentTab) {
-                    case 'container':
-                        renderDiagram(data.diagram);
-                        break;
-                    case 'stats':
-                        renderStats(data.stats);
-                        break;
-                    case 'components':
-                        renderComponents(data.components);
-                        break;
-                    case 'deployment':
-                        renderDeployment(data.deployments);
-                        break;
-                }
-            } catch (error) {
-                console.error('Error loading data:', error);
-                showError('Failed to load architecture data. Server might be starting...');
+
+        function handleSearch() {
+            const query = document.getElementById('search').value.toLowerCase();
+            // Implement search functionality
+            console.log('Searching for:', query);
+        }
+
+        function showComponentDetails(id) {
+            const comp = allData.components.find(c => c.id === id);
+            if (comp) {
+                console.log('Component details:', comp);
+                // Could show in a modal or highlight in diagram
             }
         }
-        
-        function extractComponentsFromDiagram(diagramCode) {
-            const components = new Set();
-            // Extract component names from Mermaid syntax
-            const nodeRegex = /(\w+)\["[^"]+"\]/g;
-            let match;
-            while ((match = nodeRegex.exec(diagramCode)) !== null) {
-                components.add(match[1]);
-            }
-            return components;
+
+        function showUpdateIndicator() {
+            const indicator = document.getElementById('update-indicator');
+            indicator.classList.add('show');
+            setTimeout(() => {
+                indicator.classList.remove('show');
+            }, 3000);
         }
-        
-        function renderDiagram(diagramCode) {
-            // Only re-render if diagram actually changed
-            if (diagramCode === lastDiagramCode) {
-                return; // No changes, keep current zoom/pan
-            }
-            
-            // Detect new components
-            const currentComponents = extractComponentsFromDiagram(diagramCode);
-            const newComponents = new Set();
-            
-            currentComponents.forEach(comp => {
-                if (!previousComponents.has(comp)) {
-                    newComponents.add(comp);
-                }
-            });
-            
-            lastDiagramCode = diagramCode;
-            previousComponents = currentComponents;
-            
-            // Show update indicator only if there are new components
-            if (newComponents.size > 0) {
-                const indicator = document.getElementById('updateIndicator');
-                indicator.textContent = `✨ New component${newComponents.size > 1 ? 's' : ''} added!`;
-                indicator.style.display = 'block';
-                setTimeout(() => {
-                    indicator.style.display = 'none';
-                }, 2000);
-            }
-            
-            const container = document.getElementById('diagram-container');
-            
-            // Save current transform state before destroying
-            if (panzoomInstance) {
-                savedTransform = panzoomInstance.getTransform();
-                panzoomInstance.dispose();
-                panzoomInstance = null;
-            }
-            
-            // Create unique ID for mermaid
-            const graphId = 'mermaid-' + Date.now();
-            container.innerHTML = `<div id="${graphId}" class="mermaid">${diagramCode}</div>`;
-            
-            // Render the diagram
-            mermaid.render(graphId, diagramCode).then(result => {
-                container.innerHTML = result.svg;
-                
-                // Apply animations to new elements
-                const svg = container.querySelector('svg');
-                if (svg && newComponents.size > 0) {
-                    // Inject animation styles directly into SVG
-                    const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-                    style.textContent = `
-                        @keyframes nodeAppear {
-                            0% {
-                                opacity: 0;
-                                transform: scale(0.3);
-                            }
-                            100% {
-                                opacity: 1;
-                                transform: scale(1);
-                            }
-                        }
-                        @keyframes edgeAppear {
-                            0% {
-                                stroke-dasharray: 1000;
-                                stroke-dashoffset: 1000;
-                                opacity: 0;
-                            }
-                            50% {
-                                opacity: 1;
-                            }
-                            100% {
-                                stroke-dasharray: 1000;
-                                stroke-dashoffset: 0;
-                            }
-                        }
-                        .new-node {
-                            animation: nodeAppear 0.8s ease-out;
-                            transform-origin: center;
-                        }
-                        .new-edge {
-                            animation: edgeAppear 1s ease-out;
-                        }
-                    `;
-                    svg.insertBefore(style, svg.firstChild);
-                    
-                    // Find and animate new nodes
-                    const nodes = svg.querySelectorAll('g.node');
-                    nodes.forEach(node => {
-                        const nodeId = node.id;
-                        // Check if this node's ID matches any new component
-                        const isNew = Array.from(newComponents).some(comp => 
-                            nodeId && nodeId.includes(comp.replace(/-/g, '_'))
-                        );
-                        if (isNew) {
-                            node.classList.add('new-node');
-                            // Add glow effect
-                            const rect = node.querySelector('rect, polygon, ellipse');
-                            if (rect) {
-                                rect.style.filter = 'drop-shadow(0 0 20px #4CAF50)';
-                                setTimeout(() => {
-                                    rect.style.transition = 'filter 1s ease-out';
-                                    rect.style.filter = 'none';
-                                }, 800);
-                            }
-                        }
-                    });
-                    
-                    // Animate edges connected to new nodes
-                    const edges = svg.querySelectorAll('g.edgePath path');
-                    edges.forEach(edge => {
-                        const parent = edge.closest('g.edgePath');
-                        if (parent) {
-                            const edgeId = parent.id || '';
-                            // Check if edge connects to any new component
-                            const hasNewConnection = Array.from(newComponents).some(comp => 
-                                edgeId.includes(comp.replace(/-/g, '_'))
-                            );
-                            if (hasNewConnection) {
-                                edge.classList.add('new-edge');
-                                edge.style.stroke = '#4CAF50';
-                                edge.style.strokeWidth = '3';
-                                setTimeout(() => {
-                                    edge.style.transition = 'stroke 1s ease-out, stroke-width 1s ease-out';
-                                    edge.style.stroke = '';
-                                    edge.style.strokeWidth = '';
-                                }, 1000);
-                            }
-                        }
-                    });
-                }
-                
-                // Initialize panzoom on the SVG
-                if (svg) {
-                    // Make SVG responsive
-                    svg.style.maxWidth = 'none';
-                    svg.style.height = 'auto';
-                    
-                    panzoomInstance = panzoom(svg, {
-                        maxZoom: 3,
-                        minZoom: 0.3,
-                        smoothScroll: false,
-                        bounds: true,
-                        boundsPadding: 0.1
-                    });
-                    
-                    // Restore previous transform if available
-                    if (savedTransform) {
-                        panzoomInstance.zoomAbs(0, 0, savedTransform.scale);
-                        panzoomInstance.moveTo(savedTransform.x, savedTransform.y);
-                    }
-                    
-                    // Update cursor on mouse events
-                    const diagram = document.getElementById('diagram');
-                    diagram.addEventListener('mousedown', () => {
-                        diagram.classList.add('grabbing');
-                    });
-                    
-                    diagram.addEventListener('mouseup', () => {
-                        diagram.classList.remove('grabbing');
-                    });
-                }
-            });
-        }
-        
-        function zoomIn() {
-            if (panzoomInstance) {
-                panzoomInstance.zoomIn();
-            }
-        }
-        
-        function zoomOut() {
-            if (panzoomInstance) {
-                panzoomInstance.zoomOut();
-            }
-        }
-        
-        function resetZoom() {
-            if (panzoomInstance) {
-                panzoomInstance.moveTo(0, 0);
-                panzoomInstance.zoomAbs(0, 0, 1);
-                savedTransform = null; // Clear saved state
-            }
-        }
-        
-        function renderStats(stats) {
-            const statsGrid = document.getElementById('statsGrid');
-            
-            stats.forEach(stat => {
-                const existingCard = document.querySelector(`[data-stat="${stat.label}"]`);
-                
-                if (existingCard) {
-                    const valueEl = existingCard.querySelector('.value');
-                    const oldValue = parseInt(valueEl.textContent);
-                    const newValue = stat.value;
-                    
-                    if (oldValue !== newValue) {
-                        valueEl.textContent = newValue;
-                        existingCard.classList.add('updated');
-                        setTimeout(() => {
-                            existingCard.classList.remove('updated');
-                        }, 500);
-                    }
-                }
-            });
-            
-            // If no cards exist, create them
-            if (!statsGrid.querySelector('.stat-card')) {
-                statsGrid.innerHTML = stats.map(stat => `
-                    <div class="stat-card" data-stat="${stat.label}">
-                        <h3>${stat.label}</h3>
-                        <div class="value">${stat.value}</div>
-                    </div>
-                `).join('');
-            }
-        }
-        
-        function renderComponents(components) {
-            const componentList = document.getElementById('componentList');
-            const existingNames = new Set(
-                Array.from(componentList.querySelectorAll('.component-item'))
-                    .map(el => el.dataset.name)
-            );
-            
-            componentList.innerHTML = components.map(comp => {
-                const isNew = !existingNames.has(comp.name);
-                return `
-                    <div class="component-item ${isNew ? 'new-item' : ''}" data-name="${comp.name}">
-                        <div>
-                            <strong>${comp.name}</strong>
-                            <div style="color: #888; font-size: 0.9rem; margin-top: 0.25rem;">
-                                ${comp.purpose || comp.type}
-                            </div>
-                        </div>
-                        <span class="layer-badge layer-${comp.layer}">${comp.layer}</span>
-                    </div>
-                `;
-            }).join('');
-        }
-        
-        function renderDeployment(deployments) {
-            const deploymentInfo = document.getElementById('deploymentInfo');
-            const grouped = deployments.reduce((acc, dep) => {
-                if (!acc[dep.environment]) acc[dep.environment] = [];
-                acc[dep.environment].push(dep);
-                return acc;
-            }, {});
-            
-            deploymentInfo.innerHTML = Object.entries(grouped).map(([env, deps]) => `
-                <div style="margin-bottom: 2rem;">
-                    <h2 style="color: #4CAF50; text-transform: uppercase;">${env}</h2>
-                    <div class="component-list">
-                        ${deps.map(dep => `
-                            <div class="component-item">
-                                <div>
-                                    <strong>${dep.component_name}</strong>
-                                    <div style="color: #888; font-size: 0.9rem;">
-                                        ${dep.host}:${dep.port} • ${dep.replicas} replica(s)
-                                    </div>
-                                </div>
-                                <span style="color: #666;">${dep.infrastructure_type}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `).join('');
-        }
-        
-        function showError(message) {
-            const contentDiv = document.querySelector('.content.active');
-            contentDiv.innerHTML = `<div class="error">${message}</div>`;
-        }
-        
-        // WebSocket connection for real-time updates
-        function connectWebSocket() {
-            const wsUrl = `ws://${window.location.hostname}:${window.location.port || 3456}`;
-            ws = new WebSocket(wsUrl);
-            
-            ws.onopen = () => {
-                console.log('WebSocket connected');
-                document.querySelector('.status-dot').style.background = '#4CAF50';
-                document.getElementById('status-text').textContent = 'Live - Real-time';
-                
-                // Clear reconnect timer
-                if (reconnectTimer) {
-                    clearTimeout(reconnectTimer);
-                    reconnectTimer = null;
-                }
-            };
-            
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === 'update') {
-                    console.log('Database updated:', data.timestamp);
-                    loadData(); // Load new data immediately
-                }
-            };
-            
-            ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-                document.querySelector('.status-dot').style.background = '#f44336';
-            };
-            
-            ws.onclose = () => {
-                console.log('WebSocket disconnected');
-                document.querySelector('.status-dot').style.background = '#ff9800';
-                document.getElementById('status-text').textContent = 'Reconnecting...';
-                
-                // Attempt to reconnect after 3 seconds
-                reconnectTimer = setTimeout(() => {
-                    console.log('Attempting to reconnect...');
-                    connectWebSocket();
-                }, 3000);
-            };
-        }
-        
-        // Connect WebSocket
+
+        // Initialize
         connectWebSocket();
-        
-        // Initial load
         loadData();
-        
-        // Fallback: Still do periodic checks but much less frequently
-        setInterval(() => {
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                loadData(); // Only poll if WebSocket is not connected
-            }
-        }, 10000); // Every 10 seconds as fallback
     </script>
 </body>
 </html> 
