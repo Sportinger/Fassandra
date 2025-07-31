@@ -47,6 +47,7 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
   name: 'sceneBlock',
   group: 'block',
   content: 'inline*',
+  draggable: true, // Enable drag-and-drop
   
   addOptions() {
     return {
@@ -123,8 +124,8 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
         'data-type': 'scene-block',
         class: 'scene-block',
       }),
-      ['span', { class: 'scene-number', contenteditable: 'false' }, `SZENE ${sceneNumber}`],
-      ['span', { class: 'scene-separator', contenteditable: 'false' }, ' - '],
+      ['span', { class: 'scene-number', contenteditable: 'false' }, sceneNumber],
+      ['span', { class: 'scene-separator', contenteditable: 'false' }, ' '],
       ['span', { class: 'scene-name' }, 0],
     ];
   },
@@ -136,7 +137,7 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
         const result = commands.insertContent({
           type: this.name,
           attrs: { sceneNumber: '999' }, // Temporary number
-          content: [{ type: 'text', text: 'Scene Name' }],
+          content: [{ type: 'text', text: 'Szene Name' }],
         });
         
         // Trigger scene number update
