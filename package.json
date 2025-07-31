@@ -11,7 +11,8 @@
     "playwright:codegen": "playwright codegen",
     "mcp:vision": "npx @playwright/mcp@0.0.29 --config=playwright.config.js --vision",
     "mcp:test": "npx @playwright/mcp@0.0.29 --config=playwright.config.js",
-    "db:reset": "node scripts/reset_database.js"
+    "db:reset": "node scripts/reset_database.js",
+    "doctor": "node scripts/doctor.js"
   },
   "dependencies": {
     "@agentdeskai/browser-tools-mcp": "^1.2.1",
