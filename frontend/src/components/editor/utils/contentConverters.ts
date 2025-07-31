@@ -11,13 +11,26 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
     return '<p></p>'; // Default empty paragraph
   }
 
+  let currentPageNumber = 0;
   const convertedContent = blocks.map((block, index) => {
     console.log(`[Content Converter] Processing block ${index}:`, { 
       blockType: block.block_type, 
       contentLength: block.content?.length,
-      content: block.content?.substring(0, 100) + '...' 
+      content: block.content?.substring(0, 100) + '...',
+      pageNumber: block.page_number
     });
 
+    let result = '';
+    
+    // Check if we need to insert a page indicator
+    if (block.page_number && block.page_number !== currentPageNumber) {
+      currentPageNumber = block.page_number;
+      // Insert page indicator before this content
+      result += `<div data-type="page-indicator" data-page-number="${currentPageNumber}" class="page-indicator">
+        <span class="page-label" contenteditable="false">SEITE ${currentPageNumber}</span>
+      </div>`;
+      console.log(`[Content Converter] Inserting page indicator for page ${currentPageNumber}`);
+    }
     
     const blockType = block.block_type;
     const contentJsonString = block.content;
@@ -75,17 +88,45 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
             </div>`;
             
             console.log(`[Content Converter] Generated dialogue HTML:`, dialogueHTML);
-            return dialogueHTML;
+            result += dialogueHTML;
+            return result;
           } catch (parseError) {
             console.error(`[Content Converter] Failed to parse ${blockType} JSON, falling back to text:`, contentJsonString, parseError);
             // Fallback: treat as plain text dialogue
             const fallbackText = contentJsonString.substring(0, 200) + (contentJsonString.length > 200 ? '...' : '');
-            return `<div data-type="dialogue-block" data-layout="default">
+            result += `<div data-type="dialogue-block" data-layout="default">
               <div data-type="speaker">Unknown Speaker</div>
               <div data-type="dialogue-text">
                 <p>${fallbackText}</p>
               </div>
             </div>`;
+            return result;
+          }
+        }
+        
+        case 'scene-block': {
+          try {
+            // Parse the JSON content
+            const element = JSON.parse(contentJsonString);
+            const sceneNumber = element.scene_number || '1';
+            const sceneTitle = element.scene_title || 'Untitled Scene';
+            console.log(`[Content Converter] Creating scene block - Number: "${sceneNumber}", Title: "${sceneTitle}"`);
+            
+            // Create proper scene block HTML
+            const sceneHTML = `<div data-type="scene-block" data-scene-number="${sceneNumber}" data-scene-name="${sceneTitle}">
+              <span class="scene-number" contenteditable="false">${sceneNumber}</span>
+              <span class="scene-separator" contenteditable="false"> </span>
+              <span class="scene-name">${sceneTitle}</span>
+            </div>`;
+            
+            console.log(`[Content Converter] Generated scene HTML:`, sceneHTML);
+            result += sceneHTML;
+            return result;
+          } catch (parseError) {
+            console.error(`[Content Converter] Failed to parse scene-block JSON, falling back to text:`, contentJsonString, parseError);
+            // Fallback: treat as plain text
+            result += `<p><strong>Scene: ${contentJsonString}</strong></p>`;
+            return result;
           }
         }
         
@@ -97,11 +138,13 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
             console.log(`[Content Converter] Creating stage direction: "${description}"`);
             
             // Create paragraph for stage direction
-            return `<p><em>(${description})</em></p>`;
+            result += `<p><em>(${description})</em></p>`;
+            return result;
           } catch (parseError) {
             console.error(`[Content Converter] Failed to parse stage_direction JSON, falling back to text:`, contentJsonString, parseError);
             // Fallback: treat as plain text stage direction
-            return `<p><em>(${contentJsonString})</em></p>`;
+            result += `<p><em>(${contentJsonString})</em></p>`;
+            return result;
           }
         }
         
@@ -111,14 +154,17 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
             const actualText = JSON.parse(contentJsonString);
             console.log(`[Content Converter] Creating paragraph from JSON: "${actualText}"`);
             if (typeof actualText === 'string') {
-              return `<p>${actualText}</p>`;
+              result += `<p>${actualText}</p>`;
+              return result;
             } else {
-              return `<p>${String(actualText || '')}</p>`;
+              result += `<p>${String(actualText || '')}</p>`;
+              return result;
             }
           } catch (e) {
             // If JSON parsing fails, treat as plain text
             console.log(`[Content Converter] Creating paragraph from plain text: "${contentJsonString}"`);
-            return `<p>${contentJsonString}</p>`;
+            result += `<p>${contentJsonString}</p>`;
+            return result;
           }
         }
         
@@ -126,14 +172,16 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
           // Handle content blocks (raw HTML from content snapshots)
           console.log(`[Content Converter] Processing content block with raw HTML: "${contentJsonString}"`);
           // Content blocks contain raw HTML, don't try to parse as JSON
-          return contentJsonString;
+          result += contentJsonString;
+          return result;
         }
         
         default: {
           console.log(`[Content Converter] Unknown block type "${blockType}", using fallback formatting`);
           // For unknown block types, use the original formatting
           const formattedText = formatContentElement(blockType, contentJsonString);
-          return `<p>${formattedText}</p>`;
+          result += `<p>${formattedText}</p>`;
+          return result;
         }
       }
     } catch (e) {

@@ -136,6 +136,7 @@ impl ScriptApplicationService {
                 
                 // Determine block type
                 let block_type = match element {
+                    crate::analysis::structs::ContentElement::Scene(_) => "scene-block",
                     crate::analysis::structs::ContentElement::Dialogue(_) => "dialogue",
                     crate::analysis::structs::ContentElement::Monologue(_) => "monologue",
                     crate::analysis::structs::ContentElement::StageDirection(_) => "stage_direction",
