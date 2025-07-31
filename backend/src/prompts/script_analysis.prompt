@@ -25,21 +25,33 @@ Your task is to:
       "setting_note": "Setting description if present",
       "content": [
         {
+          "type": "scene",
+          "scene_number": "1",
+          "scene_title": "PROLOG",
+          "page_number": 1
+        },
+        {
           "type": "dialogue",
           "speaker": "CHARACTER_NAME",
           "line": "The spoken text",
-          "page_number": 1
+          "page_number": 1,
+          "scene_number": "1",
+          "scene_title": "PROLOG"
         },
         {
           "type": "monologue", 
           "speaker": "CHARACTER_NAME",
           "lines": ["First line", "Second line"],
-          "page_number": 1
+          "page_number": 1,
+          "scene_number": "1",
+          "scene_title": "PROLOG"
         },
         {
           "type": "stage_direction",
           "description": "Stage direction text",
-          "page_number": 1
+          "page_number": 1,
+          "scene_number": "1",
+          "scene_title": "PROLOG"
         },
         {
           "type": "joint_dialogue",
@@ -67,27 +79,50 @@ Parsing Rules (use these exact field names):
 1.  **Root Object:** The entire output must be a single JSON object.
 2.  **Top Level Fields:** Include `title`, `subtitle`, `adaptation_by` (list of authors/adaptors), and `sections` array. Populate `source_filename` if provided, otherwise null. `id` and `extra` will be handled later.
 3.  **Sections Array:** Each element in the `sections` array must be an object with fields: `section_number` (String or Number), `title`, `participants` (list of strings), `setting_note`, and `content` array. `id` and `extra` handled later.
-4.  **Content Array:** Each element in the `content` array represents a script element. It MUST have a `type` field matching one of: `dialogue`, `monologue`, `stage_direction`, `joint_dialogue`, `reading`.
+4.  **Content Array:** Each element in the `content` array represents a script element. It MUST have a `type` field matching one of: `scene`, `dialogue`, `monologue`, `stage_direction`, `joint_dialogue`, `reading`.
 5.  **Page Numbers:** **CRITICALLY IMPORTANT** - Each content element MUST include a `page_number` field indicating which page of the original document this content appears on. Start with page 1 and increment based on the document structure.
-6.  **Dialogue Element:** If `type` is `dialogue`, you MUST include these exact fields:
+6.  **Scene Headers:** When you encounter scene headers/titles (e.g., "1/ PROLOG", "SCENE 2", "AKT I", etc.), create a `scene` type element with `scene_number` and `scene_title`. All subsequent content elements should include these scene attributes until a new scene begins.
+7.  **Scene Element:** If `type` is `scene`, you MUST include these exact fields:
+    - `scene_number` (string): The scene number (e.g., "1", "2", "3a")
+    - `scene_title` (string): The scene title/name
+    - `page_number` (integer): Page location
+8.  **Dialogue Element:** If `type` is `dialogue`, you MUST include these exact fields:
     - `speaker` (string): The character name
     - `line` (string): **MANDATORY** - The actual spoken dialogue text
     - `page_number` (integer): Page location
     **CRITICAL ERROR TO AVOID**: Never output dialogue without the `line` field containing actual text!
 
-7.  **Monologue Element:** If `type` is `monologue`, you MUST include these exact fields:
+9.  **Monologue Element:** If `type` is `monologue`, you MUST include these exact fields:
     - `speaker` (string): The character name  
     - `lines` (array of strings): **MANDATORY** - The actual spoken text lines
     - `page_number` (integer): Page location
     **CRITICAL ERROR TO AVOID**: Never output monologue without the `lines` array containing actual text!
-8.  **Stage Direction Element:** If `type` is `stage_direction`, include `description` (string) and `page_number` (integer).
-9.  **Joint Dialogue Element:** If `type` is `joint_dialogue`, include `speakers` (array of strings), `line` (string), and `page_number` (integer).
-10. **Reading Element:** If `type` is `reading`, include `speaker`, `reading_text`, `page_number` (integer), and optionally `source` and `language`.
-11. **IMPORTANT - Omit IDs:** **DO NOT** include any `id` fields in your JSON output. These will be generated later.
-12. **Extras:** Do not generate values for the `extra` field.
-13. **Order:** Preserve the order of elements within the `content` array as they appear.
+10.  **Stage Direction Element:** If `type` is `stage_direction`, include `description` (string) and `page_number` (integer).
+11.  **Joint Dialogue Element:** If `type` is `joint_dialogue`, include `speakers` (array of strings), `line` (string), and `page_number` (integer).
+12. **Reading Element:** If `type` is `reading`, include `speaker`, `reading_text`, `page_number` (integer), and optionally `source` and `language`.
+13. **IMPORTANT - Omit IDs:** **DO NOT** include any `id` fields in your JSON output. These will be generated later.
+14. **Extras:** Do not generate values for the `extra` field.
+15. **Order:** Preserve the order of elements within the `content` array as they appear.
 
 **🚨 MANDATORY TEXT EXTRACTION EXAMPLES - FOLLOW EXACTLY:**
+
+When you encounter scene headers like:
+```
+1/ PROLOG
+ALLE (Stimme vom Band)
+```
+**MUST OUTPUT**: 
+1. First: `{"type": "scene", "scene_number": "1", "scene_title": "PROLOG", "page_number": 1}`
+2. Then any stage directions or dialogue that follows
+
+When you encounter scene headers like:
+```
+2 / DER TOD, MARY ERFINDET EINE SCHAUERGESCHICHTE
+Maren, Felix und Alexander in der Ur-Form/Homo Sapiens
+```
+**MUST OUTPUT**: 
+1. First: `{"type": "scene", "scene_number": "2", "scene_title": "DER TOD, MARY ERFINDET EINE SCHAUERGESCHICHTE", "page_number": 4}`
+2. Then: `{"type": "stage_direction", "description": "Maren, Felix und Alexander in der Ur-Form/Homo Sapiens", "page_number": 4, "scene_number": "2", "scene_title": "DER TOD, MARY ERFINDET EINE SCHAUERGESCHICHTE"}`
 
 When you encounter text like:
 ```

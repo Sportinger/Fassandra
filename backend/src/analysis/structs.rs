@@ -52,6 +52,7 @@ pub struct Section {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")] // Match AI's 'type' field
 pub enum ContentElement {
+    Scene(Scene),
     Dialogue(Dialogue),
     Monologue(Monologue),
     StageDirection(StageDirection),
@@ -135,6 +136,21 @@ pub struct StageDirection {
     #[serde(default)] // Handle null values from Gemini
     pub scene_title: Option<String>, // Scene title (e.g., "PROLOG", "DER TOD")
     // Removed kind and source_location
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct Scene {
+    #[serde(default)]
+    pub id: Option<String>,
+    pub scene_number: String, // Required: "1", "2", "3a", etc.
+    pub scene_title: String, // Required: "PROLOG", "DER TOD", etc.
+    #[serde(default = "default_page_number")]
+    pub page_number: i32, // Page number where this scene starts
+    // Optional fields for compatibility
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(flatten)]
+    pub extra: HashMap<String, Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -222,6 +238,14 @@ pub struct CleanMonologue {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct CleanScene {
+    pub scene_number: String,
+    pub scene_title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct CleanStageDirection {
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -277,6 +301,7 @@ impl ContentElement {
     /// Extracts page number from the content element
     pub fn get_page_number(&self) -> i32 {
         match self {
+            ContentElement::Scene(s) => s.page_number,
             ContentElement::Dialogue(d) => d.page_number,
             ContentElement::Monologue(m) => m.page_number,
             ContentElement::StageDirection(sd) => sd.page_number,
@@ -289,6 +314,7 @@ impl ContentElement {
     /// Extracts scene number from the content element
     pub fn get_scene_number(&self) -> Option<String> {
         match self {
+            ContentElement::Scene(s) => Some(s.scene_number.clone()),
             ContentElement::Dialogue(d) => d.scene_number.clone(),
             ContentElement::Monologue(m) => m.scene_number.clone(),
             ContentElement::StageDirection(sd) => sd.scene_number.clone(),
@@ -301,6 +327,7 @@ impl ContentElement {
     /// Extracts scene title from the content element
     pub fn get_scene_title(&self) -> Option<String> {
         match self {
+            ContentElement::Scene(s) => Some(s.scene_title.clone()),
             ContentElement::Dialogue(d) => d.scene_title.clone(),
             ContentElement::Monologue(m) => m.scene_title.clone(),
             ContentElement::StageDirection(sd) => sd.scene_title.clone(),
@@ -313,6 +340,14 @@ impl ContentElement {
     /// Converts to clean content JSON string (without metadata)
     pub fn to_clean_content_json(&self) -> Result<String, serde_json::Error> {
         match self {
+            ContentElement::Scene(s) => {
+                let clean = CleanScene {
+                    scene_number: s.scene_number.clone(),
+                    scene_title: s.scene_title.clone(),
+                    description: s.description.clone(),
+                };
+                serde_json::to_string(&clean)
+            },
             ContentElement::Dialogue(d) => {
                 let clean = CleanDialogue {
                     speaker: d.speaker.clone(),

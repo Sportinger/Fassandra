@@ -199,6 +199,7 @@ fn create_script_analysis_schema() -> Schema {
                 schema_type: "string".to_string(),
                 description: Some("Type of script element".to_string()),
                 enum_values: Some(vec![
+                    "scene".to_string(),
                     "dialogue".to_string(),
                     "monologue".to_string(),
                     "stage_direction".to_string(),
@@ -570,26 +571,36 @@ CRITICAL REQUIREMENTS:
 - Extract ALL dialogue text, not just speaker names
 - Include accurate page numbers from the PDF
 - Identify all speakers, scenes, and stage directions
-- Extract scene numbers and titles from stage directions (e.g., '1/ PROLOG', '2/ DER TOD')
 - Preserve the original order and structure
 - For dialogue: include the full spoken text
-- For stage directions: capture complete descriptions AND extract scene info
+- For stage directions: capture complete descriptions
 - Scene numbers and titles should be extracted precisely
 
-SCENE EXTRACTION RULES:
-- When you see patterns like '1/ PROLOG', '2/ DER TOD', 'ACT I', 'SCENE 2', extract:
-  - scene_number: '1', '2', 'ACT I', 'SCENE 2'
-  - scene_title: 'PROLOG', 'DER TOD', etc.
-- Apply scene_number and scene_title to ALL content elements within that scene
+SCENE RECOGNITION - VERY IMPORTANT:
+When you encounter text patterns that indicate a new scene:
+- Patterns like '1/ PROLOG', '2/ DER TOD', 'ACT I', 'SCENE 2', 'SZENE 3', etc.
+- These should be recognized as type: 'scene' (NOT stage_direction)
+- Extract scene_number (e.g., '1', '2', 'ACT I') and scene_title (e.g., 'PROLOG', 'DER TOD')
+- Create a scene element with these fields:
+  {{
+    \"type\": \"scene\",
+    \"page_number\": [page number],
+    \"scene_number\": \"1\",
+    \"scene_title\": \"PROLOG\"
+  }}
+
+For all subsequent content elements within a scene:
+- Apply the current scene_number and scene_title to dialogue, stage_direction, etc.
 - Continue using the same scene info until a new scene marker appears
 
 The PDF contains a theater script. Please provide a comprehensive analysis with:
 1. Title and subtitle
 2. All sections (acts, scenes) with proper numbering
-3. Complete dialogue with speaker names and full text
-4. Stage directions with descriptions AND scene markers
-5. Accurate page numbers for all elements
-6. Scene numbers and titles for all content elements
+3. Scene elements for scene headers (type: 'scene')
+4. Complete dialogue with speaker names and full text
+5. Stage directions with descriptions
+6. Accurate page numbers for all elements
+7. Scene numbers and titles propagated to all content elements
 
 Filename: {}",
         filename
@@ -650,17 +661,67 @@ Filename: {}",
         tracing::warn!("Failed to save debug response: {}", e);
     }
 
+    // Check if response might be truncated
+    if model_response_text.len() > 60000 {
+        tracing::warn!("Response is very large ({} chars), might be truncated", model_response_text.len());
+    }
+
     // Parse structured JSON response directly (no need for cleaning since we enforced schema)
-    let mut parsed_script: ParsedScript = serde_json::from_str(model_response_text)
-        .map_err(|e| {
+    let mut parsed_script: ParsedScript = match serde_json::from_str(model_response_text) {
+        Ok(script) => script,
+        Err(e) => {
             tracing::error!("Failed to parse structured JSON response: {}", e);
-            tracing::error!("Response content: {}", model_response_text);
-            // Save failed response with error info for debugging
-            if let Err(save_err) = save_debug_response(&format!("{}_FAILED", filename), &format!("PARSE_ERROR: {}\n\nRAW_RESPONSE:\n{}", e, model_response_text)) {
-                tracing::warn!("Failed to save failed response debug file: {}", save_err);
+            tracing::error!("Response content preview: {}", &model_response_text[..std::cmp::min(500, model_response_text.len())]);
+            
+            // Check if it's a truncation error
+            if e.to_string().contains("EOF") || e.to_string().contains("unexpected end") {
+                tracing::error!("Response appears to be truncated at position {}", model_response_text.len());
+                
+                // Try to fix truncated JSON by closing open structures
+                let mut fixed_json = model_response_text.to_string();
+                
+                // Count open brackets/braces
+                let open_braces = fixed_json.matches('{').count();
+                let close_braces = fixed_json.matches('}').count();
+                let open_brackets = fixed_json.matches('[').count();
+                let close_brackets = fixed_json.matches(']').count();
+                
+                tracing::info!("JSON structure: {} open braces, {} close braces, {} open brackets, {} close brackets",
+                    open_braces, close_braces, open_brackets, close_brackets);
+                
+                // Add missing closing characters
+                for _ in 0..(open_brackets - close_brackets) {
+                    fixed_json.push(']');
+                }
+                for _ in 0..(open_braces - close_braces) {
+                    fixed_json.push('}');
+                }
+                
+                // Try parsing the fixed JSON
+                if let Ok(script) = serde_json::from_str::<ParsedScript>(&fixed_json) {
+                    tracing::warn!("Successfully recovered truncated JSON by adding closing brackets");
+                    // Save the fixed response for debugging
+                    if let Err(save_err) = save_debug_response(&format!("{}_RECOVERED", filename), &fixed_json) {
+                        tracing::warn!("Failed to save recovered response: {}", save_err);
+                    }
+                    script
+                } else {
+                    tracing::error!("Failed to recover truncated JSON even after adding closing brackets");
+                    // Save failed response with error info for debugging
+                    if let Err(save_err) = save_debug_response(&format!("{}_FAILED", filename), &format!("PARSE_ERROR: {}\n\nRAW_RESPONSE:\n{}", e, model_response_text)) {
+                        tracing::warn!("Failed to save failed response debug file: {}", save_err);
+                    }
+                    return Err(GeminiApiError::StructureParsing("Structured output parsing failed".to_string()));
+                }
+            } else {
+                // Save failed response with error info for debugging
+                if let Err(save_err) = save_debug_response(&format!("{}_FAILED", filename), &format!("PARSE_ERROR: {}\n\nRAW_RESPONSE:\n{}", e, model_response_text)) {
+                    tracing::warn!("Failed to save failed response debug file: {}", save_err);
+                }
+                return Err(GeminiApiError::StructureParsing("Structured output parsing failed".to_string()));
             }
-            GeminiApiError::StructureParsing("Structured output parsing failed".to_string())
-        })?;
+        }
+    };
 
     // Set the source filename so the backend can use it as the title
     parsed_script.source_filename = Some(filename.to_string());
