@@ -223,11 +223,9 @@ button:focus-visible {
   text-align: left !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
-  margin-left: 0 !important;
-  padding-left: 0 !important;
-  /* Remove any inherited margins that might push content right */
   margin: 0 !important;
-  padding: 0 !important;
+  /* Add horizontal padding for content spacing from page edges */
+  padding: 0 24px !important;
 }
 
 /* Ensure all editor paragraphs respect word wrapping and start from left */
@@ -274,7 +272,8 @@ body.mobile-device {
     width: calc(100% - 8px) !important;
     max-width: calc(100% - 8px) !important;
     margin: 0 auto !important;
-    padding: 6px !important; /* Slightly more padding for better readability */
+    /* Better horizontal padding for mobile readability */
+    padding: 6px 16px !important;
     font-size: 16px !important; /* Standardized to 16px to prevent iOS zoom */
     line-height: 1.5 !important; /* Optimal line height for script reading */
     overflow-x: hidden !important;
