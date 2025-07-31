@@ -81,7 +81,7 @@ app.get('/api/diagram/:view', (req, res) => {
                 UNION ALL
                 -- Create subgraphs for root components for better grouping
                 SELECT DISTINCT
-                    printf('subgraph sub%s[" "]', root_id),
+                    printf('subgraph sub%s["%s"]', root_id, name),
                     root_id * 1000
                 FROM tree
                 WHERE parent_id IS NULL
