@@ -1,0 +1,23 @@
+[
+  {
+    "session_id": "dc697c21-30d9-45a5-9461-4758763dbffc",
+    "transcript_path": "/home/admins/.claude/projects/-home-admins-projects-pessoa/dc697c21-30d9-45a5-9461-4758763dbffc.jsonl",
+    "cwd": "/home/admins/projects/pessoa",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "{\n  \"mcpServers\": {\n    \"ElevenLabs\": {\n      \"command\": \"/home/admins/.local/bin/uvx\",\n      \"args\": [\n        \"elevenlabs-mcp\"\n      ],\n      \"env\": {\n        \"ELEVENLABS_API_KEY\": \"YOUR_ELEVENLABS_API_KEY_HERE\"\n      }\n    }\n  }\n} \\\n\\\ni have this elvenlabs mcp server. can we ad dit to the global mcp server for claude code ?"
+  },
+  {
+    "session_id": "0d49cf6b-e91d-4d7d-ac63-2f643cdad44d",
+    "transcript_path": "/home/admins/.claude/projects/-home-admins-projects-pessoa/0d49cf6b-e91d-4d7d-ac63-2f643cdad44d.jsonl",
+    "cwd": "/home/admins/projects/pessoa",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "do you have accsess to the elevenlabs mcp server ?"
+  },
+  {
+    "session_id": "0d49cf6b-e91d-4d7d-ac63-2f643cdad44d",
+    "transcript_path": "/home/admins/.claude/projects/-home-admins-projects-pessoa/0d49cf6b-e91d-4d7d-ac63-2f643cdad44d.jsonl",
+    "cwd": "/home/admins/projects/pessoa",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "'/home/admins/projects/pessoa/.claude/settings.json' but i jsut added it ?  https://github.com/elevenlabs/elevenlabs-mcp"
+  }
+]

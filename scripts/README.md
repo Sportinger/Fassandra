@@ -1,89 +1,100 @@
-# Database Reset Script
+# Scripts Directory
 
-## ⚠️ DANGER ZONE - Use with EXTREME caution!
+This directory contains various utility scripts for the Pessoa project.
 
-### `reset_database.js` - Nuclear Database Reset
+## Available Scripts
 
+### Development & Diagnostics
+
+#### `doctor.js`
+**Health check for your development environment**
+```bash
+npm run doctor
+# or
+node scripts/doctor.js
+```
+
+Performs comprehensive checks on:
+- Node.js and npm versions
+- Git configuration
+- Database connectivity
+- Required dependencies
+- Environment variables
+- Port availability
+- File permissions
+- Rust/Cargo environment
+- Docker setup (optional)
+
+#### `reset_database.js` - Nuclear Database Reset
 **Instantly deletes ALL data from the Pessoa database without any confirmation prompts.**
 
-### Usage
-
 ```bash
-# Method 1: npm script (recommended)
 npm run db:reset
-
-# Method 2: Direct execution
+# or
 node scripts/reset_database.js
 ```
 
-**Prerequisites:**
+**What it deletes:**
+- All users (including admin accounts)
+- All scripts and their content
+- All collaboration data
+- All real-time updates
+- All snapshots
+- All edit history
+
+**What it preserves:**
+- Database schema and table structure
+- Migration history
+
+### Backend Scripts
+
+#### `hash_password.rs`
+Rust script for generating password hashes for the backend.
+
+### Shell Scripts
+
+#### `clean_rebuild_with_fixes.sh`
+Cleans and rebuilds the entire project with necessary fixes.
+
+#### `cursor_debug.sh`
+Debug script for cursor-related functionality.
+
+#### `deploy_hetzner.sh`
+Deployment script for Hetzner cloud infrastructure.
+
+#### `license_compliance_check.sh`
+Checks the project for license compliance issues.
+
+#### `monitor_blocks.sh` / `monitor_blocks_simple.sh`
+Monitor database blocks and their changes.
+
+#### `post_rebuild_fixes.sh`
+Applies fixes after rebuilding the project.
+
+#### `test_persistence.sh`
+Tests data persistence functionality.
+
+## Usage
+
+Most scripts can be run directly:
 ```bash
-# Make sure you have a .env file with database configuration
-cp env.example .env
-
-# Install dependencies if not already done
-npm install
+./scripts/script_name.sh
 ```
 
-### What it deletes:
-- ✅ All users (including admin accounts)
-- ✅ All scripts and their content
-- ✅ All collaboration data
-- ✅ All real-time updates
-- ✅ All snapshots
-- ✅ All edit history
-
-### What it preserves:
-- ✅ Database schema and table structure
-- ✅ Migration history
-
-### Environment Variables
-
-The script uses these environment variables (from your `.env` file):
-
+Or through npm scripts defined in package.json:
 ```bash
-DATABASE_HOST=localhost        # Default: localhost
-DATABASE_PORT=5432            # Default: 5432
-DATABASE_NAME=pessoa_db       # Default: pessoa_db
-DATABASE_USER=postgres        # Default: postgres
-DATABASE_PASSWORD=password    # Default: password
+npm run doctor
+npm run db:reset
 ```
 
-Or use the standard PostgreSQL connection format:
-```bash
-DATABASE_URL=postgres://user:password@host:port/database
-```
+## Adding New Scripts
 
-### Example Output
+When adding new scripts:
+1. Place them in this directory
+2. Make shell scripts executable: `chmod +x script_name.sh`
+3. Add npm script shortcuts to package.json if appropriate
+4. Update this README with documentation
 
-```
-🚨 DELETING ALL DATABASE DATA...
-⚠️  This operation cannot be undone!
-✅ Deleted 124 rows from blocks
-✅ Deleted 35 rows from scripts
-✅ Deleted 3 rows from users
-✅ Deleted 273 rows from yjs_document_updates
-✅ Deleted 34 rows from script_snapshots_meta
-📭 Table edits was already empty
+## Environment Variables
 
-🎯 DATABASE RESET COMPLETE!
-⚡ Total rows deleted: 469
-⏱️  Operation completed in 45ms
-
-✅ Database is now clean and ready for fresh data
-🎭 Theater professionals can start creating new scripts!
-```
-
-### When to use:
-- 🧪 Development testing
-- 🔄 Demo resets
-- 🗂️ Clean slate deployments
-- 🚀 Performance testing with fresh data
-
-### Lightning Fast ⚡
-- **No confirmation prompts** - Runs immediately
-- **Respects foreign keys** - Deletes in correct order
-- **Sub-second execution** - Optimized for speed
-- **Clear feedback** - Shows exactly what was deleted
-
-**Perfect for the theater mindset: Fast, reliable, gets the job done!** 🎭 
+Scripts use environment variables from your `.env` file. See `env.example` for required variables.

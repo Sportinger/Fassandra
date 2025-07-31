@@ -44,6 +44,13 @@
     "chrome-debug": {
       "command": "npx",
       "args": ["-y", "chrome-debug-mcp-playwright"]
+    },
+    "ElevenLabs": {
+      "command": "uvx",
+      "args": ["elevenlabs-mcp"],
+      "env": {
+        "ELEVENLABS_API_KEY": "sk_4972eb0e2ba025c29afc4c1eab48076e94930a99df9718c0"
+      }
     }
   }
 } 
