@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug SVG Structure</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div id="test"></div>
+    <script>
+        mermaid.initialize({ startOnLoad: false });
+        
+        const diagram = `graph TB
+            backend_service["backend-service<br/>Rust"]
+            frontend_app["frontend-app<br/>React"]
+            backend_service --> frontend_app`;
+            
+        mermaid.render('testGraph', diagram).then(result => {
+            document.getElementById('test').innerHTML = result.svg;
+            
+            // Log the SVG structure
+            const svg = document.querySelector('svg');
+            console.log('SVG structure:', svg);
+            
+            // Find all g elements with class "node"
+            const nodes = svg.querySelectorAll('g.node');
+            console.log('Nodes found:', nodes);
+            
+            nodes.forEach(node => {
+                console.log('Node ID:', node.id);
+                console.log('Node HTML:', node.innerHTML);
+            });
+            
+            // Find edges
+            const edges = svg.querySelectorAll('g.edgePath');
+            console.log('Edges found:', edges);
+        });
+    </script>
+</body>
+</html> 

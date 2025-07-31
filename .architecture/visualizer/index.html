@@ -120,6 +120,64 @@
             align-items: center;
         }
         
+        /* Animations for new elements */
+        @keyframes nodeAppear {
+            0% {
+                opacity: 0;
+                transform: scale(0.3);
+                filter: brightness(2) drop-shadow(0 0 20px #4CAF50);
+            }
+            50% {
+                filter: brightness(1.5) drop-shadow(0 0 10px #4CAF50);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+                filter: brightness(1) drop-shadow(0 0 0px #4CAF50);
+            }
+        }
+        
+        @keyframes edgeAppear {
+            0% {
+                stroke-dasharray: 1000;
+                stroke-dashoffset: 1000;
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                stroke-dasharray: 1000;
+                stroke-dashoffset: 0;
+                opacity: 1;
+            }
+        }
+        
+        @keyframes glowPulse {
+            0% {
+                filter: drop-shadow(0 0 5px #4CAF50);
+            }
+            50% {
+                filter: drop-shadow(0 0 20px #4CAF50) drop-shadow(0 0 30px #4CAF50);
+            }
+            100% {
+                filter: drop-shadow(0 0 5px #4CAF50);
+            }
+        }
+        
+        /* Apply animations to new elements */
+        .new-node {
+            animation: nodeAppear 0.8s ease-out forwards;
+        }
+        
+        .new-edge {
+            animation: edgeAppear 1s ease-out forwards;
+        }
+        
+        .highlight-node {
+            animation: glowPulse 2s ease-in-out;
+        }
+        
         .diagram-controls {
             position: absolute;
             top: 1rem;
@@ -156,6 +214,17 @@
             padding: 1.5rem;
             border-radius: 8px;
             border: 1px solid #3a3a3a;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .stat-card.updated {
+            animation: statBounce 0.5s ease-out;
+        }
+        
+        @keyframes statBounce {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(76, 175, 80, 0.5); }
+            100% { transform: scale(1); }
         }
         
         .stat-card h3 {
@@ -183,6 +252,23 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: background 0.3s;
+        }
+        
+        .component-item.new-item {
+            animation: slideIn 0.5s ease-out;
+            background: rgba(76, 175, 80, 0.1);
+        }
+        
+        @keyframes slideIn {
+            0% {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
         
         .component-item:last-child {
@@ -312,6 +398,8 @@
         let lastDiagramCode = null; // Store last diagram to detect changes
         let ws = null; // WebSocket connection
         let reconnectTimer = null;
+        let previousComponents = new Set(); // Track existing components
+        let previousStats = {}; // Track stats for animations
         
         // Initialize Mermaid with grey theme
         mermaid.initialize({ 
@@ -374,19 +462,45 @@
             }
         }
         
+        function extractComponentsFromDiagram(diagramCode) {
+            const components = new Set();
+            // Extract component names from Mermaid syntax
+            const nodeRegex = /(\w+)\["[^"]+"\]/g;
+            let match;
+            while ((match = nodeRegex.exec(diagramCode)) !== null) {
+                components.add(match[1]);
+            }
+            return components;
+        }
+        
         function renderDiagram(diagramCode) {
             // Only re-render if diagram actually changed
             if (diagramCode === lastDiagramCode) {
                 return; // No changes, keep current zoom/pan
             }
-            lastDiagramCode = diagramCode;
             
-            // Show update indicator
-            const indicator = document.getElementById('updateIndicator');
-            indicator.style.display = 'block';
-            setTimeout(() => {
-                indicator.style.display = 'none';
-            }, 2000);
+            // Detect new components
+            const currentComponents = extractComponentsFromDiagram(diagramCode);
+            const newComponents = new Set();
+            
+            currentComponents.forEach(comp => {
+                if (!previousComponents.has(comp)) {
+                    newComponents.add(comp);
+                }
+            });
+            
+            lastDiagramCode = diagramCode;
+            previousComponents = currentComponents;
+            
+            // Show update indicator only if there are new components
+            if (newComponents.size > 0) {
+                const indicator = document.getElementById('updateIndicator');
+                indicator.textContent = `✨ New component${newComponents.size > 1 ? 's' : ''} added!`;
+                indicator.style.display = 'block';
+                setTimeout(() => {
+                    indicator.style.display = 'none';
+                }, 2000);
+            }
             
             const container = document.getElementById('diagram-container');
             
@@ -405,8 +519,93 @@
             mermaid.render(graphId, diagramCode).then(result => {
                 container.innerHTML = result.svg;
                 
-                // Initialize panzoom on the SVG
+                // Apply animations to new elements
                 const svg = container.querySelector('svg');
+                if (svg && newComponents.size > 0) {
+                    // Inject animation styles directly into SVG
+                    const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+                    style.textContent = `
+                        @keyframes nodeAppear {
+                            0% {
+                                opacity: 0;
+                                transform: scale(0.3);
+                            }
+                            100% {
+                                opacity: 1;
+                                transform: scale(1);
+                            }
+                        }
+                        @keyframes edgeAppear {
+                            0% {
+                                stroke-dasharray: 1000;
+                                stroke-dashoffset: 1000;
+                                opacity: 0;
+                            }
+                            50% {
+                                opacity: 1;
+                            }
+                            100% {
+                                stroke-dasharray: 1000;
+                                stroke-dashoffset: 0;
+                            }
+                        }
+                        .new-node {
+                            animation: nodeAppear 0.8s ease-out;
+                            transform-origin: center;
+                        }
+                        .new-edge {
+                            animation: edgeAppear 1s ease-out;
+                        }
+                    `;
+                    svg.insertBefore(style, svg.firstChild);
+                    
+                    // Find and animate new nodes
+                    const nodes = svg.querySelectorAll('g.node');
+                    nodes.forEach(node => {
+                        const nodeId = node.id;
+                        // Check if this node's ID matches any new component
+                        const isNew = Array.from(newComponents).some(comp => 
+                            nodeId && nodeId.includes(comp.replace(/-/g, '_'))
+                        );
+                        if (isNew) {
+                            node.classList.add('new-node');
+                            // Add glow effect
+                            const rect = node.querySelector('rect, polygon, ellipse');
+                            if (rect) {
+                                rect.style.filter = 'drop-shadow(0 0 20px #4CAF50)';
+                                setTimeout(() => {
+                                    rect.style.transition = 'filter 1s ease-out';
+                                    rect.style.filter = 'none';
+                                }, 800);
+                            }
+                        }
+                    });
+                    
+                    // Animate edges connected to new nodes
+                    const edges = svg.querySelectorAll('g.edgePath path');
+                    edges.forEach(edge => {
+                        const parent = edge.closest('g.edgePath');
+                        if (parent) {
+                            const edgeId = parent.id || '';
+                            // Check if edge connects to any new component
+                            const hasNewConnection = Array.from(newComponents).some(comp => 
+                                edgeId.includes(comp.replace(/-/g, '_'))
+                            );
+                            if (hasNewConnection) {
+                                edge.classList.add('new-edge');
+                                edge.style.stroke = '#4CAF50';
+                                edge.style.strokeWidth = '3';
+                                setTimeout(() => {
+                                    edge.style.transition = 'stroke 1s ease-out, stroke-width 1s ease-out';
+                                    edge.style.stroke = '';
+                                    edge.style.strokeWidth = '';
+                                }, 1000);
+                            }
+                        }
+                    });
+                }
+                
+                // Initialize panzoom on the SVG
                 if (svg) {
                     // Make SVG responsive
                     svg.style.maxWidth = 'none';
@@ -461,27 +660,57 @@
         
         function renderStats(stats) {
             const statsGrid = document.getElementById('statsGrid');
-            statsGrid.innerHTML = stats.map(stat => `
-                <div class="stat-card">
-                    <h3>${stat.label}</h3>
-                    <div class="value">${stat.value}</div>
-                </div>
-            `).join('');
+            
+            stats.forEach(stat => {
+                const existingCard = document.querySelector(`[data-stat="${stat.label}"]`);
+                
+                if (existingCard) {
+                    const valueEl = existingCard.querySelector('.value');
+                    const oldValue = parseInt(valueEl.textContent);
+                    const newValue = stat.value;
+                    
+                    if (oldValue !== newValue) {
+                        valueEl.textContent = newValue;
+                        existingCard.classList.add('updated');
+                        setTimeout(() => {
+                            existingCard.classList.remove('updated');
+                        }, 500);
+                    }
+                }
+            });
+            
+            // If no cards exist, create them
+            if (!statsGrid.querySelector('.stat-card')) {
+                statsGrid.innerHTML = stats.map(stat => `
+                    <div class="stat-card" data-stat="${stat.label}">
+                        <h3>${stat.label}</h3>
+                        <div class="value">${stat.value}</div>
+                    </div>
+                `).join('');
+            }
         }
         
         function renderComponents(components) {
             const componentList = document.getElementById('componentList');
-            componentList.innerHTML = components.map(comp => `
-                <div class="component-item">
-                    <div>
-                        <strong>${comp.name}</strong>
-                        <div style="color: #888; font-size: 0.9rem; margin-top: 0.25rem;">
-                            ${comp.purpose || comp.type}
+            const existingNames = new Set(
+                Array.from(componentList.querySelectorAll('.component-item'))
+                    .map(el => el.dataset.name)
+            );
+            
+            componentList.innerHTML = components.map(comp => {
+                const isNew = !existingNames.has(comp.name);
+                return `
+                    <div class="component-item ${isNew ? 'new-item' : ''}" data-name="${comp.name}">
+                        <div>
+                            <strong>${comp.name}</strong>
+                            <div style="color: #888; font-size: 0.9rem; margin-top: 0.25rem;">
+                                ${comp.purpose || comp.type}
+                            </div>
                         </div>
+                        <span class="layer-badge layer-${comp.layer}">${comp.layer}</span>
                     </div>
-                    <span class="layer-badge layer-${comp.layer}">${comp.layer}</span>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
         
         function renderDeployment(deployments) {
