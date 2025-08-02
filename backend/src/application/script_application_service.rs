@@ -3,16 +3,15 @@
 //! Orchestrates script creation, upload, and management workflows.
 //! This service handles complex business logic that spans multiple domains.
 
-use std::sync::Arc;
-use uuid::Uuid;
-use serde::Serialize;
-use sqlx::PgPool;
-use tracing::{info, error, warn};
-use anyhow::Result;
 use crate::error::AppError;
 use crate::models::script::Script;
 use crate::models::block::Block;
-use crate::external::gemini_api::analyze_pdf_script;
+use std::sync::Arc;
+use uuid::Uuid;
+use tracing::{error, info, warn};
+use serde::Serialize;
+use sqlx::PgPool;
+use anyhow::Result;
 use crate::analysis::structs::Script as ParsedScript;
 use crate::domain::script_service::ScriptService;
 
@@ -38,6 +37,11 @@ impl ScriptApplicationService {
             script_service,
             pool,
         }
+    }
+
+    /// Gets a reference to the database pool
+    pub fn get_pool(&self) -> &PgPool {
+        &self.pool
     }
 
     /// Creates a script from parsed data with full validation and business logic
@@ -227,69 +231,6 @@ impl ScriptApplicationService {
         }
 
         Ok(())
-    }
-
-    /// Uploads and analyzes a PDF script using Gemini's structured output
-    pub async fn upload_and_parse_script(
-        &self,
-        file_data: Vec<u8>,
-        filename: &str,
-        content_type: &str,
-    ) -> Result<ParsedScript, AppError> {
-        info!(filename = %filename, size = file_data.len(), "Processing PDF script upload");
-
-        // Comprehensive file validation
-        Self::validate_pdf_upload(&file_data, filename, content_type)?;
-
-        // Create HTTP client with extended timeout for file processing
-        let http_client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(600)) // 10 minutes for PDF processing + analysis
-            .build()
-            .map_err(|e| {
-                error!("Failed to create HTTP client: {}", e);
-                AppError::Internal(anyhow::anyhow!("Service temporarily unavailable"))
-            })?;
-
-        info!("Sending PDF to Gemini API for analysis");
-        
-        // Analyze PDF directly with Gemini's structured output
-        let parsed_script = analyze_pdf_script(&http_client, &file_data, filename)
-            .await
-            .map_err(|e| {
-                error!("PDF analysis failed: {}", e);
-                match e {
-                    crate::external::GeminiApiError::MissingEnvVar(var) => {
-                        AppError::Internal(anyhow::anyhow!("Service configuration error: {}", var))
-                    }
-                    crate::external::GeminiApiError::HttpRequest(msg) => {
-                        AppError::Internal(anyhow::anyhow!("Analysis service error: {}", msg))
-                    }
-                    crate::external::GeminiApiError::ApiError { status } => {
-                        AppError::Internal(anyhow::anyhow!("Analysis failed with status: {}", status))
-                    }
-                    crate::external::GeminiApiError::FileProcessingTimeout => {
-                        AppError::BadRequest("PDF processing timeout - file may be too complex or corrupted".into())
-                    }
-                    crate::external::GeminiApiError::StructureParsing(msg) => {
-                        AppError::Internal(anyhow::anyhow!("Failed to parse analysis results: {}", msg))
-                    }
-                    _ => {
-                        AppError::Internal(anyhow::anyhow!("PDF analysis failed"))
-                    }
-                }
-            })?;
-
-        info!(
-            sections = parsed_script.sections.len(),
-            title = ?parsed_script.title,
-            "Successfully analyzed PDF script"
-        );
-
-        // Set source filename for tracking
-        let mut result_script = parsed_script;
-        result_script.source_filename = Some(filename.to_string());
-
-        Ok(result_script)
     }
 
     /// Creates a simple script with just a title

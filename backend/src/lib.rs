@@ -1,30 +1,14 @@
-//! Pessoa Theater Collaboration Platform - Backend Library
+//! # Pessoa Theater Collaboration Platform - Backend Library
 //!
-//! This is the main library crate for the Pessoa theater collaboration platform backend.
-//! It provides a clean, service-oriented architecture for managing theater scripts,
-//! real-time collaboration, and user management.
+//! This library provides the core backend functionality for the Pessoa theater
+//! collaboration platform, including:
 //!
-//! # Architecture Overview
-//!
-//! The backend is organized into several logical modules:
-//! - **auth**: Authentication and authorization functionality
-//! - **error**: Comprehensive error handling and reporting
-//! - **external**: External service integrations (Gemini AI, etc.)
-//! - **networking**: WebSocket and real-time communication
-//! - **infrastructure**: Configuration and middleware
-//! - **services**: Business logic and background services
-//! - **utils**: Utility functions and helpers
-//! - **core**: Core application components (server, service manager, etc.)
-//!
-//! Plus the existing domain-specific modules:
-//! - **application**: Application services (Clean Architecture)
-//! - **domain**: Domain services and business logic
-//! - **handlers**: HTTP request handlers
-//! - **models**: Data models and entities
-//! - **repositories**: Data access layer
-//! - **analysis**: Script analysis and parsing
-//! - **prompts**: AI prompt templates
-//! - **tests**: Test utilities and fixtures
+//! - **Authentication**: JWT-based authentication with role-based access control
+//! - **Script Management**: CRUD operations for theatrical scripts
+//! - **Real-time Collaboration**: Y.js-based collaborative editing with WebSocket support
+//! - **Analysis**: Script structure analysis with Claude Code integration
+//! - **Database**: PostgreSQL integration with SQLx for type-safe queries
+//! - **external**: External service integrations placeholder module
 
 // Core modules
 pub mod auth;
@@ -43,7 +27,7 @@ pub mod handlers;
 pub mod models;
 pub mod repositories;
 pub mod analysis;
-pub mod prompts;
+// pub mod prompts; // Module removed - prompts are now handled directly
 // Tests removed - using embedded unit tests and external E2E tests instead
 
 // Re-export the main types and functions from core/lib.rs

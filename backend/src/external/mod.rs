@@ -1,23 +1,13 @@
 //! External service integrations for the Pessoa theater collaboration platform.
 //!
-//! This module contains integrations with external services and APIs:
-//! - Google Gemini API for script analysis with structured output
-//! - PDF file upload handling for direct Gemini processing
-//! - AI-powered script structure recognition with JSON schema enforcement
-//! - Secure API key management and request handling
+//! This module contains integrations with external services and APIs.
+//! Currently focused on future external integrations as we use Claude Code
+//! for script parsing via subprocess calls.
 //!
-//! # Features
-//! - Direct PDF upload to Gemini Files API
-//! - Structured JSON output with enforced schema
-//! - Comprehensive theater script analysis with page numbers
-//! - Real-time file processing status monitoring
-//! - Secure error handling and sanitization
+//! # Future Features
+//! - External authentication providers
+//! - Cloud storage integrations
+//! - Third-party notification services
+//! - Analytics and monitoring services
 
-pub mod gemini_api;
-
-// Re-export the main external service functions
-pub use gemini_api::{
-    GeminiApiError,
-    analyze_pdf_script,
-    upload_pdf_to_gemini,
-};
+// Placeholder for future external service modules

@@ -48,8 +48,21 @@ WORKDIR /app
 # Install build dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        build-essential pkg-config libssl-dev ca-certificates lld && \
+        build-essential pkg-config libssl-dev ca-certificates lld \
+        # Add tools for PDF processing
+        poppler-utils \
+        # Add net-tools for netstat
+        net-tools \
+        # Dependencies for NodeSource repository
+        curl gnupg && \
+    # Add NodeSource repository for Node.js 22.x (latest)
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    # Install Node.js and npm from NodeSource
+    apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
+
+# Install Claude Code CLI globally
+RUN npm install -g @anthropic-ai/claude-code
 
 # Install sqlx-cli
 RUN cargo install sqlx-cli --version=0.7.4 --features rustls,postgres --no-default-features --locked
@@ -106,19 +119,44 @@ RUN echo "Building main binaries with SQLX_OFFLINE=true..." && \
     echo "Finished building main binaries."
 
 # --- Runtime Stage ---
-FROM gcr.io/distroless/cc-debian12 AS runtime
+# Changed from distroless to debian-slim to support Node.js runtime for Claude Code
+FROM debian:bullseye-slim AS runtime
 WORKDIR /app
 
+# Install runtime dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        libssl1.1 \
+        # PDF processing tools
+        poppler-utils \
+        # Net-tools for debugging
+        net-tools \
+        # Dependencies for NodeSource repository
+        curl gnupg && \
+    # Add NodeSource repository for Node.js 22.x (latest)
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    # Install Node.js from NodeSource
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy Claude Code CLI from builder
+COPY --from=builder /usr/local/lib/node_modules/@anthropic-ai/claude-code /usr/local/lib/node_modules/@anthropic-ai/claude-code
+RUN ln -s /usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude /usr/local/bin/claude
+
+# Copy SSL certificates
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# Copy OpenSSL 1.1.x shared libraries from the builder stage (Debian Bullseye)
-# Distroless Debian 12 base (Bookworm) has libssl.so.3, but the binary was linked against libssl.so.1.1
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libssl.so.1.1 /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 /usr/lib/x86_64-linux-gnu/
-
-# Temporarily hardcode the path to eliminate variable expansion as a cause
+# Copy the built binaries
 COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/backend .
 COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/hash_password ./hash_password
+
+# Copy the .claude directory with agents (if it exists in the build context)
+# Note: The .claude directory should be included in the Docker build context
+RUN mkdir -p .claude
+
+# Create uploads directory for PDF storage
+RUN mkdir -p uploads/scripts
 
 EXPOSE 3001
 CMD ["./backend"]

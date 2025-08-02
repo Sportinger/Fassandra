@@ -1,8 +1,8 @@
-//! Defines the data structures for representing analyzed script content,
-//! adapted to match the structure typically returned by the Gemini API call.
+//! Script analysis data structures for the Pessoa theater collaboration platform.
+//! Includes data models for parsing and representing theatrical scripts.
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
 
 // Using serde_json::Value for flexibility where AI output might vary slightly
 use serde_json::Value; 
@@ -63,30 +63,29 @@ pub enum ContentElement {
     Unknown, // Or potentially store as serde_json::Value
 }
 
-// --- Raw Content Element Types (with all fields from Gemini) ---
-// These are used for parsing Gemini response and extracting metadata
+// --- Raw Content Element Types (for parsing API responses) ---
+// These are used for parsing responses and extracting metadata
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Dialogue {
     #[serde(default)]
     pub id: Option<String>,
-    pub speaker: Option<String>, // Make nullable to handle AI null values
+    pub speaker: Option<String>,
     pub line: Option<String>,
-    #[serde(default)] // Handle null values from Gemini
-    pub lines: Option<Vec<String>>, // Add lines field for compatibility
-    #[serde(default)] // Handle null values from Gemini
-    pub reading_text: Option<String>, // Add reading_text field for compatibility
-    #[serde(default)] // Handle null values from Gemini
-    pub source: Option<String>, // Add source field for compatibility
-    #[serde(default)] // Handle null values from Gemini
-    pub speakers: Option<Vec<String>>, // Add speakers field for compatibility
+    #[serde(default)]
+    pub lines: Option<Vec<String>>,
+    #[serde(default)]
+    pub reading_text: Option<String>,
+    #[serde(default)]
+    pub source: Option<String>,
+    #[serde(default)]
+    pub speakers: Option<Vec<String>>,
     #[serde(default = "default_page_number")]
-    pub page_number: i32, // Page number where this dialogue appears
-    #[serde(default)] // Handle null values from Gemini  
-    pub scene_number: Option<String>, // Scene number (e.g., "1", "PROLOG", "ACT I")
-    #[serde(default)] // Handle null values from Gemini
-    pub scene_title: Option<String>, // Scene title (e.g., "PROLOG", "DER TOD")
-    // Add extra if needed
+    pub page_number: i32,
+    #[serde(default)]
+    pub scene_number: Option<String>,
+    #[serde(default)]
+    pub scene_title: Option<String>,
     #[serde(flatten)]
     pub extra: HashMap<String, Value>,
 }
@@ -95,58 +94,56 @@ pub struct Dialogue {
 pub struct Monologue {
     #[serde(default)]
     pub id: Option<String>,
-    pub speaker: Option<String>, // Make nullable to handle AI null values
-    pub line: Option<String>, // Add line field for compatibility with Gemini
-    #[serde(default)] // Handle null values from Gemini
-    pub lines: Option<Vec<String>>, // Make nullable to handle null values
-    #[serde(default)] // Handle null values from Gemini
-    pub reading_text: Option<String>, // Add reading_text field for compatibility
-    #[serde(default)] // Handle null values from Gemini
-    pub source: Option<String>, // Add source field for compatibility
-    #[serde(default)] // Handle null values from Gemini
-    pub speakers: Option<Vec<String>>, // Add speakers field for compatibility
+    pub speaker: Option<String>,
+    pub line: Option<String>,
+    #[serde(default)]
+    pub lines: Option<Vec<String>>,
+    #[serde(default)]
+    pub reading_text: Option<String>,
+    #[serde(default)]
+    pub source: Option<String>,
+    #[serde(default)]
+    pub speakers: Option<Vec<String>>,
     #[serde(default = "default_page_number")]
-    pub page_number: i32, // Page number where this monologue appears
-    #[serde(default)] // Handle null values from Gemini  
-    pub scene_number: Option<String>, // Scene number (e.g., "1", "PROLOG", "ACT I")
-    #[serde(default)] // Handle null values from Gemini
-    pub scene_title: Option<String>, // Scene title (e.g., "PROLOG", "DER TOD")
+    pub page_number: i32,
+    #[serde(default)]
+    pub scene_number: Option<String>,
+    #[serde(default)]
+    pub scene_title: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct StageDirection {
     #[serde(default)]
     pub id: Option<String>,
-    pub description: Option<String>, // Make nullable to handle AI null values
-    pub line: Option<String>, // Add line field for compatibility with Gemini
-    #[serde(default)] // Handle null values from Gemini
-    pub lines: Option<Vec<String>>, // Add lines field for compatibility
-    #[serde(default)] // Handle null values from Gemini
-    pub reading_text: Option<String>, // Add reading_text field for compatibility
-    #[serde(default)] // Handle null values from Gemini
-    pub source: Option<String>, // Add source field for compatibility
-    #[serde(default)] // Handle null values from Gemini
-    pub speaker: Option<String>, // Add speaker field for compatibility
-    #[serde(default)] // Handle null values from Gemini
-    pub speakers: Option<Vec<String>>, // Add speakers field for compatibility
+    pub description: Option<String>,
+    pub line: Option<String>,
+    #[serde(default)]
+    pub lines: Option<Vec<String>>,
+    #[serde(default)]
+    pub reading_text: Option<String>,
+    #[serde(default)]
+    pub source: Option<String>,
+    #[serde(default)]
+    pub speaker: Option<String>,
+    #[serde(default)]
+    pub speakers: Option<Vec<String>>,
     #[serde(default = "default_page_number")]
-    pub page_number: i32, // Page number where this stage direction appears
-    #[serde(default)] // Handle null values from Gemini  
-    pub scene_number: Option<String>, // Scene number (e.g., "1", "PROLOG", "ACT I")
-    #[serde(default)] // Handle null values from Gemini
-    pub scene_title: Option<String>, // Scene title (e.g., "PROLOG", "DER TOD")
-    // Removed kind and source_location
+    pub page_number: i32,
+    #[serde(default)]
+    pub scene_number: Option<String>,
+    #[serde(default)]
+    pub scene_title: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Scene {
     #[serde(default)]
     pub id: Option<String>,
-    pub scene_number: String, // Required: "1", "2", "3a", etc.
-    pub scene_title: String, // Required: "PROLOG", "DER TOD", etc.
+    pub scene_number: String,
+    pub scene_title: String,
     #[serde(default = "default_page_number")]
-    pub page_number: i32, // Page number where this scene starts
-    // Optional fields for compatibility
+    pub page_number: i32,
     #[serde(default)]
     pub description: Option<String>,
     #[serde(flatten)]
@@ -157,23 +154,22 @@ pub struct Scene {
 pub struct JointDialogue {
     #[serde(default)]
     pub id: Option<String>,
-    pub speaker: Option<String>, // Gemini sends speaker as a string with newlines
-    #[serde(default)] // Handle null values from Gemini
-    pub speakers: Option<Vec<String>>, // Allow both single speaker and speaker array
+    pub speaker: Option<String>,
+    #[serde(default)]
+    pub speakers: Option<Vec<String>>,
     pub line: Option<String>,
-    #[serde(default)] // Handle null values from Gemini
-    pub lines: Option<Vec<String>>, // Add lines field for compatibility
-    #[serde(default)] // Handle null values from Gemini
-    pub reading_text: Option<String>, // Add reading_text field for compatibility
-    #[serde(default)] // Handle null values from Gemini
-    pub source: Option<String>, // Add source field for compatibility
+    #[serde(default)]
+    pub lines: Option<Vec<String>>,
+    #[serde(default)]
+    pub reading_text: Option<String>,
+    #[serde(default)]
+    pub source: Option<String>,
     #[serde(default = "default_page_number")]
-    pub page_number: i32, // Page number where this joint dialogue appears
-    #[serde(default)] // Handle null values from Gemini  
-    pub scene_number: Option<String>, // Scene number (e.g., "1", "PROLOG", "ACT I")
-    #[serde(default)] // Handle null values from Gemini
-    pub scene_title: Option<String>, // Scene title (e.g., "PROLOG", "DER TOD")
-    // Add extra if needed
+    pub page_number: i32,
+    #[serde(default)]
+    pub scene_number: Option<String>,
+    #[serde(default)]
+    pub scene_title: Option<String>,
     #[serde(flatten)]
     pub extra: HashMap<String, Value>,
 }
@@ -182,27 +178,128 @@ pub struct JointDialogue {
 pub struct Reading {
     #[serde(default)]
     pub id: Option<String>,
-    pub speaker: Option<String>, // Make nullable to handle AI null values
+    pub speaker: Option<String>,
     pub source: Option<String>,
     pub language: Option<String>,
-    pub reading_text: Option<String>, // Make nullable to handle AI null values
-    pub description: Option<String>, // Add description field for compatibility
-    pub line: Option<String>, // Add line field for compatibility
-    #[serde(default)] // Handle null values from Gemini
-    pub lines: Option<Vec<String>>, // Add lines field for compatibility
-    #[serde(default)] // Handle null values from Gemini
-    pub speakers: Option<Vec<String>>, // Add speakers field for compatibility
+    pub reading_text: Option<String>,
+    pub description: Option<String>,
+    pub line: Option<String>,
+    #[serde(default)]
+    pub lines: Option<Vec<String>>,
+    #[serde(default)]
+    pub speakers: Option<Vec<String>>,
     #[serde(default = "default_page_number")]
-    pub page_number: i32, // Page number where this reading appears
-    #[serde(default)] // Handle null values from Gemini  
-    pub scene_number: Option<String>, // Scene number (e.g., "1", "PROLOG", "ACT I")
-    #[serde(default)] // Handle null values from Gemini
-    pub scene_title: Option<String>, // Scene title (e.g., "PROLOG", "DER TOD")
+    pub page_number: i32,
+    #[serde(default)]
+    pub scene_number: Option<String>,
+    #[serde(default)]
+    pub scene_title: Option<String>,
 }
 
 /// Default page number is 1 if not specified
 fn default_page_number() -> i32 {
     1
+}
+
+// --- Additional Raw Types for API parsing ---
+
+/// PDF position information
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct PdfPosition {
+    pub start_char: Option<u32>,
+    pub end_char: Option<u32>,
+    pub confidence: Option<f32>,
+}
+
+/// Raw content element enum for parsing
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(tag = "element_type", rename_all = "snake_case")]
+pub enum RawContentElement {
+    Dialogue(RawDialogue),
+    StageDirection(RawStageDirection),
+    Scene(RawScene),
+    #[serde(other)]
+    Unknown,
+}
+
+/// Raw section data from parsed response
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct RawSection {
+    pub section_number: u32,
+    pub section_type: String,
+    pub title: Option<String>,
+    #[serde(default)] // Handle null values
+    pub time: Option<String>,
+    #[serde(default)] // Handle null values
+    pub location: Option<String>,
+    #[serde(default)] // Handle null values
+    pub duration: Option<String>,
+    #[serde(default)] // Handle null values
+    pub content: Vec<RawContentElement>,
+    pub metadata: HashMap<String, String>,
+    #[serde(default)] // Handle null values
+    pub page_start: Option<u32>,
+    #[serde(default)] // Handle null values
+    pub page_end: Option<u32>,
+}
+
+/// Raw stage direction element
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct RawStageDirection {
+    pub element_type: String,
+    pub content: String,
+    pub line: Option<String>, // Line field for compatibility
+    #[serde(default)] // Handle null values
+    pub is_inline: Option<bool>,
+    #[serde(default)] // Handle null values
+    pub action_type: Option<String>,
+    #[serde(default)] // Handle null values
+    pub affects_character: Option<String>,
+    #[serde(default)] // Handle null values
+    pub affects_location: Option<String>,
+    pub metadata: HashMap<String, String>,
+    #[serde(default)] // Handle null values
+    pub page_number: Option<u32>,
+    #[serde(default)] // Handle null values
+    pub pdf_position: Option<PdfPosition>,
+}
+
+/// Raw dialogue element
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct RawDialogue {
+    pub element_type: String,
+    pub speaker: Option<String>, // Speaker as a string with possible newlines
+    #[serde(default)] // Handle null values
+    pub lines: Option<Vec<String>>,
+    pub line: Option<String>,
+    #[serde(default)] // Handle null values
+    pub is_aside: Option<bool>,
+    #[serde(default)] // Handle null values
+    pub is_monologue: Option<bool>,
+    #[serde(default)] // Handle null values
+    pub emotional_tone: Option<String>,
+    pub metadata: HashMap<String, String>,
+    #[serde(default)] // Handle null values
+    pub page_number: Option<u32>,
+    #[serde(default)] // Handle null values
+    pub pdf_position: Option<PdfPosition>,
+}
+
+/// Raw scene element
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct RawScene {
+    pub element_type: String,
+    pub scene_number: Option<String>,
+    pub title: Option<String>,
+    #[serde(default)] // Handle null values
+    pub location: Option<String>,
+    #[serde(default)] // Handle null values
+    pub time: Option<String>,
+    pub metadata: HashMap<String, String>,
+    #[serde(default)] // Handle null values
+    pub page_number: Option<u32>,
+    #[serde(default)] // Handle null values
+    pub pdf_position: Option<PdfPosition>,
 }
 
 // --- Clean Content Structs (for efficient database storage) ---

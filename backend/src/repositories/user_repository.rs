@@ -18,6 +18,9 @@ pub trait UserRepository: Send + Sync {
     /// Find a user by email
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, AppError>;
     
+    /// Find a user by username
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError>;
+    
     /// Create a new user
     async fn create(&self, user: &User) -> Result<(), AppError>;
     
@@ -59,6 +62,19 @@ impl UserRepository for PostgresUserRepository {
             User,
             "SELECT id, email, password_hash, username, role, created_at FROM users WHERE email = $1",
             email
+        )
+        .fetch_optional(self.pool.as_ref())
+        .await
+        .map_err(|e| AppError::Db(e))?;
+        
+        Ok(user)
+    }
+    
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
+        let user = sqlx::query_as!(
+            User,
+            "SELECT id, email, password_hash, username, role, created_at FROM users WHERE username = $1",
+            username
         )
         .fetch_optional(self.pool.as_ref())
         .await
@@ -148,6 +164,11 @@ pub mod tests {
         async fn find_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
             let users = self.users.lock().unwrap();
             Ok(users.iter().find(|u| u.email == email).cloned())
+        }
+        
+        async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
+            let users = self.users.lock().unwrap();
+            Ok(users.iter().find(|u| u.username == username).cloned())
         }
         
         async fn create(&self, user: &User) -> Result<(), AppError> {
