@@ -66,6 +66,9 @@ RUN apt-get update && \
 # Install Claude Code CLI globally
 RUN npm install -g @anthropic-ai/claude-code
 
+# Install Gemini CLI globally
+RUN npm install -g @google/gemini-cli
+
 # Install sqlx-cli
 RUN cargo install sqlx-cli --version=0.7.4 --features rustls,postgres --no-default-features --locked
 
@@ -118,6 +121,7 @@ RUN echo "Attempting to prepare/verify SQLx data (optional refresh)..." && \
 RUN echo "Building main binaries with SQLX_OFFLINE=true..." && \
     cargo build --release --locked --target ${BUILD_TARGET_ARCH} --bin backend && \
     cargo build --release --locked --target ${BUILD_TARGET_ARCH} --bin hash_password && \
+    cargo build --release --locked --target ${BUILD_TARGET_ARCH} --bin json_to_db && \
     echo "Finished building main binaries."
 
 # --- Runtime Stage ---
@@ -138,6 +142,8 @@ RUN apt-get update && \
         postgresql-client \
         # JSON manipulation tool
         jq \
+        # Text editor
+        nano \
         # Dependencies for NodeSource repository
         curl gnupg && \
     # Add NodeSource repository for Node.js 22.x (latest)
@@ -157,6 +163,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 # Copy the built binaries
 COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/backend .
 COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/hash_password ./hash_password
+COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/json_to_db ./json_to_db
 
 # Copy Claude Code settings
 RUN mkdir -p .claude /home/backend/.config/claude-code
@@ -178,8 +185,11 @@ RUN groupadd -g 1000 appuser && \
     useradd -r -u 1000 -g appuser appuser
 
 # Create directories and set permissions for appuser
-RUN mkdir -p /home/appuser/.claude /home/appuser/.config/claude-code && \
-    chown -R appuser:appuser /home/appuser
+# Ensure .claude and .gemini directories have proper permissions for volume mounting
+RUN mkdir -p /home/appuser/.claude /home/appuser/.config/claude-code /home/appuser/.gemini && \
+    chown -R appuser:appuser /home/appuser && \
+    chmod 755 /home/appuser/.claude && \
+    chmod 755 /home/appuser/.gemini
 
 # Create app directory and set ownership
 RUN mkdir -p /app && chown -R appuser:appuser /app
@@ -187,13 +197,15 @@ RUN mkdir -p /app && chown -R appuser:appuser /app
 # Copy files and set permissions - ALL IN ONE GO
 COPY --chown=appuser:appuser --from=builder /app/target/x86_64-unknown-linux-gnu/release/backend /app/backend
 COPY --chown=appuser:appuser --from=builder /app/target/x86_64-unknown-linux-gnu/release/hash_password /app/hash_password
+COPY --chown=appuser:appuser --from=builder /app/target/x86_64-unknown-linux-gnu/release/json_to_db /app/json_to_db
 COPY --chown=appuser:appuser execute_sql.sh /app/execute_sql.sh
+COPY --chown=appuser:appuser json_to_db.sh /app/json_to_db.sh
 COPY --chown=appuser:appuser init-claude.sh /app/init-claude.sh
 COPY --chown=appuser:appuser docker-entrypoint.sh /app/docker-entrypoint.sh
 COPY --chown=appuser:appuser src/services/prompt.md /app/src/services/prompt.md
 
 # Make scripts executable
-RUN chmod +x /app/execute_sql.sh /app/init-claude.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/execute_sql.sh /app/json_to_db.sh /app/init-claude.sh /app/docker-entrypoint.sh
 
 # Create uploads directory
 RUN mkdir -p /app/uploads/scripts && chown -R appuser:appuser /app/uploads
@@ -222,6 +234,9 @@ ENV PATH=$PATH:/home/appuser/.npm-global/bin
 
 # Install Claude Code as appuser
 RUN npm install -g @anthropic-ai/claude-code
+
+# Install Gemini CLI as appuser
+RUN npm install -g @google/gemini-cli
 
 # Set working directory
 WORKDIR /app

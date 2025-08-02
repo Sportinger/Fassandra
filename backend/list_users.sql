@@ -1,0 +1,1 @@
+SELECT username, email FROM users LIMIT 5;

@@ -19,13 +19,11 @@ pub mod thumbnail;
 pub mod async_db_writer;
 pub mod persistence_event;
 pub mod snapshotting_service_v2;
-pub mod claude_code_parser_service;
-pub mod pdf_script_parser_service;
+pub mod json_to_db_service;
 
 // Re-export key service components
 pub use thumbnail::*;
 pub use async_db_writer::*;
 pub use persistence_event::*;
 pub use snapshotting_service_v2::*;
-pub use claude_code_parser_service::*;
-pub use pdf_script_parser_service::*;
+pub use json_to_db_service::*;

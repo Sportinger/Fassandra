@@ -34,7 +34,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - RUST_LOG=debug
       - CLAUDE_CODE_DEBUG=1
-      - HOME=/tmp
+      - HOME=/home/appuser
       - BACKEND_PORT=3000
     depends_on:
       db:
@@ -43,8 +43,14 @@ services:
       # Don't mount source code over the binary
       - cargo_cache:/usr/local/cargo/registry
       - target_cache:/app/target
-      # Persist Claude Code configuration
-      - claude_config:/tmp/.claude
+      # Persist Claude Code configuration to a stable location
+      - claude_config:/home/appuser/.claude
+      # Persist Claude Code config directory
+      - claude_config_json:/home/appuser/.config/claude-code
+      # Persist Gemini CLI configuration
+      - gemini_config:/home/appuser/.gemini
+      # Persist uploaded files - bind mount for easy access
+      - ./backend/uploads:/app/uploads
     entrypoint: ["/app/docker-entrypoint.sh"]
     command: ["/app/backend"]
     restart: unless-stopped
@@ -100,4 +106,9 @@ volumes:
     name: ${CONTAINER_PREFIX:-dev_}pgadmin_data
   # Claude Code configuration volumes
   claude_config:
-    name: ${CONTAINER_PREFIX:-dev_}claude_config 
+    name: ${CONTAINER_PREFIX:-dev_}claude_config
+  claude_config_json:
+    name: ${CONTAINER_PREFIX:-dev_}claude_config_json
+  # Gemini CLI configuration volume
+  gemini_config:
+    name: ${CONTAINER_PREFIX:-dev_}gemini_config 

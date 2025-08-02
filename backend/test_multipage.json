@@ -1,0 +1,109 @@
+{
+  "title": "Multi-Page Test Script",
+  "subtitle": "Testing Page Indicators and Speakers",
+  "adaptation_by": ["Test Author"],
+  "sections": [
+    {
+      "section_number": "1",
+      "title": "Act One",
+      "participants": ["ALICE", "BOB"],
+      "setting_note": "A modern apartment",
+      "content": [
+        {
+          "type": "scene",
+          "page_number": 1,
+          "scene_number": "1.1",
+          "scene_title": "Morning Coffee"
+        },
+        {
+          "type": "stage_direction",
+          "description": "The apartment is bathed in morning light. ALICE sits at the kitchen table.",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALICE",
+          "line": "Another day, another dollar.",
+          "page_number": 1
+        },
+        {
+          "type": "stage_direction",
+          "description": "BOB enters from the bedroom, yawning.",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "BOB",
+          "line": "Is the coffee ready?",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALICE",
+          "line": "Just finished brewing. Help yourself.",
+          "page_number": 2
+        },
+        {
+          "type": "monologue",
+          "speaker": "BOB",
+          "line": "You know, sometimes I wonder if this is all there is. Wake up, coffee, work, sleep, repeat. There has to be more to life than this endless cycle.",
+          "page_number": 2
+        },
+        {
+          "type": "joint_dialogue",
+          "speaker": "ALICE\nBOB",
+          "line": "But what else is there?",
+          "page_number": 2
+        }
+      ]
+    },
+    {
+      "section_number": "2",
+      "title": "Act Two",
+      "participants": ["ALICE", "BOB", "CHARLIE"],
+      "setting_note": "Later that evening",
+      "content": [
+        {
+          "type": "scene",
+          "page_number": 3,
+          "scene_number": "2.1",
+          "scene_title": "The Revelation"
+        },
+        {
+          "type": "stage_direction",
+          "description": "The apartment is now dimly lit. CHARLIE stands at the door.",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "CHARLIE",
+          "line": "I have something important to tell you both.",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALICE",
+          "line": "Charlie? What are you doing here?",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "CHARLIE",
+          "line": "I've discovered something. Something that changes everything.",
+          "page_number": 4
+        },
+        {
+          "type": "stage_direction",
+          "description": "ALICE and BOB exchange worried glances.",
+          "page_number": 4
+        },
+        {
+          "type": "reading",
+          "speaker": "NARRATOR",
+          "line": "And so begins our journey into the unknown...",
+          "page_number": 4
+        }
+      ]
+    }
+  ]
+} 
