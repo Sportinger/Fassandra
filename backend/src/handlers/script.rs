@@ -4,7 +4,7 @@
 //! Each handler focuses solely on HTTP concerns: request/response mapping, status codes, and error handling.
 
 use axum::{
-    extract::{Multipart, Path, State},
+    extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Json},
     routing::{get, post, patch, delete},
@@ -16,7 +16,6 @@ use tracing::{error, info, warn};
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::analysis::structs::Script as ParsedScript;
 use crate::auth::{AuthUser, RateLimiter, rate_limit_middleware};
 use crate::error::AppError;
 use crate::models::script_share::{ShareScriptRequest, ScriptShare};
@@ -46,10 +45,7 @@ pub struct ScriptServices {
 /// * `Router<ScriptServices>` - Configured router with script routes and security middleware
 pub fn script_routes(rate_limiter: Arc<RateLimiter>) -> Router<ScriptServices> {
     Router::new()
-        // 🔒 SECURITY: Apply stricter rate limiting to file upload endpoint
-        .route("/upload", post(upload_and_parse_script)
-            .layer(middleware::from_fn_with_state(rate_limiter.clone(), rate_limit_middleware)))
-        .route("/create_script_from_parsed", post(create_script_from_parsed_handler))
+        // Script parsing endpoints removed - use script-parser CLI tool instead
         .route("/:script_id/share", post(share_script))
         .route("/:script_id/shares", get(get_script_shares))
         .route("/:script_id/shares/:share_id", delete(remove_script_share))
@@ -61,78 +57,6 @@ pub fn script_routes(rate_limiter: Arc<RateLimiter>) -> Router<ScriptServices> {
             .layer(middleware::from_fn_with_state(rate_limiter.clone(), rate_limit_middleware)))
         .route("/thumbnails/regenerate", post(regenerate_all_thumbnails_endpoint)
             .layer(middleware::from_fn_with_state(rate_limiter, rate_limit_middleware)))
-}
-
-/// Request payload for creating a script from parsed data.
-#[derive(serde::Deserialize, Debug)]
-pub struct CreateScriptFromParsedPayload {
-    parsed_script: ParsedScript,
-}
-
-/// Handles creating a script entry and associated blocks from parsed data.
-///
-/// Delegates to ScriptApplicationService for business logic.
-#[axum::debug_handler]
-async fn create_script_from_parsed_handler(
-    State(services): State<ScriptServices>,
-    AuthUser{user_id}: AuthUser,
-    Json(payload): Json<CreateScriptFromParsedPayload>,
-) -> Result<Json<Uuid>, AppError> {
-    info!(user_id = %user_id, "Creating script from parsed data");
-
-    let script_id = services.script_service
-        .create_script_from_parsed(&payload.parsed_script, user_id)
-        .await?;
-
-    info!(script_id = %script_id, user_id = %user_id, "Successfully created script");
-    Ok(Json(script_id))
-}
-
-/// Handles script file upload and parsing via Gemini API.
-///
-/// Processes multipart form data and delegates to ScriptApplicationService.
-/// Requires authentication to prevent abuse.
-#[axum::debug_handler]
-async fn upload_and_parse_script(
-    State(services): State<ScriptServices>,
-    AuthUser { user_id }: AuthUser,
-    mut multipart: Multipart,
-) -> Result<Json<ParsedScript>, impl IntoResponse> {
-    info!(user_id = %user_id, "Starting PDF script upload and analysis");
-    // Extract file from multipart form
-    while let Some(field) = multipart.next_field().await.map_err(|e| {
-        error!("Failed to read multipart field: {}", e);
-        (StatusCode::BAD_REQUEST, Json(json!({"error": "Invalid upload format"})))
-    })? {
-        if field.name() == Some("file") {
-            let filename = field.file_name().unwrap_or("unknown").to_string();
-            let content_type = field.content_type().unwrap_or("").to_string();
-            
-            info!("Processing uploaded file: {}", filename);
-
-            // Read file data
-            let data = field.bytes().await.map_err(|e| {
-                error!("Failed to read file data: {}", e);
-                (StatusCode::BAD_REQUEST, Json(json!({"error": "Unable to process uploaded file"})))
-            })?;
-
-            // Delegate to application service
-            let parsed_script = services.script_service
-                .upload_and_parse_script(data.to_vec(), &filename, &content_type)
-                .await
-                .map_err(|e| {
-                    error!("Script upload failed: {}", e);
-                    (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Script parsing failed"})))
-                })?;
-
-            info!("Successfully parsed script with {} sections", parsed_script.sections.len());
-            return Ok(Json(parsed_script));
-        }
-    }
-
-    // No file found in multipart data
-    warn!("No file found in multipart data");
-    Err((StatusCode::BAD_REQUEST, Json(json!({"error": "No file provided"}))))
 }
 
 /// Shares a script with another user.
