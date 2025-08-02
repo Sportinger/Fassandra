@@ -10,8 +10,15 @@ export HOME="/tmp"
 echo "Initializing Claude Code for user: $(whoami)"
 echo "Home directory: $USER_HOME"
 
-# Ensure .claude directory exists
+# Ensure .claude directory exists with proper permissions
 mkdir -p "$USER_HOME/.claude"
+# Fix permissions if running as non-root
+if [ "$(whoami)" = "appuser" ]; then
+    # Ensure we own the .claude directory
+    if [ -d "$USER_HOME/.claude" ] && [ ! -w "$USER_HOME/.claude" ]; then
+        echo "Warning: .claude directory not writable, permissions may need fixing"
+    fi
+fi
 
 # Function to set bypass permissions
 set_bypass_permissions() {

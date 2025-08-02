@@ -149,7 +149,6 @@ RUN apt-get update && \
 # Install Node.js for Claude Code
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
-    npm install -g @anthropic-ai/claude-code && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy SSL certificates
@@ -210,8 +209,19 @@ RUN if [ -f .claude/settings.json ]; then \
 # Ensure all /app contents are owned by appuser
 RUN chown -R appuser:appuser /app
 
+# Create npm global directory for appuser
+RUN mkdir -p /home/appuser/.npm-global && \
+    chown -R appuser:appuser /home/appuser/.npm-global
+
 # Switch to non-root user
 USER appuser
+
+# Configure npm to use user directory
+ENV NPM_CONFIG_PREFIX=/home/appuser/.npm-global
+ENV PATH=$PATH:/home/appuser/.npm-global/bin
+
+# Install Claude Code as appuser
+RUN npm install -g @anthropic-ai/claude-code
 
 # Set working directory
 WORKDIR /app
