@@ -53,6 +53,8 @@ RUN apt-get update && \
         poppler-utils \
         # Add net-tools for netstat
         net-tools \
+        # Add PostgreSQL client for psql
+        postgresql-client \
         # Dependencies for NodeSource repository
         curl gnupg && \
     # Add NodeSource repository for Node.js 22.x (latest)
@@ -132,6 +134,10 @@ RUN apt-get update && \
         poppler-utils \
         # Net-tools for debugging
         net-tools \
+        # Add PostgreSQL client for psql
+        postgresql-client \
+        # JSON manipulation tool
+        jq \
         # Dependencies for NodeSource repository
         curl gnupg && \
     # Add NodeSource repository for Node.js 22.x (latest)
@@ -140,9 +146,11 @@ RUN apt-get update && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy Claude Code CLI from builder
-COPY --from=builder /usr/local/lib/node_modules/@anthropic-ai/claude-code /usr/local/lib/node_modules/@anthropic-ai/claude-code
-RUN ln -s /usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude /usr/local/bin/claude
+# Install Node.js for Claude Code
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g @anthropic-ai/claude-code && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy SSL certificates
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
@@ -151,12 +159,62 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/backend .
 COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/hash_password ./hash_password
 
-# Copy the .claude directory with agents (if it exists in the build context)
-# Note: The .claude directory should be included in the Docker build context
-RUN mkdir -p .claude
+# Copy Claude Code settings
+RUN mkdir -p .claude /home/backend/.config/claude-code
+# Copy settings.json if it exists
+RUN if [ -f ".claude/settings.json" ]; then \
+      cp .claude/settings.json /root/.claude.json && \
+      cp .claude/settings.json /home/backend/.config/claude-code/settings.json; \
+    fi
 
-# Create uploads directory for PDF storage
+# Set proper permissions for Claude configuration directories
+RUN mkdir -p /root/.claude && \
+    chmod 755 /root/.claude
+
+# Create uploads directory with proper permissions  
 RUN mkdir -p uploads/scripts
 
-EXPOSE 3001
-CMD ["./backend"]
+# Create non-root user with specific UID/GID matching host user
+RUN groupadd -g 1000 appuser && \
+    useradd -r -u 1000 -g appuser appuser
+
+# Create directories and set permissions for appuser
+RUN mkdir -p /home/appuser/.claude /home/appuser/.config/claude-code && \
+    chown -R appuser:appuser /home/appuser
+
+# Create app directory and set ownership
+RUN mkdir -p /app && chown -R appuser:appuser /app
+
+# Copy files and set permissions - ALL IN ONE GO
+COPY --chown=appuser:appuser --from=builder /app/target/x86_64-unknown-linux-gnu/release/backend /app/backend
+COPY --chown=appuser:appuser --from=builder /app/target/x86_64-unknown-linux-gnu/release/hash_password /app/hash_password
+COPY --chown=appuser:appuser execute_sql.sh /app/execute_sql.sh
+COPY --chown=appuser:appuser init-claude.sh /app/init-claude.sh
+COPY --chown=appuser:appuser docker-entrypoint.sh /app/docker-entrypoint.sh
+COPY --chown=appuser:appuser src/services/prompt.md /app/src/services/prompt.md
+
+# Make scripts executable
+RUN chmod +x /app/execute_sql.sh /app/init-claude.sh /app/docker-entrypoint.sh
+
+# Create uploads directory
+RUN mkdir -p /app/uploads/scripts && chown -R appuser:appuser /app/uploads
+
+# Copy Claude settings to appuser's home if exists
+# Use a conditional approach to avoid build failure if file doesn't exist
+RUN if [ -f .claude/settings.json ]; then \
+      mkdir -p /home/appuser/.claude && \
+      cp .claude/settings.json /home/appuser/.claude/settings.json && \
+      chown appuser:appuser /home/appuser/.claude/settings.json; \
+    fi
+
+# Ensure all /app contents are owned by appuser
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Set working directory
+WORKDIR /app
+
+# Run init-claude.sh and then the backend
+CMD ["/app/backend"]

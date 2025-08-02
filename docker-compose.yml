@@ -22,38 +22,31 @@ services:
 
   backend:
     container_name: ${CONTAINER_PREFIX:-dev_}pessoa_backend
-    depends_on:
-      db:
-        condition: service_healthy
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: builder
-      args:
-        DATABASE_URL: postgres://pessoa_user:dev_password_123@db:5432/pessoa_db
-    environment:
-      JWT_SECRET: ${JWT_SECRET}
-      DATABASE_URL: postgres://pessoa_user:dev_password_123@db:5432/pessoa_db
-      RUST_LOG: info,backend=debug
-      # Claude Code API key for PDF parsing
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      # Pass the username for the backend user inside the container
-      BACKEND_USER: backend
-      BACKEND_PORT: 3000
-      APP_DOMAIN: ${APP_DOMAIN}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
-      DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-10}
-      ADMIN_EMAIL: ${ADMIN_EMAIL}
-      ADMIN_USERNAME: ${ADMIN_USERNAME}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      ADMIN_PLACEHOLDER_HASH: ${ADMIN_PLACEHOLDER_HASH}
+      target: runtime
     ports:
-      - "${BACKEND_PORT:-3000}:3000"
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://pessoa_user:${POSTGRES_PASSWORD:-dev_password_123}@db:5432/pessoa_db
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - RUST_LOG=debug
+      - CLAUDE_CODE_DEBUG=1
+      - HOME=/tmp
+      - BACKEND_PORT=3000
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
-      - ./backend:/app
+      # Don't mount source code over the binary
       - cargo_cache:/usr/local/cargo/registry
       - target_cache:/app/target
-    command: ["sh", "-c", "cargo-watch -q -x 'run --bin backend'"]
+      # Persist Claude Code configuration
+      - claude_config:/tmp/.claude
+    entrypoint: ["/app/docker-entrypoint.sh"]
+    command: ["/app/backend"]
     restart: unless-stopped
 
   frontend:
@@ -104,4 +97,7 @@ volumes:
   target_cache:
     name: ${CONTAINER_PREFIX:-dev_}target_cache
   pgadmin_data:
-    name: ${CONTAINER_PREFIX:-dev_}pgadmin_data 
+    name: ${CONTAINER_PREFIX:-dev_}pgadmin_data
+  # Claude Code configuration volumes
+  claude_config:
+    name: ${CONTAINER_PREFIX:-dev_}claude_config 

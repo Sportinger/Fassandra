@@ -43,13 +43,13 @@ impl ClaudeCodeParserService {
         Self { api_key, debug_mode, db_pool }
     }
 
-    /// Parse PDF and execute SQL with iteration on errors
-    pub async fn parse_pdf_with_sql_execution(
+    /// Parse PDF and let Claude Code handle SQL execution with iteration
+    pub async fn parse_pdf_with_claude_control(
         &self,
         pdf_path: &str,
         username: &str,
     ) -> Result<Uuid, AppError> {
-        info!("Starting Claude Code PDF parsing with SQL execution for path: {} and user: {}", pdf_path, username);
+        info!("Starting Claude Code controlled PDF parsing for path: {} and user: {}", pdf_path, username);
         
         // Verify PDF exists
         if !Path::new(pdf_path).exists() {
@@ -57,100 +57,110 @@ impl ClaudeCodeParserService {
             return Err(AppError::BadRequest(format!("PDF not found: {}", pdf_path)));
         }
 
-        let mut iteration = 0;
-        let max_iterations = 5;
-        let mut last_error = String::new();
+        // Read the prompt from prompt.md at runtime
+        let prompt_path = "/app/src/services/prompt.md";
+        let prompt_template = tokio::fs::read_to_string(prompt_path).await
+            .unwrap_or_else(|e| {
+                warn!("Failed to read prompt.md from {}: {}, using fallback", prompt_path, e);
+                // Fallback to a basic prompt if file not found
+                String::from("You are a PDF script parser. Parse the given PDF and generate SQL to insert it into the database.")
+            });
         
-        while iteration < max_iterations {
-            iteration += 1;
-            info!("Iteration {} of {}", iteration, max_iterations);
-            
-            // Create the prompt with error feedback if this is a retry
-            let prompt = if iteration == 1 {
-                format!(
-                    r#"Please parse the PDF script and generate SQL to insert it into the database.
+        // Create the specific prompt with PDF path and username
+        let prompt = format!(
+            "{}\n\nPDF Path: {}\nUsername: {}\n\nIMPORTANT: Follow the 'Docker Environment SQL Execution' section in the prompt.",
+            prompt_template, pdf_path, username
+        );
 
-PDF Path: {}
-Username: {}
+        // Build the Claude Code command
+        let mut cmd = TokioCommand::new("claude");
+        cmd.arg("--print")  // Non-interactive mode
+            .arg("--max-turns")
+            .arg("20")  // Allow more turns for iteration
+            .env("ANTHROPIC_API_KEY", &self.api_key)
+            .env("HOME", "/tmp") // Use /tmp as home since it's writable
+            .env("CLAUDE_CODE_SETTINGS_PATH", "/tmp/.config/claude-code/settings.json") // Explicit settings path
+            .stdin(std::process::Stdio::piped());
 
-IMPORTANT: Your output MUST be valid PostgreSQL SQL statements that:
-1. Start with BEGIN;
-2. Insert into the 'scripts' table first (with title, created_by user ID, etc)
-3. Insert all blocks into the 'blocks' table with proper ordering
-4. End with COMMIT;
-5. Use the exact database schema from prompt.md
-6. Look up the user ID by email/username before generating SQL
-7. Generate deterministic UUIDs using gen_random_uuid()
+        if self.debug_mode {
+            cmd.arg("--verbose");
+        }
 
-Output ONLY the SQL statements, no explanations or markdown code blocks."#,
-                    pdf_path, username
-                )
-            } else {
-                format!(
-                    r#"The previous SQL execution failed with this error:
+        // Spawn the process
+        let mut child = cmd.spawn().map_err(|e| {
+            error!("Failed to spawn Claude Code: {}", e);
+            AppError::Internal(anyhow!("Failed to spawn Claude Code: {}", e))
+        })?;
 
-{}
+        // Write the prompt to stdin
+        if let Some(mut stdin) = child.stdin.take() {
+            use tokio::io::AsyncWriteExt;
+            stdin.write_all(prompt.as_bytes()).await.map_err(|e| {
+                error!("Failed to write prompt to Claude Code stdin: {}", e);
+                AppError::Internal(anyhow!("Failed to write prompt: {}", e))
+            })?;
+            stdin.shutdown().await.map_err(|e| {
+                error!("Failed to close stdin: {}", e);
+                AppError::Internal(anyhow!("Failed to close stdin: {}", e))
+            })?;
+        }
 
-Please fix the SQL and try again. Remember:
-- Check user exists first by email/username
-- Use proper UUID format
-- Escape single quotes in strings
-- Follow the exact schema from prompt.md
+        // Wait for the process to complete
+        info!("Executing Claude Code CLI with full control...");
+        let output = child.wait_with_output().await.map_err(|e| {
+            error!("Failed to wait for Claude Code: {}", e);
+            AppError::Internal(anyhow!("Failed to wait for Claude Code: {}", e))
+        })?;
 
-PDF Path: {}
-Username: {}
-
-Output ONLY the corrected SQL statements."#,
-                    last_error, pdf_path, username
-                )
-            };
-
-            if self.debug_mode {
-                debug!("Claude Code prompt (iteration {}):\n{}", iteration, prompt);
-            }
-
-            // Call Claude Code
-            match self.get_sql_from_claude(&prompt).await {
-                Ok(sql_content) => {
-                    if self.debug_mode {
-                        debug!("Received SQL from Claude Code:\n{}", sql_content);
-                    }
-                    
-                    // Try to execute the SQL
-                    match self.execute_sql(&sql_content).await {
-                        Ok(script_id) => {
-                            info!("Successfully executed SQL and created script with ID: {}", script_id);
-                            return Ok(script_id);
-                        }
-                        Err(e) => {
-                            warn!("SQL execution failed on iteration {}: {}", iteration, e);
-                            last_error = format!("SQL Error: {}", e);
-                            
-                            if iteration == max_iterations {
-                                error!("Max iterations reached. Giving up.");
-                                return Err(AppError::Internal(anyhow!(
-                                    "Failed to generate valid SQL after {} attempts. Last error: {}", 
-                                    max_iterations, last_error
-                                )));
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    error!("Failed to get SQL from Claude Code: {}", e);
-                    return Err(e);
-                }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        
+        if self.debug_mode {
+            debug!("Claude Code stdout:\n{}", stdout);
+            if !stderr.is_empty() {
+                warn!("Claude Code stderr:\n{}", stderr);
             }
         }
-        
-        Err(AppError::Internal(anyhow!("Unexpected error in iteration loop")))
+
+        if !output.status.success() {
+            error!("Claude Code failed with exit code: {:?}", output.status.code());
+            return Err(AppError::Internal(anyhow!(
+                "Claude Code failed: {}",
+                stderr
+            )));
+        }
+
+        // Extract script ID from Claude's output
+        // Look for "DONE: <uuid>" pattern
+        let script_id = if let Some(done_pos) = stdout.find("DONE: ") {
+            let uuid_start = done_pos + 6;
+            let uuid_section = &stdout[uuid_start..];
+            if let Some(end_pos) = uuid_section.find(|c: char| c.is_whitespace() || c == '\n') {
+                let uuid_str = &uuid_section[..end_pos];
+                Uuid::parse_str(uuid_str).map_err(|e| {
+                    AppError::Internal(anyhow!("Failed to parse UUID from Claude output: {}", e))
+                })?
+            } else {
+                let uuid_str = uuid_section.trim();
+                Uuid::parse_str(uuid_str).map_err(|e| {
+                    AppError::Internal(anyhow!("Failed to parse UUID from Claude output: {}", e))
+                })?
+            }
+        } else {
+            return Err(AppError::Internal(anyhow!(
+                "Claude Code did not output 'DONE: <script_id>' - process may have failed"
+            )));
+        };
+
+        info!("Claude Code successfully completed. Script ID: {}", script_id);
+        Ok(script_id)
     }
 
     /// Get SQL output from Claude Code
     async fn get_sql_from_claude(&self, prompt: &str) -> Result<String, AppError> {
         // Build the Claude Code command
         let mut cmd = TokioCommand::new("claude");
-        cmd.arg("-p")
+        cmd.arg("--print")  // Use --print for non-interactive headless mode
             .arg(prompt)
             .arg("--output-format")
             .arg("json");
@@ -264,8 +274,17 @@ Output ONLY the corrected SQL statements."#,
         username: &str,
     ) -> Result<String, AppError> {
         // This now calls the new method and returns the script ID as string
-        let script_id = self.parse_pdf_with_sql_execution(pdf_path, username).await?;
+        let script_id = self.parse_pdf_with_claude_control(pdf_path, username).await?;
         Ok(script_id.to_string())
+    }
+    
+    // Alias for backward compatibility
+    pub async fn parse_pdf_with_sql_execution(
+        &self,
+        pdf_path: &str,
+        username: &str,
+    ) -> Result<Uuid, AppError> {
+        self.parse_pdf_with_claude_control(pdf_path, username).await
     }
 
     pub async fn parse_pdf_with_streaming(
