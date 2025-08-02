@@ -65,10 +65,12 @@ pub async fn run_migrations(pool: &PgPool) -> Result<()> {
 
 /// Creates CORS layer with appropriate settings
 fn create_cors_layer() -> Result<CorsLayer> {
-    let cors_origin = env::var("CORS_ORIGIN").unwrap_or_else(|_| "http://localhost:3000".to_string());
+    // Support multiple CORS origins from ALLOWED_ORIGINS environment variable
+    let allowed_origins = env::var("ALLOWED_ORIGINS")
+        .unwrap_or_else(|_| "https://192.168.2.111:8080,https://192.168.2.111:8443,http://192.168.2.111:8080,http://localhost:8080,https://localhost:8080,https://localhost:8443".to_string());
     
-    let cors = CorsLayer::new()
-        .allow_origin(cors_origin.parse::<HeaderValue>().context("Invalid CORS origin")?)
+    // For development, we'll allow the specific origins we need
+    let mut cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
         .allow_headers([
             header::AUTHORIZATION,
@@ -76,6 +78,13 @@ fn create_cors_layer() -> Result<CorsLayer> {
             header::CONTENT_TYPE,
         ])
         .allow_credentials(true);
+    
+    // Add each origin individually
+    for origin_str in allowed_origins.split(',') {
+        let origin = origin_str.trim().parse::<HeaderValue>()
+            .context("Invalid CORS origin")?;
+        cors = cors.allow_origin(origin);
+    }
     
     Ok(cors)
 }

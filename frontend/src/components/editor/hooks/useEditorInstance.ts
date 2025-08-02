@@ -63,8 +63,11 @@ export const useEditorInstance = ({
       try {
         const htmlContent = editor.getHTML();
         console.log('[Editor Save] Auto-saving content...');
-        await saveContentToServer(token, scriptId, htmlContent);
+        
+        // Save the content snapshot
+        await saveContentToServer(scriptId, htmlContent);
         console.log('[Editor Save] Auto-save successful');
+        
       } catch (error) {
         console.error('[Editor Save] Auto-save failed:', error);
       }

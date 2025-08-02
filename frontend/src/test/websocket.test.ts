@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import WebSocket from 'ws';
 import { register, login, createScript } from '../api';
 
-const WS_BASE_URL = 'ws://localhost:3001';
+const WS_BASE_URL = 'ws://localhost:3000';
 
 describe('WebSocket', () => {
   let token: string;

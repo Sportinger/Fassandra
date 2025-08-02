@@ -73,6 +73,8 @@ export interface Block {
   content: string; // This might be structured JSON for TipTap
   created_at: string;
   page_number: number;
+  scene_number?: string | null;
+  scene_title?: string | null;
 }
 
 /**

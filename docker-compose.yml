@@ -36,7 +36,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_API_URL: ${GEMINI_API_URL}
-      BACKEND_PORT: 3001
+      BACKEND_PORT: 3000
       APP_DOMAIN: ${APP_DOMAIN}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
       DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-10}
@@ -46,7 +46,7 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       ADMIN_PLACEHOLDER_HASH: ${ADMIN_PLACEHOLDER_HASH}
     ports:
-      - "${BACKEND_PORT:-3001}:3001"
+      - "${BACKEND_PORT:-3000}:3000"
     volumes:
       - ./backend:/app
       - cargo_cache:/usr/local/cargo/registry
@@ -75,7 +75,7 @@ services:
       - ./frontend/tsconfig.app.json:/app/tsconfig.app.json:ro  # Mount tsconfig
       - ./frontend/tsconfig.node.json:/app/tsconfig.node.json:ro  # Mount tsconfig
     environment:
-      - VITE_API_BASE_URL=""
+      - VITE_API_BASE_URL=
       - VITE_WS_BASE_URL=${VITE_WS_BASE_URL}
     restart: unless-stopped
 
