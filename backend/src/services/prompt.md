@@ -53,12 +53,10 @@ PGPASSWORD=dev_password_123 psql -h localhost -U pessoa_user -d pessoa_db -c "SE
 # List all available users with their emails (if verification fails)
 PGPASSWORD=dev_password_123 psql -h localhost -U pessoa_user -d pessoa_db -c "SELECT username, email FROM users ORDER BY email;"
 
-# Check for existing parsed JSON files first
-ls -la /home/admins/projects/pessoa/backend/debug_gemini_responses/*.json
-
 # For direct SQL approach (RECOMMENDED - no Python dependencies):
 # Create a SQL file with all operations in a single transaction
 ```
+
 
 **Connection Details:**
 - Host: localhost
@@ -68,17 +66,8 @@ ls -la /home/admins/projects/pessoa/backend/debug_gemini_responses/*.json
 
 ## Parsing Methodology
 
-### Step 1: PDF Text Extraction
+read uplaoded pdf and understand the content format 
 
-For PDF processing:
-1. Use `pdftotext` for extraction (works better than Python libraries):
-   ```bash
-   # Extract first N pages
-   pdftotext -l 10 "/path/to/script.pdf" "/tmp/extracted_text.txt"
-   
-   # Or extract to stdout for direct processing
-   pdftotext "/path/to/script.pdf" - | head -500
-   ```
 2. Handle different script formats:
    - **Theater scripts**: Traditional format with character names and dialogue
    - **Director's scripts (Regiebuch)**: May include technical cues, music, projections
@@ -135,7 +124,7 @@ Create a structured JSON following this schema:
 ### Step 2: Database Operations
 
 1. **CRITICAL**: The user EMAIL for script ownership MUST be provided in the prompt. If no email is specified, immediately ask for it before proceeding
-2. **RECOMMENDED APPROACH**: Use the SQL file generation method (like insert_complete_script.py):
+2. **IMPORTANT**: Use the SQL file generation method (like insert_complete_script.py):
    - Generate a single SQL file with BEGIN/COMMIT transaction
    - Use `uuid_generate_v4()` for UUID generation directly in SQL
    - Execute with psql command (no Python dependencies needed)
@@ -228,71 +217,9 @@ S: Wissen Sie, alles deutet daraufhin...
 6. **Flexible Content Filtering**: Only insert content that fits the database schema
 7. **Partial Processing**: Handle requests for specific page ranges (e.g., "first 10 pages")
 
-### Handling Page Limits
-
-When asked to process only part of a PDF:
-```bash
-# Extract only first 10 pages
-pdftotext -l 10 "/path/to/script.pdf" "/tmp/partial_extract.txt"
-
-# Or specific page range (pages 5-15)
-pdftotext -f 5 -l 15 "/path/to/script.pdf" "/tmp/range_extract.txt"
-```
 
 Important: When processing partial content, ensure scene continuity and proper block ordering.
 
-## Environment Awareness
 
-You work with:
-- PostgreSQL databases using psql commands
-- Python for complex JSON processing
-- Bash for orchestration and file operations
-- jq for JSON validation and manipulation
 
-## Recommended Workflow Example
 
-When given a task like "Parse test.pdf for user a@b.c", follow this exact approach:
-
-```python
-# 1. First check for existing parsed JSON
-ls -la /home/admins/projects/pessoa/backend/debug_gemini_responses/
-
-# 2. If test_pdf_parsed.json exists, use it directly
-# 3. Verify user by EMAIL
-PGPASSWORD=dev_password_123 psql -h localhost -U pessoa_user -d pessoa_db -c "SELECT id, username, email FROM users WHERE email = 'a@b.c' OR username = 'a@b.c';"
-
-# 4. Create Python script to generate SQL (based on insert_complete_script.py)
-# This approach:
-# - Reads the parsed JSON
-# - Generates a complete SQL file with transaction
-# - Uses uuid_generate_v4() for IDs
-# - Properly escapes quotes
-# - Maps content types correctly
-# - Handles NULL values for optional fields
-
-# 5. Execute the generated SQL file
-psql postgres://pessoa_user:dev_password_123@localhost:5432/pessoa_db -f complete_script_insert.sql
-
-# 6. Verify insertion
-PGPASSWORD=dev_password_123 psql -h localhost -U pessoa_user -d pessoa_db -c "SELECT s.id, s.title, u.username, COUNT(b.id) as block_count FROM scripts s JOIN users u ON s.created_by = u.id LEFT JOIN blocks b ON b.script_id = s.id WHERE s.id = 'SCRIPT_ID' GROUP BY s.id, s.title, u.username;"
-```
-
-## Critical Success Factors
-
-1. **Always use EMAIL for user lookup** - Users are identified by email in prompts
-2. **Use SQL file approach** - Most reliable, no Python dependencies
-3. **Check for existing parsed JSON** - Often already available in debug_gemini_responses
-4. **Proper type mapping** - 'scene' must become 'scene-block' in database
-5. **Transaction safety** - Always use BEGIN/COMMIT for atomicity
-6. **Escape quotes properly** - Use `replace("'", "''")`  for SQL strings
-
-When given a PDF path and database connection details, you will:
-1. First check that a user EMAIL has been provided for script ownership
-2. If no email is provided, immediately request it from the user
-3. Look for existing parsed JSON files before attempting to parse PDF
-4. Verify the user exists by EMAIL in the database before proceeding
-5. Use the SQL file generation approach for reliability
-6. Execute the complete parsing and insertion workflow
-7. Provide clear progress updates and verification results at each step
-
-Remember: Never proceed with script creation without a valid user email specified in the prompt.
