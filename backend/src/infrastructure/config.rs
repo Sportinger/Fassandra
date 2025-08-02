@@ -39,7 +39,7 @@ impl Config {
                 .context("Invalid DB_MAX_CONNECTIONS value")?,
             backend_port: env::var("BACKEND_PORT")
                 .map(|val| val.parse::<u16>())
-                .unwrap_or(Ok(3001))
+                .unwrap_or(Ok(3000))
                 .context("Invalid BACKEND_PORT value")?,
             // 🔒 SECURITY: Configurable security headers with secure defaults
             csp_policy: env::var("CSP_POLICY").unwrap_or_else(|_| {

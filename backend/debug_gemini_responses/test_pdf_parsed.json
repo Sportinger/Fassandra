@@ -1,0 +1,931 @@
+{
+  "title": "FRANKENSTEIN",
+  "subtitle": "PROLOG",
+  "adaptation_by": [],
+  "source_filename": "test.pdf",
+  "sections": [
+    {
+      "section_number": "1",
+      "title": "PROLOG",
+      "participants": ["ALLE"],
+      "content": [
+        {
+          "type": "scene",
+          "page_number": 1,
+          "scene_number": "1",
+          "scene_title": "PROLOG"
+        },
+        {
+          "type": "stage_direction",
+          "line": "(Stimme vom Band)",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Who am I?",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "I am in a strange state of mind.",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "I am alone",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "quite alone",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "in the world",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "who is the other of my thoughts?",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "I know that I am about",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "to die /to be born",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "and I feel happy",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "joyous",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "I feel my pulse; it beats fast:",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "I place my thin hand on my cheek; it burns:",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "there is a slight, quick spirit within me which is now",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "emitting its first",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "its last sparks",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "a feeling that I cannot define leads me on",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "I am a creature",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "and I am too weak both in body and mind to resist the slightest impulse",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "the impulse to create",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "the impulse to destroy",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "I may tread a land never before imprinted by the foot of man",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "I must collect my thoughts",
+          "page_number": 1
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "there is something at work in my soul that I do not understand",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Am I not alone?",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "I must pursue and destroy the being to whom I gave existence",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "then my lot on earth will be fulfilled and I may die",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "I walk a little offroad",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Old borders collapse",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "new ones are being drawn",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Dangerous",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Liberating",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Where is the ultimate border?",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "\"A little patience, and all will be over.\"",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Who am I?",
+          "page_number": 2
+        },
+        {
+          "type": "stage_direction",
+          "line": "dt. Übersetzung",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Wer bin ich?",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Ich bin in einer merkwürdigen Gemütsverfassung",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Ich bin allein",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Ziemlich allein",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "In der Welt",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "wer ist der Autor meiner Gedanken",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Ich weiß ich bin kurz davor",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "zu sterben",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "geboren zu werden",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "und ich bin glücklich",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "fröhlich",
+          "page_number": 2
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Ich fühle meinen Puls; er schlägt schnell",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Ich lege meine dünne Hand auf meine Wange; sie brennt",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Da ist ein leichter, flüchtiger Geist in mir, der seine",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "ersten Strahlen aussendet",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "seine letzten",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Ein Gefühl, das ich nicht definieren kann, leitet mich",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "und ich bin körperlich und geistig zu schwach, um dem geringsten Impuls zu widerstehen",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "dem Impuls zu erschaffen",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "dem Impuls zu zerstören",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "ich werde meinen Fuß auf ein Land setzen, das vor mir noch nie jemand betreten hat",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Ich muss meine Gedanken ordnen",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "irgendetwas, das ich nicht verstehe, arbeitet in meiner Seele",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Bin ich nicht allein?",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Ich muss das Wesen, dem ich seine Existenz geschenkt habe, verfolgen und zerstören",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Dann wird mein Schicksal auf Erden erfüllt sein und ich kann sterben",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "I walk a little offroad",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Old borders collapse",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "new ones are being drawn",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Dangerous",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Liberating",
+          "page_number": 3
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALLE",
+          "line": "Wo ist die ultimative Grenze?",
+          "page_number": 3
+        }
+      ]
+    },
+    {
+      "section_number": "2",
+      "title": "DER TOD, MARY ERFINDET EINE SCHAUERGESCHICHTE",
+      "participants": ["MAREN", "FELIX", "ALEXANDER"],
+      "content": [
+        {
+          "type": "scene",
+          "page_number": 4,
+          "scene_number": "2",
+          "scene_title": "DER TOD, MARY ERFINDET EINE SCHAUERGESCHICHTE"
+        },
+        {
+          "type": "stage_direction",
+          "line": "Maren, Felix und Alexander in der Ur-Form/Homo Sapiens",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Menschen sterben. Der Tod ist ein zu schrecklicher Gegenstand. Menschen vertragen nicht sehr viel Realität. Deshalb erfinden wir Geschichten.",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Und was, wenn wir die Geschichten sind, die wir erfinden?",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Schon als Kind war es meine Lieblingsbeschäftigung, in den Stunden, die ich mir selbst überlassen war, Geschichten zu erzählen. Doch ich machte mich nicht zur Heldin meiner Geschichte(n). Ich war nicht auf meine eigene Identität angewiesen und konnte die Stunden mit Schöpfungen bevölkern, die viel interessanter für mich waren als meine eigenen Empfindungen. -",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Verdiene ich es nicht, Großes zu vollbringen?",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Meine Stimmungen und meine Leidenschaften sind zuweilen heftig.",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Aber durch irgendein inneres Gesetz meines Wesens werden sie umgewandelt in den unbedingten Wunsch zu lernen.",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Diese Geschichte kann als die Erfahrung gelesen werden, diese Geschichte zu erzählen",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Es sind die Geheimnisse des Himmels und der Erde, die ich ergründen will.",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Woraus geht das Prinzip des Lebens hervor?",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Um die Ursache des Lebens zu untersuchen, müssen wir uns erst mit dem Tod beschäftigen.",
+          "page_number": 4
+        },
+        {
+          "type": "joint_dialogue",
+          "speakers": ["ALEXANDER", "MAREN"],
+          "line": "Meine Mutter starb friedlich.",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "A little patience and it will all be over.",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Und selbst im Tod sprach noch Liebe aus ihren Zügen.",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "The memory of my mother has always been the pride and delight of my life. Sie starb bei meiner Geburt. Ich lernte lesen mit meinem Finger auf der Inschrift ihres Grabes.",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Für meinen Vater war sie die Größte.",
+          "page_number": 4
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Und nach ihrem Tod setzte er seine Hoffnung in mich. Ich bin Mary, die Namensvetterin meiner Mutter, der großen Frauenrechtlerin und das Namenssouvenir meines Vaters.",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Ich brauche das Gefühl nicht zu beschreiben.",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Das Gefühl derer, deren liebste Bindungen von …",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "- dem irreparabelsten aller Übel zerrissen werden.",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Die Leere, die sich der Seele offenbart.",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Die Verzweiflung, die sich auf dem Gesicht zeigt.",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Trauer ist das Gefühl mit jemandem zu leben, der nicht mehr da ist.",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Glaubst du an Geister?",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Wie könnte der Körper Herr über den Geist sein? Unser Mut, unsere Heldenhaftigkeit, selbst unser Hass, alles was wir tun, um die Welt zu formen, ist das der Körper oder der Geist?",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Es ist der Geist.",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Von meiner Schöpfung und meinem Schöpfer wusste ich absolut nichts.",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "War ich ein Monster?",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Ich fing an, Bücher zu lesen;",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "-mich mehr mit den Gedanken anderer zu identifizieren; meine Individualität in der Menge derer zu verlieren, die vor mir existiert hatten.",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Aber mein Kummer nahm mit dem Wissen zu.",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Oh, wären die Menschen für immer in ihren heimischen Wäldern geblieben! Oh, hätten wir nichts anderes gekannt außer dem Gefühl von Hunger, Durst und Hitze. Von welch seltsamer Natur Wissen ist.",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Wenn es einem Menschen je gelänge, einen Toten wiederzubeleben, durch Galvanismus oder sonst eine bislang unentdeckte Methode, würde der Geist dann zurückkehren?",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Wieso sollte der Geist in ein ruiniertes Haus zurückkehren?",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Nichts trägt so sehr zur Beruhigung des Geistes bei wie ein beharrlich verfolgtes Ziel.",
+          "page_number": 5
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Ein Fixpunkt, auf den die Seele ihr geistiges Auge richten kann.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "\"Hast Du Dir schon eine Geschichte ausgedacht, Mary?\" fragte Byron. Nichts kommt, wenn es gerufen wird - man muss demütig zugeben, dass das Neue nicht aus dem Nichts kreiert wird.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Sondern aus dem Chaos.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Es war das Jahr ohne Sommer, eine Naturkatastrophe verdunkelte die Welt.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Ich werde meine Wissensgier befriedigen und meinen Fuß auf ein Land setzen, dass vor mir noch niemand betreten hat.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Was würde dich am meisten ängstigen?",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Ewiges Leben. Diese Verlockung reicht aus, um all meine Furcht vor Gefahr und Tod zu besiegen.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Nein, ich möchte nicht ewig leben, das Leben ist schon quälend genug.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Was ich will, existiert, wenn ich wage, es zu finden.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Everything you can think of is true.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Ich erzähle eine Geschichte. Eine Geschichte, die macht, dass es dem Leser davor graut, sich umzublicken, die das Blut gerinnen lässt und die Schläge des Herzens beschleunigt.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Es genügt nicht, die Natur und die Wahrheit zu erforschen. Man muss auch den Mut haben, davon zu erzählen.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Benennen bedeutet Macht.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Wer Dinge falsch benennt, trägt zum Unheil der Welt bei.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Eine Geschichte, die unsere geheimnisvollen, menschlichen Urängste anspricht und tiefes Entsetzen weckt. Einerseits dient das Gedankenspiel der Unterhaltung, andererseits trägt es dazu bei, in unerforschte Regionen des Geistes vorzudringen.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Jede Sache muss einen Anfang haben. Und dieser Anfang muss mit etwas verbunden sein, das davor geschah.",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Unser erstes Kind starb kurz nach seiner Geburt. Der Tod ist natürlich. Verfall unumgänglich. Ich bin den Tod gewöhnt, und ich hasse ihn. Es gibt kein neues Leben ohne Tod. Es kann keinen Tod geben, solange es kein Leben gibt. Kein Leben ohne",
+          "page_number": 6
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Tod, kein Tod ohne Leben, kein…",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Kann ich sterben?",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Das Wesen der Sterblichkeit und Endlichkeit und das Wesen der Sprache verschwören sich immer wieder, um uns zum Stottern zu bringen.",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Man kann niemals das haben, worauf man nicht verzichten kann.",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Man stolpert immer genau dann, wenn man glaubt, am Ziel zu sein.",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Meiner Geschichte wegen habe ich den Wunsch herauszufinden, was uns Menschen vom Rest des biologischen Lebens unterscheidet.",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Und was von Maschinen.",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "So vieles wurde bereits erreicht…",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "… rief die Seele Frankensteins aus –",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "… aber mehr, viel mehr habe ich vor zu erreichen;",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "FRANKENSTEIN, ich nenne meine Geschichte \"Frankenstein\".",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Fehlt da nicht was?",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Was denn, soll ich sie Viktor Frankenstein nennen?",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Nein, deine Geschichte ist mehr als nur seine Geschichte? Sind es nicht Zwei, die ineinander Leben? Frankenstein im Monster?",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Das Monster in Frankenstein?",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Ja, und - deshalb hat das Monster keinen Namen, es braucht ihn nicht.",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Wer gibt seinem Kind keinen Namen?",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Wer entsetzt ist, über das, was er geschaffen hat.",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Ich bin Vater und Mutter der Geschichte, es ist meine Schöpfung.",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Ich weiß, dass ich das Ding, das mich umtreibt verleugne, indem ich es nicht benenne.",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Doch welchen Namen soll man einer neuen Schöpfung geben?",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Ich, Viktor Frankenstein, werde über die vorgezeichneten Bahnen hinaus neue Wege einschlagen, unbekannte Kräfte erforschen und der Welt die tiefsten Geheimnisse der Schöpfung offenbaren.",
+          "page_number": 7
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Geschichte ist das, wozu man sie macht.",
+          "page_number": 8
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Wir sind die Geschichte, die wir machen.",
+          "page_number": 8
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Warum hast du mich verlassen?",
+          "page_number": 8
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Mein Vater verstieß mich, -als ich so zu leben und zu lieben begann, wie er und wie meine Mutter es in ihren Büchern propagiert hatten. Meine Mutter...was würde meine Mutter sagen, wenn ich sie von den Toten zurückholen könnte? Das Herz einer Frau, was ist das? Der Geist einer Frau, was ist das? Hat man uns im innersten Kern anders gemacht? Oder beruht Andersartigkeit nur auf Sitte und Macht?",
+          "page_number": 8
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "Ich, Offenbarer eines neuen Menschen. Sehen sie sich die Götter an, die wir uns bereits ausgedacht haben, egal ob griechisch, römisch, indisch oder ägyptisch, babylonisch oder aztekisch, aus Ragnarök oder Wallhalla, Wesen der Unterwelt oder des sternbesetzten Himmels: sie sind verbesserte Menschen; - sie haben unsere Gelüste, Fehden und Begierden,",
+          "page_number": 8
+        },
+        {
+          "type": "dialogue",
+          "speaker": "FELIX",
+          "line": "Gefühle",
+          "page_number": 8
+        },
+        {
+          "type": "dialogue",
+          "speaker": "ALEXANDER",
+          "line": "(irritierter Blick zu Felix) aber sie sind schnell, stark, nicht von der Biologie eingeschränkt und normalerweise unsterblich. \"Aber Mr. Frankenstein, Gott macht uns, wie wir sind und wir sollten ihm nicht ins Handwerk pfuschen\"",
+          "page_number": 8
+        },
+        {
+          "type": "dialogue",
+          "speaker": "MAREN",
+          "line": "Wenn Gott nicht gewollt hätte, dass wir ihr ins Handwerk pfuschen, hätte sie uns nicht mit einem Verstand ausgestattet. (In unserer Szene mit female creature heißt es leicht paraphrasiert: Wenn Gott nicht gewollt hätte, dass du ihr ins Handwerk pfuschst, hätte sie dich nicht dazu erschaffen, es zu tun.) Ich widme meinem Vater meinen ersten Roman. Frankenstein. Der moderne Prometheus. Ich bin 19 Jahre alt. Ich stehe am Rand. Der Gesellschaft.",
+          "page_number": 8
+        }
+      ]
+    }
+  ]
+}

@@ -2,7 +2,7 @@ import { Node, mergeAttributes } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import { Editor } from '@tiptap/core';
 
-// Helper function to update all scene numbers in order
+// Helper function to update all scene numbers in order while preserving scene names
 function updateAllSceneNumbers(editor: Editor) {
   let sceneNumber = 1;
   const { tr } = editor.state;
@@ -14,9 +14,11 @@ function updateAllSceneNumbers(editor: Editor) {
       const newNumber = sceneNumber.toString();
       
       if (currentNumber !== newNumber) {
+        // Preserve all existing attributes, only update the scene number
         tr.setNodeMarkup(pos, undefined, {
           ...node.attrs,
           sceneNumber: newNumber,
+          // sceneName is preserved from node.attrs
         });
         hasChanges = true;
       }
@@ -56,9 +58,20 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
   },
 
   onCreate() {
-    // Update scene numbers whenever the document changes
+    // Track if we're in the initial load phase
+    let isInitialLoad = true;
+    setTimeout(() => {
+      isInitialLoad = false;
+    }, 2000); // Give 2 seconds for initial content to load
+
+    // Update scene numbers only when scenes are actually moved/added/deleted
     this.editor.on('update', ({ transaction }) => {
-      // Only update if there was an actual change to scene blocks
+      // Skip auto-numbering during initial content load
+      if (isInitialLoad) {
+        return;
+      }
+
+      // Only update if there was an actual structural change to scene blocks
       let shouldUpdate = false;
       
       transaction.steps.forEach((step: any) => {
@@ -68,22 +81,20 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
           if (content) {
             content.forEach((node: any) => {
               if (node.type && node.type.name === 'sceneBlock') {
-                shouldUpdate = true;
+                // Only update for actual structural changes, not text edits
+                if (step.constructor.name === 'ReplaceStep' || step.constructor.name === 'ReplaceAroundStep') {
+                  shouldUpdate = true;
+                }
               }
             });
           }
         }
       });
       
-      // Also check if we're deleting or have deleted scene blocks
-      if (transaction.docChanged) {
-        shouldUpdate = true; // Just update on any doc change for simplicity
-      }
-      
-      if (shouldUpdate) {
+      if (shouldUpdate && transaction.docChanged) {
         setTimeout(() => {
           updateAllSceneNumbers(this.editor);
-        }, 10);
+        }, 100);
       }
     });
   },
@@ -115,18 +126,21 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
     ];
   },
 
-  renderHTML({ HTMLAttributes }) {
-    const sceneNumber = HTMLAttributes['data-scene-number'] || '1';
+  renderHTML({ HTMLAttributes, node }) {
+    const sceneNumber = node.attrs.sceneNumber || HTMLAttributes['data-scene-number'] || '1';
+    const sceneName = node.attrs.sceneName || HTMLAttributes['data-scene-name'] || 'Untitled Scene';
     
     return [
       'div',
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
         'data-type': 'scene-block',
         class: 'scene-block',
+        'data-scene-number': sceneNumber,
+        'data-scene-name': sceneName,
       }),
       ['span', { class: 'scene-number', contenteditable: 'false' }, sceneNumber],
       ['span', { class: 'scene-separator', contenteditable: 'false' }, ' '],
-      ['span', { class: 'scene-name' }, 0],
+      ['span', { class: 'scene-name', contenteditable: 'true' }, sceneName],
     ];
   },
 
@@ -140,10 +154,10 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
           content: [{ type: 'text', text: 'Szene Name' }],
         });
         
-        // Trigger scene number update
-        setTimeout(() => {
-          updateAllSceneNumbers(editor);
-        }, 10);
+        // DISABLED: Auto-numbering interferes with scene numbers from database
+        // setTimeout(() => {
+        //   updateAllSceneNumbers(editor);
+        // }, 10);
         
         return result;
       },

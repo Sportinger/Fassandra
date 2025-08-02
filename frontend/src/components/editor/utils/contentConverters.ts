@@ -106,26 +106,25 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
         
         case 'scene-block': {
           try {
-            // Parse the JSON content
-            const element = JSON.parse(contentJsonString);
-            const sceneNumber = element.scene_number || '1';
-            const sceneTitle = element.scene_title || 'Untitled Scene';
-            console.log(`[Content Converter] Creating scene block - Number: "${sceneNumber}", Title: "${sceneTitle}"`);
+            // Use scene_number and scene_title from the block object, not from JSON content
+            const sceneNumber = block.scene_number || '1';
+            const sceneTitle = block.scene_title || 'Untitled Scene';
+            console.log(`[Content Converter] Creating scene block - Number: "${sceneNumber}", Title: "${sceneTitle}" from block fields`);
             
-            // Create proper scene block HTML
+            // Create proper scene block HTML with both data attributes for the extension
             const sceneHTML = `<div data-type="scene-block" data-scene-number="${sceneNumber}" data-scene-name="${sceneTitle}">
               <span class="scene-number" contenteditable="false">${sceneNumber}</span>
               <span class="scene-separator" contenteditable="false"> </span>
-              <span class="scene-name">${sceneTitle}</span>
+              <span class="scene-name" contenteditable="true">${sceneTitle}</span>
             </div>`;
             
             console.log(`[Content Converter] Generated scene HTML:`, sceneHTML);
             result += sceneHTML;
             return result;
           } catch (parseError) {
-            console.error(`[Content Converter] Failed to parse scene-block JSON, falling back to text:`, contentJsonString, parseError);
+            console.error(`[Content Converter] Failed to create scene-block, falling back to text:`, parseError);
             // Fallback: treat as plain text
-            result += `<p><strong>Scene: ${contentJsonString}</strong></p>`;
+            result += `<p><strong>Scene: ${block.scene_number || ''} ${block.scene_title || contentJsonString}</strong></p>`;
             return result;
           }
         }

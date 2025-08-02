@@ -75,61 +75,138 @@ app.get('/api/diagram/:view', (req, res) => {
                            COALESCE(t.root_id, t.id) as root_id
                     FROM components c
                     JOIN tree t ON c.parent_id = t.id
+                ),
+                child_counts AS (
+                    SELECT parent_id, COUNT(*) as child_count
+                    FROM components
+                    WHERE parent_id IS NOT NULL
+                    GROUP BY parent_id
+                ),
+                sibling_order AS (
+                    SELECT c.id, c.parent_id, c.name, c.type,
+                           COUNT(c2.id) as sibling_position
+                    FROM components c
+                    LEFT JOIN components c2 ON c.parent_id = c2.parent_id 
+                        AND (c2.type < c.type OR (c2.type = c.type AND c2.name <= c.name))
+                    GROUP BY c.id, c.parent_id, c.name, c.type
                 )
                 SELECT 
                     'flowchart TB' as line, 0 as sort_order
                 UNION ALL
-                -- Create subgraphs for root components for better grouping
+                -- Create subgraphs for parents with many children
                 SELECT DISTINCT
-                    printf('subgraph sub%s["%s"]', root_id, name),
-                    root_id * 1000
-                FROM tree
-                WHERE parent_id IS NULL
+                    printf('subgraph sub%s["%s (%s children)"]', 
+                        t.id, 
+                        SUBSTR(t.name, 1, 20) || CASE WHEN LENGTH(t.name) > 20 THEN '...' ELSE '' END,
+                        cc.child_count),
+                    t.id * 1000 + 1
+                FROM tree t
+                JOIN child_counts cc ON t.id = cc.parent_id
+                WHERE cc.child_count > 5  -- Group when more than 5 children
                 UNION ALL
-                -- Add root nodes
+                -- Add parent node inside its subgraph
                 SELECT 
-                    printf('    %s["%s<br/><b>%s</b>"]:::rootNode', 
-                        REPLACE(name, '-', '_'), 
-                        name, 
-                        type),
-                    id * 10
-                FROM tree
-                WHERE parent_id IS NULL
+                    printf('    %s["%s"]:::%s', 
+                        REPLACE(t.name, '-', '_'), 
+                        SUBSTR(t.name, 1, 20) || CASE WHEN LENGTH(t.name) > 20 THEN '...' ELSE '' END,
+                        CASE 
+                            WHEN t.parent_id IS NULL THEN 'rootNode'
+                            WHEN t.type = 'module' THEN 'module'
+                            ELSE 'default'
+                        END),
+                    t.id * 1000 + 10
+                FROM tree t
+                JOIN child_counts cc ON t.id = cc.parent_id
+                WHERE cc.child_count > 5
                 UNION ALL
-                -- Add child components grouped by type
+                -- Add child nodes in columns within subgraphs
                 SELECT 
-                    CASE 
-                        WHEN type = 'module' THEN
-                            printf('    %s["%s"]:::module', 
-                                REPLACE(name, '-', '_'), 
-                                name)
-                        WHEN type = 'function' THEN
-                            printf('    %s["%s"]:::function', 
-                                REPLACE(name, '-', '_'), 
-                                name)
-                        ELSE
-                            printf('    %s["%s<br/>%s"]', 
-                                REPLACE(name, '-', '_'), 
-                                name, 
-                                type)
-                    END,
-                    id * 10 + level
-                FROM tree
-                WHERE parent_id IS NOT NULL
+                    printf('    %s["%s"]:::%s', 
+                        REPLACE(t.name, '-', '_'), 
+                        SUBSTR(t.name, 1, 15) || CASE WHEN LENGTH(t.name) > 15 THEN '..' ELSE '' END,
+                        CASE 
+                            WHEN t.type = 'function' THEN 'function'
+                            WHEN t.type = 'module' THEN 'module'
+                            ELSE 'default'
+                        END),
+                    t.parent_id * 1000 + 20 + so.sibling_position
+                FROM tree t
+                JOIN child_counts cc ON t.parent_id = cc.parent_id
+                JOIN sibling_order so ON t.id = so.id
+                WHERE cc.child_count > 5 AND so.sibling_position <= 10  -- Show first 10 in subgraph
+                UNION ALL
+                -- Close subgraphs
+                SELECT DISTINCT 'end', 
+                    t.id * 1000 + 999
+                FROM tree t
+                JOIN child_counts cc ON t.id = cc.parent_id
+                WHERE cc.child_count > 5
+                UNION ALL
+                -- Add standalone nodes (parents with few children or roots)
+                SELECT 
+                    printf('%s["%s"]:::%s', 
+                        REPLACE(t.name, '-', '_'), 
+                        SUBSTR(t.name, 1, 20) || CASE WHEN LENGTH(t.name) > 20 THEN '...' ELSE '' END,
+                        CASE 
+                            WHEN t.parent_id IS NULL THEN 'rootNode'
+                            WHEN t.type = 'module' THEN 'module'
+                            WHEN t.type = 'function' THEN 'function'
+                            ELSE 'default'
+                        END),
+                    t.id * 10
+                FROM tree t
+                LEFT JOIN child_counts cc ON t.id = cc.parent_id
+                WHERE t.parent_id IS NULL OR COALESCE(cc.child_count, 0) <= 5
+                UNION ALL
+                -- Add children of parents with few children
+                SELECT 
+                    printf('%s["%s"]:::%s', 
+                        REPLACE(t.name, '-', '_'), 
+                        SUBSTR(t.name, 1, 20) || CASE WHEN LENGTH(t.name) > 20 THEN '...' ELSE '' END,
+                        CASE 
+                            WHEN t.type = 'function' THEN 'function'
+                            WHEN t.type = 'module' THEN 'module'
+                            ELSE 'default'
+                        END),
+                    t.id * 10 + 5
+                FROM tree t
+                JOIN child_counts cc ON t.parent_id = cc.parent_id
+                WHERE t.parent_id IS NOT NULL AND cc.child_count <= 5
+                UNION ALL
+                -- Add overflow children outside subgraphs
+                SELECT 
+                    printf('%s["%s +%s more"]:::default', 
+                        REPLACE(CONCAT(t.parent_id, '_more'), '-', '_'),
+                        SUBSTR(p.name, 1, 15),
+                        cc.child_count - 10),
+                    t.parent_id * 1000 + 50
+                FROM tree t
+                JOIN tree p ON t.parent_id = p.id
+                JOIN child_counts cc ON t.parent_id = cc.parent_id
+                JOIN sibling_order so ON t.id = so.id
+                WHERE cc.child_count > 10 AND so.sibling_position = 11
                 UNION ALL
                 -- Add relationships
                 SELECT 
                     printf('    %s --> %s', 
                         REPLACE(p.name, '-', '_'),
                         REPLACE(c.name, '-', '_')),
-                    c.id * 10 + 5
-                FROM components c
-                JOIN components p ON c.parent_id = p.id
+                    c.id * 10 + 500000
+                FROM tree c
+                JOIN tree p ON c.parent_id = p.id
+                LEFT JOIN child_counts cc ON c.parent_id = cc.parent_id
+                LEFT JOIN sibling_order so ON c.id = so.id
+                WHERE COALESCE(cc.child_count, 0) <= 5 OR so.sibling_position <= 10
                 UNION ALL
-                -- Close subgraphs
-                SELECT DISTINCT 'end', root_id * 1000 + 999
-                FROM tree
-                WHERE parent_id IS NULL
+                -- Add relationship to "more" node for overflow
+                SELECT DISTINCT
+                    printf('    %s --> %s', 
+                        REPLACE(p.name, '-', '_'),
+                        REPLACE(CONCAT(p.id, '_more'), '-', '_')),
+                    p.id * 1000 + 500051
+                FROM tree p
+                JOIN child_counts cc ON p.id = cc.parent_id
+                WHERE cc.child_count > 10
                 UNION ALL
                 -- Style definitions
                 SELECT 'classDef rootNode fill:#2E7D32,stroke:#1B5E20,stroke-width:3px,color:#fff,font-weight:bold', 999996

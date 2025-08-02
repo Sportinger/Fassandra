@@ -19,5 +19,5 @@ vi.mock('../api', () => ({
 global.WebSocket = MockWebSocketClient as any;
 
 // Set environment variables
-process.env.VITE_API_BASE_URL = 'http://localhost:3001';
-process.env.VITE_WS_URL = 'ws://localhost:3001/ws'; 
+process.env.VITE_API_BASE_URL = 'http://localhost:3000';
+process.env.VITE_WS_URL = 'ws://localhost:3000/ws'; 
