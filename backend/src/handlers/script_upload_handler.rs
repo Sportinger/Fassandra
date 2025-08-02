@@ -4,7 +4,7 @@ use axum::{
 };
 use uuid::Uuid;
 use crate::error::AppError;
-use crate::services::claude_code_parser_service::ClaudeCodeParserService;
+// use crate::services::claude_code_parser_service::ClaudeCodeParserService;
 use crate::auth::AuthUser;
 use crate::handlers::script::ScriptServices;
 use std::path::PathBuf;
@@ -83,22 +83,25 @@ pub async fn upload_and_parse_script(
     .map_err(|e| AppError::Internal(anyhow!("Failed to fetch user email: {}", e)))?;
 
     // Get API key from environment
-    let api_key = std::env::var("ANTHROPIC_API_KEY")
+    let _api_key = std::env::var("ANTHROPIC_API_KEY")
         .map_err(|_| AppError::Internal(anyhow!("ANTHROPIC_API_KEY not set")))?;
 
     // Create Claude Code parser service with database pool
-    let parser = ClaudeCodeParserService::new(api_key, Arc::new(pool.clone()));
+    // let parser = ClaudeCodeParserService::new(api_key, Arc::new(pool.clone()));
 
     // Parse the PDF with SQL execution and iteration
-    let script_id = parser.parse_pdf_with_sql_execution(&pdf_path, &user_email)
-        .await?;
-
+    // let script_id = parser.parse_pdf_with_sql_execution(&pdf_path, &user_email)
+    //     .await?;
+    
+    // For now, return a placeholder since claude_code_parser_service was deleted
+    let script_id = Uuid::new_v4();
+    
     // Clean up the uploaded file
     let _ = fs::remove_file(&pdf_path).await;
 
     Ok(axum::Json(UploadResponse {
         script_id,
-        message: format!("Successfully parsed and inserted script with ID: {}", script_id),
+        message: format!("PDF upload service temporarily disabled. Script ID: {}", script_id),
     }))
 }
 
@@ -126,23 +129,26 @@ pub async fn parse_existing_script(
     .map_err(|e| AppError::Internal(anyhow!("Failed to fetch user email: {}", e)))?;
 
     // Get API key
-    let api_key = std::env::var("ANTHROPIC_API_KEY")
+    let _api_key = std::env::var("ANTHROPIC_API_KEY")
         .map_err(|_| AppError::Internal(anyhow!("ANTHROPIC_API_KEY not set")))?;
 
     // Create a channel for progress updates
     let (tx, rx) = tokio::sync::mpsc::channel::<String>(100);
 
     // Clone pool for the spawn task
-    let pool_clone = Arc::new(pool.clone());
-    let path_clone = path.clone();
+    let _pool_clone = Arc::new(pool.clone());
+    let _path_clone = path.clone();
     
     // Spawn task to handle parsing
     tokio::spawn(async move {
-        let parser = ClaudeCodeParserService::new(api_key, pool_clone);
+        // let parser = ClaudeCodeParserService::new(api_key, pool_clone);
         
-        let _ = parser.parse_pdf_with_streaming(&path_clone, &user_email, move |update| {
-            let _ = tx.blocking_send(update);
-        }).await;
+        // let _ = parser.parse_pdf_with_streaming(&path_clone, &user_email, move |update| {
+        //     let _ = tx.blocking_send(update);
+        // }).await;
+        
+        // Temporary placeholder
+        let _ = tx.send("PDF parsing service temporarily disabled".to_string()).await;
     });
 
     // Create SSE stream
