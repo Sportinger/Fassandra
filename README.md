@@ -38,8 +38,8 @@ docker compose up -d
 ### 2. First Login
 
 Default development credentials:
-- **Email**: `admin@pessoa.de`
-- **Password**: `PassoaDevteam`
+- **Email**: `a@b.c
+- **Password**: `a@b.cA344`
 
 ### 3. Upload Your First Script
 
@@ -50,14 +50,7 @@ Default development credentials:
 
 ## 📚 Complete Documentation
 
-| Section | Description |
-|---------|-------------|
-| **[📖 User Guide](doc/getting-started/README.md)** | Complete setup and usage instructions |
-| **[🚀 Deployment Guide](doc/deployment/README.md)** | Production deployment on Hetzner, AWS, etc. |
-| **[🔧 Development Guide](doc/development/README.md)** | Contributing, development setup, architecture |
-| **[🔒 Security Guide](doc/security/README.md)** | Security implementation and best practices |
-| **[🔍 API Reference](doc/api/README.md)** | Complete API documentation |
-| **[🛠️ Troubleshooting](doc/troubleshooting/README.md)** | Common issues and solutions |
+/home/admins/projects/pessoa/.architecture/knowledge.db
 
 ## 🏗️ Architecture
 
