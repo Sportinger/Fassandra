@@ -32,15 +32,17 @@ services:
       args:
         DATABASE_URL: postgres://pessoa_user:dev_password_123@db:5432/pessoa_db
     environment:
-      DATABASE_URL: postgres://pessoa_user:dev_password_123@db:5432/pessoa_db
       JWT_SECRET: ${JWT_SECRET}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GEMINI_API_URL: ${GEMINI_API_URL}
+      DATABASE_URL: postgres://pessoa_user:dev_password_123@db:5432/pessoa_db
+      RUST_LOG: info,backend=debug
+      # Claude Code API key for PDF parsing
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      # Pass the username for the backend user inside the container
+      BACKEND_USER: backend
       BACKEND_PORT: 3000
       APP_DOMAIN: ${APP_DOMAIN}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
       DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-10}
-      RUST_LOG: ${RUST_LOG:-info}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}

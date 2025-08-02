@@ -40,6 +40,7 @@ html-escape = "0.2"
 yrs = { version = "0.24.0", features = ["sync"] }
 hex = "0.4.3"
 zip = "0.6"
+async-stream = "0.3"
 
 # Added for to_string_lossy suggestion
 rustix = "0.38"
@@ -47,6 +48,14 @@ rustix = "0.38"
 [[bin]]
 name = "hash_password"
 path = "scripts/hash_password.rs"
+
+[[bin]]
+name = "test_parser"
+path = "src/bin/test_parser.rs"
+
+[[bin]]
+name = "parse_pdf_script"
+path = "src/bin/parse_pdf_script.rs"
 
 [dev-dependencies]
 tokio-test = "0.4"

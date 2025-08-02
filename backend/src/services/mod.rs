@@ -6,6 +6,7 @@
 //! - Y.js document persistence and event handling
 //! - Snapshotting service for document state management
 //! - Background task processing and coordination
+//! - Claude Code integration for PDF script parsing
 //!
 //! # Service Architecture
 //! - Stateless service design for scalability
@@ -18,9 +19,13 @@ pub mod thumbnail;
 pub mod async_db_writer;
 pub mod persistence_event;
 pub mod snapshotting_service_v2;
+pub mod claude_code_parser_service;
+pub mod pdf_script_parser_service;
 
 // Re-export key service components
 pub use thumbnail::*;
 pub use async_db_writer::*;
 pub use persistence_event::*;
 pub use snapshotting_service_v2::*;
+pub use claude_code_parser_service::*;
+pub use pdf_script_parser_service::*;

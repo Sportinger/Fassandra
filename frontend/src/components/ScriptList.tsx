@@ -120,7 +120,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       });
 
       const formData = new FormData();
-      formData.append('file', placeholder.fileData); // PDF file for Gemini processing
+      formData.append('file', placeholder.fileData); // PDF file for Claude Code processing
 
       // Use relative URL - proxy will handle routing to backend
       const uploadResponse = await fetch('/api/s/upload', {
@@ -141,7 +141,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       // Stage 5: PDF processing (45% progress)
       updateUploadStatus({ 
         uploadProgress: 45,
-        uploadSubStage: 'Processing PDF document with Gemini AI...'
+        uploadSubStage: 'Processing PDF document with Claude Code...'
       });
 
       await new Promise(resolve => setTimeout(resolve, 700));

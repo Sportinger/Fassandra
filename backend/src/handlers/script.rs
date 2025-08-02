@@ -6,13 +6,12 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::{IntoResponse, Json},
+    response::Json,
     routing::{get, post, patch, delete},
     Router,
     middleware,
 };
-use serde_json::json;
-use tracing::{error, info, warn};
+use tracing::info;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -24,6 +23,7 @@ use crate::application::{
     ScriptSharingApplicationService,
     ThumbnailApplicationService,
 };
+use crate::handlers::script_upload_handler::{upload_and_parse_script, parse_existing_script};
 
 /// Application services container for script operations
 #[derive(Clone)]
@@ -45,7 +45,12 @@ pub struct ScriptServices {
 /// * `Router<ScriptServices>` - Configured router with script routes and security middleware
 pub fn script_routes(rate_limiter: Arc<RateLimiter>) -> Router<ScriptServices> {
     Router::new()
-        // Script parsing endpoints removed - use script-parser CLI tool instead
+        // PDF upload and parsing endpoints using Claude Code
+        .route("/upload-pdf", post(upload_and_parse_script)
+            .layer(middleware::from_fn_with_state(rate_limiter.clone(), rate_limit_middleware)))
+        .route("/parse-pdf/*path", post(parse_existing_script)
+            .layer(middleware::from_fn_with_state(rate_limiter.clone(), rate_limit_middleware)))
+        // Script sharing endpoints
         .route("/:script_id/share", post(share_script))
         .route("/:script_id/shares", get(get_script_shares))
         .route("/:script_id/shares/:share_id", delete(remove_script_share))
