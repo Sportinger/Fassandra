@@ -32,6 +32,10 @@ declare module '@tiptap/core' {
 
 export const CueConnectionMark = Mark.create({
   name: 'cueConnection',
+  
+  // Allow multiple cueConnection marks on the same text
+  excludes: '',
+  spanning: false,
 
   addOptions() {
     return {
@@ -88,9 +92,22 @@ export const CueConnectionMark = Mark.create({
     ];
   },
 
-  renderHTML({ HTMLAttributes }) {
+  renderHTML({ HTMLAttributes, mark }) {
+    // Count how many cue marks are on this text
+    let cueCount = 1;
+    let allCueTypes = [HTMLAttributes['data-cue-type'] || 'default'];
+    
+    // Check if we can access other marks on the same node
+    if (mark && mark.node && mark.node.marks) {
+      const cueMarks = mark.node.marks.filter(m => m.type.name === 'cueConnection');
+      cueCount = cueMarks.length;
+      allCueTypes = cueMarks.map(m => m.attrs.cueType || 'default');
+    }
+    
     const attrs = mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
       class: `cue-connection cue-connection-${HTMLAttributes['data-cue-type'] || 'default'}`,
+      'data-cue-count': cueCount.toString(),
+      'data-all-cue-types': allCueTypes.join(','),
     });
 
     return ['span', attrs, 0];
