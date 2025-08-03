@@ -28,6 +28,7 @@ import '../styles/cue-blocks.css';
 import '../styles/scene-blocks.css';
 import '../styles/page-indicators.css';
 import '../styles/search.css';
+import '../styles/cue-connections.css';
 
 interface PageBreak {
   id: string;

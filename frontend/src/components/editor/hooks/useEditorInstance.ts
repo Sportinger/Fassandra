@@ -17,6 +17,7 @@ import {
   DialogueBlock,
   DialogueText,
   Speaker,
+  CueConnectionMark,
 } from '../extensions';
 
 interface UseEditorInstanceProps {
@@ -122,6 +123,7 @@ export const useEditorInstance = ({
       DialogueBlock,
       DialogueText,
       Speaker,
+      CueConnectionMark,
       Collaboration.configure({
         document: ydoc,
       }),
@@ -175,6 +177,7 @@ export const useEditorInstance = ({
         DialogueBlock,
         DialogueText,
         Speaker,
+        CueConnectionMark,
     ], // More complete fallback setup
     content: '', // Content will be managed by Yjs
     editable: true, // Ensure editor is always editable

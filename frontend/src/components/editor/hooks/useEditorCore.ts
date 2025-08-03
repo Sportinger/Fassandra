@@ -25,6 +25,7 @@ import { CueBlock } from '../extensions/CueBlock';
 import { SceneBlock } from '../extensions/SceneBlock';
 import { PageIndicator } from '../extensions/PageIndicator';
 import { TrailingNode } from '../extensions/TrailingNode';
+import { CueConnectionMark } from '../extensions/CueConnectionMark';
 import { FontSize } from '../FontSizeExtension';
 import { getScriptWithBlocks, getContentSnapshot } from '../../../api';
 import { convertBlocksToTiptapContent, extractSpeakerNames } from '../utils/contentConverters';
@@ -210,6 +211,7 @@ export const useEditorCore = ({
             Speaker,
             DialogueText,
             CueBlock,
+            CueConnectionMark,
             SceneBlock,
             PageIndicator,
             TrailingNode.configure({
@@ -240,6 +242,7 @@ export const useEditorCore = ({
             Speaker,
             DialogueText,
             CueBlock,
+            CueConnectionMark,
             SceneBlock,
             PageIndicator,
             TrailingNode.configure({

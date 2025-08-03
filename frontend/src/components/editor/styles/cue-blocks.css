@@ -3,14 +3,67 @@
   display: flex;
   align-items: center;
   margin: 0.5rem 0;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem;
   border-radius: 0.375rem;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   font-size: 0.875rem;
   line-height: 1.25rem;
   transition: all 0.2s ease;
   position: relative;
-  cursor: move; /* Show move cursor */
+}
+
+/* Connection drag area - left side for connecting to words */
+.cue-connection-drag-area {
+  display: flex;
+  align-items: center;
+  cursor: crosshair;
+  user-select: none;
+  position: relative;
+  background-color: rgba(59, 130, 246, 0.05);
+  transition: all 0.2s;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  margin-right: 0.5rem;
+  border: 1px solid transparent;
+}
+
+.cue-connection-drag-area:hover {
+  background-color: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* Move drag area - right side for reordering blocks */
+.cue-move-drag-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+  position: relative;
+  background-color: rgba(0, 0, 0, 0.02);
+  transition: all 0.2s;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  margin-left: auto; /* Push to the right */
+  border: 1px solid transparent;
+}
+
+.cue-move-drag-area:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.cue-move-drag-area:active {
+  cursor: grabbing;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.drag-handle {
+  color: rgba(0, 0, 0, 0.4);
+  font-size: 0.875rem;
+  line-height: 1;
+  letter-spacing: -0.2em;
 }
 
 /* Dragging state */
@@ -93,8 +146,14 @@
 .cue-content {
   flex: 1;
   outline: none;
-  min-width: 200px;
   cursor: text;
+  user-select: text; /* Allow text selection */
+  -webkit-user-drag: none; /* Prevent dragging from content area */
+  margin: 0 0.5rem; /* Space between drag areas */
+  padding: 0.25rem 0.5rem;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 0.25rem;
+  min-width: 150px;
 }
 
 /* Ensure content is editable */
@@ -106,6 +165,12 @@
 .cue-block.ProseMirror-selectednode {
   outline: 2px solid rgba(59, 130, 246, 0.5);
   outline-offset: 2px;
+}
+
+/* Make sure connection drag area is draggable */
+.cue-connection-drag-area {
+  -webkit-user-drag: element; /* Allow native drag */
+  pointer-events: auto;
 }
 
 /* Print styles */

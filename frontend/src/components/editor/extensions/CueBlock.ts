@@ -2,6 +2,67 @@ import { Node, mergeAttributes } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import { Editor } from '@tiptap/core';
 import { CueType, CUE_TYPE_LABELS } from '../../../types/cue';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
+import { Node as ProseMirrorNode } from '@tiptap/pm/model';
+
+// Helper function to get word boundaries at a position
+function getWordAtPosition(doc: ProseMirrorNode, pos: number): { from: number; to: number; text: string } | null {
+  try {
+    const $pos = doc.resolve(pos);
+    const parent = $pos.parent;
+    
+    if (!parent.isText && !parent.isTextblock) {
+      console.log('Not in a text block');
+      return null;
+    }
+    
+    // If we're in an inline node, we need to check its parent
+    if (parent.isText) {
+      const grandParent = $pos.node($pos.depth - 1);
+      if (!grandParent.isTextblock) return null;
+    }
+    
+    const text = parent.textContent;
+    const parentOffset = $pos.parentOffset;
+    
+    console.log('Text content:', text, 'Offset:', parentOffset);
+    
+    // Find word boundaries
+    let start = parentOffset;
+    let end = parentOffset;
+    
+    // Move start backwards to beginning of word
+    while (start > 0 && /\S/.test(text.charAt(start - 1))) {
+      start--;
+    }
+    
+    // Move end forwards to end of word  
+    while (end < text.length && /\S/.test(text.charAt(end))) {
+      end++;
+    }
+    
+    // If we didn't find a word, return null
+    if (start === end) {
+      console.log('No word found at position');
+      return null;
+    }
+    
+    // Convert to document positions
+    const basePos = $pos.start();
+    const wordData = {
+      from: basePos + start,
+      to: basePos + end,
+      text: text.substring(start, end),
+    };
+    
+    console.log('Found word:', wordData);
+    return wordData;
+  } catch (error) {
+    console.error('Error in getWordAtPosition:', error);
+    return null;
+  }
+}
 
 // Helper function to find the scene number for a given position
 function getSceneNumberForPosition(editor: Editor, pos: number): number {
@@ -80,11 +141,16 @@ declare module '@tiptap/core' {
   }
 }
 
+const cueBlockDragKey = new PluginKey('cueBlockDrag');
+
+// Store current drag data globally to work around browser limitations
+let currentDragData: any = null;
+
 export const CueBlock = Node.create<CueBlockOptions>({
   name: 'cueBlock',
   group: 'block',
   content: 'inline*',
-  draggable: true, // Enable drag-and-drop
+  draggable: true, // Allow normal drag-and-drop for reordering
   
   addOptions() {
     return {
@@ -92,7 +158,320 @@ export const CueBlock = Node.create<CueBlockOptions>({
     };
   },
 
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: cueBlockDragKey,
+        props: {
+          handleDOMEvents: {
+            mousedown: (view, event) => {
+              const target = event.target as HTMLElement;
+              const connectionDragArea = target.closest('.cue-connection-drag-area');
+              
+              if (connectionDragArea) {
+                // Prevent ProseMirror from starting its own drag
+                event.stopPropagation();
+                return true;
+              }
+              return false;
+            },
+            
+            dragstart: (view, event) => {
+              const target = event.target as HTMLElement;
+              
+              // Check if we're dragging from the connection drag area
+              const connectionDragArea = target.closest('.cue-connection-drag-area');
+              
+              if (connectionDragArea) {
+                console.log('Drag started from connection drag area');
+                
+                const cueBlock = connectionDragArea.closest('.cue-block');
+                if (!cueBlock) return false;
+                
+                // Get cue block data
+                const pos = view.posAtDOM(cueBlock, 0);
+                const node = view.state.doc.nodeAt(pos);
+                
+                if (!node || node.type.name !== 'cueBlock') return false;
+                
+                // Stop propagation to prevent ProseMirror from handling this
+                event.stopPropagation();
+                
+                // Store cue data in dataTransfer
+                const cueData = {
+                  cueId: `cue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                  cueType: node.attrs.cueType,
+                  cueNumber: node.attrs.cueNumber,
+                  isConnectionDrag: true, // Mark this as a connection drag
+                };
+                
+                console.log('Starting connection drag with cue data:', cueData);
+                
+                // Store in global variable to work around browser limitations
+                currentDragData = cueData;
+                
+                // Set a custom drag effect
+                event.dataTransfer!.effectAllowed = 'copy';
+                event.dataTransfer?.setData('text/plain', 'cue-connection');
+                
+                // Create a custom drag image
+                const dragImage = document.createElement('div');
+                dragImage.textContent = `Q${cueData.cueNumber}`;
+                dragImage.style.position = 'absolute';
+                dragImage.style.top = '-1000px';
+                dragImage.style.background = 'rgba(59, 130, 246, 0.8)';
+                dragImage.style.color = 'white';
+                dragImage.style.padding = '4px 8px';
+                dragImage.style.borderRadius = '4px';
+                dragImage.style.fontSize = '12px';
+                document.body.appendChild(dragImage);
+                event.dataTransfer!.setDragImage(dragImage, 0, 0);
+                setTimeout(() => document.body.removeChild(dragImage), 0);
+                
+                // Add dragging class
+                cueBlock.classList.add('dragging-connection');
+                
+                // Store in plugin state for cleanup
+                (view as any).cueBlockDragging = cueBlock;
+                
+                // We need to handle this ourselves
+                return true;
+              } else {
+                // Normal block drag - clear any connection data
+                currentDragData = null;
+                return false; // Let ProseMirror handle the block move
+              }
+            },
+            
+            dragend: (view, event) => {
+              // Remove dragging class
+              const draggingElement = (view as any).cueBlockDragging;
+              if (draggingElement) {
+                draggingElement.classList.remove('dragging');
+                draggingElement.classList.remove('dragging-connection');
+                delete (view as any).cueBlockDragging;
+              }
+              
+              // Clear global drag data
+              currentDragData = null;
+              
+              return false;
+            },
+            
+            dragover: (view, event) => {
+              // Check if this is a connection drag
+              const isConnectionDrag = currentDragData && currentDragData.isConnectionDrag;
+              
+              if (!isConnectionDrag) {
+                // Also check for the body class
+                if (!document.body.classList.contains('cue-connection-dragging')) {
+                  return false;
+                }
+              }
+              
+              console.log('Dragover with connection drag active');
+              
+              // For connection drags, we need to handle this event
+              event.preventDefault();
+              event.dataTransfer!.dropEffect = 'copy';
+              
+              // Find word under cursor
+              const pos = view.posAtCoords({ left: event.clientX, top: event.clientY });
+              if (!pos) {
+                console.log('No position found at coordinates');
+                return false;
+              }
+              
+              const word = getWordAtPosition(view.state.doc, pos.pos);
+              
+              if (word) {
+                // Highlight drop target
+                const decorations = DecorationSet.create(view.state.doc, [
+                  Decoration.inline(word.from, word.to, { class: 'drop-target-word drop-ready' }),
+                ]);
+                
+                (view as any).cueDropDecorations = decorations;
+                view.dispatch(view.state.tr.setMeta('addDropDecoration', decorations));
+              } else {
+                // Clear decorations if not over a word
+                if ((view as any).cueDropDecorations) {
+                  view.dispatch(view.state.tr.setMeta('removeDropDecoration', true));
+                  delete (view as any).cueDropDecorations;
+                }
+              }
+              
+              return true;
+            },
+            
+            dragleave: (view, event) => {
+              // Clear drop decorations when leaving editor
+              if ((view as any).cueDropDecorations) {
+                view.dispatch(view.state.tr.setMeta('removeDropDecoration', true));
+                delete (view as any).cueDropDecorations;
+              }
+              return false;
+            },
+            
+            drop: (view, event) => {
+              // Only handle connection drops
+              if (!currentDragData || !currentDragData.isConnectionDrag) {
+                return false;
+              }
+              
+              event.preventDefault();
+              event.stopPropagation(); // Prevent ProseMirror from handling this
+              
+              // Clear drop decorations first
+              if ((view as any).cueDropDecorations) {
+                setTimeout(() => {
+                  view.dispatch(view.state.tr.setMeta('removeDropDecoration', true));
+                  delete (view as any).cueDropDecorations;
+                }, 50);
+              }
+              
+              const cueData = currentDragData;
+              
+              try {
+                const pos = view.posAtCoords({ left: event.clientX, top: event.clientY });
+                
+                if (!pos) return false;
+                
+                const word = getWordAtPosition(view.state.doc, pos.pos);
+                
+                if (word) {
+                  // Apply cue connection mark to the word
+                  const { state } = view;
+                  const markType = state.schema.marks.cueConnection;
+                  
+                  if (!markType) {
+                    console.error('CueConnection mark type not found in schema');
+                    return false;
+                  }
+                  
+                  const tr = state.tr;
+                  
+                  // First, remove any existing connections from THIS specific cue only
+                  state.doc.nodesBetween(0, state.doc.content.size, (node, pos) => {
+                    if (node.isText && node.marks.length) {
+                      node.marks.forEach(mark => {
+                        // Only remove marks that match THIS cue's type and number
+                        if (mark.type.name === 'cueConnection' && 
+                            mark.attrs.cueType === cueData.cueType &&
+                            mark.attrs.cueNumber === cueData.cueNumber) {
+                          tr.removeMark(pos, pos + node.nodeSize, mark.type);
+                        }
+                      });
+                    }
+                  });
+                  
+                  // Then add the new connection
+                  const mark = markType.create(cueData);
+                  tr.addMark(word.from, word.to, mark);
+                  
+                  view.dispatch(tr);
+                  
+                  console.log('Applied cue connection:', cueData, 'to word:', word.text);
+                  console.log('Mark attrs:', mark.attrs);
+                  
+                  // Clear global drag data after successful drop
+                  currentDragData = null;
+                }
+              } catch (error) {
+                console.error('Error applying cue connection:', error);
+                return false;
+              }
+              
+              return true;
+            },
+          },
+          
+          decorations(state) {
+            const meta = this.getState(state);
+            if (meta?.decorations) {
+              return meta.decorations;
+            }
+            return DecorationSet.empty;
+          },
+        },
+        
+        state: {
+          init: () => ({ decorations: DecorationSet.empty }),
+          apply: (tr, value) => {
+            if (tr.getMeta('addDropDecoration')) {
+              return { decorations: tr.getMeta('addDropDecoration') };
+            }
+            if (tr.getMeta('removeDropDecoration')) {
+              return { decorations: DecorationSet.empty };
+            }
+            return value;
+          },
+        },
+      }),
+    ];
+  },
+
   onCreate() {
+    // Add native drag handlers to connection drag areas
+    const setupConnectionDragHandlers = () => {
+      const dragAreas = document.querySelectorAll('.cue-connection-drag-area');
+      
+      dragAreas.forEach((area: Element) => {
+        const dragArea = area as HTMLElement;
+        
+        // Remove any existing listeners
+        dragArea.ondragstart = null;
+        
+        // Add new listeners
+        dragArea.ondragstart = (e) => {
+          e.stopPropagation();
+          
+          const cueBlock = dragArea.closest('.cue-block');
+          if (!cueBlock) return;
+          
+          // Get cue data from the block
+          const cueNumber = dragArea.querySelector('.cue-number')?.textContent?.replace('Q', '') || '';
+          // Get cue type from data attribute
+          const cueType = cueBlock.getAttribute('data-cue-type') || 'light';
+          
+          console.log('Extracting cue data:', {
+            dataAttribute: cueBlock.getAttribute('data-cue-type'),
+            cueType,
+            cueNumber
+          });
+          
+          const cueData = {
+            cueId: `cue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            cueType,
+            cueNumber,
+            isConnectionDrag: true,
+          };
+          
+          currentDragData = cueData;
+          console.log('Native drag start:', cueData);
+          
+          e.dataTransfer!.effectAllowed = 'copy';
+          e.dataTransfer!.setData('text/plain', 'cue-connection');
+          
+          // Add class to body to indicate connection drag
+          document.body.classList.add('cue-connection-dragging');
+        };
+      });
+    };
+    
+    // Add global drag end handler
+    document.addEventListener('dragend', () => {
+      document.body.classList.remove('cue-connection-dragging');
+      currentDragData = null;
+    });
+    
+    // Setup handlers after a delay to ensure DOM is ready
+    setTimeout(setupConnectionDragHandlers, 100);
+    
+    // Re-setup handlers when content changes
+    this.editor.on('update', () => {
+      setTimeout(setupConnectionDragHandlers, 100);
+    });
+    
     // Update cue numbers whenever the document changes
     this.editor.on('update', ({ transaction }) => {
       // Check if we need to update cue numbers
@@ -165,9 +544,14 @@ export const CueBlock = Node.create<CueBlockOptions>({
         'data-type': 'cue-block',
         class: `cue-block cue-${cueType}`,
       }),
-      ['span', { class: 'cue-number', contenteditable: 'false' }, cueNumber ? `Q${cueNumber}` : ''],
-      ['span', { class: 'cue-label', contenteditable: 'false' }, label + ':'],
-      ['span', { class: 'cue-content' }, 0], // Content slot without contenteditable
+      ['div', { class: 'cue-connection-drag-area', contenteditable: 'false', draggable: 'true', title: 'Drag to connect to words' }, 
+        ['span', { class: 'cue-number' }, cueNumber ? `Q${cueNumber}` : ''],
+        ['span', { class: 'cue-label' }, label + ':'],
+      ],
+      ['span', { class: 'cue-content' }, 0], // Content slot
+      ['div', { class: 'cue-move-drag-area', contenteditable: 'false', title: 'Drag to reorder' }, 
+        ['span', { class: 'drag-handle' }, '⋮⋮'],
+      ],
     ];
   },
 
