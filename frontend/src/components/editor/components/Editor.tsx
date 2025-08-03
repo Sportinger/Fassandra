@@ -29,6 +29,7 @@ import '../styles/scene-blocks.css';
 import '../styles/page-indicators.css';
 import '../styles/search.css';
 import '../styles/cue-connections.css';
+import '../styles/rehearsal-line.css';
 
 interface PageBreak {
   id: string;
@@ -77,6 +78,8 @@ export const Editor: React.FC<EditorProps> = ({
   const [pageBreaks, setPageBreaks] = useState<PageBreak[]>([]);
   const [pageBreakInfo, setPageBreakInfo] = useState<PageBreakInfo[]>([]);
   const [loadingPageBreaks, setLoadingPageBreaks] = useState(false);
+  const [rehearsalMode, setRehearsalMode] = useState(false);
+  const [rehearsalLinePosition, setRehearsalLinePosition] = useState<number>(0);
   
   // Removed demo mode state - development utility
   // Removed demo-related state - development utility
@@ -484,6 +487,8 @@ export const Editor: React.FC<EditorProps> = ({
           onToggleViewMode={() => setViewMode('multiple-pages')}
           pageBreaks={pageBreaks}
           onPageBreaksChange={handlePageBreaksChange}
+          rehearsalMode={rehearsalMode}
+          rehearsalLinePosition={rehearsalLinePosition}
         >
           {editor ? (
             <div 
@@ -533,6 +538,8 @@ export const Editor: React.FC<EditorProps> = ({
           showRuler={showRuler}
           onToggleRuler={() => setShowRuler(!showRuler)}
           onToggleViewMode={() => setViewMode('single-page')}
+          rehearsalMode={rehearsalMode}
+          rehearsalLinePosition={rehearsalLinePosition}
         >
           {editor ? (
             <div 
@@ -661,6 +668,11 @@ export const Editor: React.FC<EditorProps> = ({
         onSetViewMode={setViewMode}
         onToggleRuler={() => setShowRuler(!showRuler)}
         onTogglePageNumbers={() => setShowPageNumbers(!showPageNumbers)}
+        rehearsalMode={rehearsalMode}
+        onToggleRehearsalMode={() => {
+          setRehearsalMode(!rehearsalMode);
+          console.log('Rehearsal mode toggled:', !rehearsalMode);
+        }}
       />
       
       {/* Audio Transcription - Floating */}
