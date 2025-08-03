@@ -1,7 +1,8 @@
 // This is a new file for the DialogueBlock extension.
 // We will define the main container node here.
 import { Node, mergeAttributes } from '@tiptap/core';
-import { TextSelection } from '@tiptap/pm/state';
+import { TextSelection, NodeSelection, Plugin, PluginKey } from '@tiptap/pm/state';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
 
 export interface DialogueBlockOptions {
   HTMLAttributes: Record<string, any>;
@@ -22,6 +23,8 @@ export const DialogueBlock = Node.create<DialogueBlockOptions>({
   name: 'dialogueBlock',
   group: 'block',
   content: 'speaker dialogueText',
+  draggable: true, // Re-enable dragging
+  allowGapCursor: true,
 
   addOptions() {
     return {
@@ -56,7 +59,18 @@ export const DialogueBlock = Node.create<DialogueBlockOptions>({
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { 'data-type': 'dialogue-block' }), 0];
+    return [
+      'div', 
+      mergeAttributes(
+        this.options.HTMLAttributes, 
+        HTMLAttributes, 
+        { 
+          'data-type': 'dialogue-block',
+          'data-drag-handle': '.dialogue-drag-handle' // Specify handle selector
+        }
+      ), 
+      0
+    ];
   },
 
   addCommands() {
@@ -142,5 +156,107 @@ export const DialogueBlock = Node.create<DialogueBlockOptions>({
         return false;
       },
     };
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('dialogueBlockDragHandle'),
+        props: {
+          decorations(state) {
+            const decorations: Decoration[] = [];
+            
+            state.doc.descendants((node, pos) => {
+              if (node.type.name === 'dialogueBlock') {
+                // Find the speaker node within this dialogue block
+                let speakerPos = null;
+                let speakerEndPos = null;
+                
+                node.forEach((child, offset) => {
+                  if (child.type.name === 'speaker') {
+                    speakerPos = pos + offset + 1;
+                    speakerEndPos = speakerPos + child.nodeSize;
+                  }
+                });
+                
+                if (speakerEndPos !== null) {
+                  // Add drag handle after the speaker content
+                  decorations.push(
+                    Decoration.widget(speakerEndPos - 1, () => {
+                      const handle = document.createElement('span');
+                      handle.className = 'dialogue-drag-handle';
+                      handle.innerHTML = ' ⋮⋮';
+                      handle.setAttribute('data-drag-handle', 'true');
+                      handle.setAttribute('data-dialogue-block-pos', pos.toString());
+                      // Don't make the handle itself draggable
+                      handle.draggable = false;
+                      return handle;
+                    }, {
+                      side: 1, // Place after the speaker text
+                    })
+                  );
+                }
+              }
+            });
+            
+            return DecorationSet.create(state.doc, decorations);
+          },
+          
+          handleDOMEvents: {
+            mousedown: (view, event) => {
+              const target = event.target as HTMLElement;
+              
+              // Check if clicking on drag handle
+              if (!target.classList.contains('dialogue-drag-handle')) {
+                return false;
+              }
+              
+              // Get the dialogue block position from the handle
+              const blockPos = parseInt(target.getAttribute('data-dialogue-block-pos') || '0');
+              
+              // Select the entire dialogue block
+              const nodeSelection = NodeSelection.create(view.state.doc, blockPos);
+              view.dispatch(view.state.tr.setSelection(nodeSelection));
+              
+              // Find the dialogue block element
+              const blockEl = view.domAtPos(blockPos).node as HTMLElement;
+              if (!blockEl || blockEl.nodeType !== Node.ELEMENT_NODE) return true;
+              
+              const dialogueBlockEl = blockEl.closest('[data-type="dialogue-block"]');
+              if (!dialogueBlockEl) return true;
+              
+              // Make the entire dialogue block draggable temporarily
+              dialogueBlockEl.setAttribute('draggable', 'true');
+              
+              // Start drag operation
+              event.preventDefault();
+              const dataTransfer = new DataTransfer();
+              
+              // Create a custom drag event
+              setTimeout(() => {
+                const dragEvent = new DragEvent('dragstart', {
+                  bubbles: true,
+                  cancelable: true,
+                  dataTransfer: dataTransfer,
+                  clientX: event.clientX,
+                  clientY: event.clientY,
+                });
+                dialogueBlockEl.dispatchEvent(dragEvent);
+              }, 0);
+              
+              return true;
+            },
+            
+            dragend: (view, event) => {
+              // Clean up draggable attributes
+              view.dom.querySelectorAll('[data-type="dialogue-block"][draggable="true"]').forEach(el => {
+                el.removeAttribute('draggable');
+              });
+              return false;
+            },
+          },
+        },
+      }),
+    ];
   },
 }); 

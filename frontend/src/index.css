@@ -111,6 +111,41 @@ button:focus-visible {
   margin-left: 0 !important;
 }
 
+/* Hover effect for dialogue blocks - only when speaker is hovered */
+.ProseMirror [data-type="dialogue-block"]:has([data-type="speaker"]:hover) {
+  outline: 2px dashed rgba(100, 108, 255, 0.3);
+  outline-offset: 3px;
+  transition: outline 0.2s ease;
+}
+
+/* Drag handle styling */
+.dialogue-drag-handle {
+  display: inline-block;
+  margin-left: 4px;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: rgba(100, 108, 255, 0.6);
+  font-size: 14px;
+  user-select: none;
+  -webkit-user-select: none;
+  vertical-align: middle;
+}
+
+.dialogue-drag-handle:hover {
+  opacity: 1 !important;
+  color: rgba(100, 108, 255, 1);
+}
+
+.dialogue-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Show drag handle when hovering speaker */
+.ProseMirror [data-type="speaker"]:hover .dialogue-drag-handle {
+  opacity: 0.6;
+}
+
 /* Strike-through styling for dialogue blocks */
 .ProseMirror [data-type="dialogue-block"][data-struck-through="true"] {
   position: relative;
@@ -141,10 +176,61 @@ button:focus-visible {
   border-radius: 4px;
   border: 1px solid transparent; /* Always has border to prevent layout shift */
   padding: 2px 4px;
+  cursor: grab; /* Indicate draggable */
+}
+
+
+.ProseMirror [data-type="speaker"]:active {
+  cursor: grabbing;
 }
 
 .ProseMirror [data-type="speaker"]:hover {
-  border-color: rgba(229, 231, 235, 0.1); /* 10% opacity */
+  border-color: rgba(229, 231, 235, 0.3); /* 30% opacity for better visibility */
+  background-color: rgba(229, 231, 235, 0.05); /* Subtle background */
+}
+
+
+/* Visual feedback during drag and selection */
+.ProseMirror [data-type="dialogue-block"].ProseMirror-selectednode {
+  outline: 3px dashed rgba(100, 108, 255, 0.6);
+  outline-offset: 4px;
+  background-color: rgba(100, 108, 255, 0.05);
+  border-radius: 8px;
+}
+
+/* Dragging state */
+.ProseMirror [data-type="dialogue-block"].dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+/* Make speaker cursor change to grabbing when dragging */
+.ProseMirror [data-type="dialogue-block"].dragging [data-type="speaker"] {
+  cursor: grabbing !important;
+}
+
+/* ProseMirror drop cursor styling */
+.ProseMirror-dropcursor {
+  position: relative;
+}
+
+.ProseMirror-dropcursor::after {
+  content: '';
+  position: absolute;
+  left: -20px;
+  right: -20px;
+  top: 0;
+  height: 4px;
+  background-color: #646cff;
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+/* Prevent dropping inside dialogue blocks */
+.ProseMirror [data-type="dialogue-block"] .ProseMirror-dropcursor,
+.ProseMirror [data-type="speaker"] .ProseMirror-dropcursor,
+.ProseMirror [data-type="dialogue-text"] .ProseMirror-dropcursor {
+  display: none;
 }
 
 .ProseMirror [data-type="dialogue-text"] {
