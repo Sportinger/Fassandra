@@ -32,11 +32,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   hasTextSelection,
   viewMode,
   showRuler,
-  showPageNumbers,
   speakerNames,
   onSetViewMode,
   onToggleRuler,
-  onTogglePageNumbers,
   className = '',
   rehearsalMode = false,
   onToggleRehearsalMode
@@ -388,37 +386,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       order: 2
     },
 
-    // View mode buttons (default context)
-    {
-      id: 'convert-to-dialogue',
-      icon: '🎭',
-      title: 'Convert Paragraph to Dialogue Block',
-      action: () => {
-        console.log('Converting paragraph to dialogue block');
-        // Get current paragraph content
-        const { selection } = editor!.state;
-        const { $from } = selection;
-        const currentNode = $from.node();
-        
-        if (currentNode.type.name === 'paragraph') {
-          const content = currentNode.textContent || 'New dialogue';
-          // Replace current paragraph with dialogue block
-          editor?.chain()
-            .focus()
-            .deleteCurrentNode()
-            .insertContent({
-              type: 'dialogueBlock',
-              content: [
-                { type: 'speaker', content: [{ type: 'text', text: 'Speaker' }] },
-                { type: 'dialogueText', content: [{ type: 'paragraph', content: [{ type: 'text', text: content }] }] },
-              ],
-            })
-            .run();
-        }
-      },
-      contexts: ['default'],
-      order: 5
-    },
     {
       id: 'single-page',
       icon: '▢',
@@ -447,21 +414,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       order: 3
     },
     {
-      id: 'show-page-numbers',
-      icon: '📄',
-      title: showPageNumbers ? 'Hide Page Numbers' : 'Show Page Numbers',
-      action: onTogglePageNumbers,
-      isActive: showPageNumbers,
-      contexts: ['default'],
-      order: 4
-    },
-    {
       id: 'print',
       icon: '⎙',
       title: 'Print / Export PDF',
       action: () => window.print(),
       contexts: ['default'],
-      order: 5
+      order: 4
     },
     
     // Cue dropdown (default context)
@@ -485,15 +443,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       order: 11
     },
     
-    // Add Page Indicator button (default context)
-    {
-      id: 'add-page',
-      icon: '📄',
-      title: 'Add Page Indicator',
-      action: () => editor?.commands.insertPageIndicator(),
-      contexts: ['default'],
-      order: 12
-    },
     
     // Rehearsal Mode Toggle (default context)
     {
@@ -507,7 +456,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       },
       isActive: rehearsalMode,
       contexts: ['default'],
-      order: 13
+      order: 12
     },
     
     // Search box (default context)
@@ -517,7 +466,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Search',
       action: () => {}, // Handled by SearchBox component
       contexts: ['default'],
-      order: 14,
+      order: 13,
       isSpecial: true
     },
 
@@ -576,7 +525,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       contexts: ['cue-select'],
       order: 3
     },
-      ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, showPageNumbers, onTogglePageNumbers, rehearsalMode, onToggleRehearsalMode, currentCueType]);
+      ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, rehearsalMode, onToggleRehearsalMode, currentCueType]);
 
   // Get buttons for current context, sorted by order
   const contextButtons = useMemo(() => {

@@ -1,23 +1,13 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Ruler } from '../Ruler';
-import { PageBreakIndicator } from '../components/PageBreakIndicator';
 import '../styles/responsive.css';
-
-interface PageBreak {
-  id: string;
-  pageNumber: number;
-  position: number; // Position in the document (percentage from top)
-}
 
 interface SinglePageViewProps {
   children: React.ReactNode;
   showRuler: boolean;
-  showPageNumbers?: boolean;
   className?: string;
   onToggleRuler?: () => void;
   onToggleViewMode?: () => void;
-  pageBreaks?: PageBreak[];
-  onPageBreaksChange?: (pageBreaks: PageBreak[]) => void;
   rehearsalMode?: boolean;
   rehearsalLinePosition?: number;
 }
@@ -25,20 +15,15 @@ interface SinglePageViewProps {
 export const SinglePageView: React.FC<SinglePageViewProps> = ({ 
   children, 
   showRuler,
-  showPageNumbers = false,
   className = '',
   onToggleRuler,
   onToggleViewMode,
-  pageBreaks = [],
-  onPageBreaksChange,
   rehearsalMode = false,
   rehearsalLinePosition = 0
 }) => {
   const [contextMenu, setContextMenu] = useState<{x: number; y: number; visible: boolean}>({
     x: 0, y: 0, visible: false
   });
-  const [draggedPageBreak, setDraggedPageBreak] = useState<string | null>(null);
-  const [selectedPageBreak, setSelectedPageBreak] = useState<string | null>(null);
 
   // Handle clicking on dark area around page to show context menu
   const handleDarkAreaClick = useCallback((e: React.MouseEvent) => {
@@ -72,41 +57,6 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
   }, [onToggleRuler, onToggleViewMode]);
 
   // Handle page break drag operations
-  const handlePageBreakDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, pageBreakId: string) => {
-    setDraggedPageBreak(pageBreakId);
-    e.dataTransfer.setData('text/plain', pageBreakId);
-  }, []);
-
-  const handlePageBreakDragEnd = useCallback(() => {
-    setDraggedPageBreak(null);
-  }, []);
-
-  const handlePageBreakDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-  }, []);
-
-  const handlePageBreakDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const pageBreakId = e.dataTransfer.getData('text/plain');
-    
-    if (pageBreakId && onPageBreaksChange) {
-      // Calculate new position based on drop location
-      const rect = e.currentTarget.getBoundingClientRect();
-      const dropY = e.clientY - rect.top;
-      const newPosition = (dropY / rect.height) * 100;
-      
-      // Update page break position
-      const updatedPageBreaks = pageBreaks.map(pb => 
-        pb.id === pageBreakId 
-          ? { ...pb, position: Math.max(0, Math.min(100, newPosition)) }
-          : pb
-      );
-      
-      onPageBreaksChange(updatedPageBreaks);
-    }
-    
-    setDraggedPageBreak(null);
-  }, [pageBreaks, onPageBreaksChange]);
 
   // Close context menu when clicking outside
   useEffect(() => {
@@ -135,26 +85,6 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
             }}
           />
           
-          {/* Page Break Indicators */}
-          {showPageNumbers && pageBreaks.map((pageBreak) => (
-            <PageBreakIndicator
-              key={pageBreak.id}
-              editor={null}
-              pageNumber={pageBreak.pageNumber}
-              position={pageBreak.position}
-              isVisible={true}
-              onMove={(pageNum, newPosition) => {
-                if (onPageBreaksChange) {
-                  const updatedPageBreaks = pageBreaks.map(pb => 
-                    pb.pageNumber === pageNum 
-                      ? { ...pb, position: newPosition }
-                      : pb
-                  );
-                  onPageBreaksChange(updatedPageBreaks);
-                }
-              }}
-            />
-          ))}
         </div>
       </div>
       
