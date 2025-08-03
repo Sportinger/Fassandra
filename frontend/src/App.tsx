@@ -9,6 +9,7 @@ import ScriptUploader from './components/ScriptUploader'
 import { PlaceholderScript } from './types'
 import { Header } from './components/Header';
 import { Script } from './types'; // Import Script type
+import { getScriptWithBlocks } from './api';
 
 import './App.css'
 
@@ -102,6 +103,30 @@ function App(): JSX.Element {
   
   // 🚀 FIXED: Use correct ScriptListRef type
   const scriptListRef = useRef<ScriptListRef>(null);
+  
+  // 🔧 NEW: Fetch script title when refreshing editor page without title in URL
+  useEffect(() => {
+    if (currentView === 'editor' && selectedScriptId && !selectedScriptTitle && token) {
+      // Fetch script details to get the title
+      getScriptWithBlocks(selectedScriptId)
+        .then(scriptData => {
+          if (scriptData && scriptData.title) {
+            setSelectedScriptTitle(scriptData.title);
+            // Update URL with the title
+            window.history.replaceState(
+              { view: 'editor', scriptId: selectedScriptId, scriptTitle: scriptData.title },
+              '',
+              `/editor/${selectedScriptId}/${encodeURIComponent(scriptData.title)}`
+            );
+          }
+        })
+        .catch(error => {
+          console.error('[App] Failed to fetch script title:', error);
+          // Set a fallback title if fetch fails
+          setSelectedScriptTitle('Untitled Script');
+        });
+    }
+  }, [currentView, selectedScriptId, selectedScriptTitle, token]);
 
   // 🔧 NEW: Effect to handle URL-based route initialization on auth state change
   useEffect(() => {

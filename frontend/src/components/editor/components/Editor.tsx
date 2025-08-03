@@ -312,7 +312,7 @@ export const Editor: React.FC<EditorProps> = ({
       {/* Header */}
       <Header 
         currentView="editor" 
-        scriptTitle={(initialTitle || 'Loading...') as string} 
+        scriptTitle={initialTitle} 
         onNavigateToScripts={handleAnimatedNavigation}
         layouts={[]} // TODO: Implement layout management
         currentLayout={null}
