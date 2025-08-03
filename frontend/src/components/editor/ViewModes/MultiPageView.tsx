@@ -8,6 +8,8 @@ interface MultiPageViewProps {
   className?: string;
   onToggleRuler?: () => void;
   onToggleViewMode?: () => void;
+  rehearsalMode?: boolean;
+  rehearsalLinePosition?: number;
 }
 
 export const MultiPageView: React.FC<MultiPageViewProps> = ({ 
@@ -15,7 +17,9 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
   showRuler,
   className = '',
   onToggleRuler,
-  onToggleViewMode
+  onToggleViewMode,
+  rehearsalMode = false,
+  rehearsalLinePosition = 0
 }) => {
   const [pageCount, setPageCount] = useState(3);
   const contentRef = useRef<HTMLDivElement>(null);

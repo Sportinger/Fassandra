@@ -36,7 +36,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onSetViewMode,
   onToggleRuler,
   onTogglePageNumbers,
-  className = ''
+  className = '',
+  rehearsalMode = false,
+  onToggleRehearsalMode
 }) => {
   const [visibleButtons, setVisibleButtons] = useState<Set<string>>(new Set());
   const [previousContext, setPreviousContext] = useState<ToolbarContext>('default');
@@ -485,6 +487,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       order: 12
     },
     
+    // Rehearsal Mode Toggle (default context)
+    {
+      id: 'rehearsal-mode',
+      icon: '🎯',
+      title: rehearsalMode ? 'Exit Rehearsal Mode' : 'Enter Rehearsal Mode',
+      action: () => {
+        if (onToggleRehearsalMode) {
+          onToggleRehearsalMode();
+        }
+      },
+      isActive: rehearsalMode,
+      contexts: ['default'],
+      order: 13
+    },
+    
     // Search box (default context)
     {
       id: 'search-box',
@@ -492,10 +509,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Search',
       action: () => {}, // Handled by SearchBox component
       contexts: ['default'],
-      order: 13,
+      order: 14,
       isSpecial: true
     },
-      ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, showPageNumbers, onTogglePageNumbers]);
+      ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, showPageNumbers, onTogglePageNumbers, rehearsalMode, onToggleRehearsalMode]);
 
   // Get buttons for current context, sorted by order
   const contextButtons = useMemo(() => {

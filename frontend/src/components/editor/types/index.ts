@@ -95,6 +95,8 @@ export interface ToolbarProps {
   onToggleRuler: () => void;
   onTogglePageNumbers: () => void;
   className?: string;
+  rehearsalMode?: boolean;
+  onToggleRehearsalMode?: () => void;
 }
 
 // ===== DROPDOWN TYPES =====

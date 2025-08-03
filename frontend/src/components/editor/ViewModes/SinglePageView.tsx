@@ -18,6 +18,8 @@ interface SinglePageViewProps {
   onToggleViewMode?: () => void;
   pageBreaks?: PageBreak[];
   onPageBreaksChange?: (pageBreaks: PageBreak[]) => void;
+  rehearsalMode?: boolean;
+  rehearsalLinePosition?: number;
 }
 
 export const SinglePageView: React.FC<SinglePageViewProps> = ({ 
@@ -28,7 +30,9 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
   onToggleRuler,
   onToggleViewMode,
   pageBreaks = [],
-  onPageBreaksChange
+  onPageBreaksChange,
+  rehearsalMode = false,
+  rehearsalLinePosition = 0
 }) => {
   const [contextMenu, setContextMenu] = useState<{x: number; y: number; visible: boolean}>({
     x: 0, y: 0, visible: false
@@ -122,6 +126,14 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
       <div className="singlePageContainer">
         <div className="dinA4Page" style={{ position: 'relative' }}>
           {children}
+          
+          {/* Rehearsal Line */}
+          <div 
+            className={`rehearsal-line ${!rehearsalMode ? 'hidden' : ''}`}
+            style={{ 
+              top: `${rehearsalLinePosition}px`
+            }}
+          />
           
           {/* Page Break Indicators */}
           {showPageNumbers && pageBreaks.map((pageBreak) => (

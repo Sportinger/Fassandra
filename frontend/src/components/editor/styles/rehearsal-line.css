@@ -1,0 +1,36 @@
+/* Rehearsal Line Styles */
+.rehearsal-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #ff0000;
+  z-index: 100; /* Above content but below modals and context menus */
+  pointer-events: none; /* Don't interfere with text selection */
+  transition: top 0.3s ease-out; /* Smooth movement when position changes */
+}
+
+/* Extend line beyond page boundaries */
+.rehearsal-line::before,
+.rehearsal-line::after {
+  content: '';
+  position: absolute;
+  height: 2px;
+  background-color: #ff0000;
+  top: 0;
+}
+
+.rehearsal-line::before {
+  right: 100%;
+  width: 100vw;
+}
+
+.rehearsal-line::after {
+  left: 100%;
+  width: 100vw;
+}
+
+/* Hide when rehearsal mode is off */
+.rehearsal-line.hidden {
+  display: none;
+}
