@@ -321,6 +321,63 @@
   background: var(--color-success-light, #ecfdf5);
 }
 
+/* Divider between sections */
+.dropdownDivider {
+  margin: var(--space-xs) 0;
+  border-top: 1px solid var(--color-border-light, #e5e7eb);
+}
+
+/* Strike toggle styling */
+.dropdownItem.strikeToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.dropdownItem.strikeToggle .strikeIcon {
+  font-weight: bold;
+  color: #ff0000;
+  text-decoration: line-through;
+}
+
+.dropdownItem.strikeToggle.active {
+  background: rgba(255, 0, 0, 0.1);
+  color: #ff0000;
+}
+
+.dropdownItem.strikeToggle.active:hover {
+  background: rgba(255, 0, 0, 0.15);
+}
+
+/* Left-opening dropdown menu for speaker selection */
+.dropdownMenuLeft {
+  position: absolute;
+  top: 0;
+  right: 100%;
+  margin-right: var(--space-xs);
+  left: auto;
+}
+
+/* Ensure the dropdown container allows overflow to the left */
+.floatingToolbar .dropdownContainer {
+  overflow: visible;
+}
+
+/* Strike-through button styling */
+.toolbarButton[title="Toggle Strike-through"] {
+  font-weight: bold;
+  font-size: 1.2em;
+}
+
+.toolbarButton[title="Toggle Strike-through"].active {
+  color: #ff0000;
+  background: rgba(255, 0, 0, 0.1);
+}
+
+.toolbarButton[title="Toggle Strike-through"].active:hover {
+  background: rgba(255, 0, 0, 0.2);
+}
+
 /* ===== MOBILE RESPONSIVE ADJUSTMENTS ===== */
 
 @media (max-width: 767px) {

@@ -13,6 +13,7 @@ declare module '@tiptap/core' {
       insertDialogueBlock: () => ReturnType;
       setDialogueLayout: (layout: string) => ReturnType;
       exitDialogueBlock: () => ReturnType;
+      toggleDialogueStrikeThrough: () => ReturnType;
     };
   }
 }
@@ -35,6 +36,16 @@ export const DialogueBlock = Node.create<DialogueBlockOptions>({
         parseHTML: element => element.getAttribute('data-layout'),
         renderHTML: attributes => {
           return { 'data-layout': attributes.layout };
+        },
+      },
+      struckThrough: {
+        default: false,
+        parseHTML: element => element.getAttribute('data-struck-through') === 'true',
+        renderHTML: attributes => {
+          if (attributes.struckThrough) {
+            return { 'data-struck-through': 'true' };
+          }
+          return {};
         },
       },
     };
@@ -61,6 +72,21 @@ export const DialogueBlock = Node.create<DialogueBlockOptions>({
       },
       setDialogueLayout: (layout: string) => ({ commands }) => {
         return commands.updateAttributes(this.name, { layout });
+      },
+      toggleDialogueStrikeThrough: () => ({ commands, state }) => {
+        const { selection } = state;
+        const { $from } = selection;
+        
+        // Find the dialogue block node
+        for (let depth = $from.depth; depth >= 0; depth--) {
+          const node = $from.node(depth);
+          if (node.type.name === 'dialogueBlock') {
+            const currentStruckThrough = node.attrs.struckThrough || false;
+            return commands.updateAttributes(this.name, { struckThrough: !currentStruckThrough });
+          }
+        }
+        
+        return false;
       },
       exitDialogueBlock: () => ({ state, dispatch }) => {
         // Insert a new paragraph after the current dialogue block
