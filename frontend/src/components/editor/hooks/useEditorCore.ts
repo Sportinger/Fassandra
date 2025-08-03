@@ -415,10 +415,13 @@ export const useEditorCore = ({
     setContextMenu(null);
     setToolbarContext('default');
     
-    // Remove speaker selection highlighting
+    // Remove selection highlighting
     if (typeof document !== 'undefined') {
       document.querySelectorAll('[data-type="speaker"].speaker-selected').forEach(el => {
         el.classList.remove('speaker-selected');
+      });
+      document.querySelectorAll('[data-type="cue-block"].cue-selected').forEach(el => {
+        el.classList.remove('cue-selected');
       });
     }
   }, []);

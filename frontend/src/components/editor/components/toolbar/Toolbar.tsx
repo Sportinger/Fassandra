@@ -7,8 +7,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FontSizeDropdown } from '../../FontSizeDropdown';
 import { CueDropdown } from '../../CueDropdown';
+import { CueTypeDropdown } from '../../CueTypeDropdown';
 import { SearchBox } from '../../SearchBox';
 import type { ToolbarProps, ToolbarContext } from '../../types/index';
+import { CueType } from '../../../../types/cue';
 
 // Import the responsive styles
 import '../../styles/toolbar.css';
@@ -232,6 +234,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     if (clickContext === 'speaker-select') return 'speaker-select';
     if (clickContext === 'dialogue-layout') return 'dialogue-layout';
     if (clickContext === 'empty-page') return 'empty-page';
+    if (clickContext === 'cue-select') return 'cue-select';
     
     // 2. Text selection always shows formatting tools
     if (hasTextSelection) return 'text-formatting';
@@ -241,6 +244,27 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   const currentContext = getContext();
+
+  // Get current cue type if a cue is selected
+  const getCurrentCueType = (): CueType => {
+    if (!editor || currentContext !== 'cue-select') return 'light';
+    
+    const { state } = editor;
+    const { selection } = state;
+    const { from } = selection;
+    
+    let cueType: CueType = 'light';
+    state.doc.nodesBetween(from, from, (node) => {
+      if (node.type.name === 'cueBlock' && node.attrs.cueType) {
+        cueType = node.attrs.cueType as CueType;
+        return false;
+      }
+    });
+    
+    return cueType;
+  };
+
+  const currentCueType = getCurrentCueType();
 
   // Define all possible buttons with their contexts and actions
   const allButtons = useMemo((): ToolbarButton[] => [
@@ -496,7 +520,63 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       order: 14,
       isSpecial: true
     },
-      ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, showPageNumbers, onTogglePageNumbers, rehearsalMode, onToggleRehearsalMode]);
+
+    // Cue-select context buttons
+    {
+      id: 'cue-type-dropdown',
+      icon: '🎭',
+      title: 'Cue Type',
+      action: () => {}, // Handled by dropdown component
+      contexts: ['cue-select'],
+      order: 1,
+      isSpecial: true
+    },
+    {
+      id: 'delete-cue',
+      icon: '🗑️',
+      title: 'Delete Cue',
+      action: () => {
+        console.log('Deleting cue block');
+        editor?.chain().focus().deleteNode('cueBlock').run();
+      },
+      contexts: ['cue-select'],
+      order: 2
+    },
+    {
+      id: 'exit-cue',
+      icon: '↩',
+      title: 'Exit Cue Block',
+      action: () => {
+        console.log('Exiting cue block');
+        // Move cursor to after the cue block and insert a new paragraph
+        const { state } = editor!;
+        const { selection } = state;
+        const { from } = selection;
+        
+        // Find the cue block node
+        let cueBlockPos = -1;
+        let cueBlockNode = null;
+        state.doc.nodesBetween(from, from, (node, pos) => {
+          if (node.type.name === 'cueBlock') {
+            cueBlockPos = pos;
+            cueBlockNode = node;
+            return false;
+          }
+        });
+        
+        if (cueBlockPos >= 0 && cueBlockNode) {
+          const endPos = cueBlockPos + cueBlockNode.nodeSize;
+          editor?.chain()
+            .focus()
+            .setTextSelection(endPos)
+            .insertContent({ type: 'paragraph' })
+            .run();
+        }
+      },
+      contexts: ['cue-select'],
+      order: 3
+    },
+      ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, showPageNumbers, onTogglePageNumbers, rehearsalMode, onToggleRehearsalMode, currentCueType]);
 
   // Get buttons for current context, sorted by order
   const contextButtons = useMemo(() => {
@@ -630,6 +710,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <SearchBox
                 editor={editor}
                 isVisible={isVisible}
+              />
+            ) : button.isSpecial && button.id === 'cue-type-dropdown' ? (
+              <CueTypeDropdown
+                editor={editor}
+                isVisible={isVisible}
+                currentCueType={currentCueType}
               />
             ) : (
               <button
