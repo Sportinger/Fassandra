@@ -414,6 +414,13 @@ export const useEditorCore = ({
   const hideContextMenu = useCallback(() => {
     setContextMenu(null);
     setToolbarContext('default');
+    
+    // Remove speaker selection highlighting
+    if (typeof document !== 'undefined') {
+      document.querySelectorAll('[data-type="speaker"].speaker-selected').forEach(el => {
+        el.classList.remove('speaker-selected');
+      });
+    }
   }, []);
 
   return {

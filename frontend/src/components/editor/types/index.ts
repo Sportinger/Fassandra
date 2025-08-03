@@ -64,10 +64,10 @@ export interface DimensionConfig {
 // ===== TOOLBAR TYPES =====
 
 export type ToolbarContext = 
-  | 'default'
-  | 'text-selection'
-  | 'dialogue-block'
-  | 'speaker-selection'
+  | 'default'           // Shows cue/scene insertion buttons
+  | 'text-formatting'   // Shows text formatting when text is selected
+  | 'dialogue-layout'   // Shows layout options when in dialogue block
+  | 'speaker-select'    // Shows speaker dropdown when speaker box is clicked
   | 'empty-page';
 
 export interface ToolbarButton {

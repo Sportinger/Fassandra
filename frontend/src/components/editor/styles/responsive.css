@@ -261,6 +261,24 @@ html, body {
   /* Text consistency */
   word-break: normal;
   overflow-wrap: break-word;
+  
+  /* Add hover and selection states */
+  cursor: pointer;
+  padding: 0.2em 0.4em;
+  margin-left: -0.4em;
+  border-radius: 0.25rem;
+  transition: background-color 0.15s ease;
+}
+
+.ProseMirror [data-type="speaker"]:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+/* Highlight when speaker-select mode is active */
+.ProseMirror [data-type="speaker"].speaker-selected {
+  background-color: rgba(59, 130, 246, 0.2);
+  outline: 2px solid var(--color-accent, #3b82f6);
+  outline-offset: 2px;
 }
 
 .ProseMirror [data-type="dialogue-text"] {
