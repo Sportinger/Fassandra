@@ -501,10 +501,14 @@ export const Editor: React.FC<EditorProps> = ({
                 // Handle editor click for context detection
                 const target = e.target as HTMLElement;
                 const speakerElement = target.closest('[data-type="speaker"]');
+                const cueBlockElement = target.closest('[data-type="cue-block"]');
                 
-                // Remove any existing speaker-selected class first
+                // Remove any existing selection classes first
                 document.querySelectorAll('[data-type="speaker"].speaker-selected').forEach(el => {
                   el.classList.remove('speaker-selected');
+                });
+                document.querySelectorAll('[data-type="cue-block"].cue-selected').forEach(el => {
+                  el.classList.remove('cue-selected');
                 });
                 
                 if (speakerElement) {
@@ -515,6 +519,15 @@ export const Editor: React.FC<EditorProps> = ({
                   speakerElement.classList.add('speaker-selected');
                   
                   showContextMenu(e.clientX, e.clientY, 'speaker-select');
+                  e.stopPropagation(); // Prevent default toolbar from showing
+                } else if (cueBlockElement) {
+                  // Clicked on cue block - show cue-select context
+                  debugLog('[Editor] Clicked on cue block element:', cueBlockElement);
+                  
+                  // Add selected class to clicked cue block
+                  cueBlockElement.classList.add('cue-selected');
+                  
+                  showContextMenu(e.clientX, e.clientY, 'cue-select');
                   e.stopPropagation(); // Prevent default toolbar from showing
                 } else {
                   // Clicked elsewhere - hide any special context
@@ -567,10 +580,14 @@ export const Editor: React.FC<EditorProps> = ({
                 // Handle editor click for context detection
                 const target = e.target as HTMLElement;
                 const speakerElement = target.closest('[data-type="speaker"]');
+                const cueBlockElement = target.closest('[data-type="cue-block"]');
                 
-                // Remove any existing speaker-selected class first
+                // Remove any existing selection classes first
                 document.querySelectorAll('[data-type="speaker"].speaker-selected').forEach(el => {
                   el.classList.remove('speaker-selected');
+                });
+                document.querySelectorAll('[data-type="cue-block"].cue-selected').forEach(el => {
+                  el.classList.remove('cue-selected');
                 });
                 
                 if (speakerElement) {
@@ -581,6 +598,15 @@ export const Editor: React.FC<EditorProps> = ({
                   speakerElement.classList.add('speaker-selected');
                   
                   showContextMenu(e.clientX, e.clientY, 'speaker-select');
+                  e.stopPropagation(); // Prevent default toolbar from showing
+                } else if (cueBlockElement) {
+                  // Clicked on cue block - show cue-select context
+                  debugLog('[Editor] Clicked on cue block element:', cueBlockElement);
+                  
+                  // Add selected class to clicked cue block
+                  cueBlockElement.classList.add('cue-selected');
+                  
+                  showContextMenu(e.clientX, e.clientY, 'cue-select');
                   e.stopPropagation(); // Prevent default toolbar from showing
                 } else {
                   // Clicked elsewhere - hide any special context

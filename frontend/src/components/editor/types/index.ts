@@ -68,7 +68,8 @@ export type ToolbarContext =
   | 'text-formatting'   // Shows text formatting when text is selected
   | 'dialogue-layout'   // Shows layout options when in dialogue block
   | 'speaker-select'    // Shows speaker dropdown when speaker box is clicked
-  | 'empty-page';
+  | 'empty-page'
+  | 'cue-select';       // Shows cue options when a cue block is selected
 
 export interface ToolbarButton {
   id: string;

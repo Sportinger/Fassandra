@@ -200,6 +200,10 @@
   border-left: 3px solid #8b5cf6;
 }
 
+.floatingToolbar.context-cue-select {
+  border-left: 3px solid #10b981;
+}
+
 /* ===== DROPDOWN COMPONENTS ===== */
 
 .dropdownContainer {

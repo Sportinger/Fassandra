@@ -171,9 +171,11 @@
 }
 
 /* Selected/focused state */
-.cue-block.ProseMirror-selectednode {
+.cue-block.ProseMirror-selectednode,
+.cue-block.cue-selected {
   outline: 2px solid rgba(59, 130, 246, 0.5);
   outline-offset: 2px;
+  background-color: rgba(16, 185, 129, 0.05);
 }
 
 /* Make sure connection drag area is draggable */
