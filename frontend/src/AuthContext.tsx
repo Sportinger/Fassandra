@@ -3,6 +3,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import { AuthState, User } from './types';
 import { logDebugInfo } from './utils/debug';
 import { setApiToken } from './api';
+import UploadStateManager from './services/UploadStateManager';
 
 // Create the context with a default value for AuthState
 const defaultAuthState: AuthState = {
@@ -152,6 +153,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         sessionStorage.removeItem('authToken');
         localStorage.removeItem('authToken');
         logDebugInfo('Auth', 'Token removed from both storages');
+        
+        // Clear upload state on logout
+        UploadStateManager.clearAll();
+        logDebugInfo('Auth', 'Upload state cleared');
       } catch (error) {
         logDebugInfo('Auth', `Storage removal error: ${error}`);
       }

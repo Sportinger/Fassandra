@@ -1,262 +1,192 @@
-# Claude Code PDF Processing Integration Roadmap
+# Pessoa Platform Roadmap
 
-## Overview
-Integrate Claude Code into the PDF upload workflow to automatically parse theater scripts and populate the database using the existing `json_to_db.sh` script.
+## Recently Completed ✅
 
-## Architecture Design
+### Claude Code Integration
+- Integrated Claude Code for AI-powered script analysis and metadata extraction
+- Fixed Docker environment execution issues
+- Implemented automatic cue detection and speaker identification
+- Added scene and act boundary detection
 
-### 1. PDF Upload Flow
-```
-Frontend Upload → Backend API → Save to ./backend/uploads/scripts/ → Trigger Claude Code → Monitor Progress → Database Population → Cleanup
-```
+### Upload State Persistence
+- Created persistent upload state management using localStorage
+- Added WebSocket reconnection for ongoing uploads when returning to the page
+- Enhanced visual indicators for Claude processing stages
+- Implemented logout cleanup for upload state
 
-### 2. Path Mapping
-- **Host Path**: `./backend/uploads/scripts/filename.pdf`
-- **Container Path**: `/app/uploads/scripts/filename.pdf`
-- **Prompt Path**: `/app/src/services/prompt.md`
+## Potential Next Steps 🚀
 
-### 3. Session Management
+### 1. Enhanced Claude Processing Features
 
-#### Session Lifecycle
-1. **Start**: Spawn Claude Code process with PDF and username
-2. **Monitor**: Track output and progress
-3. **Complete**: Detect "iam done with my job rom" phrase
-4. **Cleanup**: Remove PDF and temporary files
+#### 1.1 Real-time Progress Updates
+- Add granular progress reporting from Claude Code
+- Show percentage completion based on PDF pages processed
+- Display current processing stage (parsing, analyzing, extracting)
 
-#### Progress Tracking Strategy
-- Stream Claude Code output line by line
-- Parse specific markers:
-  - "Reading PDF file..." → Status: Reading (10%)
-  - "Extracting text..." → Status: Extracting (20%)
-  - "Parsing script structure..." → Status: Parsing (40%)
-  - "Creating JSON..." → Status: Formatting (60%)
-  - "Running json_to_db..." → Status: Inserting (80%)
-  - "iam done with my job rom" → Status: Complete (100%)
+#### 1.2 Claude Processing Options
+- Allow users to choose processing depth (quick scan vs. deep analysis)
+- Add option to skip certain processing steps
+- Implement processing presets for different script types
 
-## Implementation Plan
+#### 1.3 Error Recovery
+- Add retry mechanism for failed Claude processing
+- Allow resuming interrupted processing sessions
+- Implement partial save for long processing jobs
 
-### Phase 1: Backend Infrastructure (Week 1)
+### 2. Script Analysis Enhancements
 
-#### 1.1 Create Claude Code Service
-```rust
-// backend/src/services/claude_code_service.rs
-pub struct ClaudeCodeService {
-    sessions: Arc<Mutex<HashMap<Uuid, SessionInfo>>>
-}
+#### 2.1 Advanced Metadata Extraction
+- Character relationship mapping
+- Emotional arc detection
+- Scene location clustering
+- Dialogue statistics per character
 
-pub struct SessionInfo {
-    id: Uuid,
-    status: SessionStatus,
-    progress: u8,
-    output: Vec<String>,
-    started_at: DateTime<Utc>,
-    pid: Option<u32>,
-    username: String,
-    pdf_filename: String,
-}
+#### 2.2 Script Comparison
+- Compare multiple versions of the same script
+- Track changes between script revisions
+- Generate diff reports for directors
 
-pub enum SessionStatus {
-    Starting,
-    Reading,
-    Extracting,
-    Parsing,
-    Formatting,
-    Inserting,
-    Complete,
-    Failed(String),
-    Timeout,
-}
-```
+#### 2.3 Export Capabilities
+- Export cue sheets for stage managers
+- Generate character-specific scripts
+- Create rehearsal schedules based on scene analysis
 
-#### 1.2 Implement Core Methods
-- `spawn_claude_session(pdf_path: &str, username: &str) -> Result<Uuid>`
-- `monitor_session(session_id: Uuid) -> Result<SessionInfo>`
-- `get_session_logs(session_id: Uuid, since_line: usize) -> Result<Vec<String>>`
-- `terminate_session(session_id: Uuid) -> Result<()>`
+### 3. Collaboration Features
 
-### Phase 2: API Integration (Week 1)
+#### 3.1 Real-time Editing
+- Multiple users editing simultaneously
+- Conflict resolution for concurrent edits
+- Live cursor positions of other users
 
-#### 2.1 Modify Upload Handler
-```rust
-// Modify existing upload_and_parse_script
-// Save PDF to uploads/scripts/ without deletion
-// Trigger Claude Code session
-// Return session_id for tracking
-```
+#### 3.2 Annotation System
+- Director's notes on specific lines
+- Actor annotations for character interpretation
+- Technical notes for lighting/sound cues
 
-#### 2.2 New Endpoints
-```
-POST   /api/scripts/upload-pdf
-       → Saves PDF, starts Claude session
-       → Returns: { session_id, message }
+#### 3.3 Version Control
+- Git-like branching for script versions
+- Merge different interpretations
+- Tag releases for production versions
 
-GET    /api/scripts/session/{id}
-       → Returns: { status, progress, logs[], created_at }
+### 4. Performance Optimization
 
-POST   /api/scripts/session/{id}/stop
-       → Terminates session
-       → Returns: { success, message }
+#### 4.1 Caching Strategy
+- Cache Claude processing results
+- Implement smart cache invalidation
+- Add offline mode with cached data
 
-WS     /api/scripts/session/{id}/stream
-       → WebSocket for real-time progress updates
-```
+#### 4.2 Upload Optimization
+- Chunked file uploads for large PDFs
+- Resume interrupted uploads
+- Parallel processing for multiple files
 
-### Phase 3: Claude Code Execution (Week 2)
+#### 4.3 Frontend Performance
+- Lazy loading for large scripts
+- Virtual scrolling for better performance
+- Optimize re-renders in editor
 
-#### 3.1 Command Structure
-```bash
-docker exec -i pessoa_backend claude-code --non-interactive << 'EOF'
-Parse the PDF at /app/uploads/scripts/{filename} using the instructions in /app/src/services/prompt.md
-The username is: {username}
-When complete, the json_to_db.sh script should have successfully inserted the data.
-EOF
-```
+### 5. User Experience Improvements
 
-#### 3.2 Output Parsing
-- Capture stdout/stderr
-- Buffer lines for progress detection
-- Search for completion phrase: "iam done with my job rom"
-- Handle timeout (default: 10 minutes)
+#### 5.1 Search and Filter
+- Full-text search across all scripts
+- Filter by speaker, scene, or custom tags
+- Advanced search with regex support
 
-### Phase 4: Frontend Integration (Week 2)
+#### 5.2 Keyboard Shortcuts
+- Vim-style navigation in editor
+- Custom keybinding support
+- Quick actions palette (Cmd+K style)
 
-#### 4.1 Update ScriptUploader
-- Show "Processing with AI..." status
-- Redirect to progress view after upload
+#### 5.3 Mobile Experience
+- Responsive design improvements
+- Touch-optimized editor controls
+- Offline reading mode
 
-#### 4.2 Create Progress Component
-```typescript
-interface ProcessingProgress {
-    sessionId: string;
-    status: SessionStatus;
-    progress: number;
-    logs: string[];
-    onComplete: (scriptId: string) => void;
-    onError: (error: string) => void;
-}
-```
+### 6. Integration Capabilities
 
-#### 4.3 WebSocket Integration
-- Connect to session stream endpoint
-- Update progress bar in real-time
-- Show recent log entries
-- Handle completion/error states
+#### 6.1 Third-party Tools
+- Export to popular scriptwriting software
+- Integration with rehearsal scheduling tools
+- Connect with theater ticketing systems
 
-### Phase 5: Error Handling & Recovery (Week 3)
+#### 6.2 API Development
+- RESTful API for external access
+- GraphQL endpoint for flexible queries
+- Webhook support for automation
 
-#### 5.1 Failure Scenarios
-- Claude Code crashes
-- JSON parsing errors
-- Database insertion failures
-- Timeout exceeded
-- Invalid PDF format
+#### 6.3 Plugin System
+- Allow custom processing plugins
+- User-defined metadata extractors
+- Custom export formats
 
-#### 5.2 Recovery Strategies
-- Retry mechanism for transient failures
-- Save Claude Code output for debugging
-- Cleanup orphaned files
-- User notification system
+### 7. Security and Administration
 
-### Phase 6: Monitoring & Optimization (Week 3)
+#### 7.1 Access Control
+- Role-based permissions (director, actor, crew)
+- Script-level access control
+- Audit logs for changes
 
-#### 6.1 Metrics
-- Average processing time per page
-- Success/failure rates
-- Common error patterns
-- Resource usage (CPU/Memory)
+#### 7.2 Backup and Recovery
+- Automated backups
+- Point-in-time recovery
+- Export/import entire productions
 
-#### 6.2 Optimizations
-- Concurrent session limit
-- Queue system for high load
-- PDF size limits
-- Session cleanup cron job
+#### 7.3 Multi-tenancy
+- Support for multiple theater companies
+- Isolated data per organization
+- Cross-organization collaboration
 
-## Technical Considerations
+### 8. Analytics and Insights
 
-### Security
-- Validate PDF files before processing
-- Sanitize filenames
-- Limit concurrent sessions per user
-- Secure session IDs (UUID v4)
+#### 8.1 Production Analytics
+- Track script usage patterns
+- Measure collaboration effectiveness
+- Generate production reports
 
-### Performance
-- Stream large outputs efficiently
-- Implement pagination for logs
-- Clean up completed sessions after 24h
-- Monitor Docker container resources
+#### 8.2 Performance Metrics
+- Monitor system performance
+- Track Claude processing times
+- User engagement analytics
 
-### User Experience
-- Clear progress indicators
-- Helpful error messages
-- Allow session cancellation
-- Show estimated time remaining
+## Implementation Priority
 
-## Testing Strategy
+### Phase 1 (Next 2-4 weeks)
+1. Real-time progress updates for Claude processing
+2. Basic error recovery for failed uploads
+3. Search functionality across scripts
+4. Export cue sheets
 
-### Unit Tests
-- Session management logic
-- Output parsing functions
-- Progress calculation
+### Phase 2 (1-2 months)
+1. Real-time collaborative editing
+2. Annotation system
+3. Mobile responsive improvements
+4. Advanced metadata extraction
 
-### Integration Tests
-- Full upload → process → complete flow
-- Error scenarios
-- Concurrent session handling
+### Phase 3 (3-6 months)
+1. Version control system
+2. API development
+3. Plugin architecture
+4. Multi-tenancy support
 
-### E2E Tests
-- Upload various PDF formats
-- Monitor progress updates
-- Verify database population
+## Technical Debt to Address
 
-## Rollout Plan
+1. Add comprehensive test coverage
+2. Improve error handling throughout the application
+3. Standardize component patterns
+4. Document API endpoints
+5. Set up CI/CD pipeline
+6. Implement monitoring and alerting
 
-1. **Alpha**: Internal testing with sample PDFs
-2. **Beta**: Limited users with monitoring
-3. **Production**: Full rollout with metrics
+## Community Features
 
-## Success Criteria
-
-- 95% success rate for valid PDFs
-- Average processing time < 2 min per 50 pages
-- Real-time progress updates < 1s latency
-- Zero orphaned files after 24h
-- User satisfaction > 4.5/5
-
-## Future Enhancements
-
-1. **Batch Processing**: Upload multiple PDFs
-2. **Template Support**: Custom parsing rules
-3. **Preview Mode**: Show parsed structure before commit
-4. **Revision History**: Track parsing attempts
-5. **API Access**: Programmatic PDF submission
-
-## Timeline
-
-- **Week 1**: Backend infrastructure + API
-- **Week 2**: Claude Code integration + Frontend
-- **Week 3**: Testing + Error handling + Deployment
-
-Total estimated time: 3 weeks
-
-## Dependencies
-
-- Claude Code installed in backend container ✓
-- Working json_to_db.sh script ✓
-- PDF upload functionality ✓
-- Database schema ready ✓
-- Anthropic API key configured ✓
-
-## Risks & Mitigations
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Claude Code hangs | High | Timeout + force kill |
-| Large PDFs OOM | Medium | File size limits |
-| Parsing errors | Medium | Retry + manual review |
-| API rate limits | Low | Queue + backoff |
+1. Share scripts with the community (with permissions)
+2. Script templates library
+3. Best practices documentation
+4. User forums for theater professionals
 
 ## Notes
 
-- The completion phrase "iam done with my job rom" is already added to prompt.md
-- Consider adding more granular progress markers to prompt.md
-- Monitor Claude Code token usage for cost optimization
+- Prioritize features based on user feedback
+- Consider performance impact of new features
+- Maintain simplicity in UI despite added complexity
+- Keep Claude Code integration as a core differentiator

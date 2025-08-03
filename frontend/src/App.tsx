@@ -5,7 +5,8 @@ import { Login } from './components/Login'
 import { Register } from './components/Register'
 import { ScriptList, ScriptListRef } from './components/ScriptList' // Import ref type
 import { Editor } from './components/editor'
-import ScriptUploader, { PlaceholderScript } from './components/ScriptUploader' // Import PlaceholderScript
+import ScriptUploader from './components/ScriptUploader'
+import { PlaceholderScript } from './types'
 import { Header } from './components/Header';
 import { Script } from './types'; // Import Script type
 
