@@ -21,6 +21,8 @@
   /* Responsive sizing */
   width: var(--toolbar-width);
   min-width: var(--toolbar-button-size);
+  max-height: 90vh; /* Prevent toolbar from being taller than viewport */
+  overflow-y: auto; /* Allow scrolling if content exceeds max-height */
   
   /* Styling */
   background: var(--color-background, white);
@@ -35,6 +37,28 @@
   /* Backdrop filter for modern look */
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  
+  /* Custom scrollbar for overflow */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-light, #e5e7eb) transparent;
+}
+
+/* Custom scrollbar styling for webkit browsers */
+.floatingToolbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.floatingToolbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.floatingToolbar::-webkit-scrollbar-thumb {
+  background: var(--color-border-light, #e5e7eb);
+  border-radius: 2px;
+}
+
+.floatingToolbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border, #d1d5db);
 }
 
 .floatingToolbar:hover {

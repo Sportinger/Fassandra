@@ -663,8 +663,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       ? `${calculatedBottom}px` // Above keyboard
       : `var(--space-lg)` // Default position
   } : {
-    height: `${toolbarHeight}px`,
-    transition: 'height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)' // easeOutQuad
+    minHeight: `${toolbarHeight}px`,
+    transition: 'min-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)' // easeOutQuad
   };
 
   // Only log on mobile or when keyboard state changes
