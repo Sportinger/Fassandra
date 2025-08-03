@@ -1,6 +1,6 @@
 /**
  * Enhanced Toolbar Component
- * Full-featured floating toolbar with context-aware buttons and animations
+ * Full-featured floating toolbar with context-aware buttons
  * Matches the original FloatingToolbar functionality
  */
 
@@ -40,11 +40,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   rehearsalMode = false,
   onToggleRehearsalMode
 }) => {
-  const [visibleButtons, setVisibleButtons] = useState<Set<string>>(new Set());
-  const [previousContext, setPreviousContext] = useState<ToolbarContext>('default');
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const timeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
   // Handle window resize for responsive toolbar height
   useEffect(() => {
@@ -147,7 +144,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       }
     };
 
-    // 🎭 ENHANCED: Debounced detection for smoother experience
+    // 🎭 ENHANCED: Debounced detection for better experience
     let detectTimeout: NodeJS.Timeout;
     const debouncedDetect = () => {
       clearTimeout(detectTimeout);
@@ -162,7 +159,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     // Fallback resize listener
     window.addEventListener('resize', debouncedDetect);
 
-    // 🎭 ENHANCED: Better iOS Safari handling with smoother transitions
+    // 🎭 ENHANCED: Better iOS Safari handling
     if (isIOS && isSafari) {
       const handleFocusIn = (event: FocusEvent) => {
         const target = event.target as HTMLElement;
@@ -178,7 +175,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 inline: 'nearest'
               });
             }
-          }, 300); // Delay for keyboard animation
+          }, 300); // Small delay for keyboard state
         }
       };
       
@@ -207,10 +204,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       setTimeout(() => {
         initialViewportHeight = window.innerHeight;
         initialVisualViewportHeight = window.visualViewport?.height || window.innerHeight;
-        // Smooth transition after orientation change
+        // Update after orientation change
         setKeyboardHeight(0); // Reset first
         setTimeout(debouncedDetect, 100); // Then detect again
-      }, 500); // Delay to allow orientation to complete
+      }, 500); // Delay to allow orientation to stabilize
     };
 
     window.addEventListener('orientationchange', handleOrientationChange);
@@ -225,21 +222,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     };
   }, [windowWidth]);
 
-  // Clear all pending timeouts
-  const clearAllTimeouts = () => {
-    timeoutsRef.current.forEach(timeout => clearTimeout(timeout));
-    timeoutsRef.current.clear();
-  };
-
-  // Add timeout with tracking
-  const addTimeout = (callback: () => void, delay: number) => {
-    const timeout = setTimeout(() => {
-      callback();
-      timeoutsRef.current.delete(timeout);
-    }, delay);
-    timeoutsRef.current.add(timeout);
-    return timeout;
-  };
+  // Animation functions removed - no longer needed
 
   // Determine current context based on editor state
   const getContext = (): ToolbarContext => {
@@ -521,88 +504,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       .sort((a, b) => a.order - b.order);
   }, [allButtons, currentContext]);
 
-  // Update visible buttons when context changes
-  useEffect(() => {
-    // Clear any pending animations from previous context changes
-    clearAllTimeouts();
-    
-    const newVisibleButtons = new Set(contextButtons.map(btn => btn.id));
-    
-    // Check if this is a rapid context change (text-selection to text-selection)
-    const isRapidTextSelection = currentContext === 'text-selection' && 
-                                previousContext === 'text-selection';
-    
-    if (isRapidTextSelection) {
-      // For rapid text selections, update immediately without animation
-      setVisibleButtons(newVisibleButtons);
-      setPreviousContext(currentContext);
-      return;
-    }
-    
-    const enteringButtons = Array.from(newVisibleButtons).filter(id => !visibleButtons.has(id));
-    const exitingButtons = Array.from(visibleButtons).filter(id => !newVisibleButtons.has(id));
-    
-    // If no changes needed, just update context
-    if (enteringButtons.length === 0 && exitingButtons.length === 0) {
-      setPreviousContext(currentContext);
-      return;
-    }
-    
-    // Check if button sets are identical (for same-context rapid switches)
-    const areButtonSetsEqual = (set1: Set<string>, set2: Set<string>) => {
-      if (set1.size !== set2.size) return false;
-      for (const item of set1) {
-        if (!set2.has(item)) return false;
-      }
-      return true;
-    };
-    
-    if (areButtonSetsEqual(visibleButtons, newVisibleButtons)) {
-      setPreviousContext(currentContext);
-      return;
-    }
-    
-    // First hide exiting buttons
-    if (exitingButtons.length > 0) {
-      exitingButtons.forEach((buttonId, index) => {
-        addTimeout(() => {
-          setVisibleButtons(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(buttonId);
-            return newSet;
-          });
-        }, index * 30); // Staggered exit
-      });
-    }
-    
-    // Then show entering buttons
-    if (enteringButtons.length > 0) {
-      const exitDelay = exitingButtons.length * 30;
-      enteringButtons.forEach((buttonId, index) => {
-        addTimeout(() => {
-          setVisibleButtons(prev => new Set([...prev, buttonId]));
-        }, exitDelay + 100 + (index * 50)); // Staggered entrance after exit
-      });
-    }
+  // No animation logic needed - buttons are shown immediately based on context
 
-    // If no buttons are exiting, just set immediately
-    if (exitingButtons.length === 0) {
-      setVisibleButtons(newVisibleButtons);
-    }
-
-    setPreviousContext(currentContext);
-  }, [currentContext, contextButtons]);
-
-  // Cleanup timeouts on unmount
-  useEffect(() => {
-    return () => {
-      clearAllTimeouts();
-    };
-  }, []);
-
-  // Calculate dynamic toolbar height based on visible buttons and device
+  // Calculate dynamic toolbar height based on context buttons and device
   const toolbarHeight = useMemo(() => {
-    const visibleCount = visibleButtons.size;
+    const visibleCount = contextButtons.length;
     
     // Check if we're on mobile using the state that updates on resize
     const isMobile = windowWidth <= 767;
@@ -647,7 +553,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       });
       return finalHeight;
     }
-  }, [visibleButtons.size, currentContext, windowWidth]);
+  }, [contextButtons.length, currentContext, windowWidth]);
 
   // Render separator between button groups (only for text-selection)
   const shouldShowSeparatorAfter = (button: ToolbarButton, index: number): boolean => {
@@ -674,14 +580,16 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   
   const dynamicStyle = isMobile ? {
     height: `${toolbarHeight}px`,
-    transition: 'height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), bottom 0.3s ease-out',
+    /* No transitions */
+    /* transition: 'height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), bottom 0.3s ease-out', */
     '--calculated-bottom': `${calculatedBottom}px`,
     bottom: keyboardActive 
       ? `${calculatedBottom}px` // Above keyboard
       : `var(--space-lg)` // Default position
   } : {
     minHeight: `${toolbarHeight}px`,
-    transition: 'min-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)' // easeOutQuad
+    /* No transitions */
+    /* transition: 'min-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)' // easeOutQuad */
   };
 
   // Only log on mobile or when keyboard state changes
@@ -698,11 +606,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   return (
     <div 
-      className={`floatingToolbar morphingToolbar context-${currentContext} ${keyboardActive ? 'keyboard-active' : ''} ${className}`}
+      className={`floatingToolbar context-${currentContext} ${keyboardActive ? 'keyboard-active' : ''} ${className}`}
       style={dynamicStyle}
     >
       {contextButtons.map((button, index) => {
-        const isVisible = visibleButtons.has(button.id);
+        // All buttons are immediately visible
+        const isVisible = true;
         
         return (
           <React.Fragment key={button.id}>
@@ -710,34 +619,26 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <FontSizeDropdown 
                 editor={editor}
                 isVisible={isVisible}
-                transitionDelay={isVisible ? `${index * 50}ms` : `${(contextButtons.length - index) * 30}ms`}
               />
             ) : button.isSpecial && button.id === 'cue-dropdown' ? (
               <CueDropdown
                 editor={editor}
                 isVisible={isVisible}
-                transitionDelay={isVisible ? `${index * 50}ms` : `${(contextButtons.length - index) * 30}ms`}
               />
             ) : button.isSpecial && button.id === 'search-box' ? (
               <SearchBox
                 editor={editor}
                 isVisible={isVisible}
-                transitionDelay={isVisible ? `${index * 50}ms` : `${(contextButtons.length - index) * 30}ms`}
               />
             ) : (
               <button
                 onClick={button.action}
                 className={[
                   'toolbarButton',
-                  'morphingButton',
-                  button.isActive ? 'active' : '',
-                  isVisible ? 'visible' : 'hidden'
+                  button.isActive ? 'active' : ''
                 ].filter(Boolean).join(' ')}
                 title={button.title}
                 type="button"
-                style={{
-                  transitionDelay: isVisible ? `${index * 50}ms` : `${(contextButtons.length - index) * 30}ms`
-                }}
               >
                 <span className="icon">{button.icon}</span>
               </button>
@@ -745,14 +646,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             
             {shouldShowSeparatorAfter(button, index) && (
               <div 
-                className={[
-                  'toolbarSeparator',
-                  'morphingSeparator',
-                  isVisible ? 'visible' : 'hidden'
-                ].filter(Boolean).join(' ')}
-                style={{
-                  transitionDelay: isVisible ? `${(index + 1) * 50}ms` : `${(contextButtons.length - index - 1) * 30}ms`
-                }}
+                className="toolbarSeparator"
               />
             )}
           </React.Fragment>
