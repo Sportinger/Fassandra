@@ -31,8 +31,8 @@
   padding: var(--toolbar-padding);
   box-shadow: var(--shadow-xl);
   
-  /* Smooth transitions */
-  transition: all var(--transition-normal);
+  /* No transitions */
+  /* transition: all var(--transition-normal); */
   
   /* Backdrop filter for modern look */
   backdrop-filter: blur(10px);
@@ -63,7 +63,8 @@
 
 .floatingToolbar:hover {
   box-shadow: var(--shadow-xl);
-  transform: translateY(-50%) translateX(2px);
+  /* No transform animation */
+  /* transform: translateY(-50%) translateX(2px); */
 }
 
 /* ===== TOOLBAR BUTTON ===== */
@@ -90,8 +91,8 @@
   font-weight: 600;
   color: var(--color-text-secondary, #6b7280);
   
-  /* Transitions */
-  transition: all var(--transition-fast);
+  /* No transitions */
+  /* transition: all var(--transition-fast); */
   position: relative;
   overflow: hidden;
   
@@ -103,12 +104,14 @@
 .toolbarButton:hover {
   background: var(--color-accent, #3b82f6);
   color: white;
-  transform: scale(1.05);
+  /* No scale animation */
+  /* transform: scale(1.05); */
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .toolbarButton:active {
-  transform: scale(0.98);
+  /* No scale animation */
+  /* transform: scale(0.98); */
 }
 
 .toolbarButton.active {
@@ -121,11 +124,13 @@
 .toolbarButton .icon {
   pointer-events: none;
   line-height: 1;
-  transition: transform var(--transition-fast);
+  /* No transition */
+  /* transition: transform var(--transition-fast); */
 }
 
 .toolbarButton:hover .icon {
-  transform: scale(1.1);
+  /* No scale animation */
+  /* transform: scale(1.1); */
 }
 
 /* ===== TOOLBAR SEPARATOR ===== */
@@ -138,38 +143,40 @@
   opacity: 0.6;
 }
 
-/* ===== MORPHING ANIMATIONS ===== */
+/* ===== MORPHING ANIMATIONS REMOVED ===== */
 
 .morphingToolbar {
-  transition: height var(--transition-slow);
+  /* No height transition */
+  /* transition: height var(--transition-slow); */
 }
 
 .morphingButton {
-  opacity: 0;
-  transform: translateX(-20px) scale(0.8);
-  transition: all var(--transition-normal);
+  /* Start visible, no animation */
+  opacity: 1;
+  /* transform: translateX(-20px) scale(0.8); */
+  /* transition: all var(--transition-normal); */
 }
 
 .morphingButton.visible {
   opacity: 1;
-  transform: translateX(0) scale(1);
+  /* transform: translateX(0) scale(1); */
 }
 
 .morphingButton.hidden {
   opacity: 0;
-  transform: translateX(-20px) scale(0.8);
+  /* transform: translateX(-20px) scale(0.8); */
   pointer-events: none;
 }
 
 .morphingSeparator {
-  opacity: 0;
-  transform: scaleX(0);
-  transition: all var(--transition-fast);
+  opacity: 0.6;
+  /* transform: scaleX(0); */
+  /* transition: all var(--transition-fast); */
 }
 
 .morphingSeparator.visible {
   opacity: 0.6;
-  transform: scaleX(1);
+  /* transform: scaleX(1); */
 }
 
 /* ===== CONTEXT-SPECIFIC STYLING ===== */
@@ -218,7 +225,8 @@
 
 .dropdownButton .arrow {
   font-size: var(--font-size-xs);
-  transition: transform var(--transition-fast);
+  /* No transition */
+  /* transition: transform var(--transition-fast); */
   opacity: 0.7;
 }
 
@@ -244,16 +252,17 @@
   max-height: 300px;
   overflow-y: auto;
   
-  /* Animation */
-  opacity: 0;
-  transform: translateX(-10px) scale(0.95);
-  animation: dropdownEnter var(--transition-fast) forwards;
+  /* No animation */
+  opacity: 1;
+  /* transform: translateX(-10px) scale(0.95); */
+  /* animation: dropdownEnter var(--transition-fast) forwards; */
 }
 
 .dropdownMenu.position-left {
   right: calc(100% + var(--space-sm));
   left: auto;
-  transform: translateX(10px) scale(0.95);
+  /* No transform animation */
+  /* transform: translateX(10px) scale(0.95); */
 }
 
 /* ===== DROPDOWN ITEMS ===== */
@@ -277,7 +286,8 @@
   font-size: var(--font-size-sm);
   color: var(--color-text, #111827);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  /* No transition */
+  /* transition: all var(--transition-fast); */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -330,8 +340,8 @@
     box-shadow: var(--shadow-md);
     border: 1px solid var(--color-border-light, #e5e7eb);
     
-    /* Smooth transitions for keyboard adjustments */
-    transition: bottom 0.3s ease-out, height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    /* No transitions for keyboard adjustments */
+    /* transition: bottom 0.3s ease-out, height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); */
     
     /* Ensure toolbar stays visible above keyboard */
     z-index: 1000;
@@ -353,7 +363,7 @@
   
   .floatingToolbar:hover {
     /* No transform on mobile hover - keep it stable */
-    transform: translateX(-50%);
+    /* transform: translateX(-50%); */
     /* Reduced hover shadow */
     box-shadow: var(--shadow-lg);
   }
@@ -373,14 +383,14 @@
     /* Reduced mobile hover effects - less visual noise */
     background: var(--color-accent, #3b82f6);
     color: white;
-    transform: none; /* No scale on mobile - can interfere with touch */
+    /* transform: none; */ /* No scale on mobile - can interfere with touch */
     box-shadow: none; /* No shadow on mobile hover */
   }
   
   .toolbarButton:active {
-    /* Quick feedback for touch */
-    transform: scale(0.95);
-    transition: transform 0.1s ease;
+    /* No scale animation for touch */
+    /* transform: scale(0.95); */
+    /* transition: transform 0.1s ease; */
   }
   
   .toolbarSeparator {
@@ -415,35 +425,12 @@
   }
 }
 
-/* ===== ANIMATIONS ===== */
+/* ===== ANIMATIONS REMOVED ===== */
 
-@keyframes dropdownEnter {
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
-@keyframes buttonEnter {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-/* Staggered entrance animations */
-.toolbarButton:nth-child(1) { animation-delay: 0ms; }
-.toolbarButton:nth-child(2) { animation-delay: 50ms; }
-.toolbarButton:nth-child(3) { animation-delay: 100ms; }
-.toolbarButton:nth-child(4) { animation-delay: 150ms; }
-.toolbarButton:nth-child(5) { animation-delay: 200ms; }
-.toolbarButton:nth-child(6) { animation-delay: 250ms; }
-.toolbarButton:nth-child(7) { animation-delay: 300ms; }
-.toolbarButton:nth-child(8) { animation-delay: 350ms; }
+/* All keyframe animations removed */
+/* @keyframes dropdownEnter removed */
+/* @keyframes buttonEnter removed */
+/* Staggered entrance animations removed */
 
 /* ===== ACCESSIBILITY ===== */
 
