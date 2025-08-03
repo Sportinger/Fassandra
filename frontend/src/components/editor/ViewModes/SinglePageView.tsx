@@ -73,19 +73,23 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
   return (
     <div className={`single-page-view ${className}`} onClick={handleDarkAreaClick}>
       {showRuler && <Ruler />}
-      <div className="singlePageContainer">
-        <div className="dinA4Page" style={{ position: 'relative' }}>
+      <div className="singlePageContainer" style={{ position: 'relative' }}>
+        <div className="dinA4Page">
           {children}
-          
-          {/* Rehearsal Line */}
+        </div>
+        
+        {/* Rehearsal Line - Now at container level */}
+        {rehearsalMode && (
           <div 
-            className={`rehearsal-line ${!rehearsalMode ? 'hidden' : ''}`}
+            className="rehearsal-line"
             style={{ 
-              top: `${rehearsalLinePosition}px`
+              top: `${rehearsalLinePosition}px`,
+              position: 'absolute',
+              left: 0,
+              right: 0,
             }}
           />
-          
-        </div>
+        )}
       </div>
       
       {/* Context Menu for dark area clicks */}
