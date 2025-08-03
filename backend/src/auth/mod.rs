@@ -16,6 +16,7 @@
 
 pub mod core;
 pub mod helpers;
+pub mod websocket_auth;
 
 // Re-export the main authentication types and functions
 pub use core::{
@@ -27,3 +28,5 @@ pub use core::{
 pub use helpers::{
     check_script_access, check_script_ownership
 };
+
+pub use websocket_auth::WebSocketAuth;

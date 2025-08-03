@@ -49,13 +49,6 @@ rustix = "0.38"
 name = "hash_password"
 path = "scripts/hash_password.rs"
 
-[[bin]]
-name = "test_parser"
-path = "src/bin/test_parser.rs"
-
-[[bin]]
-name = "parse_pdf_script"
-path = "src/bin/parse_pdf_script.rs"
 
 [dev-dependencies]
 tokio-test = "0.4"

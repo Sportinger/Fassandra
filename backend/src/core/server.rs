@@ -14,7 +14,7 @@ use anyhow::{Context, Result};
 
 use crate::networking::websocket;
 use crate::handlers::page_break_handlers::create_page_break_router;
-use crate::handlers::script::script_routes;
+use crate::handlers::script::{script_routes, claude_session_routes};
 use crate::handlers::auth::{health_with_service_manager, register, login, receive_console_logs};
 use crate::auth::{rate_limit_middleware, AuthUser};
 use crate::services::persistence_event::YjsPersistenceEvent;
@@ -96,6 +96,8 @@ pub fn create_router(
 ) -> Router {
     let database_pool = service_manager.get_database_pool();
     let script_services = service_manager.get_script_services();
+    let extended_script_services = service_manager.get_extended_script_services();
+    let claude_session_service = service_manager.get_claude_session_service();
     let cors = create_cors_layer().expect("Failed to create CORS layer");
     
     Router::new()
@@ -103,7 +105,8 @@ pub fn create_router(
         .route("/register", post(register))
         .route("/login", post(login))
         .nest("/api", api_routes_with_services(service_manager.get_persistence_sender(), script_services.clone()))
-        .nest("/api/s", script_routes(service_manager.get_rate_limiter()).with_state(script_services))
+        .nest("/api/s", script_routes(service_manager.get_rate_limiter()).with_state(extended_script_services))
+        .nest("/api/s/session", claude_session_routes().with_state(claude_session_service))
         .with_state(Arc::new(database_pool))
         .layer(
             ServiceBuilder::new()

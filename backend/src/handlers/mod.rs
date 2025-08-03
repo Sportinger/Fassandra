@@ -6,4 +6,6 @@
 pub mod page_break_handlers;
 pub mod script;
 pub mod auth;
-pub mod script_upload_handler; 
+pub mod script_upload_handler;
+pub mod claude_session_handler;
+pub mod claude_websocket; 

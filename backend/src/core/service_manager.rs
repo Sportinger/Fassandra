@@ -10,6 +10,7 @@ use crate::services::persistence_event::YjsPersistenceEvent;
 use crate::auth::RateLimiter;
 use crate::services::async_db_writer::run_async_db_writer;
 use crate::services::snapshotting_service_v2::run_snapshotting_service;
+use crate::services::claude_session_service::ClaudeSessionService;
 
 /// 🚀 SERVICE MANAGER: Centralized service initialization and lifecycle management
 /// This solves the tight coupling problem by providing a single point for service dependency injection
@@ -21,6 +22,7 @@ pub struct ServiceManager {
     // Service components
     pub rate_limiter: Arc<RateLimiter>,
     pub persistence_tx: mpsc::Sender<YjsPersistenceEvent>,
+    pub claude_session_service: Arc<ClaudeSessionService>,
     
     // Background service handles for graceful shutdown
     service_handles: Vec<JoinHandle<()>>,
@@ -53,10 +55,14 @@ impl ServiceManager {
         let (persistence_tx, persistence_rx) = 
             mpsc::channel::<YjsPersistenceEvent>(1024);
         
+        // Initialize Claude session service
+        let claude_session_service = Arc::new(ClaudeSessionService::new());
+        
         let mut service_manager = ServiceManager {
             database_pool,
             rate_limiter,
             persistence_tx,
+            claude_session_service,
             service_handles: Vec::new(),
         };
         
@@ -122,6 +128,19 @@ impl ServiceManager {
         });
         self.service_handles.push(ws_cleanup_handle);
         
+        // 5. Start Claude session cleanup
+        let claude_service_cleanup = self.claude_session_service.clone();
+        let claude_cleanup_handle = tokio::spawn(async move {
+            tracing::info!("🚀 Starting Claude session cleanup service");
+            let mut interval = tokio::time::interval(Duration::from_secs(3600)); // 1 hour
+            loop {
+                interval.tick().await;
+                claude_service_cleanup.cleanup_old_sessions(24).await; // Clean up sessions older than 24 hours
+                tracing::debug!("🧹 Claude session cleanup: completed");
+            }
+        });
+        self.service_handles.push(claude_cleanup_handle);
+        
         tracing::info!("✅ All {} background services started", self.service_handles.len());
         Ok(())
     }
@@ -142,9 +161,22 @@ impl ServiceManager {
         self.persistence_tx.clone()
     }
     
+    /// Gets the Claude session service
+    pub fn get_claude_session_service(&self) -> Arc<ClaudeSessionService> {
+        self.claude_session_service.clone()
+    }
+    
     /// Gets script services container for dependency injection
     pub fn get_script_services(&self) -> crate::handlers::script::ScriptServices {
         self.create_script_services_internal()
+    }
+    
+    /// Gets extended script services with Claude session support
+    pub fn get_extended_script_services(&self) -> crate::handlers::script_upload_handler::ExtendedScriptServices {
+        crate::handlers::script_upload_handler::ExtendedScriptServices {
+            script_services: self.get_script_services(),
+            claude_session_service: self.claude_session_service.clone(),
+        }
     }
 
     /// Creates script services with proper dependency injection

@@ -20,6 +20,7 @@ pub mod async_db_writer;
 pub mod persistence_event;
 pub mod snapshotting_service_v2;
 pub mod json_to_db_service;
+pub mod claude_session_service;
 
 // Re-export key service components
 pub use thumbnail::*;
@@ -27,3 +28,4 @@ pub use async_db_writer::*;
 pub use persistence_event::*;
 pub use snapshotting_service_v2::*;
 pub use json_to_db_service::*;
+pub use claude_session_service::*;

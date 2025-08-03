@@ -23,7 +23,10 @@ use crate::application::{
     ScriptSharingApplicationService,
     ThumbnailApplicationService,
 };
-use crate::handlers::script_upload_handler::{upload_and_parse_script, parse_existing_script};
+use crate::handlers::script_upload_handler::{upload_and_parse_script, parse_existing_script, ExtendedScriptServices};
+use crate::handlers::claude_session_handler::{get_session_status, get_session_logs, cancel_session};
+use crate::handlers::claude_websocket::claude_session_ws;
+use crate::services::claude_session_service::ClaudeSessionService;
 
 /// Application services container for script operations
 #[derive(Clone)]
@@ -42,8 +45,8 @@ pub struct ScriptServices {
 /// * `rate_limiter` - Rate limiter instance for protecting endpoints
 ///
 /// # Returns
-/// * `Router<ScriptServices>` - Configured router with script routes and security middleware
-pub fn script_routes(rate_limiter: Arc<RateLimiter>) -> Router<ScriptServices> {
+/// * `Router<ExtendedScriptServices>` - Configured router with script routes and security middleware
+pub fn script_routes(rate_limiter: Arc<RateLimiter>) -> Router<ExtendedScriptServices> {
     Router::new()
         // PDF upload and parsing endpoints using Claude Code
         .route("/upload-pdf", post(upload_and_parse_script)
@@ -51,17 +54,26 @@ pub fn script_routes(rate_limiter: Arc<RateLimiter>) -> Router<ScriptServices> {
         .route("/parse-pdf/*path", post(parse_existing_script)
             .layer(middleware::from_fn_with_state(rate_limiter.clone(), rate_limit_middleware)))
         // Script sharing endpoints
-        .route("/:script_id/share", post(share_script))
-        .route("/:script_id/shares", get(get_script_shares))
-        .route("/:script_id/shares/:share_id", delete(remove_script_share))
-        .route("/:script_id/public", patch(toggle_script_public))
+        .route("/:script_id/share", post(share_script_ext))
+        .route("/:script_id/shares", get(get_script_shares_ext))
+        .route("/:script_id/shares/:share_id", delete(remove_script_share_ext))
+        .route("/:script_id/public", patch(toggle_script_public_ext))
         // 🔒 SECURITY: Apply rate limiting to resource-intensive thumbnail operations
-        .route("/:script_id/thumbnail", post(generate_thumbnail)
+        .route("/:script_id/thumbnail", post(generate_thumbnail_ext)
             .layer(middleware::from_fn_with_state(rate_limiter.clone(), rate_limit_middleware)))
-        .route("/thumbnails/generate", post(generate_all_thumbnails)
+        .route("/thumbnails/generate", post(generate_all_thumbnails_ext)
             .layer(middleware::from_fn_with_state(rate_limiter.clone(), rate_limit_middleware)))
-        .route("/thumbnails/regenerate", post(regenerate_all_thumbnails_endpoint)
+        .route("/thumbnails/regenerate", post(regenerate_all_thumbnails_endpoint_ext)
             .layer(middleware::from_fn_with_state(rate_limiter, rate_limit_middleware)))
+}
+
+/// Creates a router for Claude session monitoring endpoints
+pub fn claude_session_routes() -> Router<Arc<ClaudeSessionService>> {
+    Router::new()
+        .route("/:session_id", get(get_session_status))
+        .route("/:session_id/logs", get(get_session_logs))
+        .route("/:session_id/cancel", post(cancel_session))
+        .route("/:session_id/ws", get(claude_session_ws))
 }
 
 /// Shares a script with another user.
@@ -187,4 +199,61 @@ async fn regenerate_all_thumbnails_endpoint(
 
     info!(user_id = %user_id, count = count, "Successfully regenerated all thumbnails");
     Ok(Json(count))
+}
+
+// Extended versions that work with ExtendedScriptServices
+
+pub async fn share_script_ext(
+    State(services): State<ExtendedScriptServices>,
+    AuthUser { user_id }: AuthUser,
+    Path(script_id): Path<Uuid>,
+    Json(request): Json<ShareScriptRequest>,
+) -> Result<Json<ScriptShare>, AppError> {
+    share_script(State(services.script_services), AuthUser { user_id }, Path(script_id), Json(request)).await
+}
+
+pub async fn get_script_shares_ext(
+    State(services): State<ExtendedScriptServices>,
+    AuthUser { user_id }: AuthUser,
+    Path(script_id): Path<Uuid>,
+) -> Result<Json<Vec<(ScriptShare, String)>>, AppError> {
+    get_script_shares(State(services.script_services), AuthUser { user_id }, Path(script_id)).await
+}
+
+pub async fn remove_script_share_ext(
+    State(services): State<ExtendedScriptServices>,
+    AuthUser { user_id }: AuthUser,
+    Path((script_id, share_id)): Path<(Uuid, Uuid)>,
+) -> Result<StatusCode, AppError> {
+    remove_script_share(State(services.script_services), AuthUser { user_id }, Path((script_id, share_id))).await
+}
+
+pub async fn toggle_script_public_ext(
+    State(services): State<ExtendedScriptServices>,
+    AuthUser { user_id }: AuthUser,
+    Path(script_id): Path<Uuid>,
+) -> Result<Json<bool>, AppError> {
+    toggle_script_public(State(services.script_services), AuthUser { user_id }, Path(script_id)).await
+}
+
+pub async fn generate_thumbnail_ext(
+    State(services): State<ExtendedScriptServices>,
+    AuthUser { user_id }: AuthUser,
+    Path(script_id): Path<Uuid>,
+) -> Result<Json<String>, AppError> {
+    generate_thumbnail(State(services.script_services), AuthUser { user_id }, Path(script_id)).await
+}
+
+pub async fn generate_all_thumbnails_ext(
+    State(services): State<ExtendedScriptServices>,
+    AuthUser { user_id }: AuthUser,
+) -> Result<Json<usize>, AppError> {
+    generate_all_thumbnails(State(services.script_services), AuthUser { user_id }).await
+}
+
+pub async fn regenerate_all_thumbnails_endpoint_ext(
+    State(services): State<ExtendedScriptServices>,
+    AuthUser { user_id }: AuthUser,
+) -> Result<Json<usize>, AppError> {
+    regenerate_all_thumbnails_endpoint(State(services.script_services), AuthUser { user_id }).await
 }
