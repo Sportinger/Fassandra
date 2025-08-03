@@ -127,7 +127,7 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
       </button>
       
       {isOpen && (
-        <div className="dropdownMenu">
+        <div className="dropdownMenu dropdownMenuLeft">
           <div className="dropdownHeader">
             Select Speaker:
           </div>

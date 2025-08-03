@@ -9,6 +9,7 @@ import { FontSizeDropdown } from '../../FontSizeDropdown';
 import { CueDropdown } from '../../CueDropdown';
 import { CueTypeDropdown } from '../../CueTypeDropdown';
 import { SearchBox } from '../../SearchBox';
+import { SpeakerDropdown } from '../../SpeakerDropdown';
 import type { ToolbarProps, ToolbarContext } from '../../types/index';
 import { CueType } from '../../../../types/cue';
 
@@ -427,6 +428,39 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       order: 3,
     },
     {
+      id: 'strike-through',
+      icon: '⸺',
+      title: 'Toggle Strike-through',
+      action: () => {
+        console.log('Toggling strike-through');
+        editor?.chain().focus().toggleDialogueStrikeThrough().run();
+      },
+      isActive: (() => {
+        const { selection } = editor?.state || {};
+        const { $from } = selection || {};
+        if (!$from) return false;
+        
+        for (let depth = $from.depth; depth >= 0; depth--) {
+          const node = $from.node(depth);
+          if (node && node.type.name === 'dialogueBlock') {
+            return node.attrs.struckThrough || false;
+          }
+        }
+        return false;
+      })(),
+      contexts: ['dialogue-layout', 'speaker-select'],
+      order: 4,
+    },
+    {
+      id: 'speaker-dropdown',
+      icon: '🗣️',
+      title: 'Select Speaker',
+      action: () => {}, // No action needed, handled by dropdown
+      contexts: ['dialogue-layout', 'speaker-select'],
+      order: 5,
+      isSpecial: true
+    },
+    {
       id: 'exit-dialogue',
       icon: '↩',
       title: 'Exit Dialogue Block (Create Normal Text)',
@@ -435,7 +469,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         editor?.chain().focus().exitDialogueBlock().run();
       },
       contexts: ['dialogue-layout', 'speaker-select'],
-      order: 4,
+      order: 6,
     },
 
     // Page interaction buttons (empty-page context)
@@ -742,6 +776,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 editor={editor}
                 isVisible={isVisible}
                 currentCueType={currentCueType}
+              />
+            ) : button.isSpecial && button.id === 'speaker-dropdown' ? (
+              <SpeakerDropdown
+                editor={editor}
+                isVisible={isVisible}
+                speakerNames={speakerNames}
               />
             ) : (
               <button

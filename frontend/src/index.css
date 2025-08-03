@@ -111,6 +111,30 @@ button:focus-visible {
   margin-left: 0 !important;
 }
 
+/* Strike-through styling for dialogue blocks */
+.ProseMirror [data-type="dialogue-block"][data-struck-through="true"] {
+  position: relative;
+  opacity: 0.5;
+}
+
+.ProseMirror [data-type="dialogue-block"][data-struck-through="true"]::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to bottom right,
+    transparent 47.5%,
+    #ff0000 47.5%,
+    #ff0000 52.5%,
+    transparent 52.5%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
 /* SUBTLE HOVER BOXES FOR SPEAKER AND DIALOGUE TEXT */
 .ProseMirror [data-type="speaker"] {
   transition: border-color 150ms ease, opacity 150ms ease;
