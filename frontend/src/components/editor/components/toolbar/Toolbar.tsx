@@ -33,7 +33,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   viewMode,
   showRuler,
   speakerNames,
-  selectedSpeakerName,
+  currentSpeakerName,
+  editAllSpeakers = false,
+  onToggleEditAllSpeakers,
   onSetViewMode,
   onToggleRuler,
   className = '',
@@ -330,18 +332,18 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Stacked Layout (Text Below Speaker)',
       action: () => {
         console.log('Setting layout to default');
-        if (selectedSpeakerName) {
-          // Update all dialogue blocks with the selected speaker name
+        if (editAllSpeakers && currentSpeakerName) {
+          // Update all dialogue blocks with the current speaker name
           const { state, view } = editor!;
           const { tr } = state;
           let hasChanges = false;
           
           state.doc.descendants((node, pos) => {
             if (node.type.name === 'dialogueBlock') {
-              // Check if this dialogue block contains the selected speaker
+              // Check if this dialogue block contains the current speaker
               let containsSpeaker = false;
               node.descendants((childNode) => {
-                if (childNode.type.name === 'speaker' && childNode.textContent.trim() === selectedSpeakerName) {
+                if (childNode.type.name === 'speaker' && childNode.textContent.trim() === currentSpeakerName) {
                   containsSpeaker = true;
                   return false; // Stop searching
                 }
@@ -373,18 +375,18 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Side-by-Side Layout (Text Right of Speaker)',
       action: () => {
         console.log('Setting layout to side-by-side');
-        if (selectedSpeakerName) {
-          // Update all dialogue blocks with the selected speaker name
+        if (editAllSpeakers && currentSpeakerName) {
+          // Update all dialogue blocks with the current speaker name
           const { state, view } = editor!;
           const { tr } = state;
           let hasChanges = false;
           
           state.doc.descendants((node, pos) => {
             if (node.type.name === 'dialogueBlock') {
-              // Check if this dialogue block contains the selected speaker
+              // Check if this dialogue block contains the current speaker
               let containsSpeaker = false;
               node.descendants((childNode) => {
-                if (childNode.type.name === 'speaker' && childNode.textContent.trim() === selectedSpeakerName) {
+                if (childNode.type.name === 'speaker' && childNode.textContent.trim() === currentSpeakerName) {
                   containsSpeaker = true;
                   return false; // Stop searching
                 }
@@ -411,6 +413,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       order: 2,
     },
     {
+      id: 'edit-all-toggle',
+      icon: editAllSpeakers ? '👥' : '👤',
+      title: editAllSpeakers ? 'Edit All Speakers (ON)' : 'Edit Single Speaker (OFF)',
+      action: () => {
+        console.log('Toggling edit all speakers mode');
+        if (onToggleEditAllSpeakers) {
+          onToggleEditAllSpeakers();
+        }
+      },
+      isActive: editAllSpeakers,
+      contexts: ['speaker-select'],
+      order: 3,
+    },
+    {
       id: 'exit-dialogue',
       icon: '↩',
       title: 'Exit Dialogue Block (Create Normal Text)',
@@ -419,7 +435,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         editor?.chain().focus().exitDialogueBlock().run();
       },
       contexts: ['dialogue-layout', 'speaker-select'],
-      order: 3,
+      order: 4,
     },
 
     // Page interaction buttons (empty-page context)
@@ -586,7 +602,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       contexts: ['cue-select'],
       order: 3
     },
-      ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, rehearsalMode, onToggleRehearsalMode, currentCueType, selectedSpeakerName]);
+      ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, rehearsalMode, onToggleRehearsalMode, currentCueType, editAllSpeakers, currentSpeakerName, onToggleEditAllSpeakers]);
 
   // Get buttons for current context, sorted by order
   const contextButtons = useMemo(() => {

@@ -91,7 +91,9 @@ export interface ToolbarProps {
   viewMode: ViewMode;
   showRuler: boolean;
   speakerNames: Set<string>;
-  selectedSpeakerName?: string | null;
+  currentSpeakerName?: string | null;
+  editAllSpeakers?: boolean;
+  onToggleEditAllSpeakers?: () => void;
   onSetViewMode: (mode: ViewMode) => void;
   onToggleRuler: () => void;
   className?: string;
