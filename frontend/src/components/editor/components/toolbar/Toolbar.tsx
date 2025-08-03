@@ -6,7 +6,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FontSizeDropdown } from '../../FontSizeDropdown';
-import { SpeakerDropdown } from '../../SpeakerDropdown';
 import { CueDropdown } from '../../CueDropdown';
 import { SearchBox } from '../../SearchBox';
 import type { ToolbarProps, ToolbarContext } from '../../types/index';
@@ -228,14 +227,16 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const getContext = (): ToolbarContext => {
     if (!editor) return 'default';
     
-    const isInDialogueBlock = editor.isActive('dialogueBlock');
-    // 🔧 FIXED: Remove excessive debug logging
-    // console.log('Context check - isInDialogueBlock:', isInDialogueBlock, 'hasTextSelection:', hasTextSelection);
-    
-    if (isInDialogueBlock) return 'dialogue-block';
-    if (hasTextSelection) return 'text-selection';
+    // Priority order:
+    // 1. Explicit click contexts take precedence
+    if (clickContext === 'speaker-select') return 'speaker-select';
+    if (clickContext === 'dialogue-layout') return 'dialogue-layout';
     if (clickContext === 'empty-page') return 'empty-page';
-    if (clickContext === 'speaker-selection') return 'speaker-selection';
+    
+    // 2. Text selection always shows formatting tools
+    if (hasTextSelection) return 'text-formatting';
+    
+    // 3. Default context
     return 'default';
   };
 
@@ -243,14 +244,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   // Define all possible buttons with their contexts and actions
   const allButtons = useMemo((): ToolbarButton[] => [
-    // Text formatting buttons (text-selection context)
+    // Text formatting buttons (text-formatting context)
     {
       id: 'bold',
       icon: 'B',
       title: 'Bold',
       action: () => editor?.chain().focus().toggleBold().run(),
       isActive: editor?.isActive('bold'),
-      contexts: ['text-selection'],
+      contexts: ['text-formatting'],
       order: 1
     },
     {
@@ -259,7 +260,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Italic', 
       action: () => editor?.chain().focus().toggleItalic().run(),
       isActive: editor?.isActive('italic'),
-      contexts: ['text-selection'],
+      contexts: ['text-formatting'],
       order: 2
     },
     {
@@ -267,7 +268,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       icon: '16', // Will be replaced by FontSizeDropdown
       title: 'Font Size',
       action: () => {}, // No action needed, handled by dropdown
-      contexts: ['text-selection'],
+      contexts: ['text-formatting'],
       order: 4,
       isSpecial: true
     },
@@ -277,7 +278,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Align Left',
       action: () => editor?.chain().focus().setTextAlign('left').run(),
       isActive: editor?.isActive({ textAlign: 'left' }),
-      contexts: ['text-selection'],
+      contexts: ['text-formatting'],
       order: 6
     },
     {
@@ -286,7 +287,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Align Center',
       action: () => editor?.chain().focus().setTextAlign('center').run(),
       isActive: editor?.isActive({ textAlign: 'center' }),
-      contexts: ['text-selection'],
+      contexts: ['text-formatting'],
       order: 7
     },
     {
@@ -295,7 +296,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Align Right',
       action: () => editor?.chain().focus().setTextAlign('right').run(),
       isActive: editor?.isActive({ textAlign: 'right' }),
-      contexts: ['text-selection'],
+      contexts: ['text-formatting'],
       order: 8
     },
 
@@ -303,27 +304,27 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     {
       id: 'layout-default',
       icon: '≡',
-      title: 'Stacked Layout',
+      title: 'Stacked Layout (Text Below Speaker)',
       action: () => {
         console.log('Setting layout to default');
         const result = editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'default' }).run();
         console.log('Update result:', result);
       },
       isActive: editor?.isActive('dialogueBlock', { layout: 'default' }),
-      contexts: ['dialogue-block'],
+      contexts: ['dialogue-layout', 'speaker-select'],
       order: 1,
     },
     {
       id: 'layout-side-by-side',
       icon: '⇥',
-      title: 'Side-by-Side Layout',
+      title: 'Side-by-Side Layout (Text Right of Speaker)',
       action: () => {
         console.log('Setting layout to side-by-side');
         const result = editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'side-by-side' }).run();
         console.log('Update result:', result);
       },
       isActive: editor?.isActive('dialogueBlock', { layout: 'side-by-side' }),
-      contexts: ['dialogue-block'],
+      contexts: ['dialogue-layout', 'speaker-select'],
       order: 2,
     },
     {
@@ -334,7 +335,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         console.log('Exiting dialogue block');
         editor?.chain().focus().exitDialogueBlock().run();
       },
-      contexts: ['dialogue-block'],
+      contexts: ['dialogue-layout', 'speaker-select'],
       order: 3,
     },
 
@@ -535,8 +536,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       
       if (visibleCount === 0) return 64; // Minimum height
       
-      // Add separators for text-selection context
-      const separatorCount = currentContext === 'text-selection' ? 2 : 0;
+      // Add separators for text-formatting context
+      const separatorCount = currentContext === 'text-formatting' ? 2 : 0;
       const separatorHeight = separatorCount * (1 + gap); // 1px height + gap
       
       const finalHeight = (visibleCount * buttonHeight) + ((visibleCount - 1) * gap) + separatorHeight + padding;
@@ -555,9 +556,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     }
   }, [contextButtons.length, currentContext, windowWidth]);
 
-  // Render separator between button groups (only for text-selection)
+  // Render separator between button groups (only for text-formatting)
   const shouldShowSeparatorAfter = (button: ToolbarButton, index: number): boolean => {
-    if (currentContext !== 'text-selection') return false;
+    if (currentContext !== 'text-formatting') return false;
     const nextButton = contextButtons[index + 1];
     
     // Show separator after formatting buttons (order 1-2) and before font size (order 4)
@@ -653,14 +654,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         );
       })}
       
-      {/* Speaker Dropdown for speaker-selection context */}
-      {currentContext === 'speaker-selection' && (
-        <SpeakerDropdown
-          editor={editor}
-          speakerNames={speakerNames}
-          isVisible={true}
-        />
-      )}
     </div>
   );
 }; 

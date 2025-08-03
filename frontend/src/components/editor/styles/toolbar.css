@@ -22,7 +22,9 @@
   width: var(--toolbar-width);
   min-width: var(--toolbar-button-size);
   max-height: 90vh; /* Prevent toolbar from being taller than viewport */
-  overflow-y: auto; /* Allow scrolling if content exceeds max-height */
+  /* Allow dropdowns to extend outside toolbar */
+  overflow-y: visible;
+  overflow-x: visible;
   
   /* Styling */
   background: var(--color-background, white);
@@ -94,7 +96,8 @@
   /* No transitions */
   /* transition: all var(--transition-fast); */
   position: relative;
-  overflow: hidden;
+  /* Remove overflow hidden to allow dropdowns to show */
+  /* overflow: hidden; */
   
   /* Touch optimization */
   -webkit-tap-highlight-color: transparent;
@@ -181,15 +184,15 @@
 
 /* ===== CONTEXT-SPECIFIC STYLING ===== */
 
-.floatingToolbar.context-text-selection {
+.floatingToolbar.context-text-formatting {
   border-left: 3px solid var(--color-accent, #3b82f6);
 }
 
-.floatingToolbar.context-dialogue-block {
+.floatingToolbar.context-dialogue-layout {
   border-left: 3px solid #10b981;
 }
 
-.floatingToolbar.context-speaker-selection {
+.floatingToolbar.context-speaker-select {
   border-left: 3px solid #f59e0b;
 }
 

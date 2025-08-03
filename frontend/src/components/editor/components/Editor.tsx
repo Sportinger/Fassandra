@@ -502,9 +502,24 @@ export const Editor: React.FC<EditorProps> = ({
                 const target = e.target as HTMLElement;
                 const speakerElement = target.closest('[data-type="speaker"]');
                 
+                // Remove any existing speaker-selected class first
+                document.querySelectorAll('[data-type="speaker"].speaker-selected').forEach(el => {
+                  el.classList.remove('speaker-selected');
+                });
+                
                 if (speakerElement) {
+                  // Clicked on speaker - show speaker-select context
                   debugLog('[Editor] Clicked on speaker element:', speakerElement);
-                  // The useEditorCore hook will handle context setting through selection update
+                  
+                  // Add selected class to clicked speaker
+                  speakerElement.classList.add('speaker-selected');
+                  
+                  showContextMenu(e.clientX, e.clientY, 'speaker-select');
+                  e.stopPropagation(); // Prevent default toolbar from showing
+                } else {
+                  // Clicked elsewhere - hide any special context
+                  // This allows the toolbar to show text-formatting when text is selected
+                  hideContextMenu();
                 }
               }}
             >
@@ -553,9 +568,24 @@ export const Editor: React.FC<EditorProps> = ({
                 const target = e.target as HTMLElement;
                 const speakerElement = target.closest('[data-type="speaker"]');
                 
+                // Remove any existing speaker-selected class first
+                document.querySelectorAll('[data-type="speaker"].speaker-selected').forEach(el => {
+                  el.classList.remove('speaker-selected');
+                });
+                
                 if (speakerElement) {
+                  // Clicked on speaker - show speaker-select context
                   debugLog('[Editor] Clicked on speaker element:', speakerElement);
-                  // The useEditorCore hook will handle context setting through selection update
+                  
+                  // Add selected class to clicked speaker
+                  speakerElement.classList.add('speaker-selected');
+                  
+                  showContextMenu(e.clientX, e.clientY, 'speaker-select');
+                  e.stopPropagation(); // Prevent default toolbar from showing
+                } else {
+                  // Clicked elsewhere - hide any special context
+                  // This allows the toolbar to show text-formatting when text is selected
+                  hideContextMenu();
                 }
               }}
             >
