@@ -53,6 +53,17 @@ const debugLog = (message: string, ...args: any[]) => {
   }
 };
 
+// Helper function to clean cue block UI elements from HTML
+const cleanCueBlockHTML = (html: string): string => {
+  let cleaned = html;
+  cleaned = cleaned.replace(/<div[^>]*class="cue-connection-drag-area"[^>]*>[\s\S]*?<\/div>/g, '');
+  cleaned = cleaned.replace(/<div[^>]*class="cue-move-drag-area"[^>]*>[\s\S]*?<\/div>/g, '');
+  cleaned = cleaned.replace(/<span[^>]*class="drag-handle"[^>]*>⋮⋮<\/span>/g, '');
+  cleaned = cleaned.replace(/<span[^>]*class="cue-label"[^>]*>[^<]*:<\/span>/g, '');
+  cleaned = cleaned.replace(/<span[^>]*class="cue-number"[^>]*>Q\d*<\/span>/g, '');
+  return cleaned;
+};
+
 export const useEditorCore = ({
   scriptId,
   user,
@@ -300,8 +311,11 @@ export const useEditorCore = ({
     if (!editorInstance || !stableScriptId || !stableToken) return;
 
     const syncContent = async () => {
-      const currentContent = editorInstance.getHTML();
+      let currentContent = editorInstance.getHTML();
       const now = Date.now();
+      
+      // Clean up cue block UI elements before saving
+      currentContent = cleanCueBlockHTML(currentContent);
       
       // Only sync if content changed and enough time has passed
       if (currentContent !== contentSnapshot && now - lastSyncTime > 500) {
@@ -336,7 +350,9 @@ export const useEditorCore = ({
         if (snapshotData.content && snapshotData.content.trim()) {
           debugLog(`[Editor] ✅ Found content snapshot: ${snapshotData.content.length} chars`);
           editorInstance.commands.setContent(snapshotData.content);
-          setContentSnapshot(editorInstance.getHTML());
+          // Clean the HTML before storing as snapshot
+          const cleanedContent = cleanCueBlockHTML(editorInstance.getHTML());
+          setContentSnapshot(cleanedContent);
           
           // Extract speakers from snapshot content
           const speakers = extractSpeakerNames(snapshotData.content);
@@ -368,7 +384,9 @@ export const useEditorCore = ({
           debugLog(`[Editor] 📄 Converted blocks to ${content.length} chars of content`);
           
           editorInstance.commands.setContent(content);
-          setContentSnapshot(editorInstance.getHTML());
+          // Clean the HTML before storing as snapshot
+          const cleanedContent = cleanCueBlockHTML(editorInstance.getHTML());
+          setContentSnapshot(cleanedContent);
           
           const speakers = extractSpeakerNames(content);
           setAvailableSpeakers(Array.from(speakers));

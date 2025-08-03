@@ -167,11 +167,45 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
           }
         }
         
+        case 'cue-block':
+        case 'cue': {
+          try {
+            // Parse the JSON content for cue blocks
+            const element = JSON.parse(contentJsonString);
+            const cueType = element.cueType || element.type || 'light';
+            const cueNumber = element.cueNumber || element.number || '';
+            const cueContent = element.content || element.text || '';
+            
+            console.log(`[Content Converter] Creating cue block - Type: "${cueType}", Number: "${cueNumber}", Content: "${cueContent}"`);
+            
+            // Create proper cue block HTML that matches the extension's structure
+            const cueHTML = `<div data-type="cue-block" data-cue-type="${cueType}" data-cue-number="${cueNumber}">${cueContent}</div>`;
+            
+            console.log(`[Content Converter] Generated cue HTML:`, cueHTML);
+            result += cueHTML;
+            return result;
+          } catch (parseError) {
+            console.error(`[Content Converter] Failed to parse cue block JSON, skipping:`, contentJsonString, parseError);
+            // Skip malformed cue blocks
+            return result;
+          }
+        }
+        
         case 'content': {
           // Handle content blocks (raw HTML from content snapshots)
           console.log(`[Content Converter] Processing content block with raw HTML: "${contentJsonString}"`);
           // Content blocks contain raw HTML, don't try to parse as JSON
-          result += contentJsonString;
+          // Clean up any duplicate cue UI elements that might have been saved
+          let cleanedContent = contentJsonString;
+          
+          // Remove duplicate cue UI elements that shouldn't be in the saved content
+          cleanedContent = cleanedContent.replace(/<div[^>]*class="cue-connection-drag-area"[^>]*>[\s\S]*?<\/div>/g, '');
+          cleanedContent = cleanedContent.replace(/<div[^>]*class="cue-move-drag-area"[^>]*>[\s\S]*?<\/div>/g, '');
+          cleanedContent = cleanedContent.replace(/<span[^>]*class="drag-handle"[^>]*>⋮⋮<\/span>/g, '');
+          cleanedContent = cleanedContent.replace(/<span[^>]*class="cue-label"[^>]*>[^<]*:<\/span>/g, '');
+          cleanedContent = cleanedContent.replace(/<span[^>]*class="cue-number"[^>]*>Q\d*<\/span>/g, '');
+          
+          result += cleanedContent;
           return result;
         }
         
