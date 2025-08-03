@@ -81,6 +81,7 @@ export const Editor: React.FC<EditorProps> = ({
     visible: boolean;
     onSpeakerName: boolean;
     onPageBackground: boolean;
+    rehearsalClickY?: number;
   }>({
     x: 0,
     y: 0,
@@ -101,6 +102,38 @@ export const Editor: React.FC<EditorProps> = ({
   useEffect(() => {
     debugLog('[Editor] viewMode changed to:', viewMode);
   }, [viewMode, debugLog]);
+
+  // Sync rehearsal line position with other users via awareness
+  useEffect(() => {
+    if (!provider || !provider.awareness) return;
+
+    const handleAwarenessChange = () => {
+      const states = provider.awareness.getStates();
+      
+      // Check all other users' states for rehearsal line position and mode
+      states.forEach((state, clientId) => {
+        if (clientId !== provider.awareness.clientID) {
+          // Sync rehearsal line position
+          if (state.rehearsalLinePosition !== undefined) {
+            debugLog('[Rehearsal Sync] Received position from other user:', state.rehearsalLinePosition);
+            setRehearsalLinePosition(state.rehearsalLinePosition);
+          }
+          
+          // Sync rehearsal mode state
+          if (state.rehearsalMode !== undefined) {
+            debugLog('[Rehearsal Sync] Received mode from other user:', state.rehearsalMode);
+            setRehearsalMode(state.rehearsalMode);
+          }
+        }
+      });
+    };
+
+    provider.awareness.on('change', handleAwarenessChange);
+
+    return () => {
+      provider.awareness.off('change', handleAwarenessChange);
+    };
+  }, [provider, debugLog]);
 
   // Highlight all speakers when editAllSpeakers mode changes
   useEffect(() => {
@@ -205,6 +238,26 @@ export const Editor: React.FC<EditorProps> = ({
     const target = e.target as HTMLElement;
     const speakerElement = target.closest('[data-type="speaker"]');
     
+    // Store the click position for rehearsal mode jump
+    if (rehearsalMode) {
+      const pageElement = target.closest('.dinA4Page');
+      if (pageElement) {
+        const pageRect = pageElement.getBoundingClientRect();
+        const clickY = e.clientY - pageRect.top + pageElement.scrollTop;
+        
+        // Store the position for later use
+        setLocalContextMenu({
+          x: e.clientX,
+          y: e.clientY,
+          visible: true,
+          onSpeakerName: !!speakerElement,
+          onPageBackground: !speakerElement,
+          rehearsalClickY: clickY, // Add this to store the Y position
+        });
+        return;
+      }
+    }
+    
     setLocalContextMenu({
       x: e.clientX,
       y: e.clientY,
@@ -212,7 +265,7 @@ export const Editor: React.FC<EditorProps> = ({
       onSpeakerName: !!speakerElement,
       onPageBackground: !speakerElement,
     });
-  }, []);
+  }, [rehearsalMode]);
 
   // Handle context menu actions
   const handleContextMenuAction = useCallback((action: string) => {
@@ -226,12 +279,23 @@ export const Editor: React.FC<EditorProps> = ({
       case 'toggle-view':
         setViewMode(prev => prev === 'single-page' ? 'multiple-pages' : 'single-page');
         break;
+      case 'jump':
+        if (localContextMenu.rehearsalClickY !== undefined) {
+          setRehearsalLinePosition(localContextMenu.rehearsalClickY);
+          debugLog('Rehearsal line jumped to position:', localContextMenu.rehearsalClickY);
+          
+          // Sync the position with other users via awareness
+          if (provider && provider.awareness) {
+            provider.awareness.setLocalStateField('rehearsalLinePosition', localContextMenu.rehearsalClickY);
+          }
+        }
+        break;
       default:
         debugLog('Unknown context menu action:', action);
     }
     
     setLocalContextMenu(prev => ({ ...prev, visible: false }));
-  }, [editor, debugLog]);
+  }, [editor, debugLog, localContextMenu.rehearsalClickY, provider]);
 
   // Close context menu on click outside
   useEffect(() => {
@@ -594,6 +658,21 @@ export const Editor: React.FC<EditorProps> = ({
             minWidth: '200px',
           }}
         >
+          {rehearsalMode && localContextMenu.rehearsalClickY !== undefined && (
+            <div 
+              className="context-menu-item"
+              style={{
+                padding: '8px 16px',
+                cursor: 'pointer',
+                borderBottom: '1px solid #eee',
+                fontWeight: 'bold',
+                color: '#ff0000',
+              }}
+              onClick={() => handleContextMenuAction('jump')}
+            >
+              Jump
+            </div>
+          )}
           {localContextMenu.onPageBackground && (
             <>
               <div 
@@ -663,8 +742,14 @@ export const Editor: React.FC<EditorProps> = ({
         onToggleRuler={() => setShowRuler(!showRuler)}
         rehearsalMode={rehearsalMode}
         onToggleRehearsalMode={() => {
-          setRehearsalMode(!rehearsalMode);
-          console.log('Rehearsal mode toggled:', !rehearsalMode);
+          const newMode = !rehearsalMode;
+          setRehearsalMode(newMode);
+          console.log('Rehearsal mode toggled:', newMode);
+          
+          // Sync rehearsal mode state with other users
+          if (provider && provider.awareness) {
+            provider.awareness.setLocalStateField('rehearsalMode', newMode);
+          }
         }}
       />
       
