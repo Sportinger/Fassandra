@@ -464,26 +464,189 @@ export const CueBlock = Node.create<CueBlockOptions>({
       currentDragData = null;
     });
     
+    // Add hover handlers for bidirectional highlighting using event delegation
+    const setupHoverHandlers = () => {
+      // Remove old delegated handlers if they exist
+      if ((document as any).cueHoverHandler) {
+        document.removeEventListener('mouseover', (document as any).cueHoverHandler);
+        document.removeEventListener('mouseout', (document as any).cueHoverOutHandler);
+      }
+      
+      // Use event delegation for better stability
+      const hoverHandler = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        
+        // Handle cue block hover
+        const cueBlock = target.closest('.cue-block');
+        if (cueBlock) {
+          const cueType = cueBlock.getAttribute('data-cue-type');
+          const cueNumber = cueBlock.querySelector('.cue-number')?.textContent?.replace('Q', '');
+          
+          // Remove previous highlights
+          document.querySelectorAll('.cue-connection.hover-highlight').forEach(el => {
+            el.classList.remove('hover-highlight');
+          });
+          
+          // Highlight all connected words
+          document.querySelectorAll(`.cue-connection[data-cue-type="${cueType}"][data-cue-number="${cueNumber}"]`).forEach(el => {
+            el.classList.add('hover-highlight');
+          });
+          
+          return;
+        }
+        
+        // Handle word hover
+        const connection = target.closest('.cue-connection');
+        if (connection) {
+          // Remove previous highlights
+          document.querySelectorAll('.hover-highlight').forEach(el => {
+            el.classList.remove('hover-highlight');
+          });
+          
+          // For nested spans (multiple cues), we need to find all cue connections at this position
+          const connectionsToHighlight: Set<Element> = new Set();
+          
+          // Add the connection we're hovering
+          connectionsToHighlight.add(connection);
+          
+          // Check if we're inside a nested structure (parent is also a cue-connection)
+          let parent = connection.parentElement;
+          while (parent && parent.classList.contains('cue-connection')) {
+            connectionsToHighlight.add(parent);
+            parent = parent.parentElement;
+          }
+          
+          // Also check for child connections
+          connection.querySelectorAll('.cue-connection').forEach(el => {
+            connectionsToHighlight.add(el);
+          });
+          
+          // Highlight all found connections
+          connectionsToHighlight.forEach(conn => {
+            conn.classList.add('hover-highlight');
+            
+            // Highlight corresponding cue blocks
+            const cueType = (conn as HTMLElement).getAttribute('data-cue-type');
+            const cueNumber = (conn as HTMLElement).getAttribute('data-cue-number');
+            
+            if (cueType && cueNumber) {
+              document.querySelectorAll(`.cue-block[data-cue-type="${cueType}"]`).forEach((block: Element) => {
+                const blockNumber = block.querySelector('.cue-number')?.textContent?.replace('Q', '');
+                if (blockNumber === cueNumber) {
+                  block.classList.add('hover-highlight');
+                }
+              });
+            }
+          });
+        }
+      };
+      
+      const hoverOutHandler = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        const relatedTarget = e.relatedTarget as HTMLElement;
+        
+        // Check if we're leaving a cue block
+        const cueBlock = target.closest('.cue-block');
+        if (cueBlock && !relatedTarget?.closest('.cue-block')) {
+          document.querySelectorAll('.cue-connection.hover-highlight').forEach(el => {
+            el.classList.remove('hover-highlight');
+          });
+        }
+        
+        // Check if we're leaving a connection
+        const connection = target.closest('.cue-connection');
+        if (connection && !relatedTarget?.closest('.cue-connection')) {
+          document.querySelectorAll('.hover-highlight').forEach(el => {
+            el.classList.remove('hover-highlight');
+          });
+        }
+      };
+      
+      // Store handlers for cleanup
+      (document as any).cueHoverHandler = hoverHandler;
+      (document as any).cueHoverOutHandler = hoverOutHandler;
+      
+      // Add delegated event listeners
+      document.addEventListener('mouseover', hoverHandler);
+      document.addEventListener('mouseout', hoverOutHandler);
+    };
+    
     // Setup handlers after a delay to ensure DOM is ready
-    setTimeout(setupConnectionDragHandlers, 100);
+    setTimeout(() => {
+      setupConnectionDragHandlers();
+      setupHoverHandlers();
+    }, 100);
     
     // Re-setup handlers when content changes
     this.editor.on('update', () => {
-      setTimeout(setupConnectionDragHandlers, 100);
+      setTimeout(() => {
+        setupConnectionDragHandlers();
+        setupHoverHandlers();
+      }, 100);
     });
     
     // Update cue numbers whenever the document changes
     this.editor.on('update', ({ transaction }) => {
       // Check if we need to update cue numbers
       let shouldUpdate = false;
+      let deletedCues: Array<{cueType: string, cueNumber: string}> = [];
       
-      // Check if any cue or scene blocks were affected
+      // Check if any cue blocks were deleted
       if (transaction.docChanged) {
+        // Check what was deleted
+        const oldState = transaction.before;
+        const newState = transaction.doc;
+        
+        // Find deleted cue blocks
+        oldState.descendants((node, pos) => {
+          if (node.type.name === 'cueBlock') {
+            const cueType = node.attrs.cueType;
+            const cueNumber = node.attrs.cueNumber;
+            
+            // Check if this cue still exists in the new state
+            let stillExists = false;
+            newState.descendants((newNode) => {
+              if (newNode.type.name === 'cueBlock' && 
+                  newNode.attrs.cueType === cueType && 
+                  newNode.attrs.cueNumber === cueNumber) {
+                stillExists = true;
+              }
+            });
+            
+            if (!stillExists) {
+              deletedCues.push({ cueType, cueNumber });
+            }
+          }
+        });
+        
         transaction.steps.forEach((step: any) => {
           if (step.slice) {
             shouldUpdate = true;
           }
         });
+      }
+      
+      // Remove connections for deleted cues
+      if (deletedCues.length > 0) {
+        const { tr } = this.editor.state;
+        
+        deletedCues.forEach(({ cueType, cueNumber }) => {
+          this.editor.state.doc.nodesBetween(0, this.editor.state.doc.content.size, (node, pos) => {
+            if (node.isText && node.marks.length) {
+              node.marks.forEach(mark => {
+                if (mark.type.name === 'cueConnection' && 
+                    mark.attrs.cueType === cueType &&
+                    mark.attrs.cueNumber === cueNumber) {
+                  tr.removeMark(pos, pos + node.nodeSize, mark.type);
+                }
+              });
+            }
+          });
+        });
+        
+        if (tr.docChanged) {
+          this.editor.view.dispatch(tr);
+        }
       }
       
       if (shouldUpdate) {
