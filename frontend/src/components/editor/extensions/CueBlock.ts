@@ -167,12 +167,19 @@ export const CueBlock = Node.create<CueBlockOptions>({
             mousedown: (view, event) => {
               const target = event.target as HTMLElement;
               const connectionDragArea = target.closest('.cue-connection-drag-area');
+              const moveDragArea = target.closest('.cue-move-drag-area');
               
               if (connectionDragArea) {
                 // Prevent ProseMirror from starting its own drag
                 event.stopPropagation();
                 return true;
               }
+              
+              // For move drag area, let ProseMirror handle it normally
+              if (moveDragArea) {
+                return false;
+              }
+              
               return false;
             },
             
@@ -181,6 +188,14 @@ export const CueBlock = Node.create<CueBlockOptions>({
               
               // Check if we're dragging from the connection drag area
               const connectionDragArea = target.closest('.cue-connection-drag-area');
+              const moveDragArea = target.closest('.cue-move-drag-area');
+              const cueBlock = target.closest('.cue-block');
+              
+              // If dragging from move area or the cue block itself (but not connection area), let ProseMirror handle it
+              if ((moveDragArea || cueBlock) && !connectionDragArea) {
+                currentDragData = null; // Clear any connection data
+                return false; // Let ProseMirror handle the block move
+              }
               
               if (connectionDragArea) {
                 console.log('Drag started from connection drag area');
@@ -236,11 +251,10 @@ export const CueBlock = Node.create<CueBlockOptions>({
                 
                 // We need to handle this ourselves
                 return true;
-              } else {
-                // Normal block drag - clear any connection data
-                currentDragData = null;
-                return false; // Let ProseMirror handle the block move
               }
+              
+              // For all other cases, don't interfere
+              return false;
             },
             
             dragend: (view, event) => {
@@ -712,7 +726,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
         ['span', { class: 'cue-label' }, label + ':'],
       ],
       ['span', { class: 'cue-content' }, 0], // Content slot
-      ['div', { class: 'cue-move-drag-area', contenteditable: 'false', title: 'Drag to reorder' }, 
+      ['div', { class: 'cue-move-drag-area', contenteditable: 'false', draggable: 'false', title: 'Drag to reorder' }, 
         ['span', { class: 'drag-handle' }, '⋮⋮'],
       ],
     ];
