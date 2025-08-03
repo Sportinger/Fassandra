@@ -3,6 +3,7 @@ import { useAuth } from '../AuthContext';
 import { getScripts, createScript, deleteScript, updateScript, shareScript, getScriptShares, removeScriptShare, toggleScriptPublic, generateAllThumbnails, createScriptFromParsed, ParsedScriptData } from '../api';
 import { Script, ScriptShareWithUser, UploadStatus, PlaceholderScript } from '../types';
 import { logDebugInfo } from '../utils/debug';
+import { ClaudeSessionService } from '../services/ClaudeSessionService';
 import styles from './ScriptList.module.css';
 
 /**
@@ -123,7 +124,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       formData.append('file', placeholder.fileData); // PDF file for Claude Code processing
 
       // Use relative URL - proxy will handle routing to backend
-      const uploadResponse = await fetch('/api/s/upload', {
+      const uploadResponse = await fetch('/api/s/upload-pdf', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
@@ -160,74 +161,108 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         uploadSubStage: 'Extracting dialogue, speakers, and stage directions...'
       });
 
-      let parsedData: ParsedScriptData | null = null;
-      if (uploadResponse.status !== 204 && uploadResponse.headers.get("content-length") !== "0") {
-        try {
-          parsedData = await uploadResponse.json();
-        } catch (parseError: any) {
-          console.error('[ScriptList] Failed to parse JSON response:', parseError);
-          throw new Error(`Analysis failed: Could not parse server response`);
-        }
-      }
-
+      // Check if upload was successful first
       if (!uploadResponse.ok) {
-        throw new Error(parsedData?.error || `Analysis failed: HTTP ${uploadResponse.status}`);
+        let errorMessage = `Upload failed: HTTP ${uploadResponse.status}`;
+        try {
+          const errorData = await uploadResponse.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // Ignore JSON parse errors for error response
+        }
+        throw new Error(errorMessage);
       }
 
-      if (!parsedData) {
-        throw new Error('Analysis complete, but no data returned to create script');
+      // Parse the response which now contains session_id
+      let responseData: { session_id: string; message: string };
+      try {
+        responseData = await uploadResponse.json();
+        console.log('[ScriptList] Upload response:', responseData);
+      } catch (parseError: any) {
+        console.error('[ScriptList] Failed to parse JSON response:', parseError);
+        console.error('[ScriptList] Response status:', uploadResponse.status);
+        console.error('[ScriptList] Response headers:', uploadResponse.headers);
+        throw new Error(`Upload failed: Could not parse server response`);
       }
 
-      // Stage 8: Analysis complete (75% progress)
-      updateUploadStatus({ 
-        uploadStatus: 'creating' as UploadStatus,
-        uploadProgress: 75,
-        uploadSubStage: `Analysis complete! Found ${parsedData.title ? '1 title' : 'content'}, creating script...`
-      });
+      if (!responseData || !responseData.session_id) {
+        console.error('[ScriptList] Response missing session_id:', responseData);
+        throw new Error('Upload started, but no session ID returned');
+      }
 
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Stage 9: Database creation (85% progress)
-      updateUploadStatus({ 
-        uploadProgress: 85,
-        uploadSubStage: 'Creating script database entry...'
-      });
-
-      const newScriptId = await createScriptFromParsed(parsedData);
-      console.log('[ScriptList] Created new script with ID:', newScriptId);
-
-      // Stage 10: Finalizing (95% progress)
-      updateUploadStatus({ 
-        uploadProgress: 95,
-        uploadSubStage: 'Finalizing script structure and metadata...'
-      });
-
-      await new Promise(resolve => setTimeout(resolve, 400));
-
-      // Stage 11: Success (100% progress)
-      const newScript: Script = {
-        id: newScriptId,
-        title: parsedData.title || placeholder.title,
-        created_by: user?.id || null,
-        created_at: new Date().toISOString(),
-        is_public: false,
-        thumbnail: null,
-        isPlaceholder: false,
-        uploadStatus: 'completed' as UploadStatus,
-        uploadProgress: 100,
-        uploadSubStage: 'Script created successfully! Click to open.'
-      };
+      console.log('[ScriptList] Claude Code session started:', responseData.session_id);
       
-      // Remove from uploading and add to main scripts
-      setUploadingScripts(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(placeholder.id);
-        return newMap;
+      // Monitor the session via WebSocket
+      updateUploadStatus({ 
+        uploadProgress: 70,
+        uploadSubStage: 'Claude Code is processing your PDF...'
       });
+
+      // Create WebSocket connection to monitor session
+      const sessionService = new ClaudeSessionService(
+        responseData.session_id,
+        token,
+        (update) => {
+          // Handle session updates
+          if (update.type === 'status' && update.progress !== undefined) {
+            updateUploadStatus({ 
+              uploadProgress: Math.max(70, Math.min(90, update.progress)),
+              uploadSubStage: `Processing: ${update.status || 'Working...'}`
+            });
+          } else if (update.type === 'output' && update.line) {
+            // Could show latest output line if desired
+            console.log('[Claude Output]', update.line);
+          }
+        },
+        async (scriptId) => {
+          // Handle completion
+          console.log('[ScriptList] Claude Code completed with script ID:', scriptId);
+          
+          updateUploadStatus({ 
+            uploadStatus: 'creating' as UploadStatus,
+            uploadProgress: 95,
+            uploadSubStage: 'Script created successfully! Finalizing...'
+          });
+
+          // Fetch the newly created script details
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          const newScript: Script = {
+            id: scriptId,
+            title: placeholder.title,
+            created_by: user?.id || null,
+            created_at: new Date().toISOString(),
+            is_public: false,
+            thumbnail: null,
+            isPlaceholder: false,
+            uploadStatus: 'completed' as UploadStatus,
+            uploadProgress: 100,
+            uploadSubStage: 'Script created successfully! Click to open.'
+          };
+          
+          // Remove from uploading and add to main scripts
+          setUploadingScripts(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(placeholder.id);
+            return newMap;
+          });
+          
+          // Refresh scripts list to get the new script
+          await fetchScripts();
+          
+          console.log('[ScriptList] ✅ Real upload completed successfully');
+        },
+        (error) => {
+          // Handle error
+          throw new Error(error);
+        }
+      );
+
+      // Connect to WebSocket
+      sessionService.connect();
       
-      setScripts(prev => [...prev, newScript]);
-      
-      console.log('[ScriptList] ✅ Real upload completed successfully');
+      // Store session service for potential cancellation
+      (placeholder as any).sessionService = sessionService;
       
     } catch (error: any) {
       console.error('[ScriptList] ❌ Real upload failed:', error);
@@ -256,7 +291,18 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   };
 
   // 🚀 NEW: Handle cancel upload
-  const handleCancelUpload = (placeholderId: string) => {
+  const handleCancelUpload = async (placeholderId: string) => {
+    const placeholder = uploadingScripts.get(placeholderId);
+    if (placeholder && 'sessionService' in placeholder && placeholder.sessionService) {
+      try {
+        // Cancel the Claude Code session
+        await placeholder.sessionService.cancelSession();
+        placeholder.sessionService.disconnect();
+      } catch (error) {
+        console.error('[ScriptList] Failed to cancel session:', error);
+      }
+    }
+    
     setUploadingScripts(prev => {
       const newMap = new Map(prev);
       newMap.delete(placeholderId);

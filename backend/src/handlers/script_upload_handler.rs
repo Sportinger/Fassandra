@@ -4,7 +4,7 @@ use axum::{
 };
 use uuid::Uuid;
 use crate::error::AppError;
-// use crate::services::claude_code_parser_service::ClaudeCodeParserService;
+use crate::services::claude_session_service::{ClaudeSessionService, SessionUpdate};
 use crate::auth::AuthUser;
 use crate::handlers::script::ScriptServices;
 use std::path::PathBuf;
@@ -13,15 +13,22 @@ use anyhow::anyhow;
 use futures_util::{stream::{self, TryStreamExt}};
 use std::convert::Infallible;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 
 #[derive(serde::Serialize)]
 pub struct UploadResponse {
-    pub script_id: Uuid,
+    pub session_id: Uuid,
     pub message: String,
 }
 
+#[derive(Clone)]
+pub struct ExtendedScriptServices {
+    pub script_services: ScriptServices,
+    pub claude_session_service: Arc<ClaudeSessionService>,
+}
+
 pub async fn upload_and_parse_script(
-    State(services): State<ScriptServices>,
+    State(services): State<ExtendedScriptServices>,
     auth_user: AuthUser,
     mut multipart: Multipart,
 ) -> Result<axum::Json<UploadResponse>, AppError> {
@@ -34,6 +41,7 @@ pub async fn upload_and_parse_script(
     // Generate a unique filename
     let temp_id = Uuid::new_v4();
     let mut pdf_path = None;
+    let mut original_filename = String::new();
 
     // Process multipart upload
     while let Some(field) = multipart.next_field().await.map_err(|e| {
@@ -43,6 +51,7 @@ pub async fn upload_and_parse_script(
         let file_name = field.file_name().unwrap_or("").to_string();
         
         if file_name.ends_with(".pdf") {
+            original_filename = file_name.clone();
             let filepath = upload_dir.join(format!("{}_{}", temp_id, file_name));
             let filepath_str = filepath.to_string_lossy().to_string();
             
@@ -70,8 +79,14 @@ pub async fn upload_and_parse_script(
         AppError::BadRequest("No PDF file found in upload".to_string())
     })?;
 
+    // Get absolute path for the PDF
+    let abs_pdf_path = std::fs::canonicalize(&pdf_path)
+        .map_err(|e| AppError::Internal(anyhow!("Failed to get absolute path: {}", e)))?
+        .to_string_lossy()
+        .to_string();
+
     // Get database pool from services
-    let pool = services.script_service.get_pool();
+    let pool = services.script_services.script_service.get_pool();
     
     // Get user email
     let user_email = sqlx::query_scalar::<_, String>(
@@ -82,32 +97,40 @@ pub async fn upload_and_parse_script(
     .await
     .map_err(|e| AppError::Internal(anyhow!("Failed to fetch user email: {}", e)))?;
 
-    // Get API key from environment
-    let _api_key = std::env::var("ANTHROPIC_API_KEY")
-        .map_err(|_| AppError::Internal(anyhow!("ANTHROPIC_API_KEY not set")))?;
-
-    // Create Claude Code parser service with database pool
-    // let parser = ClaudeCodeParserService::new(api_key, Arc::new(pool.clone()));
-
-    // Parse the PDF with SQL execution and iteration
-    // let script_id = parser.parse_pdf_with_sql_execution(&pdf_path, &user_email)
-    //     .await?;
+    // Create a channel for updates (we'll use this later for WebSocket)
+    let (tx, _rx) = mpsc::channel::<SessionUpdate>(100);
     
-    // For now, return a placeholder since claude_code_parser_service was deleted
-    let script_id = Uuid::new_v4();
-    
-    // Clean up the uploaded file
-    let _ = fs::remove_file(&pdf_path).await;
+    // Start Claude session
+    let session_id = services.claude_session_service
+        .start_session(
+            abs_pdf_path.clone(),
+            user_email.clone(),
+            move |_session_id, update| {
+                let tx = tx.clone();
+                tokio::spawn(async move {
+                    let _ = tx.send(update).await;
+                });
+            }
+        )
+        .await
+        .map_err(|e| AppError::Internal(anyhow!("Failed to start Claude session: {}", e)))?;
 
-    Ok(axum::Json(UploadResponse {
-        script_id,
-        message: format!("PDF upload service temporarily disabled. Script ID: {}", script_id),
-    }))
+    // Note: We're NOT deleting the PDF file anymore - Claude will process it
+    // The cleanup can happen after processing is complete
+
+    let response = UploadResponse {
+        session_id,
+        message: format!("Claude Code session started. Processing '{}'", original_filename),
+    };
+    
+    tracing::info!("Returning upload response: session_id={}, message={}", response.session_id, response.message);
+    
+    Ok(axum::Json(response))
 }
 
 pub async fn parse_existing_script(
     AxumPath(path): AxumPath<String>,
-    State(services): State<ScriptServices>,
+    State(services): State<ExtendedScriptServices>,
     auth_user: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     // Check if file exists
@@ -117,10 +140,10 @@ pub async fn parse_existing_script(
     }
 
     // Get database pool from services
-    let pool = services.script_service.get_pool();
+    let pool = services.script_services.script_service.get_pool();
     
     // Get user email
-    let user_email = sqlx::query_scalar::<_, String>(
+    let _user_email = sqlx::query_scalar::<_, String>(
         "SELECT email FROM users WHERE id = $1"
     )
     .bind(auth_user.user_id)

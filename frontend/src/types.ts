@@ -55,6 +55,7 @@ export type UploadStatus = 'uploading' | 'analyzing' | 'creating' | 'completed' 
  */
 export interface PlaceholderScript extends Script {
   fileData?: File; // File to be uploaded in background
+  sessionService?: any; // Claude session service for cancellation
 }
 
 /**
