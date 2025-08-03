@@ -33,6 +33,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   viewMode,
   showRuler,
   speakerNames,
+  selectedSpeakerName,
   onSetViewMode,
   onToggleRuler,
   className = '',
@@ -329,8 +330,38 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Stacked Layout (Text Below Speaker)',
       action: () => {
         console.log('Setting layout to default');
-        const result = editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'default' }).run();
-        console.log('Update result:', result);
+        if (selectedSpeakerName) {
+          // Update all dialogue blocks with the selected speaker name
+          const { state, view } = editor!;
+          const { tr } = state;
+          let hasChanges = false;
+          
+          state.doc.descendants((node, pos) => {
+            if (node.type.name === 'dialogueBlock') {
+              // Check if this dialogue block contains the selected speaker
+              let containsSpeaker = false;
+              node.descendants((childNode) => {
+                if (childNode.type.name === 'speaker' && childNode.textContent.trim() === selectedSpeakerName) {
+                  containsSpeaker = true;
+                  return false; // Stop searching
+                }
+              });
+              
+              if (containsSpeaker && node.attrs.layout !== 'default') {
+                tr.setNodeMarkup(pos, undefined, { ...node.attrs, layout: 'default' });
+                hasChanges = true;
+              }
+            }
+          });
+          
+          if (hasChanges) {
+            view.dispatch(tr);
+          }
+        } else {
+          // Single dialogue block update
+          const result = editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'default' }).run();
+          console.log('Update result:', result);
+        }
       },
       isActive: editor?.isActive('dialogueBlock', { layout: 'default' }),
       contexts: ['dialogue-layout', 'speaker-select'],
@@ -342,8 +373,38 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Side-by-Side Layout (Text Right of Speaker)',
       action: () => {
         console.log('Setting layout to side-by-side');
-        const result = editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'side-by-side' }).run();
-        console.log('Update result:', result);
+        if (selectedSpeakerName) {
+          // Update all dialogue blocks with the selected speaker name
+          const { state, view } = editor!;
+          const { tr } = state;
+          let hasChanges = false;
+          
+          state.doc.descendants((node, pos) => {
+            if (node.type.name === 'dialogueBlock') {
+              // Check if this dialogue block contains the selected speaker
+              let containsSpeaker = false;
+              node.descendants((childNode) => {
+                if (childNode.type.name === 'speaker' && childNode.textContent.trim() === selectedSpeakerName) {
+                  containsSpeaker = true;
+                  return false; // Stop searching
+                }
+              });
+              
+              if (containsSpeaker && node.attrs.layout !== 'side-by-side') {
+                tr.setNodeMarkup(pos, undefined, { ...node.attrs, layout: 'side-by-side' });
+                hasChanges = true;
+              }
+            }
+          });
+          
+          if (hasChanges) {
+            view.dispatch(tr);
+          }
+        } else {
+          // Single dialogue block update
+          const result = editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'side-by-side' }).run();
+          console.log('Update result:', result);
+        }
       },
       isActive: editor?.isActive('dialogueBlock', { layout: 'side-by-side' }),
       contexts: ['dialogue-layout', 'speaker-select'],
@@ -525,7 +586,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       contexts: ['cue-select'],
       order: 3
     },
-      ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, rehearsalMode, onToggleRehearsalMode, currentCueType]);
+      ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, rehearsalMode, onToggleRehearsalMode, currentCueType, selectedSpeakerName]);
 
   // Get buttons for current context, sorted by order
   const contextButtons = useMemo(() => {
