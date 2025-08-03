@@ -110,19 +110,13 @@ export const Editor: React.FC<EditorProps> = ({
     const handleAwarenessChange = () => {
       const states = provider.awareness.getStates();
       
-      // Check all other users' states for rehearsal line position and mode
+      // Check all other users' states for rehearsal line position only
       states.forEach((state, clientId) => {
         if (clientId !== provider.awareness.clientID) {
           // Sync rehearsal line position
           if (state.rehearsalLinePosition !== undefined) {
             debugLog('[Rehearsal Sync] Received position from other user:', state.rehearsalLinePosition);
             setRehearsalLinePosition(state.rehearsalLinePosition);
-          }
-          
-          // Sync rehearsal mode state
-          if (state.rehearsalMode !== undefined) {
-            debugLog('[Rehearsal Sync] Received mode from other user:', state.rehearsalMode);
-            setRehearsalMode(state.rehearsalMode);
           }
         }
       });
@@ -134,6 +128,40 @@ export const Editor: React.FC<EditorProps> = ({
       provider.awareness.off('change', handleAwarenessChange);
     };
   }, [provider, debugLog]);
+
+  // Initialize rehearsal line position in awareness when provider is ready
+  useEffect(() => {
+    if (provider && provider.awareness && rehearsalLinePosition > 0) {
+      provider.awareness.setLocalStateField('rehearsalLinePosition', rehearsalLinePosition);
+    }
+  }, [provider, rehearsalLinePosition]); // Run when provider becomes available or position changes
+
+  // Smooth scroll to keep rehearsal line centered
+  useEffect(() => {
+    debugLog('[Rehearsal Line State] Position:', rehearsalLinePosition, 'Mode:', rehearsalMode, 'View:', viewMode);
+    
+    if (!rehearsalMode || viewMode !== 'single-page') return;
+
+    // Find the container element
+    const containerElement = document.querySelector('.singlePageContainer');
+    if (!containerElement) {
+      debugLog('[Rehearsal Scroll] ERROR: Container element not found!');
+      return;
+    }
+
+    // Calculate the position to scroll to (line position minus half viewport height)
+    const containerRect = containerElement.getBoundingClientRect();
+    const absoluteLinePosition = containerRect.top + window.scrollY + rehearsalLinePosition;
+    const targetScrollPosition = absoluteLinePosition - (window.innerHeight / 2);
+
+    // Smooth scroll to center the line
+    window.scrollTo({
+      top: targetScrollPosition,
+      behavior: 'smooth'
+    });
+
+    debugLog('[Rehearsal Scroll] Scrolling to center line at position:', rehearsalLinePosition);
+  }, [rehearsalLinePosition, rehearsalMode, viewMode, debugLog]);
 
   // Highlight all speakers when editAllSpeakers mode changes
   useEffect(() => {
@@ -240,10 +268,14 @@ export const Editor: React.FC<EditorProps> = ({
     
     // Store the click position for rehearsal mode jump
     if (rehearsalMode) {
-      const pageElement = target.closest('.dinA4Page');
-      if (pageElement) {
-        const pageRect = pageElement.getBoundingClientRect();
-        const clickY = e.clientY - pageRect.top + pageElement.scrollTop;
+      // Find the container that holds all pages
+      const containerElement = target.closest('.singlePageContainer') || target.closest('.multiplePagesContainer');
+      if (containerElement) {
+        const containerRect = containerElement.getBoundingClientRect();
+        const scrollTop = containerElement.scrollTop || window.scrollY;
+        const clickY = e.clientY - containerRect.top + scrollTop;
+        
+        debugLog('[Rehearsal Click] Container height:', containerElement.scrollHeight, 'Click Y:', clickY, 'ScrollTop:', scrollTop);
         
         // Store the position for later use
         setLocalContextMenu({
@@ -252,7 +284,7 @@ export const Editor: React.FC<EditorProps> = ({
           visible: true,
           onSpeakerName: !!speakerElement,
           onPageBackground: !speakerElement,
-          rehearsalClickY: clickY, // Add this to store the Y position
+          rehearsalClickY: clickY, // Absolute position in document
         });
         return;
       }
@@ -281,13 +313,26 @@ export const Editor: React.FC<EditorProps> = ({
         break;
       case 'jump':
         if (localContextMenu.rehearsalClickY !== undefined) {
-          setRehearsalLinePosition(localContextMenu.rehearsalClickY);
-          debugLog('Rehearsal line jumped to position:', localContextMenu.rehearsalClickY);
+          const newPosition = localContextMenu.rehearsalClickY;
+          debugLog('[Jump Action] Setting rehearsal line position to:', newPosition);
+          setRehearsalLinePosition(newPosition);
           
           // Sync the position with other users via awareness
           if (provider && provider.awareness) {
-            provider.awareness.setLocalStateField('rehearsalLinePosition', localContextMenu.rehearsalClickY);
+            debugLog('[Jump Action] Syncing position via awareness:', newPosition);
+            provider.awareness.setLocalStateField('rehearsalLinePosition', newPosition);
           }
+          
+          // Verify the line is visible
+          setTimeout(() => {
+            const lineElement = document.querySelector('.rehearsal-line');
+            if (lineElement) {
+              const computedStyle = window.getComputedStyle(lineElement);
+              debugLog('[Jump Action] Line element found, display:', computedStyle.display, 'top:', computedStyle.top);
+            } else {
+              debugLog('[Jump Action] WARNING: Line element not found!');
+            }
+          }, 100);
         }
         break;
       default:
@@ -746,9 +791,21 @@ export const Editor: React.FC<EditorProps> = ({
           setRehearsalMode(newMode);
           console.log('Rehearsal mode toggled:', newMode);
           
-          // Sync rehearsal mode state with other users
-          if (provider && provider.awareness) {
-            provider.awareness.setLocalStateField('rehearsalMode', newMode);
+          // If turning on rehearsal mode and line position is set, scroll to it
+          if (newMode && rehearsalLinePosition > 0 && viewMode === 'single-page') {
+            setTimeout(() => {
+              const containerElement = document.querySelector('.singlePageContainer');
+              if (containerElement) {
+                const containerRect = containerElement.getBoundingClientRect();
+                const absoluteLinePosition = containerRect.top + window.scrollY + rehearsalLinePosition;
+                const targetScrollPosition = absoluteLinePosition - (window.innerHeight / 2);
+                
+                window.scrollTo({
+                  top: targetScrollPosition,
+                  behavior: 'smooth'
+                });
+              }
+            }, 100); // Small delay to ensure DOM is updated
           }
         }}
       />
