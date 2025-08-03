@@ -90,11 +90,9 @@ export interface ToolbarProps {
   hasTextSelection: boolean;
   viewMode: ViewMode;
   showRuler: boolean;
-  showPageNumbers: boolean;
   speakerNames: Set<string>;
   onSetViewMode: (mode: ViewMode) => void;
   onToggleRuler: () => void;
-  onTogglePageNumbers: () => void;
   className?: string;
   rehearsalMode?: boolean;
   onToggleRehearsalMode?: () => void;
