@@ -4,6 +4,8 @@ import { getScripts, createScript, deleteScript, updateScript, shareScript, getS
 import { Script, ScriptShareWithUser, UploadStatus, PlaceholderScript } from '../types';
 import { logDebugInfo } from '../utils/debug';
 import { ClaudeSessionService } from '../services/ClaudeSessionService';
+import { useUploadState } from '../hooks/useUploadState';
+import UploadStateManager from '../services/UploadStateManager';
 import styles from './ScriptList.module.css';
 
 /**
@@ -56,8 +58,8 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   const [scriptShares, setScriptShares] = useState<ScriptShareWithUser[]>([]);
   const [sharingLoading, setSharingLoading] = useState(false);
   
-  // 🚀 NEW: Background upload state
-  const [uploadingScripts, setUploadingScripts] = useState<Map<string, Script>>(new Map());
+  // 🚀 NEW: Background upload state - Now persistent across navigation!
+  const { uploads, addUpload, updateUpload, removeUpload, setSessionId, getSessionId } = useUploadState();
   
   const { token, setToken, user, tokenReady } = useAuth();
   const addSlotRef = useRef<HTMLDivElement>(null);
@@ -69,7 +71,8 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   useImperativeHandle(ref, () => ({
     addUploadPlaceholder: (placeholder: PlaceholderScript) => {
       console.log('[ScriptList] Adding upload placeholder:', placeholder.title);
-      setUploadingScripts(prev => new Map(prev.set(placeholder.id, placeholder)));
+      // Add to persistent state
+      addUpload(placeholder);
       
       // Start the real upload process with file data
       performRealBackgroundUpload(placeholder);
@@ -84,14 +87,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     }
     
     const updateUploadStatus = (updates: Partial<Script>) => {
-      setUploadingScripts(prev => {
-        const newMap = new Map(prev);
-        const existing = newMap.get(placeholder.id);
-        if (existing) {
-          newMap.set(placeholder.id, { ...existing, ...updates });
-        }
-        return newMap;
-      });
+      updateUpload(placeholder.id, updates);
     };
 
     try {
@@ -198,6 +194,9 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         uploadSubStage: 'Claude Code is processing your PDF...'
       });
 
+      // Store session ID for persistence
+      setSessionId(placeholder.id, responseData.session_id);
+      
       // Create WebSocket connection to monitor session
       const sessionService = new ClaudeSessionService(
         responseData.session_id,
@@ -210,8 +209,22 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
               uploadSubStage: `Processing: ${update.status || 'Working...'}`
             });
           } else if (update.type === 'output' && update.line) {
-            // Could show latest output line if desired
+            // Show Claude output in substage
             console.log('[Claude Output]', update.line);
+            // Show relevant Claude status messages
+            if (update.line.includes('Reading PDF') || update.line.includes('Parsing')) {
+              updateUploadStatus({ 
+                uploadSubStage: 'Claude Code: Reading and parsing PDF...'
+              });
+            } else if (update.line.includes('Creating JSON') || update.line.includes('Extracting')) {
+              updateUploadStatus({ 
+                uploadSubStage: 'Claude Code: Extracting script structure...'
+              });
+            } else if (update.line.includes('json_to_db') || update.line.includes('database')) {
+              updateUploadStatus({ 
+                uploadSubStage: 'Claude Code: Inserting into database...'
+              });
+            }
           }
         },
         async (scriptId) => {
@@ -241,11 +254,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
           };
           
           // Remove from uploading and add to main scripts
-          setUploadingScripts(prev => {
-            const newMap = new Map(prev);
-            newMap.delete(placeholder.id);
-            return newMap;
-          });
+          removeUpload(placeholder.id);
           
           // Refresh scripts list to get the new script
           await fetchScripts();
@@ -277,7 +286,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
 
   // 🚀 NEW: Handle retry for failed uploads
   const handleRetryUpload = (placeholderId: string) => {
-    const placeholder = uploadingScripts.get(placeholderId);
+    const placeholder = uploads.find(u => u.id === placeholderId);
     if (placeholder) {
       const resetPlaceholder = {
         ...placeholder,
@@ -285,14 +294,14 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         uploadProgress: 0,
         uploadError: null
       };
-      setUploadingScripts(prev => new Map(prev.set(placeholderId, resetPlaceholder)));
+      updateUpload(placeholderId, resetPlaceholder);
       performRealBackgroundUpload(resetPlaceholder);
     }
   };
 
   // 🚀 NEW: Handle cancel upload
   const handleCancelUpload = async (placeholderId: string) => {
-    const placeholder = uploadingScripts.get(placeholderId);
+    const placeholder = uploads.find(u => u.id === placeholderId);
     if (placeholder && 'sessionService' in placeholder && placeholder.sessionService) {
       try {
         // Cancel the Claude Code session
@@ -303,11 +312,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       }
     }
     
-    setUploadingScripts(prev => {
-      const newMap = new Map(prev);
-      newMap.delete(placeholderId);
-      return newMap;
-    });
+    removeUpload(placeholderId);
   };
 
   // 🚀 NEW: Render upload placeholder
@@ -327,6 +332,12 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     };
 
     const getMainStatusText = () => {
+      // Show Claude indicator when processing
+      if (placeholder.uploadStatus === 'processing' || 
+          (placeholder.uploadSubStage && placeholder.uploadSubStage.includes('Claude Code'))) {
+        return '🤖 Claude Processing';
+      }
+      
       switch (placeholder.uploadStatus) {
         case 'uploading': return 'Uploading';
         case 'analyzing': return 'Analyzing';
@@ -563,6 +574,76 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     }
   }, [refreshTrigger]);
 
+  // Reconnect to ongoing Claude sessions on mount
+  useEffect(() => {
+    if (token && uploads.length > 0) {
+      console.log('[ScriptList] Checking for ongoing uploads to reconnect...');
+      
+      uploads.forEach(upload => {
+        // Only reconnect if upload is not complete and has a session ID
+        if (!upload.uploadComplete && upload.uploadStatus === 'processing') {
+          const sessionId = getSessionId(upload.id);
+          if (sessionId) {
+            console.log(`[ScriptList] Reconnecting to session ${sessionId} for upload ${upload.title}`);
+            
+            // Create WebSocket connection to monitor existing session
+            const sessionService = new ClaudeSessionService(
+              sessionId,
+              token,
+              (update) => {
+                // Handle session updates
+                if (update.type === 'status' && update.progress !== undefined) {
+                  updateUpload(upload.id, { 
+                    uploadProgress: Math.max(70, Math.min(90, update.progress)),
+                    uploadSubStage: `Processing: ${update.status || 'Working...'}`
+                  });
+                } else if (update.type === 'output' && update.line) {
+                  console.log('[Claude Output]', update.line);
+                  updateUpload(upload.id, {
+                    uploadSubStage: 'Claude Code is working...'
+                  });
+                }
+              },
+              (scriptId) => {
+                // On complete
+                console.log('[ScriptList] Claude session completed! Script ID:', scriptId);
+                updateUpload(upload.id, {
+                  uploadStatus: 'complete' as const,
+                  uploadProgress: 100,
+                  uploadComplete: true,
+                  uploadSubStage: 'Processing complete!'
+                });
+                
+                // Refresh scripts to show the new one
+                fetchScripts();
+                
+                // Remove after a delay
+                setTimeout(() => {
+                  removeUpload(upload.id);
+                }, 2000);
+              },
+              (error) => {
+                // On error
+                console.error('[ScriptList] Claude session error:', error);
+                updateUpload(upload.id, {
+                  uploadStatus: 'error' as const,
+                  uploadError: error,
+                  uploadSubStage: null
+                });
+              }
+            );
+            
+            // Connect to existing session
+            sessionService.connect();
+            
+            // Store service reference for potential cancellation
+            updateUpload(upload.id, { sessionService });
+          }
+        }
+      });
+    }
+  }, [token]); // Only run on mount when token is available
+
   const handleCreateScript = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !newScriptName.trim()) return;
@@ -734,7 +815,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
 
   // Combine regular scripts with upload placeholders for rendering
   const allScripts = [...scripts];
-  const uploadPlaceholders = Array.from(uploadingScripts.values());
+  const uploadPlaceholders = uploads;
 
   return (
     <div>
@@ -981,4 +1062,4 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
 // export const ScriptList: React.FC<ScriptListProps> = ... (remove this line)
 
 // Export the ref type for use in App component
-export type { ScriptListProps, ScriptListRef }; 
+export type { ScriptListProps }; 
