@@ -152,7 +152,9 @@ export const Header: React.FC<HeaderProps> = ({
   // Build target breadcrumb text
   const targetBreadcrumb = currentView === 'scripts' 
     ? 'PESSOA / Scripts'
-    : `PESSOA / Scripts / ${scriptTitle || ''}`;
+    : scriptTitle 
+      ? `PESSOA / Scripts / ${scriptTitle}`
+      : 'PESSOA / Scripts';
 
   const animatedBreadcrumb = useTypewriter(targetBreadcrumb, 400);
   
