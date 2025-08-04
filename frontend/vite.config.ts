@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import fs from 'fs';
@@ -25,9 +25,19 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), VitePWA({ registerType: 'autoUpdate' })],
-  server: {
+export default defineConfig(({ mode }) => {
+  // Load env file based on `mode` in the current working directory.
+  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
+  const env = loadEnv(mode, process.cwd(), '');
+  
+  // Use .env.android file when mode is 'android'
+  if (mode === 'android') {
+    Object.assign(process.env, loadEnv('android', process.cwd(), ''));
+  }
+
+  return {
+    plugins: [react(), VitePWA({ registerType: 'autoUpdate' })],
+    server: {
     port: 8080,     // Standard port for hot reload
     host: true,     // Allow access from host to container
     allowedHosts: process.env.VITE_APP_DOMAIN ? [process.env.VITE_APP_DOMAIN] : ['localhost', '192.168.2.111'],
@@ -71,4 +81,5 @@ export default defineConfig({
       },
     },
   },
-})
+  };
+});
