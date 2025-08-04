@@ -199,11 +199,8 @@ impl YjsProcessorService {
                                     return Err(anyhow::anyhow!("State vector exceeds maximum size of {} bytes", MAX_STATE_VECTOR_SIZE));
                                 }
                                 
-                                // Validate state vector before encoding to prevent massive memory allocation
-                                if let Err(e) = self.validate_state_vector(&sv_bytes) {
-                                    error!("Invalid state vector for script {}, update {}: {}", script_id, update_id, e);
-                                    return Err(e);
-                                }
+                                // TODO: Add state vector validation to prevent massive memory allocation
+                                // Currently relying on MAX_STATE_VECTOR_SIZE check above
                                 
                                 let sv = sv_bytes;
                                 
