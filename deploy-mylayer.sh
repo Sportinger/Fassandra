@@ -14,7 +14,7 @@ DIRECT_DEPLOY=false
 DEPLOY_ONLY=false
 SERVER_IP="91.99.69.115"
 DOMAIN="mylayer.org"
-SSH_USER="roman"
+SSH_USER="admin"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
