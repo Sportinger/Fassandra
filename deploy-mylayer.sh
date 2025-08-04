@@ -173,25 +173,45 @@ if [ "$DEPLOY_ONLY" != true ]; then
             
             # Build backend with runtime stage
             echo "🔨 Building backend (runtime stage)..."
-            DOCKER_BUILDKIT=1 docker build $BUILD_OPTS -f backend/Dockerfile --target runtime -t mylayer-backend:latest ./backend
+            echo "⏱️  This may take several minutes for Rust compilation..."
+            
+            # Check if we should skip build based on existing image
+            if [ "$NO_CACHE" != true ] && docker images mylayer-backend:latest --format "{{.ID}}" | grep -q .; then
+                echo "📦 Backend image already exists. Use --no-cache to force rebuild."
+            else
+                DOCKER_BUILDKIT=1 docker build $BUILD_OPTS -f backend/Dockerfile --target runtime -t mylayer-backend:latest ./backend
+            fi
             
             # Build frontend for mylayer.org
             echo "🔨 Building frontend for $DOMAIN..."
-            DOCKER_BUILDKIT=1 docker build $BUILD_OPTS -f frontend/Dockerfile.prod.simple \
-                --build-arg VITE_API_BASE_URL=https://$DOMAIN \
-                --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
-                -t mylayer-frontend:latest ./frontend
+            if [ "$NO_CACHE" != true ] && docker images mylayer-frontend:latest --format "{{.ID}}" | grep -q .; then
+                echo "📦 Frontend image already exists. Use --no-cache to force rebuild."
+            else
+                DOCKER_BUILDKIT=1 docker build $BUILD_OPTS -f frontend/Dockerfile.prod.simple \
+                    --build-arg VITE_API_BASE_URL=https://$DOMAIN \
+                    --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
+                    -t mylayer-frontend:latest ./frontend
+            fi
             ;;
         "frontend")
             echo "🔨 Building frontend only for $DOMAIN..."
-            DOCKER_BUILDKIT=1 docker build $BUILD_OPTS -f frontend/Dockerfile.prod.simple \
-                --build-arg VITE_API_BASE_URL=https://$DOMAIN \
-                --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
-                -t mylayer-frontend:latest ./frontend
+            if [ "$NO_CACHE" != true ] && docker images mylayer-frontend:latest --format "{{.ID}}" | grep -q .; then
+                echo "📦 Frontend image already exists. Use --no-cache to force rebuild."
+            else
+                DOCKER_BUILDKIT=1 docker build $BUILD_OPTS -f frontend/Dockerfile.prod.simple \
+                    --build-arg VITE_API_BASE_URL=https://$DOMAIN \
+                    --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
+                    -t mylayer-frontend:latest ./frontend
+            fi
             ;;
         "backend")
             echo "🔨 Building backend only..."
-            DOCKER_BUILDKIT=1 docker build $BUILD_OPTS -f backend/Dockerfile --target runtime -t mylayer-backend:latest ./backend
+            if [ "$NO_CACHE" != true ] && docker images mylayer-backend:latest --format "{{.ID}}" | grep -q .; then
+                echo "📦 Backend image already exists. Use --no-cache to force rebuild."
+            else
+                echo "⏱️  This may take several minutes for Rust compilation..."
+                DOCKER_BUILDKIT=1 docker build $BUILD_OPTS -f backend/Dockerfile --target runtime -t mylayer-backend:latest ./backend
+            fi
             ;;
         "db")
             echo "🗄️ Database-only deployment - skipping image builds..."
@@ -226,7 +246,7 @@ if [ "$DEPLOY_ONLY" != true ]; then
     # Copy environment and docker compose to server
     echo "📋 Copying configuration files..."
     scp .env.mylayer $SSH_USER@$SERVER_IP:/home/admin/app/.env
-    scp docker-compose.mylayer.yml $SSH_USER@$SERVER_IP:/home/admin/app/docker-compose.yml
+    scp docker-compose.mylayer.yml $SSH_USER@$SERVER_IP:/home/admin/app/docker-compose.mylayer.yml
     scp deploy-mylayer.sh $SSH_USER@$SERVER_IP:/home/admin/app/
     scp nginx-mylayer-prod.conf $SSH_USER@$SERVER_IP:/home/admin/app/
     
@@ -268,21 +288,21 @@ else
     
     # Stop any existing containers
     echo "📦 Stopping existing containers..."
-    docker compose down 2>/dev/null || true
+    docker compose -f docker-compose.mylayer.yml down 2>/dev/null || true
     
     # Reset database if requested
     if [ "$RESET_DB" = true ]; then
         echo "🗄️ Resetting database volumes..."
-        docker compose down -v 2>/dev/null || true
+        docker compose -f docker-compose.mylayer.yml down -v 2>/dev/null || true
         docker volume rm mylayer_postgres_data 2>/dev/null || true
     fi
     
     # Handle database-only reset
     if [ "$TARGET" = "db" ]; then
         echo "🗄️ Resetting database only..."
-        docker compose down 2>/dev/null || true
+        docker compose -f docker-compose.mylayer.yml down 2>/dev/null || true
         docker volume rm mylayer_postgres_data 2>/dev/null || true
-        docker compose up -d db
+        docker compose -f docker-compose.mylayer.yml up -d db
         echo "✅ Database reset complete!"
         exit 0
     fi
@@ -313,7 +333,7 @@ else
     
     # Start production services
     echo "🚀 Starting production services..."
-    docker compose up -d
+    docker compose -f docker-compose.mylayer.yml up -d
     
     # Wait for services to be ready
     echo "⏳ Waiting for services to be ready..."
@@ -321,7 +341,7 @@ else
     
     # Check if services are running
     echo "🔍 Checking service status..."
-    docker compose ps
+    docker compose -f docker-compose.mylayer.yml ps
     
     # Test endpoints
     echo "🧪 Testing production endpoints..."
@@ -351,6 +371,6 @@ else
     echo "🔧 Backend API: https://$DOMAIN/api (or http://$SERVER_IP:3001)"
     echo "🗄️  PgAdmin: http://$SERVER_IP:5050"
     echo ""
-    echo "📋 To view logs: docker compose logs -f"
-    echo "🛑 To stop: docker compose down"
+    echo "📋 To view logs: docker compose -f docker-compose.mylayer.yml logs -f"
+    echo "🛑 To stop: docker compose -f docker-compose.mylayer.yml down"
 fi 

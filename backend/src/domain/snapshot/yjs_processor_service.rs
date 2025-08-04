@@ -199,8 +199,26 @@ impl YjsProcessorService {
                                     return Err(anyhow::anyhow!("State vector exceeds maximum size of {} bytes", MAX_STATE_VECTOR_SIZE));
                                 }
                                 
+                                // Validate state vector before encoding to prevent massive memory allocation
+                                if let Err(e) = self.validate_state_vector(&sv_bytes) {
+                                    error!("Invalid state vector for script {}, update {}: {}", script_id, update_id, e);
+                                    return Err(e);
+                                }
+                                
                                 let sv = sv_bytes;
-                                let update_bytes = txn.encode_state_as_update_v1(&sv);
+                                
+                                // Use catch_unwind to prevent memory allocation panics from crashing the server
+                                let update_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                    txn.encode_state_as_update_v1(&sv)
+                                }));
+                                
+                                let update_bytes = match update_result {
+                                    Ok(bytes) => bytes,
+                                    Err(_) => {
+                                        error!("Memory allocation panic when encoding state vector for script {}, update {}", script_id, update_id);
+                                        return Err(anyhow::anyhow!("Failed to encode state vector: memory allocation error"));
+                                    }
+                                };
                                 
                                 // Safety check: Generated update should not be unreasonably large
                                 const MAX_UPDATE_SIZE: usize = 100_000_000; // 100MB max for generated update
