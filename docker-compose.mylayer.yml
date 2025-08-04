@@ -25,7 +25,7 @@ services:
     container_name: ${CONTAINER_PREFIX:-mylayer_}pessoa_backend
     environment:
       DATABASE_URL: ${DATABASE_URL}
-      JWT_SECRET: ${JWT_SECRET:-mylayer_jwt_secret_change_this_in_production}
+      JWT_SECRET: ${JWT_SECRET}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_API_URL: ${GEMINI_API_URL}
       BACKEND_PORT: 3001
@@ -34,9 +34,9 @@ services:
       DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-20}
       RUST_LOG: ${RUST_LOG:-info}
       # Admin user creation
-      ADMIN_EMAIL: admin@mylayer.org
-      ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: mylayer_admin_password_123
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     ports:
       - "3001:3001"
     depends_on:

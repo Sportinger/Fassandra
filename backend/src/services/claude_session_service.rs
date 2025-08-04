@@ -205,6 +205,9 @@ impl ClaudeSessionService {
                     Ok(Some(line)) = stdout_reader.next_line() => {
                         all_output.push(line.clone());
                         
+                        // Log Claude output for debugging
+                        tracing::info!("[Claude] {}", line);
+                        
                         // Update session output
                         {
                             let mut info = session_info.lock().await;

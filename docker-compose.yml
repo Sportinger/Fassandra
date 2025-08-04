@@ -32,7 +32,11 @@ services:
       - DATABASE_URL=postgres://pessoa_user:${POSTGRES_PASSWORD:-dev_password_123}@db:5432/pessoa_db
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - JWT_SECRET=${JWT_SECRET}
-      - RUST_LOG=debug
+      # Minimal logging for clean development:
+      # Only warnings and errors by default
+      # To debug specific issues, temporarily add modules like:
+      # backend::services::claude=info,backend::handlers::script_upload=debug
+      - RUST_LOG=warn,backend::services::claude_session=info
       - CLAUDE_CODE_DEBUG=1
       - HOME=/home/appuser
       - BACKEND_PORT=3000
