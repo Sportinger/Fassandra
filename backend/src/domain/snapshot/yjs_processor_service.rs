@@ -127,6 +127,12 @@ impl YjsProcessorService {
         script_id: Uuid,
         update_id: i64,
     ) -> Result<(), anyhow::Error> {
+        // Safety check: Updates should not be unreasonably large
+        const MAX_UPDATE_PAYLOAD_SIZE: usize = 10_000_000; // 10MB max for update payload
+        if payload.len() > MAX_UPDATE_PAYLOAD_SIZE {
+            error!("Update payload too large ({} bytes) for script {}, update {}", payload.len(), script_id, update_id);
+            return Err(anyhow::anyhow!("Update payload exceeds maximum size of {} bytes", MAX_UPDATE_PAYLOAD_SIZE));
+        }
         // Try to decode as direct YJS Update first (most common case for stored updates)
         match Update::decode_v1(payload) {
             Ok(update) => {
@@ -184,9 +190,25 @@ impl YjsProcessorService {
                     YrsSyncMessage::Sync(sync_message_enum) => {
                         match sync_message_enum {
                             YrsInnerSyncMessage::SyncStep1(sv_bytes) => {
-                                trace!("Handling SyncStep1 for script_id: {}, update_id: {}", script_id, update_id);
+                                trace!("Handling SyncStep1 for script_id: {}, update_id: {}, sv_bytes len: {}", script_id, update_id, sv_bytes.len());
+                                
+                                // Safety check: SyncStep1 state vectors should be reasonably small
+                                const MAX_STATE_VECTOR_SIZE: usize = 10_000; // 10KB max for state vector
+                                if sv_bytes.len() > MAX_STATE_VECTOR_SIZE {
+                                    error!("State vector too large ({} bytes) for script {}, update {}", sv_bytes.len(), script_id, update_id);
+                                    return Err(anyhow::anyhow!("State vector exceeds maximum size of {} bytes", MAX_STATE_VECTOR_SIZE));
+                                }
+                                
                                 let sv = sv_bytes;
                                 let update_bytes = txn.encode_state_as_update_v1(&sv);
+                                
+                                // Safety check: Generated update should not be unreasonably large
+                                const MAX_UPDATE_SIZE: usize = 100_000_000; // 100MB max for generated update
+                                if update_bytes.len() > MAX_UPDATE_SIZE {
+                                    error!("Generated update too large ({} bytes) for script {}, update {}", update_bytes.len(), script_id, update_id);
+                                    return Err(anyhow::anyhow!("Generated update exceeds maximum size of {} bytes", MAX_UPDATE_SIZE));
+                                }
+                                
                                 let update = Update::decode_v1(&update_bytes)?;
                                 if let Err(e) = txn.apply_update(update) {
                                     error!("Failed to apply YJS SyncStep1 update {} for script {}: {:?}", update_id, script_id, e);

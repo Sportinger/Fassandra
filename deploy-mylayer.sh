@@ -94,7 +94,7 @@ echo "🌍 Domain: $DOMAIN"
 echo "🔧 Options: no-cache=$NO_CACHE, reset-db=$RESET_DB, clean=$CLEAN, direct=$DIRECT_DEPLOY"
 
 # Check if we're in the right directory
-if [ ! -f "docker-compose.yml" ]; then
+if [ ! -f "docker-compose.yml" ] && [ ! -f "docker-compose.mylayer.yml" ]; then
     echo "❌ Error: docker-compose.yml not found. Please run from project root."
     exit 1
 fi
@@ -118,15 +118,25 @@ VITE_WS_BASE_URL=wss://$DOMAIN/api/collab
 CORS_ORIGINS=https://$DOMAIN,https://www.$DOMAIN
 ALLOWED_ORIGINS=https://$DOMAIN,https://www.$DOMAIN
 
-# Database configuration
-DATABASE_URL=postgresql://postgres:mylayer_secure_password_123@db:5432/pessoa_db
+# Database configuration (using secure passwords from .env.mylayer)
+DATABASE_URL=postgresql://postgres:xKj9mP2sL4nB6vQ8@db:5432/pessoa_db
 POSTGRES_DB=pessoa_db
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=mylayer_secure_password_123
+POSTGRES_PASSWORD=xKj9mP2sL4nB6vQ8
+
+# Authentication
+JWT_SECRET=vro6jKvuV03lUpvFY9sdE0UJAWEcwE5P2ONqA+I7pp8=
+ADMIN_EMAIL=admin@$DOMAIN
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=b5a4c38afdfa2b1ecf2c7867a0e34757
 
 # PgAdmin configuration
 PGADMIN_DEFAULT_EMAIL=admin@$DOMAIN
-PGADMIN_DEFAULT_PASSWORD=mylayer_admin_123
+PGADMIN_DEFAULT_PASSWORD=pg_b5a4c38afdfa2b1e
+
+# AI Integration
+GEMINI_API_KEY=AIzaSyCGkJudo4e0YEgZZKQ8xXTPBOTB3cQCY_g
+GEMINI_API_URL=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent
 
 # Environment
 ENVIRONMENT=production
@@ -163,25 +173,25 @@ if [ "$DEPLOY_ONLY" != true ]; then
             
             # Build backend with runtime stage
             echo "🔨 Building backend (runtime stage)..."
-            docker build $BUILD_OPTS -f backend/Dockerfile --target runtime -t mylayer-backend:latest ./backend
+            DOCKER_BUILDKIT=1 docker build $BUILD_OPTS -f backend/Dockerfile --target runtime -t mylayer-backend:latest ./backend
             
             # Build frontend for mylayer.org
             echo "🔨 Building frontend for $DOMAIN..."
-            docker build $BUILD_OPTS -f frontend/Dockerfile.prod.simple \
+            DOCKER_BUILDKIT=1 docker build $BUILD_OPTS -f frontend/Dockerfile.prod.simple \
                 --build-arg VITE_API_BASE_URL=https://$DOMAIN \
                 --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
                 -t mylayer-frontend:latest ./frontend
             ;;
         "frontend")
             echo "🔨 Building frontend only for $DOMAIN..."
-            docker build $BUILD_OPTS -f frontend/Dockerfile.prod.simple \
+            DOCKER_BUILDKIT=1 docker build $BUILD_OPTS -f frontend/Dockerfile.prod.simple \
                 --build-arg VITE_API_BASE_URL=https://$DOMAIN \
                 --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
                 -t mylayer-frontend:latest ./frontend
             ;;
         "backend")
             echo "🔨 Building backend only..."
-            docker build $BUILD_OPTS -f backend/Dockerfile --target runtime -t mylayer-backend:latest ./backend
+            DOCKER_BUILDKIT=1 docker build $BUILD_OPTS -f backend/Dockerfile --target runtime -t mylayer-backend:latest ./backend
             ;;
         "db")
             echo "🗄️ Database-only deployment - skipping image builds..."
@@ -209,28 +219,29 @@ if [ "$DEPLOY_ONLY" != true ]; then
     # Deploy to Hetzner server
     echo "📡 Deploying to Hetzner server $SERVER_IP..."
     
-    # Ensure directory exists in user home (no sudo needed)
-    echo "📁 Ensuring ~/pessoa directory exists..."
-    ssh $SSH_USER@$SERVER_IP "mkdir -p ~/pessoa"
+    # Ensure directory exists in /home/admin/app
+    echo "📁 Ensuring /home/admin/app directory exists..."
+    ssh $SSH_USER@$SERVER_IP "mkdir -p /home/admin/app"
     
-    # Copy environment and docker-compose to server
+    # Copy environment and docker compose to server
     echo "📋 Copying configuration files..."
-    scp .env.mylayer $SSH_USER@$SERVER_IP:~/pessoa/.env
-    scp docker-compose.mylayer.yml $SSH_USER@$SERVER_IP:~/pessoa/docker-compose.yml
-    scp deploy_mylayer.sh $SSH_USER@$SERVER_IP:~/pessoa/
+    scp .env.mylayer $SSH_USER@$SERVER_IP:/home/admin/app/.env
+    scp docker-compose.mylayer.yml $SSH_USER@$SERVER_IP:/home/admin/app/docker-compose.yml
+    scp deploy-mylayer.sh $SSH_USER@$SERVER_IP:/home/admin/app/
+    scp nginx-mylayer-prod.conf $SSH_USER@$SERVER_IP:/home/admin/app/
     
     # Transfer images to server
     echo "📦 Transferring images to server..."
     case $TARGET in
         "all")
-            scp mylayer-backend.tar.gz $SSH_USER@$SERVER_IP:~/pessoa/
-            scp mylayer-frontend.tar.gz $SSH_USER@$SERVER_IP:~/pessoa/
+            scp mylayer-backend.tar.gz $SSH_USER@$SERVER_IP:/home/admin/app/
+            scp mylayer-frontend.tar.gz $SSH_USER@$SERVER_IP:/home/admin/app/
             ;;
         "frontend")
-            scp mylayer-frontend.tar.gz $SSH_USER@$SERVER_IP:~/pessoa/
+            scp mylayer-frontend.tar.gz $SSH_USER@$SERVER_IP:/home/admin/app/
             ;;
         "backend")
-            scp mylayer-backend.tar.gz $SSH_USER@$SERVER_IP:~/pessoa/
+            scp mylayer-backend.tar.gz $SSH_USER@$SERVER_IP:/home/admin/app/
             ;;
     esac
     
@@ -239,7 +250,7 @@ if [ "$DEPLOY_ONLY" != true ]; then
     rm -f mylayer-*.tar.gz
     
     # Run deployment on server
-    DEPLOY_CMD="cd ~/pessoa && chmod +x deploy_mylayer.sh && ./deploy_mylayer.sh $TARGET --deploy-only --domain $DOMAIN --server-ip $SERVER_IP"
+    DEPLOY_CMD="cd /home/admin/app && chmod +x deploy-mylayer.sh && ./deploy-mylayer.sh $TARGET --deploy-only --domain $DOMAIN --server-ip $SERVER_IP"
     if [ "$RESET_DB" = true ]; then
         DEPLOY_CMD="$DEPLOY_CMD --reset-db"
     fi
@@ -252,26 +263,26 @@ else
     echo "🚀 Deploying on server $SERVER_IP..."
     
     # Create directory if it doesn't exist and navigate to it
-    mkdir -p ~/pessoa
-    cd ~/pessoa
+    mkdir -p /home/admin/app
+    cd /home/admin/app
     
     # Stop any existing containers
     echo "📦 Stopping existing containers..."
-    docker-compose down 2>/dev/null || true
+    docker compose down 2>/dev/null || true
     
     # Reset database if requested
     if [ "$RESET_DB" = true ]; then
         echo "🗄️ Resetting database volumes..."
-        docker-compose down -v 2>/dev/null || true
+        docker compose down -v 2>/dev/null || true
         docker volume rm mylayer_postgres_data 2>/dev/null || true
     fi
     
     # Handle database-only reset
     if [ "$TARGET" = "db" ]; then
         echo "🗄️ Resetting database only..."
-        docker-compose down 2>/dev/null || true
+        docker compose down 2>/dev/null || true
         docker volume rm mylayer_postgres_data 2>/dev/null || true
-        docker-compose up -d db
+        docker compose up -d db
         echo "✅ Database reset complete!"
         exit 0
     fi
@@ -302,7 +313,7 @@ else
     
     # Start production services
     echo "🚀 Starting production services..."
-    docker-compose up -d
+    docker compose up -d
     
     # Wait for services to be ready
     echo "⏳ Waiting for services to be ready..."
@@ -310,7 +321,7 @@ else
     
     # Check if services are running
     echo "🔍 Checking service status..."
-    docker-compose ps
+    docker compose ps
     
     # Test endpoints
     echo "🧪 Testing production endpoints..."
@@ -340,6 +351,6 @@ else
     echo "🔧 Backend API: https://$DOMAIN/api (or http://$SERVER_IP:3001)"
     echo "🗄️  PgAdmin: http://$SERVER_IP:5050"
     echo ""
-    echo "📋 To view logs: docker-compose logs -f"
-    echo "🛑 To stop: docker-compose down"
+    echo "📋 To view logs: docker compose logs -f"
+    echo "🛑 To stop: docker compose down"
 fi 

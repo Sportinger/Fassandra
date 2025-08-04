@@ -5,9 +5,6 @@ FROM node:20-alpine
 ARG VITE_API_BASE_URL
 ARG VITE_WS_BASE_URL
 
-# Install openssl (same as dev)
-RUN apk add --no-cache openssl
-
 WORKDIR /app
 
 # Copy package files and install dependencies (exactly like dev)
@@ -36,22 +33,10 @@ RUN mkdir -p /usr/share/nginx/html
 RUN cp -r dist/* /usr/share/nginx/html/
 
 # Copy nginx config to correct Alpine nginx directory
-COPY nginx-mylayer.conf /etc/nginx/http.d/default.conf
+COPY nginx.conf /etc/nginx/http.d/default.conf
 
-# Generate SSL certificates
-RUN mkdir -p /etc/ssl/certs /etc/ssl/private
-RUN openssl req -x509 -newkey rsa:4096 \
-    -keyout /etc/ssl/private/server.key \
-    -out /etc/ssl/certs/server.crt \
-    -days 365 -nodes \
-    -subj "/C=DE/ST=Production/L=Server/O=Pessoa/CN=mylayer.org"
-
-# Set permissions
-RUN chmod 600 /etc/ssl/private/server.key
-RUN chmod 644 /etc/ssl/certs/server.crt
-
-# Expose ports
-EXPOSE 80 443
+# Expose only port 80 (SSL is handled by main nginx)
+EXPOSE 80
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"] 
