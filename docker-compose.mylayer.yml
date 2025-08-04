@@ -37,11 +37,23 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      # Claude Code environment
+      HOME: /home/appuser
+      CLAUDE_CODE_DEBUG: ${CLAUDE_CODE_DEBUG:-0}
     ports:
       - "3001:3001"
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      # Persist Claude Code configuration
+      - claude_config:/home/appuser/.claude
+      # Persist Claude Code config directory
+      - claude_config_json:/home/appuser/.config/claude-code
+      # Persist Gemini CLI configuration
+      - gemini_config:/home/appuser/.gemini
+      # Persist uploaded files
+      - uploads_data:/app/uploads
     restart: unless-stopped
     deploy:
       resources:
@@ -81,4 +93,15 @@ volumes:
   postgres_data:
     name: ${CONTAINER_PREFIX:-mylayer_}postgres_data
   pgadmin_data:
-    name: ${CONTAINER_PREFIX:-mylayer_}pgadmin_data 
+    name: ${CONTAINER_PREFIX:-mylayer_}pgadmin_data
+  # Claude Code configuration volumes
+  claude_config:
+    name: ${CONTAINER_PREFIX:-mylayer_}claude_config
+  claude_config_json:
+    name: ${CONTAINER_PREFIX:-mylayer_}claude_config_json
+  # Gemini CLI configuration volume
+  gemini_config:
+    name: ${CONTAINER_PREFIX:-mylayer_}gemini_config
+  # Uploads volume
+  uploads_data:
+    name: ${CONTAINER_PREFIX:-mylayer_}uploads_data 
