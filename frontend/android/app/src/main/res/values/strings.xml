@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pessoa</string>
+    <string name="title_activity_main">Pessoa</string>
+    <string name="package_name">com.pessoa.app</string>
+    <string name="custom_url_scheme">com.pessoa.app</string>
+</resources>
