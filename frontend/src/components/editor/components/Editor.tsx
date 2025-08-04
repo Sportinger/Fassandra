@@ -116,7 +116,29 @@ export const Editor: React.FC<EditorProps> = ({
           // Sync rehearsal line position
           if (state.rehearsalLinePosition !== undefined) {
             debugLog('[Rehearsal Sync] Received position from other user:', state.rehearsalLinePosition);
-            setRehearsalLinePosition(state.rehearsalLinePosition);
+            const newPosition = state.rehearsalLinePosition;
+            setRehearsalLinePosition(newPosition);
+            
+            // Scroll to the new position if in rehearsal mode and single-page view
+            if (rehearsalMode && viewMode === 'single-page' && newPosition > 0) {
+              debugLog('[Rehearsal Sync] Scrolling to synced position:', newPosition);
+              
+              // Find the container element
+              const containerElement = document.querySelector('.singlePageContainer');
+              if (containerElement) {
+                const containerRect = containerElement.getBoundingClientRect();
+                const absoluteLinePosition = containerRect.top + window.scrollY + newPosition;
+                const targetScrollPosition = absoluteLinePosition - (window.innerHeight / 2);
+                
+                // Smooth scroll to center the line
+                window.scrollTo({
+                  top: Math.max(0, targetScrollPosition),
+                  behavior: 'smooth'
+                });
+                
+                debugLog('[Rehearsal Sync] Scrolled to position:', targetScrollPosition);
+              }
+            }
           }
         }
       });
@@ -127,7 +149,7 @@ export const Editor: React.FC<EditorProps> = ({
     return () => {
       provider.awareness.off('change', handleAwarenessChange);
     };
-  }, [provider, debugLog]);
+  }, [provider, debugLog, rehearsalMode, viewMode]);
 
   // Initialize rehearsal line position in awareness when provider is ready
   useEffect(() => {
