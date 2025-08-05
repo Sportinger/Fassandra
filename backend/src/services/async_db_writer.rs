@@ -3,6 +3,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 use crate::services::persistence_event::YjsPersistenceEvent;
 use crate::models::yjs_update::YjsDocumentUpdate; // Assuming this is the correct path
+use hex;
 
 async fn save_yjs_update(pool: &PgPool, event: &YjsPersistenceEvent) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // 🔒 CRITICAL SECURITY: Never use fallback UUIDs - fail fast to prevent data corruption
@@ -34,8 +35,29 @@ pub async fn run_async_db_writer(
 ) {
     tracing::info!("Async DB Writer service started.");
     while let Some(event) = rx.recv().await {
-        tracing::debug!("Received Yjs update for script {}: user {:?}, size: {} bytes", 
-            event.script_id, event.user_id, event.update_data.len());
+        // Enhanced logging for debugging
+        if event.update_data.len() <= 100 {
+            tracing::error!("[DB_WRITER_RECEIVED] script: {}, user: {:?}, size: {}, full_hex: {}",
+                event.script_id, event.user_id, event.update_data.len(), hex::encode(&event.update_data));
+        } else {
+            tracing::error!("[DB_WRITER_RECEIVED] script: {}, user: {:?}, size: {}, first_50_hex: {}",
+                event.script_id, event.user_id, event.update_data.len(), 
+                hex::encode(&event.update_data[..event.update_data.len().min(50)]));
+        }
+        
+        // Validate update before storing
+        if event.update_data.len() >= 2 {
+            let msg_type = event.update_data[0];
+            tracing::error!("[DB_WRITER_VALIDATE] script: {}, msg_type: {:#04x}, size: {}",
+                event.script_id, msg_type, event.update_data.len());
+            
+            // Check for suspicious patterns
+            if msg_type == 0x00 && event.update_data.len() < 10 {
+                // Small updates starting with 0x00 can be problematic
+                tracing::error!("[DB_WRITER_WARNING] Suspicious small update pattern detected for script: {}",
+                    event.script_id);
+            }
+        }
         
         match save_yjs_update(&pool, &event).await {
             Ok(_) => {

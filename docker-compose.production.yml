@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # Main Caddy reverse proxy
+  caddy:
+    image: caddy:2-alpine
+    container_name: mylayer_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - caddy_logs:/var/log/caddy
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - pessoa-network
+
+  frontend:
+    image: mylayer-frontend:latest
+    container_name: mylayer_pessoa_frontend
+    restart: unless-stopped
+    networks:
+      - pessoa-network
+    # No ports exposed - Caddy handles everything
+
+  backend:
+    image: mylayer-backend:latest
+    container_name: mylayer_pessoa_backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/pessoa_db
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      JWT_SECRET: ${JWT_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_API_URL: ${GEMINI_API_URL}
+      ENVIRONMENT: production
+      RUST_LOG: info
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - pessoa-network
+    # No ports exposed - Caddy handles everything
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ~/.config/claude-code:/root/.config/claude-code:ro
+      - ~/.config/gcloud:/root/.config/gcloud:ro
+      - ~/.config/g.py:/root/.config/g.py:ro
+    # Add memory limits to prevent crashes
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  db:
+    image: postgres:15
+    container_name: mylayer_pessoa_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pessoa-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: mylayer_pessoa_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
+    networks:
+      - pessoa-network
+    depends_on:
+      - db
+
+networks:
+  pessoa-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: mylayer_postgres_data
+  caddy_data:
+    name: mylayer_caddy_data
+  caddy_config:
+    name: mylayer_caddy_config
+  caddy_logs:
+    name: mylayer_caddy_logs

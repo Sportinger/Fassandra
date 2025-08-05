@@ -1,0 +1,43 @@
+# Production Dockerfile with Caddy
+FROM node:20-alpine AS builder
+
+# Build arguments
+ARG VITE_API_BASE_URL
+ARG VITE_WS_BASE_URL
+
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY package.json package-lock.json ./
+
+# Install ALL dependencies including devDependencies (needed for build)
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --prefer-offline --no-audit --include=dev
+
+# Set environment variables
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV VITE_WS_BASE_URL=${VITE_WS_BASE_URL}
+ENV NODE_ENV=production
+
+# Copy all source files
+COPY . .
+
+# Build the application
+RUN npx vite build --mode production
+
+# Production stage with Caddy
+FROM caddy:2-alpine
+
+# Copy built files from builder
+COPY --from=builder /app/dist /srv
+
+# Copy custom Caddyfile
+COPY Caddyfile /etc/caddy/Caddyfile
+
+# Caddy serves from /srv by default
+EXPOSE 80
+EXPOSE 443
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1

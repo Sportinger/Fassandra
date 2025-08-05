@@ -1,0 +1,76 @@
+# Caddyfile for mylayer.org production deployment
+{
+    email admin@mylayer.org
+}
+
+mylayer.org www.mylayer.org {
+    # Backend API - handle API routes first
+    handle /api/* {
+        reverse_proxy backend:3001 {
+            # WebSocket support
+            header_up Upgrade {header.Upgrade}
+            header_up Connection {header.Connection}
+            
+            # Disable buffering for WebSocket to prevent binary data corruption
+            flush_interval -1
+            
+            # Timeouts for long-lived WebSocket connections
+            transport http {
+                read_timeout 24h
+                write_timeout 24h
+                dial_timeout 30s
+                response_header_timeout 30s
+            }
+        }
+    }
+
+    # Health check endpoint
+    handle /health {
+        reverse_proxy backend:3001
+    }
+    
+    # Login endpoint (no /api prefix)
+    handle /login {
+        reverse_proxy backend:3001
+    }
+    
+    # Register endpoint (no /api prefix)
+    handle /register {
+        reverse_proxy backend:3001
+    }
+
+    # Frontend - proxy to frontend container
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    # Security headers
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        -Server
+    }
+
+    # Gzip compression (excluding WebSocket to prevent binary corruption)
+    encode {
+        gzip
+        match {
+            header Content-Type text/*
+            header Content-Type application/json
+            header Content-Type application/javascript
+            header Content-Type application/xml
+        }
+    }
+
+    # Request body size limit for large Yjs updates
+    request_body {
+        max_size 50MB
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}

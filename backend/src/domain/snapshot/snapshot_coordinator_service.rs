@@ -3,6 +3,22 @@ use sqlx::{PgPool, QueryBuilder};
 use tokio::time::{timeout, Duration};
 use uuid::Uuid;
 use tracing::{info, error, debug, trace};
+use std::process::Command;
+
+/// Get current process memory usage in MB
+fn get_process_memory() -> f64 {
+    if let Ok(output) = Command::new("ps")
+        .args(&["--no-headers", "-o", "rss", "-p", &std::process::id().to_string()])
+        .output()
+    {
+        if let Ok(rss_str) = String::from_utf8(output.stdout) {
+            if let Ok(rss_kb) = rss_str.trim().parse::<f64>() {
+                return rss_kb / 1024.0; // Convert KB to MB
+            }
+        }
+    }
+    0.0
+}
 
 use super::{YjsProcessorService, ContentExtractorService, HtmlParserService};
 use super::content_extractor_service::ContentBlock;
@@ -26,30 +42,66 @@ impl SnapshotCoordinatorService {
 
     /// Creates a complete snapshot for a script
     pub async fn create_snapshot(&self, script_id: Uuid) -> Result<(), anyhow::Error> {
-        trace!("Attempting to create snapshot for script_id: {}", script_id);
+        let start_mem = get_process_memory();
+        error!("[SNAPSHOT_START] script: {}, memory: {} MB", script_id, start_mem);
 
         // Get last processed update ID
         let last_processed_id = self.get_last_processed_update_id(script_id).await?;
-        trace!("Last processed update ID for script {}: {}", script_id, last_processed_id);
+        error!("[SNAPSHOT_LAST_ID] script: {}, last_processed_id: {}", script_id, last_processed_id);
 
         // Fetch and process YJS updates
+        let before_fetch_mem = get_process_memory();
+        error!("[SNAPSHOT_FETCH_START] script: {}, memory: {} MB", script_id, before_fetch_mem);
+        
         let updates = self.yjs_processor.fetch_updates_since(script_id, last_processed_id).await?;
         
+        let after_fetch_mem = get_process_memory();
         if updates.is_empty() {
-            debug!("✅ No new YJS updates for script {} since ID {} - checking content snapshots...", script_id, last_processed_id);
+            error!("[SNAPSHOT_NO_UPDATES] script: {}, memory_delta: {} MB", 
+                  script_id, after_fetch_mem - before_fetch_mem);
         } else {
-            info!("📝 Processing {} NEW Yjs updates for script {} (incremental from ID {}).", 
-                  updates.len(), script_id, last_processed_id);
+            error!("[SNAPSHOT_UPDATES_FETCHED] script: {}, count: {}, memory_delta: {} MB", 
+                  script_id, updates.len(), after_fetch_mem - before_fetch_mem);
         }
 
         // Create and bootstrap YJS document
+        let before_doc_mem = get_process_memory();
+        error!("[SNAPSHOT_CREATE_DOC] script: {}, memory_before: {} MB", script_id, before_doc_mem);
         let doc = self.yjs_processor.create_document();
         
+        let after_doc_mem = get_process_memory();
+        error!("[SNAPSHOT_DOC_CREATED] script: {}, memory_delta: {} MB", 
+              script_id, after_doc_mem - before_doc_mem);
+        
         // Apply updates to the document
-        let last_applied_id = self.yjs_processor.apply_updates(&doc, &updates, script_id)?;
+        let before_apply_mem = get_process_memory();
+        error!("[SNAPSHOT_APPLY_START] script: {}, update_count: {}, memory: {} MB", 
+              script_id, updates.len(), before_apply_mem);
+        
+        let last_applied_id = match self.yjs_processor.apply_updates(&doc, &updates, script_id) {
+            Ok(id) => {
+                let after_apply_mem = get_process_memory();
+                error!("[SNAPSHOT_APPLY_SUCCESS] script: {}, last_id: {:?}, memory_delta: {} MB", 
+                      script_id, id, after_apply_mem - before_apply_mem);
+                id
+            },
+            Err(e) => {
+                let after_apply_mem = get_process_memory();
+                error!("[SNAPSHOT_APPLY_ERROR] script: {}, error: {}, memory_delta: {} MB, backtrace: {:?}", 
+                      script_id, e, after_apply_mem - before_apply_mem, std::backtrace::Backtrace::capture());
+                return Err(e);
+            }
+        };
         
         // Extract content blocks from the document
+        let before_extract_mem = get_process_memory();
+        error!("[SNAPSHOT_EXTRACT_START] script: {}, memory: {} MB", script_id, before_extract_mem);
+        
         let mut content_blocks = self.content_extractor.extract_content_blocks(&doc, script_id)?;
+        
+        let after_extract_mem = get_process_memory();
+        error!("[SNAPSHOT_EXTRACT_DONE] script: {}, blocks: {}, memory_delta: {} MB", 
+              script_id, content_blocks.len(), after_extract_mem - before_extract_mem);
         
         // If no blocks found, try HTML snapshot fallback
         if content_blocks.is_empty() {
@@ -63,7 +115,9 @@ impl SnapshotCoordinatorService {
         let final_last_processed_id = last_applied_id.unwrap_or(last_processed_id);
         self.update_snapshot_metadata(script_id, final_last_processed_id).await?;
         
-        info!("✅ Successfully created snapshot for script_id: {}", script_id);
+        let end_mem = get_process_memory();
+        error!("[SNAPSHOT_COMPLETE] script: {}, total_memory_delta: {} MB, final_memory: {} MB", 
+              script_id, end_mem - start_mem, end_mem);
         Ok(())
     }
 
