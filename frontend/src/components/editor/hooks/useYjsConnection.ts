@@ -8,6 +8,7 @@ import { isYDocEmpty } from '../utils/formatters';
 import { convertBlocksToTiptapContent } from '../utils/contentConverters';
 import { logDebugInfo, isMobile } from '../../../utils/debug';
 import { ConnectionStatus } from '../types';
+import { getWebSocketUrl } from '../../../config/websocket';
 // Removed mobile debug utilities - development utility
 // Removed console forwarder - development utility
 
@@ -161,8 +162,8 @@ export const useYjsConnection = ({
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsBaseUrl = `${wsProtocol}//${window.location.host}/api/collab`;
     
-    console.log(`[YJS] ✅ Using Secure Proxy WebSocket URL: ${wsBaseUrl}`);
-    console.log(`[YJS] 🔒 WebSocket goes through HTTPS frontend proxy for security`);
+    console.log(`[YJS] ✅ Using Dedicated WebSocket Port: ${wsBaseUrl}`);
+    console.log(`[YJS] 🔒 Direct WebSocket connection (bypassing nginx)`);
     console.log(`[YJS] 🔍 Current location:`, {
       protocol: window.location.protocol,
       host: window.location.host,

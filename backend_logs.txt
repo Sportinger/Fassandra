@@ -94,3 +94,4 @@ dev_pessoa_backend  | [2m2025-08-04T20:15:51.477181Z[0m [33m WARN[0m [2mbac
 dev_pessoa_backend  | [2m2025-08-04T20:15:51.477204Z[0m [33m WARN[0m [2mbackend::auth::core[0m[2m:[0m Unable to extract client IP, using fallback
 dev_pessoa_backend  | [2m2025-08-04T20:15:51.481175Z[0m [33m WARN[0m [2mbackend::auth::core[0m[2m:[0m Unable to extract client IP, using fallback
 dev_pessoa_backend  | [2m2025-08-04T20:15:51.593872Z[0m [33m WARN[0m [2mbackend::auth::core[0m[2m:[0m Unable to extract client IP, using fallback
+

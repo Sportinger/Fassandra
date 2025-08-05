@@ -1,0 +1,109 @@
+# 🚀 PRODUCTION ENVIRONMENT for mylayer.org
+# For deployment to Hetzner server
+# MODIFIED: Frontend service removed - nginx serves static files directly
+
+services:
+  db:
+    image: postgres:15
+    container_name: ${CONTAINER_PREFIX:-mylayer_}pessoa_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    image: mylayer-backend:latest
+    container_name: ${CONTAINER_PREFIX:-mylayer_}pessoa_backend
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_API_URL: ${GEMINI_API_URL}
+      BACKEND_PORT: 3001
+      APP_DOMAIN: ${APP_DOMAIN}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-20}
+      RUST_LOG: ${RUST_LOG:-info}
+      # Admin user creation
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      # Claude Code environment
+      HOME: /home/appuser
+      CLAUDE_CODE_DEBUG: ${CLAUDE_CODE_DEBUG:-0}
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Persist Claude Code configuration
+      - claude_config:/home/appuser/.claude
+      # Persist Claude Code config directory
+      - claude_config_json:/home/appuser/.config/claude-code
+      # Persist Gemini CLI configuration
+      - gemini_config:/home/appuser/.gemini
+      # Persist uploaded files
+      - uploads_data:/app/uploads
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # FRONTEND SERVICE REMOVED - Now served directly by nginx from /home/admin/app/frontend-build/
+  # frontend:
+  #   image: mylayer-frontend:latest
+  #   container_name: ${CONTAINER_PREFIX:-mylayer_}pessoa_frontend
+  #   environment:
+  #     - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+  #     - VITE_WS_BASE_URL=${VITE_WS_BASE_URL}
+  #   ports:
+  #     - "8080:80"   # Frontend internal port (nginx will proxy to this)
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ${CONTAINER_PREFIX:-mylayer_}pessoa_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    name: ${CONTAINER_PREFIX:-mylayer_}postgres_data
+  pgadmin_data:
+    name: ${CONTAINER_PREFIX:-mylayer_}pgadmin_data
+  # Claude Code configuration volumes
+  claude_config:
+    name: ${CONTAINER_PREFIX:-mylayer_}claude_config
+  claude_config_json:
+    name: ${CONTAINER_PREFIX:-mylayer_}claude_config_json
+  # Gemini CLI configuration volume
+  gemini_config:
+    name: ${CONTAINER_PREFIX:-mylayer_}gemini_config
+  # Uploads volume
+  uploads_data:
+    name: ${CONTAINER_PREFIX:-mylayer_}uploads_data
