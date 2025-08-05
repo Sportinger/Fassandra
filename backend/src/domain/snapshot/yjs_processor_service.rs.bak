@@ -13,35 +13,6 @@ use std::sync::Arc;
 use sqlx::PgPool;
 use hex;
 
-/// Get current memory usage in bytes (simplified version using process memory)
-fn get_memory_usage() -> usize {
-    // For now, use process memory as a proxy
-    if let Ok(output) = std::process::Command::new("ps")
-        .args(&["--no-headers", "-o", "rss", "-p", &std::process::id().to_string()])
-        .output()
-    {
-        if let Ok(rss_str) = String::from_utf8(output.stdout) {
-            if let Ok(rss_kb) = rss_str.trim().parse::<usize>() {
-                return rss_kb * 1024; // Convert KB to bytes
-            }
-        }
-    }
-    0
-}
-
-/// Format bytes into human-readable string
-fn format_bytes(bytes: usize) -> String {
-    if bytes < 1024 {
-        format!("{} B", bytes)
-    } else if bytes < 1024 * 1024 {
-        format!("{:.2} KB", bytes as f64 / 1024.0)
-    } else if bytes < 1024 * 1024 * 1024 {
-        format!("{:.2} MB", bytes as f64 / (1024.0 * 1024.0))
-    } else {
-        format!("{:.2} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
-    }
-}
-
 #[derive(Debug)]
 pub struct YjsUpdate {
     pub id: i64,
@@ -83,9 +54,7 @@ impl YjsProcessorService {
 
     /// Fetches YJS updates from database since the last processed update
     pub async fn fetch_updates_since(&self, script_id: Uuid, last_processed_id: i64) -> Result<Vec<YjsUpdate>, anyhow::Error> {
-        let before_mem = get_memory_usage();
-        error!("[FETCH_START] Script: {}, last_id: {}, memory: {}", 
-               script_id, last_processed_id, format_bytes(before_mem));
+        trace!("Fetching YJS updates for script {} since ID {}", script_id, last_processed_id);
         
         let updates = sqlx::query_as!(
             YjsUpdate,
@@ -102,18 +71,9 @@ impl YjsProcessorService {
         .await
         .map_err(|e| anyhow::anyhow!("DB error fetching Yjs updates for script {}: {}", script_id, e))?;
         
-        let after_mem = get_memory_usage();
-        let total_size: usize = updates.iter().map(|u| u.update_data.len()).sum();
-        
-        error!("[FETCH_COMPLETE] Script: {}, fetched: {} updates, total_size: {}, memory_delta: {}", 
-               script_id, updates.len(), format_bytes(total_size), 
-               format_bytes(after_mem.saturating_sub(before_mem)));
-        
-        // Log first few updates for debugging
-        for (idx, update) in updates.iter().take(3).enumerate() {
-            error!("[DB_UPDATE] idx: {}, id: {}, size: {}, first_50_hex: {:?}", 
-                   idx, update.id, update.update_data.len(),
-                   hex::encode(&update.update_data[..update.update_data.len().min(50)]));
+        if !updates.is_empty() {
+            debug!("📝 Fetched {} YJS updates for script {} (incremental from ID {})", 
+                   updates.len(), script_id, last_processed_id);
         }
         
         Ok(updates)
@@ -138,25 +98,17 @@ impl YjsProcessorService {
                     continue;
                 }
                 
-                let before_apply_mem = get_memory_usage();
-                error!("[APPLY_UPDATE_START] update_id: {}, script: {}, size: {}, memory: {}, first_50_hex: {:?}", 
-                      db_update.id, script_id, payload.len(), format_bytes(before_apply_mem),
-                      hex::encode(&payload[..payload.len().min(50)]));
+                debug!("Processing update {} for script {}: {} bytes, hex preview: {}", 
+                      db_update.id, script_id, payload.len(),
+                      hex::encode(&payload[..payload.len().min(20)]));
 
                 // Try to decode and apply the update
                 match self.decode_and_apply_update(&mut txn, payload, script_id, db_update.id) {
                     Ok(()) => {
-                        let after_apply_mem = get_memory_usage();
-                        error!("[APPLY_UPDATE_SUCCESS] update_id: {}, memory_delta: {}", 
-                              db_update.id, format_bytes(after_apply_mem.saturating_sub(before_apply_mem)));
                         last_successfully_applied_id = Some(db_update.id);
                     }
                     Err(e) => {
-                        let after_apply_mem = get_memory_usage();
-                        error!("[APPLY_UPDATE_FAILED] update_id: {}, script: {}, error: {}, memory_delta: {}, backtrace: {:?}", 
-                              db_update.id, script_id, e, 
-                              format_bytes(after_apply_mem.saturating_sub(before_apply_mem)),
-                              std::backtrace::Backtrace::capture());
+                        error!("Failed to apply update {} for script {}: {}", db_update.id, script_id, e);
                         break; // Stop processing on first error
                     }
                 }
@@ -183,25 +135,10 @@ impl YjsProcessorService {
             error!("Update payload too large ({} bytes) for script {}, update {}", payload.len(), script_id, update_id);
             return Err(anyhow::anyhow!("Update payload exceeds maximum size of {} bytes", MAX_UPDATE_PAYLOAD_SIZE));
         }
-        
-        // Log full update for small updates that might be problematic
-        if payload.len() <= 100 {
-            error!("[DECODE_SMALL_UPDATE] update_id: {}, full_hex: {}", update_id, hex::encode(payload));
-        }
-        
-        // Analyze update structure
-        if payload.len() >= 2 {
-            let msg_type = payload[0];
-            let msg_subtype = if payload.len() > 1 { Some(payload[1]) } else { None };
-            error!("[DECODE_UPDATE_TYPE] update_id: {}, msg_type: {:#04x}, subtype: {:?}, size: {}", 
-                   update_id, msg_type, msg_subtype.map(|b| format!("{:#04x}", b)), payload.len());
-        }
-        
         // Try to decode as direct YJS Update first (most common case for stored updates)
         match Update::decode_v1(payload) {
             Ok(update) => {
-                error!("[DECODE_V1_SUCCESS] update_id: {}, script: {}, decoded_update_size: {:?}", 
-                      update_id, script_id, std::mem::size_of_val(&update));
+                debug!("Successfully decoded and applying direct V1 update {} for script {}", update_id, script_id);
                 
                 // Wrap apply_update in a catch_unwind to prevent crashes
                 let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -279,22 +216,19 @@ impl YjsProcessorService {
                     YrsSyncMessage::Sync(sync_message_enum) => {
                         match sync_message_enum {
                             YrsInnerSyncMessage::SyncStep1(sv_bytes) => {
-                                let before_encode_mem = get_memory_usage();
-                                error!("[SYNCSTEP1_START] script: {}, update_id: {}, sv_len: {}, memory: {}", 
-                                      script_id, update_id, sv_bytes.len(), format_bytes(before_encode_mem));
+                                trace!("Handling SyncStep1 for script_id: {}, update_id: {}, sv_bytes len: {}", script_id, update_id, sv_bytes.len());
                                 
                                 // Safety check: SyncStep1 state vectors should be reasonably small
                                 const MAX_STATE_VECTOR_SIZE: usize = 10_000; // 10KB max for state vector
                                 if sv_bytes.len() > MAX_STATE_VECTOR_SIZE {
-                                    error!("[SYNCSTEP1_ERROR] State vector too large: {} bytes for script {}, update {}", 
-                                          sv_bytes.len(), script_id, update_id);
+                                    error!("State vector too large ({} bytes) for script {}, update {}", sv_bytes.len(), script_id, update_id);
                                     return Err(anyhow::anyhow!("State vector exceeds maximum size of {} bytes", MAX_STATE_VECTOR_SIZE));
                                 }
                                 
-                                let sv = sv_bytes;
+                                // TODO: Add state vector validation to prevent massive memory allocation
+                                // Currently relying on MAX_STATE_VECTOR_SIZE check above
                                 
-                                // Log document state before encoding
-                                // Note: Store methods for size estimation are not available in this yrs version
+                                let sv = sv_bytes;
                                 
                                 // Use catch_unwind to prevent memory allocation panics from crashing the server
                                 let update_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -302,20 +236,9 @@ impl YjsProcessorService {
                                 }));
                                 
                                 let update_bytes = match update_result {
-                                    Ok(bytes) => {
-                                        let after_encode_mem = get_memory_usage();
-                                        error!("[SYNCSTEP1_ENCODED] update_size: {}, memory_delta: {}, first_50_hex: {:?}",
-                                              format_bytes(bytes.len()), 
-                                              format_bytes(after_encode_mem.saturating_sub(before_encode_mem)),
-                                              hex::encode(&bytes[..bytes.len().min(50)]));
-                                        bytes
-                                    },
-                                    Err(panic_info) => {
-                                        let after_encode_mem = get_memory_usage();
-                                        error!("[SYNCSTEP1_PANIC] Memory allocation panic for script {}, update {}, memory_delta: {}, panic: {:?}", 
-                                              script_id, update_id, 
-                                              format_bytes(after_encode_mem.saturating_sub(before_encode_mem)),
-                                              panic_info);
+                                    Ok(bytes) => bytes,
+                                    Err(_) => {
+                                        error!("Memory allocation panic when encoding state vector for script {}, update {}", script_id, update_id);
                                         return Err(anyhow::anyhow!("Failed to encode state vector: memory allocation error"));
                                     }
                                 };
@@ -371,15 +294,13 @@ impl YjsProcessorService {
         
         // Log root references
         let root_refs: Vec<String> = txn.root_refs().map(|(key, _)| key.to_string()).collect();
-        
-        error!("[DOC_STATE] script: {}, root_refs: {:?}, memory: {}", 
-               script_id, root_refs, format_bytes(get_memory_usage()));
+        debug!("After applying updates, YJS document root refs for script {}: {:?}", script_id, root_refs);
         
         // Log default fragment state
         if let Some(default_fragment) = txn.get_xml_fragment("default") {
-            error!("[DOC_STATE] default_fragment_len: {} for script {}", default_fragment.len(&txn), script_id);
+            debug!("After applying updates, default fragment length for script {}: {}", script_id, default_fragment.len(&txn));
         } else {
-            error!("[DOC_STATE] No default fragment found for script {}", script_id);
+            debug!("After applying updates, no default fragment found for script {}", script_id);
         }
     }
 }

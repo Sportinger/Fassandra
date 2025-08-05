@@ -22,22 +22,6 @@ use tokio::time::{interval, Duration};
 use chrono::Utc;
 use dashmap::DashMap;
 use hex;
-use std::process::Command;
-
-/// Get current process memory usage in MB
-fn get_process_memory() -> f64 {
-    if let Ok(output) = Command::new("ps")
-        .args(&["--no-headers", "-o", "rss", "-p", &std::process::id().to_string()])
-        .output()
-    {
-        if let Ok(rss_str) = String::from_utf8(output.stdout) {
-            if let Ok(rss_kb) = rss_str.trim().parse::<f64>() {
-                return rss_kb / 1024.0; // Convert KB to MB
-            }
-        }
-    }
-    0.0
-}
 
 use crate::auth::WsAuthUser;
 use crate::services::persistence_event::YjsPersistenceEvent;
@@ -333,18 +317,13 @@ async fn handle_socket(
                         // This is a Yjs update message
                         session.update_activity().await;
                         
-                        // Get memory before processing
-                        let before_mem = get_process_memory();
-                        tracing::error!("[WS_MSG_RECEIVED] session: {}, script: {}, size: {}, memory_before: {} MB",
-                                       session_id, script_id, bin.len(), before_mem);
-                        
                         // Add size validation
                         const MAX_WEBSOCKET_MESSAGE_SIZE: usize = 5_000_000; // 5MB max
                         if bin.len() > MAX_WEBSOCKET_MESSAGE_SIZE {
                             tracing::error!(
-                                "[WS_MSG_TOO_LARGE] session: {}, size: {} bytes (max: {}), first_100_hex: {}", 
-                                session_id,
+                                "WebSocket message too large: {} bytes from session {} (max: {}). Hex preview: {}", 
                                 bin.len(), 
+                                session_id,
                                 MAX_WEBSOCKET_MESSAGE_SIZE,
                                 hex::encode(&bin[..bin.len().min(100)])
                             );
@@ -354,46 +333,27 @@ async fn handle_socket(
                         }
                         
                         let is_awareness = is_awareness_update(&bin);
-                        tracing::error!(
-                            "[WS_MSG_TYPE] session: {}, awareness: {}, first_50_hex: {}", 
+                        tracing::info!(
+                            "Received binary update from session {}, size: {} bytes, awareness: {}, first 20 bytes hex: {}", 
                             session_id, 
+                            bin.len(),
                             is_awareness,
-                            hex::encode(&bin[..bin.len().min(50)])
+                            hex::encode(&bin[..bin.len().min(20)])
                         );
                         
                         // Only persist real content updates, not awareness updates (cursor movements)
                         if !is_awareness {
-                            // Log full content for small updates that might be problematic
-                            if bin.len() <= 100 {
-                                tracing::error!("[WS_CONTENT_FULL] script: {}, size: {}, full_hex: {}", 
-                                              script_id, bin.len(), hex::encode(&bin));
-                            }
-                            
-                            // Analyze the binary structure
-                            if bin.len() >= 2 {
-                                let msg_type = bin[0];
-                                let msg_subtype = if bin.len() > 1 { Some(bin[1]) } else { None };
-                                tracing::error!("[WS_CONTENT_TYPE] script: {}, msg_type: {:#04x}, subtype: {:?}", 
-                                              script_id, msg_type, msg_subtype.map(|b| format!("{:#04x}", b)));
-                            }
-                            
-                            tracing::error!("[WS_PERSIST_START] script: {}, size: {} bytes, session: {}, user: {}", 
-                                          script_id, bin.len(), session_id, user_id);
-                            
                             if let Err(e) = persistence_event_tx.send(YjsPersistenceEvent {
                                 script_id: script_id.clone(),
                                 update_data: bin.clone(),
                                 user_id: Some(Uuid::parse_str(&user_id).unwrap_or_else(|_| Uuid::nil())),
                                 received_at: Utc::now(),
                             }).await {
-                                tracing::error!("[WS_PERSIST_ERROR] Failed to send persistence event: {}", e);
-                            } else {
-                                let after_mem = get_process_memory();
-                                tracing::error!("[WS_PERSIST_QUEUED] script: {}, size: {}, memory_delta: {} MB", 
-                                              script_id, bin.len(), after_mem - before_mem);
+                                tracing::error!("Error sending persistence event: {}", e);
                             }
+                            tracing::info!("💾 Queued content update for script {} ({}bytes) - should trigger snapshotting soon", script_id, bin.len());
                         } else {
-                            tracing::debug!("[WS_AWARENESS_SKIP] script: {}, size: {} bytes", script_id, bin.len());
+                            tracing::debug!("👁️ Skipped persisting awareness update for script {} ({}bytes)", script_id, bin.len());
                         }
                         
                         // Always broadcast to all other clients (including awareness updates for real-time cursors)
