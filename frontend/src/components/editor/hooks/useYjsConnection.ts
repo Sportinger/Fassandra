@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 // 🔧 DISABLED: Offline storage - removed IndexeddbPersistence import
@@ -9,6 +9,7 @@ import { convertBlocksToTiptapContent } from '../utils/contentConverters';
 import { logDebugInfo, isMobile } from '../../../utils/debug';
 import { ConnectionStatus } from '../types';
 import { getWebSocketUrl } from '../../../config/websocket';
+import { yjsDocumentManager } from '../../../services/yjsDocumentManager';
 // Removed mobile debug utilities - development utility
 // Removed console forwarder - development utility
 
@@ -101,6 +102,9 @@ export const useYjsConnection = ({
   setPendingContent,
   setIsMobileFallback,
 }: UseYjsConnectionProps) => {
+  // Track the current provider to clean it up properly
+  const providerRef = useRef<WebsocketProvider | null>(null);
+  
   // Initialize Yjs Doc and Provider
   useEffect(() => {
     if (!scriptId || !user || !token) {
@@ -146,14 +150,17 @@ export const useYjsConnection = ({
     setStatus('connecting');
     setErrorMessage(null);
 
-    const currentDoc = new Y.Doc();
+    // 🔧 FIX: Use document manager to get persistent document instance
+    const currentDoc = yjsDocumentManager.getDocument(scriptId);
+    const docInfo = yjsDocumentManager.getDocumentInfo(scriptId);
     
-    // Ensure the 'default' XmlFragment exists immediately (Tiptap's default field name)
-    currentDoc.transact(() => {
-      currentDoc.getXmlFragment('default'); // This creates it if it doesn't exist
-    }, 'initializeDefaultFragment');
+    console.log('[YJS Debug] Using persistent Y.Doc from manager:', {
+      scriptId,
+      clientID: currentDoc.clientID,
+      refCount: docInfo.refCount,
+      isNew: docInfo.refCount === 1
+    });
     
-    console.log('[YJS Debug] Y.Doc created and default fragment initialized');
     setYdoc(currentDoc);
 
     // 🔧 SECURE ARCHITECTURE: WebSocket through HTTPS Frontend Proxy
@@ -227,6 +234,7 @@ export const useYjsConnection = ({
 
     // Set up WebSocket provider with auth and mobile fallback
     const roomName = scriptId;
+    let currentProvider: WebsocketProvider | null = null;
     
     // 🎭 THEATER PRIORITY: Enhanced mobile WebSocket configuration for iPad/iPhone collaboration
     if (browserInfo.isChrome || browserInfo.isSafari || isMobile()) {
@@ -282,7 +290,7 @@ export const useYjsConnection = ({
 
       try {
         console.log(`[YJS] 🔨 ${deviceType}: Creating WebSocketProvider with config:`, providerConfig);
-        const currentProvider = new WebsocketProvider(wsUrlWithToken, '', currentDoc, providerConfig);
+        currentProvider = new WebsocketProvider(wsUrlWithToken, '', currentDoc, providerConfig);
         console.log(`[YJS] ✅ ${deviceType}: WebSocket provider created successfully with token in URL`);
         console.log(`[YJS] 🔧 ${deviceType}: Setting up WebSocket provider handlers...`);
         setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
@@ -312,17 +320,20 @@ export const useYjsConnection = ({
         resyncInterval: 15000,
       };
 
-      const currentProvider = new WebsocketProvider(wsBaseUrl, roomName, currentDoc, providerConfig);
+      currentProvider = new WebsocketProvider(wsBaseUrl, roomName, currentDoc, providerConfig);
       setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
-    setProvider(currentProvider);
+      setProvider(currentProvider);
     }
 
     logDebugInfo('Editor', 'WebSocket provider created with browser-specific options');
 
+    // Store provider ref for cleanup
+    providerRef.current = currentProvider;
+    
     // Cleanup function
     return () => {
-      console.log("Cleaning up WebSocket provider and Yjs doc...");
-      logDebugInfo('Editor', 'Cleaning up WebSocket provider and Yjs doc');
+      console.log("Cleaning up WebSocket provider (keeping Yjs doc persistent)...");
+      logDebugInfo('Editor', 'Cleaning up WebSocket provider (keeping doc)');
       
       // 🔧 DISABLED: Offline storage - removed persistence cleanup
       // if (persistenceRef.current) {
@@ -330,8 +341,22 @@ export const useYjsConnection = ({
       //   persistenceRef.current = null;
       // }
       
-      if (currentDoc) {
-        currentDoc.destroy();
+      // 🔧 FIX: Only destroy provider, NOT the document (keep it persistent)
+      if (providerRef.current) {
+        console.log('[YJS] Destroying WebSocket provider, but keeping document');
+        providerRef.current.destroy();
+        providerRef.current = null;
+      }
+      
+      // 🔧 FIX: Release document reference but don't destroy it
+      if (scriptId) {
+        yjsDocumentManager.releaseDocument(scriptId);
+        const docInfo = yjsDocumentManager.getDocumentInfo(scriptId);
+        console.log('[YJS] Released document reference:', {
+          scriptId,
+          remainingRefCount: docInfo.refCount,
+          stillExists: docInfo.exists
+        });
       }
       
       setProvider(null);

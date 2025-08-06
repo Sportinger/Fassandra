@@ -3,7 +3,7 @@
  * Core editor functionality that integrates with Pessoa's existing infrastructure
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useEditor } from '@tiptap/react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
@@ -38,6 +38,7 @@ import type {
   ToolbarContext 
 } from '../types/index';
 import { storeContentSnapshot } from '../../../api';
+import { yjsDocumentManager } from '../../../services/yjsDocumentManager';
 
 // 🔧 SECURE ARCHITECTURE: WebSocket through HTTPS Frontend Proxy 
 // All traffic (HTTP + WebSocket) goes through frontend SSL termination
@@ -89,6 +90,9 @@ export const useEditorCore = ({
   const [contentSnapshot, setContentSnapshot] = useState<string>('');
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
   const [activeUserCount, setActiveUserCount] = useState<number>(0);
+  
+  // Track provider ref for cleanup
+  const providerRef = useRef<WebsocketProvider | null>(null);
 
   // 🔧 FIXED: Initialize Yjs document and WebSocket provider with proper dependencies
   useEffect(() => {
@@ -99,12 +103,16 @@ export const useEditorCore = ({
 
     debugLog(`[Editor Core] Initializing for script: ${stableScriptId}, user: ${stableUser.username}`);
 
-    const doc = new Y.Doc();
+    // 🔧 FIX: Use document manager to get persistent document instance
+    const doc = yjsDocumentManager.getDocument(stableScriptId);
+    const docInfo = yjsDocumentManager.getDocumentInfo(stableScriptId);
     
-    // Ensure the 'default' XmlFragment exists immediately (Tiptap's default field name)
-    doc.transact(() => {
-      doc.getXmlFragment('default');
-    }, 'initializeDefaultFragment');
+    debugLog(`[Editor Core] Using persistent Y.Doc from manager:`, {
+      scriptId: stableScriptId,
+      clientID: doc.clientID,
+      refCount: docInfo.refCount,
+      isNew: docInfo.refCount === 1
+    });
     
     setYdoc(doc);
 
@@ -124,6 +132,7 @@ export const useEditorCore = ({
     );
 
     setProvider(websocketProvider);
+    providerRef.current = websocketProvider;
 
     // Connection status handlers
     websocketProvider.on('status', (event: { status: string }) => {
@@ -185,14 +194,29 @@ export const useEditorCore = ({
 
     // 🔧 FIXED: Clean up properly to prevent memory leaks
     return () => {
-      debugLog('[Editor Core] Cleaning up WebSocket provider and Yjs doc...');
+      debugLog('[Editor Core] Cleaning up WebSocket provider (keeping Yjs doc persistent)...');
       if (websocketProvider.awareness) {
         websocketProvider.awareness.off('change', trackAwareness);
       }
-      websocketProvider.destroy();
-      // 🔧 DISABLED: Offline storage - removed persistence cleanup
-      // persistence.destroy();
-      doc.destroy();
+      
+      // 🔧 FIX: Only destroy provider, NOT the document (keep it persistent)
+      if (providerRef.current) {
+        debugLog('[Editor Core] Destroying WebSocket provider, but keeping document');
+        providerRef.current.destroy();
+        providerRef.current = null;
+      }
+      
+      // 🔧 FIX: Release document reference but don't destroy it
+      if (stableScriptId) {
+        yjsDocumentManager.releaseDocument(stableScriptId);
+        const docInfo = yjsDocumentManager.getDocumentInfo(stableScriptId);
+        debugLog('[Editor Core] Released document reference:', {
+          scriptId: stableScriptId,
+          remainingRefCount: docInfo.refCount,
+          stillExists: docInfo.exists
+        });
+      }
+      
       setProvider(null);
       setYdoc(null);
       setActiveUserCount(0);

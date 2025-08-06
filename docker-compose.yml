@@ -58,6 +58,13 @@ services:
     entrypoint: ["/app/docker-entrypoint.sh"]
     command: ["/app/backend"]
     restart: unless-stopped
+    # Add memory limits to match production environment
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
 
   frontend:
     container_name: ${CONTAINER_PREFIX:-dev_}pessoa_frontend
@@ -83,6 +90,13 @@ services:
       - VITE_API_BASE_URL=
       - VITE_WS_BASE_URL=${VITE_WS_BASE_URL}
     restart: unless-stopped
+    # Add memory limits to match production environment
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
 
   pgadmin:
     image: dpage/pgadmin4:latest

@@ -10,6 +10,7 @@ import { PlaceholderScript } from './types'
 import { Header } from './components/Header';
 import { Script } from './types'; // Import Script type
 import { getScriptWithBlocks } from './api';
+import { YjsDocumentProvider } from './contexts/YjsDocumentContext';
 
 import './App.css'
 
@@ -330,28 +331,30 @@ function App(): JSX.Element {
   }
 
   return (
-    <div className="App">
-      {token && (
-        <Header 
-          currentView={currentView === 'auth' ? 'scripts' : currentView}
-          scriptTitle={selectedScriptTitle || undefined}
-          onNavigateToScripts={handleNavigateToScripts}
-          onThumbnailsRefreshed={handleThumbnailsRefreshed}
-        />
-      )}
-
-      <main className="appContent">
-        {viewComponent}
-        
-        {token && isUploaderOpen && (
-          <ScriptUploader 
-            onScriptCreated={handleScriptCreated} 
-            onClose={() => setIsUploaderOpen(false)}
-            onBackgroundUploadStart={handleBackgroundUploadStart}
+    <YjsDocumentProvider>
+      <div className="App">
+        {token && (
+          <Header 
+            currentView={currentView === 'auth' ? 'scripts' : currentView}
+            scriptTitle={selectedScriptTitle || undefined}
+            onNavigateToScripts={handleNavigateToScripts}
+            onThumbnailsRefreshed={handleThumbnailsRefreshed}
           />
         )}
-      </main>
-    </div>
+
+        <main className="appContent">
+          {viewComponent}
+          
+          {token && isUploaderOpen && (
+            <ScriptUploader 
+              onScriptCreated={handleScriptCreated} 
+              onClose={() => setIsUploaderOpen(false)}
+              onBackgroundUploadStart={handleBackgroundUploadStart}
+            />
+          )}
+        </main>
+      </div>
+    </YjsDocumentProvider>
   )
 }
 

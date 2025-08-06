@@ -6,7 +6,7 @@
 mylayer.org www.mylayer.org {
     # Backend API - handle API routes first
     handle /api/* {
-        reverse_proxy backend:3001 {
+        reverse_proxy backend:3000 {
             # WebSocket support
             header_up Upgrade {header.Upgrade}
             header_up Connection {header.Connection}
@@ -26,17 +26,17 @@ mylayer.org www.mylayer.org {
 
     # Health check endpoint
     handle /health {
-        reverse_proxy backend:3001
+        reverse_proxy backend:3000
     }
     
     # Login endpoint (no /api prefix)
     handle /login {
-        reverse_proxy backend:3001
+        reverse_proxy backend:3000
     }
     
     # Register endpoint (no /api prefix)
     handle /register {
-        reverse_proxy backend:3001
+        reverse_proxy backend:3000
     }
 
     # Frontend - proxy to frontend container
