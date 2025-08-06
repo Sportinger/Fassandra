@@ -75,8 +75,8 @@ if ! ssh -o ConnectTimeout=5 $USER@$SERVER "echo 'Connected'"; then
     exit 1
 fi
 
-# CLEAN SERVER
-echo "🧹 Cleaning server (removing ALL Docker containers)..."
+# CLEAN SERVER (but preserve source directories)
+echo "🧹 Cleaning server (removing Docker containers, keeping source files)..."
 ssh $USER@$SERVER << 'EOF'
 cd /home/admin/app
 # First, properly stop mylayer app if it exists
@@ -87,8 +87,10 @@ echo "Stopping all containers..."
 docker stop $(docker ps -aq) 2>/dev/null || true
 echo "Removing all containers..."
 docker rm $(docker ps -aq) 2>/dev/null || true
-echo "Cleaning system and volumes..."
-docker system prune -af --volumes
+echo "Cleaning system (keeping volumes for database persistence)..."
+docker system prune -af
+# Preserve backend and frontend directories if they exist
+echo "Preserving source directories for rsync deployment..."
 EOF
 
 if [ $? -ne 0 ]; then
@@ -141,6 +143,11 @@ scp Caddyfile $USER@$SERVER:$APP_DIR/ || {
 }
 echo "✅ Config files transferred"
 
+# Sync essential build files for rsync deployments
+echo "📡 Syncing build files for future fast deployments..."
+rsync -az ./backend/Dockerfile ./backend/Cargo.toml ./backend/Cargo.lock $USER@$SERVER:$APP_DIR/backend/ 2>/dev/null || true
+rsync -az ./frontend/Dockerfile ./frontend/package.json ./frontend/package-lock.json $USER@$SERVER:$APP_DIR/frontend/ 2>/dev/null || true
+
 # CLEANUP LOCAL
 rm -f backend.tar.gz frontend.tar.gz
 
@@ -177,6 +184,10 @@ echo "✅ Frontend image loaded"
 
 # Clean transferred files
 rm -f backend.tar.gz frontend.tar.gz
+
+# Sync source files for future rsync deployments
+echo "📂 Setting up source directories for fast rsync deployments..."
+mkdir -p backend frontend
 
 # Start services
 echo "🚀 Starting services..."
@@ -241,3 +252,6 @@ echo "🌐 https://$DOMAIN"
 echo ""
 echo "📋 Check logs with:"
 echo "   ssh $USER@$SERVER 'cd $APP_DIR && docker compose -f docker-compose.production.yml logs -f'"
+echo ""
+echo "💡 Fast deployments now available with:"
+echo "   ./deploy.prod.sh"

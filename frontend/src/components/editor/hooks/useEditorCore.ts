@@ -43,8 +43,9 @@ import { yjsDocumentManager } from '../../../services/yjsDocumentManager';
 // 🔧 SECURE ARCHITECTURE: WebSocket through HTTPS Frontend Proxy 
 // All traffic (HTTP + WebSocket) goes through frontend SSL termination
 // Frontend proxy (vite.config.ts) forwards to backend with ws: true enabled
+// Use environment variable if available (for production), otherwise construct from window location (for dev)
 const WS_BASE_URL = typeof window !== 'undefined' 
-  ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`
+  ? (import.meta.env.VITE_WS_BASE_URL || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`)
   : '/api/collab';
 
 // 🔧 FIXED: Reduce console spam - only log important events
