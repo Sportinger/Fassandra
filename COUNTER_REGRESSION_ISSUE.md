@@ -1,7 +1,7 @@
 # Yjs Counter Regression Issue - Detailed Analysis
 
 ## Problem Summary
-The application experiences a critical memory allocation failure (attempting to allocate 9.5GB to 16GB of RAM) when the backend processes certain Yjs document updates. This causes the backend container to crash repeatedly.
+The application experiences a critical memory allocation failure (attempting to allocate 9.5GB to 16GB of RAM) when the backend proceQsses certain Yjs document updates. This causes the backend container to crash repeatedly.
 
 ## Root Cause
 The issue is a **counter regression** in Yjs update sequences. When creating a new document, the counter sequence has a gap:
@@ -176,35 +176,13 @@ ORDER BY id LIMIT 5;
 ## Current Status
 
 - ✅ Singleton document manager is deployed and working for reconnections
-- ❌ Counter gaps still occur on new document creation (verified in both local and production)
-- ❌ Backend crashes in production when processing updates with counter gaps (due to 2GB Docker memory limit)
-- ✅ Local backend "works" but wastes 16GB RAM per new document with counter gap
+- ❌ Counter gaps still occur on new document creation
+- ❌ Backend crashes when processing updates with counter gaps
 - ⚠️ Workaround: Manually delete problematic updates and restart
-
-## Root Cause Analysis - Memory Limit Discovery
-
-### The Real Problem
-1. **Counter gap exists everywhere**: Both local and production have missing counter 01
-2. **Memory allocation bug**: Rust Yjs tries to allocate 16GB when it sees the gap
-3. **Docker memory limit difference**:
-   - **Local**: No limit → allocates 16GB successfully (inefficient but works)  
-   - **Production**: 2GB limit → allocation fails, container crashes
-
-### Evidence
-Production docker-compose.production.yml:
-```yaml
-backend:
-  deploy:
-    resources:
-      limits:
-        memory: 2G  # This causes the crash!
-```
-
-Local environment has no such limit, allowing the massive allocation.
 
 ## Next Steps
 
-1. **Immediate**: Increase production memory limit temporarily (e.g., to 20GB) to match local behavior
-2. **Short-term**: Fix the counter gap in frontend Y.Doc initialization
-3. **Long-term**: Fix Rust backend to handle counter gaps without massive memory allocation
-4. **Monitoring**: Add alerts for memory usage spikes
+1. Investigate why the initial Y.Doc transaction creates a counter gap
+2. Fix the initialization sequence to ensure continuous counters
+3. Add backend protection against counter gap memory allocation issues
+4. Implement monitoring to detect issues early
