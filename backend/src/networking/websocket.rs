@@ -307,13 +307,25 @@ async fn handle_socket(
                     break;
                 }
                 
-                // Send WebSocket ping to check connection health
-                // The 15s interval prevents y-websocket's 30s timeout by ensuring frequent activity
+                // Send both ping frame AND a heartbeat message
+                // The ping frame checks connection at protocol level
+                // The heartbeat message updates y-websocket's wsLastMessageReceived to prevent 30s timeout
+                
+                // Send ping frame for protocol-level keepalive
                 if socket_tx.send(Message::Ping(vec![])).await.is_err() {
                     tracing::error!("Failed to send ping to client: {}", session_id);
                     break;
                 }
-                tracing::debug!("Sent ping to session {}", session_id);
+                
+                // Send empty binary message as heartbeat for y-websocket
+                // This will update wsLastMessageReceived and prevent the 30-second disconnect
+                // Using an empty Yjs update (sync step 2 message) which is harmless
+                let heartbeat = vec![0x00, 0x00]; // Yjs sync step 2 with empty content
+                if socket_tx.send(Message::Binary(heartbeat)).await.is_err() {
+                    tracing::error!("Failed to send heartbeat to client: {}", session_id);
+                    break;
+                }
+                tracing::debug!("Sent ping and heartbeat to session {}", session_id);
             }
             
             // Process incoming messages
@@ -323,7 +335,12 @@ async fn handle_socket(
                 let msg = match msg {
                     Ok(msg) => msg,
                     Err(e) => {
-                        tracing::error!("Error receiving message: {}", e);
+                        // Connection reset happens during reconnection cycles
+                        if e.to_string().contains("Connection reset") {
+                            tracing::info!("WebSocket disconnected (likely reconnecting): {}", e);
+                        } else {
+                            tracing::error!("Error receiving WebSocket message: {}", e);
+                        }
                         break;
                     }
                 };
@@ -340,7 +357,7 @@ async fn handle_socket(
                         
                         // Get memory before processing
                         let before_mem = get_process_memory();
-                        tracing::error!("[WS_MSG_RECEIVED] session: {}, script: {}, size: {}, memory_before: {} MB",
+                        tracing::debug!("[WS_MSG_RECEIVED] session: {}, script: {}, size: {}, memory_before: {} MB",
                                        session_id, script_id, bin.len(), before_mem);
                         
                         // Add size validation
@@ -359,7 +376,7 @@ async fn handle_socket(
                         }
                         
                         let is_awareness = is_awareness_update(&bin);
-                        tracing::error!(
+                        tracing::debug!(
                             "[WS_MSG_TYPE] session: {}, awareness: {}, first_50_hex: {}", 
                             session_id, 
                             is_awareness,
@@ -370,7 +387,7 @@ async fn handle_socket(
                         if !is_awareness {
                             // Log full content for small updates that might be problematic
                             if bin.len() <= 100 {
-                                tracing::error!("[WS_CONTENT_FULL] script: {}, size: {}, full_hex: {}", 
+                                tracing::debug!("[WS_CONTENT_FULL] script: {}, size: {}, full_hex: {}", 
                                               script_id, bin.len(), hex::encode(&bin));
                             }
                             
@@ -378,14 +395,14 @@ async fn handle_socket(
                             let should_persist = if bin.len() >= 2 {
                                 let msg_type = bin[0];
                                 let msg_subtype = if bin.len() > 1 { Some(bin[1]) } else { None };
-                                tracing::error!("[WS_CONTENT_TYPE] script: {}, msg_type: {:#04x}, subtype: {:?}", 
+                                tracing::debug!("[WS_CONTENT_TYPE] script: {}, msg_type: {:#04x}, subtype: {:?}", 
                                               script_id, msg_type, msg_subtype.map(|b| format!("{:#04x}", b)));
                                 
                                 // CRITICAL FIX: Filter out sync protocol messages (0x00)
                                 // These are YJS sync negotiation messages that should NEVER be persisted
                                 // They cause 15GB memory allocation when replayed during snapshot processing
                                 if msg_type == 0x00 {
-                                    tracing::error!(
+                                    tracing::warn!(
                                         "[WS_SYNC_FILTERED] BLOCKING sync protocol message from persistence - script: {}, msg_type: {:#04x}, subtype: {:?}, size: {}, hex: {}",
                                         script_id, msg_type, msg_subtype.map(|b| format!("{:#04x}", b)), 
                                         bin.len(), hex::encode(&bin[..bin.len().min(50)])

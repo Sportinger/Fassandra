@@ -166,8 +166,32 @@ export const useYjsConnection = ({
     // 🔧 SECURE ARCHITECTURE: WebSocket through HTTPS Frontend Proxy
     // All traffic (HTTP + WebSocket) goes through frontend SSL termination  
     // Frontend proxy (vite.config.ts) forwards to backend with ws: true enabled
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsBaseUrl = `${wsProtocol}//${window.location.host}/api/collab`;
+    
+    // 🔧 FIX: Check if we're in a Capacitor app context and use configured backend URL
+    const isCapacitorApp = window.location.protocol === 'capacitor:' || 
+                           window.location.protocol === 'ionic:' ||
+                           (window as any).Capacitor !== undefined;
+    
+    let wsBaseUrl: string;
+    
+    if (isCapacitorApp) {
+      // In Capacitor app, use the configured backend URL
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://mylayer.org';
+      
+      // Extract host from API base URL and construct WebSocket URL
+      const url = new URL(apiBaseUrl);
+      const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+      wsBaseUrl = `${wsProtocol}//${url.host}/api/collab`;
+      
+      console.log(`[YJS] 📱 Capacitor app detected - using backend: ${wsBaseUrl}`);
+      logDebugInfo('Editor', `Capacitor app WebSocket URL: ${wsBaseUrl}`);
+    } else {
+      // In browser, use relative URLs based on current location
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      wsBaseUrl = `${wsProtocol}//${window.location.host}/api/collab`;
+      
+      console.log(`[YJS] 🌐 Browser context - using relative URL: ${wsBaseUrl}`);
+    }
     
     console.log(`[YJS] ✅ Using Dedicated WebSocket Port: ${wsBaseUrl}`);
     console.log(`[YJS] 🔒 Direct WebSocket connection (bypassing nginx)`);
@@ -177,7 +201,7 @@ export const useYjsConnection = ({
       hostname: window.location.hostname,
       port: window.location.port,
       pathname: window.location.pathname,
-      wsProtocol: wsProtocol
+      wsBaseUrl: wsBaseUrl
     });
     logDebugInfo('Editor', `WebSocket Base URL: ${wsBaseUrl} (via secure frontend proxy)`);
 
@@ -235,83 +259,61 @@ export const useYjsConnection = ({
     // Set up WebSocket provider with auth and mobile fallback
     const roomName = scriptId;
     let currentProvider: WebsocketProvider | null = null;
+    let cleanupHandlers: (() => void) | null = null;
     
-    // 🎭 THEATER PRIORITY: Enhanced mobile WebSocket configuration for iPad/iPhone collaboration
-    if (browserInfo.isChrome || browserInfo.isSafari || isMobile()) {
-      const deviceType = isMobile() ? browserInfo.mobileBrowserType : (browserInfo.isChrome ? 'Chrome' : 'Safari');
-      console.log(`[YJS] 🎭 Applying ${deviceType}-optimized WebSocket configuration`);
-      logDebugInfo('Editor', `Applying ${deviceType}-optimized WebSocket configuration`);
+    // 🎭 UNIFIED WebSocket configuration for all platforms
+    // FIX: Use the same initialization for both mobile and desktop
+    const deviceType = isMobile() ? 'Mobile' : (browserInfo.isChrome ? 'Chrome' : (browserInfo.isSafari ? 'Safari' : 'Browser'));
+    console.log(`[YJS] 🎭 ${deviceType}: Initializing WebSocket connection`);
+    logDebugInfo('Editor', `${deviceType}: Initializing WebSocket connection`);
 
-      // 🎭 THEATER PRIORITY: Enhanced URL construction for mobile browser compatibility
-      const cleanToken = token.trim(); // Remove any trailing whitespace/slash
-      let wsUrlWithToken = `${wsBaseUrl}/${roomName}?token=${encodeURIComponent(cleanToken)}`;
-      
-      // 🎭 MOBILE FIX: Special handling for iOS devices that may have WebSocket URL encoding issues
-      if (browserInfo.iosVersion && browserInfo.iosVersion.major >= 15) {
-        // iOS 15+ has better WebSocket support, use standard encoding
-        wsUrlWithToken = `${wsBaseUrl}/${roomName}?token=${encodeURIComponent(cleanToken)}`;
-        console.log(`[YJS] 🎭 ${deviceType}: Using iOS 15+ optimized WebSocket URL`);
-      } else if (browserInfo.iosVersion && browserInfo.iosVersion.major < 15) {
-        // iOS < 15 may have encoding issues, try alternative approach
-        wsUrlWithToken = `${wsBaseUrl}/${roomName}?auth_token=${encodeURIComponent(cleanToken)}`;
-        console.log(`[YJS] 🎭 ${deviceType}: Using iOS legacy WebSocket URL (iOS ${browserInfo.iosVersion.major})`);
-      } else if (browserInfo.isIOSWebView) {
-        // iOS WebView (e.g., in-app browsers) may need special handling
-        wsUrlWithToken = `${wsBaseUrl}/${roomName}?auth=${cleanToken}`;
-        console.log(`[YJS] 🎭 ${deviceType}: Using iOS WebView compatible URL`);
-      }
-      
-      console.log(`[YJS] 🔗 ${deviceType}: Connecting to WebSocket: ${wsUrlWithToken.replace(cleanToken, 'TOKEN_HIDDEN')}`);
-      console.log(`[YJS] 🛠️ ${deviceType}: Full WebSocket URL construction:`, {
-        baseUrl: wsBaseUrl,
-        roomName,
-        cleanToken: cleanToken.substring(0, 10) + '...',
-        tokenLength: cleanToken.length,
-        deviceType: deviceType,
-        iosVersion: browserInfo.iosVersion,
-        isIOSWebView: browserInfo.isIOSWebView,
-        hostname: window.location.hostname,
-      });
-      console.log(`[YJS] 🚀 ${deviceType}: About to create WebSocketProvider...`);
-      logDebugInfo('Editor', `${deviceType}: Connecting to WebSocket with mobile-optimized token handling`);
-      
-      // 🎭 THEATER PRIORITY: Mobile-optimized connection parameters for rehearsal environments
-      const providerConfig = {
-        connect: true,
-        // Don't use params for mobile browsers - we put the token directly in the URL
-        maxBackoffTime: isMobile() ? 
-          (browserInfo.mobileBrowserType === 'iPhone' ? 2000 : 3000) : 8000, // Faster retry for iPhone
-        resyncInterval: isMobile() ? 
-          (browserInfo.mobileBrowserType === 'iPad' ? 6000 : 8000) : 12000, // More frequent sync for mobile
-        // 🎭 NEW: Mobile-specific timeouts for theater rehearsal environments
-        connectTimeout: isMobile() ? 10000 : 15000, // Shorter timeout for mobile
-        maxReconnectAttempts: isMobile() ? 8 : 5, // More attempts for mobile (network instability)
-      };
+    // Clean token for all platforms
+    const cleanToken = token.trim();
+    
+    console.log(`[YJS] 🔗 ${deviceType}: Connecting to WebSocket`);
+    console.log(`[YJS] 🛠️ ${deviceType}: Connection details:`, {
+      baseUrl: wsBaseUrl,
+      roomName,
+      tokenLength: cleanToken.length,
+      deviceType: deviceType,
+      isMobile: isMobile(),
+      hostname: window.location.hostname,
+    });
+    
+    // Unified configuration for all platforms
+    const providerConfig = {
+      connect: true,
+      // Pass token in params for ALL platforms (mobile AND desktop)
+      params: { token: cleanToken },
+      // Optimize timeouts based on platform
+      maxBackoffTime: isMobile() ? 3000 : 5000,
+      resyncInterval: isMobile() ? 5000 : 10000, // Faster resync for mobile
+      connectTimeout: isMobile() ? 10000 : 15000,
+      maxReconnectAttempts: isMobile() ? 8 : 5,
+    };
 
-      try {
-        console.log(`[YJS] 🔨 ${deviceType}: Creating WebSocketProvider with config:`, providerConfig);
-        // FIX: For mobile, the room is already in the URL path, so pass empty string for roomName
-        // The URL is already: ws://host/api/collab/SCRIPT_ID?token=...
-        // WebsocketProvider expects: (url, roomName, doc, config)
-        // When roomName is empty, it uses the URL as-is without appending another room
-        currentProvider = new WebsocketProvider(wsUrlWithToken, '', currentDoc, providerConfig);
-        console.log(`[YJS] ✅ ${deviceType}: WebSocket provider created successfully with token in URL`);
-        console.log(`[YJS] 🔧 ${deviceType}: Setting up WebSocket provider handlers...`);
-        setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
-        console.log(`[YJS] 📡 ${deviceType}: Setting provider state...`);
-        setProvider(currentProvider);
-        console.log(`[YJS] 🎉 ${deviceType}: WebSocket setup complete!`);
-      } catch (error) {
-        console.error(`[YJS] ❌ ${deviceType}: Failed to create WebSocket provider with token in URL:`, error);
-        setErrorMessage(`${deviceType} WebSocket connection failed. You can still edit locally.`);
-        setStatus('disconnected');
-        // Don't set provider to null - let editor work in local mode
-        setProvider(null);
-      }
-    } else {
-      // Firefox and other browsers - use standard configuration with params
-      console.log('Using standard WebSocket configuration for Firefox/other browsers');
-      const cleanToken = token.trim(); // Remove any trailing whitespace/slash
+    try {
+      console.log(`[YJS] 🔨 ${deviceType}: Creating WebSocketProvider with unified config:`, providerConfig);
+      
+      // CRITICAL FIX: Use the SAME initialization for ALL platforms
+      // Pass base URL, room name, document, and config with token in params
+      currentProvider = new WebsocketProvider(wsBaseUrl, roomName, currentDoc, providerConfig);
+      
+      console.log(`[YJS] ✅ ${deviceType}: WebSocket provider created successfully`);
+      console.log(`[YJS] 🔧 ${deviceType}: Setting up WebSocket provider handlers...`);
+      
+      cleanupHandlers = setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
+      
+      console.log(`[YJS] 📡 ${deviceType}: Setting provider state...`);
+      setProvider(currentProvider);
+      console.log(`[YJS] 🎉 ${deviceType}: WebSocket setup complete!`);
+      
+    } catch (error) {
+      console.error(`[YJS] ❌ ${deviceType}: Failed to create WebSocket provider:`, error);
+      setErrorMessage(`${deviceType} WebSocket connection failed. You can still edit locally.`);
+      setStatus('disconnected');
+      // Don't set provider to null - let editor work in local mode
+      setProvider(null);
       const wsParams = { token: cleanToken };
       
       console.log(`Connecting to WebSocket: ${wsBaseUrl}/${roomName} with params:`, wsParams);
@@ -325,7 +327,7 @@ export const useYjsConnection = ({
       };
 
       currentProvider = new WebsocketProvider(wsBaseUrl, roomName, currentDoc, providerConfig);
-      setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
+      cleanupHandlers = setupWebSocketProviderHandlers(currentProvider, browserInfo, setStatus, setErrorMessage, setIsMobileFallback);
       setProvider(currentProvider);
     }
 
@@ -353,6 +355,12 @@ export const useYjsConnection = ({
       
       // Remove unload handler
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      
+      // Clean up heartbeat and other handlers
+      if (cleanupHandlers) {
+        cleanupHandlers();
+        cleanupHandlers = null;
+      }
       
       // 🔧 DISABLED: Offline storage - removed persistence cleanup
       // if (persistenceRef.current) {
@@ -400,6 +408,44 @@ const setupWebSocketProviderHandlers = (
   let connectionAttempts = 0;
   let hasConnectedOnce = false;
 
+  // Heartbeat mechanism to keep connection alive
+  let heartbeatInterval: NodeJS.Timeout | null = null;
+  
+  const startHeartbeat = () => {
+    // Clear any existing heartbeat
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+    }
+    
+    // Send awareness update every 10 seconds to keep connection alive
+    heartbeatInterval = setInterval(() => {
+      if (provider.wsconnected) {
+        // Send a minimal awareness update as heartbeat
+        // This triggers the awareness protocol which keeps the connection active
+        const awareness = provider.awareness;
+        const localState = awareness.getLocalState();
+        
+        // Only send if we have a local state
+        if (localState) {
+          // Trigger awareness update by setting the same state
+          // This is lightweight and keeps the connection alive
+          awareness.setLocalState(localState);
+          console.log('[YJS] 💓 Heartbeat sent (awareness update)');
+        }
+      }
+    }, 10000); // Every 10 seconds (well below the 30-second timeout)
+    
+    console.log('[YJS] 💓 Heartbeat started (10s interval)');
+  };
+  
+  const stopHeartbeat = () => {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+      heartbeatInterval = null;
+      console.log('[YJS] 💔 Heartbeat stopped');
+    }
+  };
+
   provider.on('status', (event: { status: string }) => {
     console.log(`[YJS] 📊 WebSocket status: ${event.status}`);
     const browserType = browserInfo.isMobile ? 'Mobile' : (browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : browserInfo.isSafari ? 'Safari' : 'Other');
@@ -424,11 +470,15 @@ const setupWebSocketProviderHandlers = (
         setErrorMessage('Mobile connection established!');
         setTimeout(() => setErrorMessage(null), 2000);
       }
+      // Start heartbeat when connected
+      startHeartbeat();
     } else if (newStatus === 'disconnected') {
       // Handle disconnection - important for mobile debugging
       if (browserInfo.isMobile) {
         setErrorMessage('Mobile connection lost. Retrying...');
       }
+      // Stop heartbeat when disconnected
+      stopHeartbeat();
     }
     
     // Only update status if it's actually different to prevent unnecessary re-renders
@@ -523,4 +573,9 @@ const setupWebSocketProviderHandlers = (
       }
     }
   });
+  
+  // Return cleanup function for the heartbeat
+  return () => {
+    stopHeartbeat();
+  };
 }; 
