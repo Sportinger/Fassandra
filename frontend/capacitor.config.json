@@ -1,0 +1,10 @@
+{
+  "appId": "com.pessoa.app",
+  "appName": "Pessoa",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false,
+    "allowNavigation": ["https://mylayer.org/*", "https://www.mylayer.org/*", "https://91.99.69.115/*"]
+  }
+}

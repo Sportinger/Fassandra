@@ -69,22 +69,31 @@ fn create_cors_layer() -> Result<CorsLayer> {
     let allowed_origins = env::var("ALLOWED_ORIGINS")
         .unwrap_or_else(|_| "https://192.168.2.111:8080,https://192.168.2.111:8443,http://192.168.2.111:8080,http://localhost:8080,https://localhost:8080,https://localhost:8443".to_string());
     
-    // For development, we'll allow the specific origins we need
-    let mut cors = CorsLayer::new()
+    // Parse all allowed origins into a vector
+    let origins: Vec<String> = allowed_origins
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect();
+    
+    // Use a closure to dynamically check and return the matching origin
+    let cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
         .allow_headers([
             header::AUTHORIZATION,
             header::ACCEPT,
             header::CONTENT_TYPE,
         ])
-        .allow_credentials(true);
-    
-    // Add each origin individually
-    for origin_str in allowed_origins.split(',') {
-        let origin = origin_str.trim().parse::<HeaderValue>()
-            .context("Invalid CORS origin")?;
-        cors = cors.allow_origin(origin);
-    }
+        .allow_credentials(true)
+        .allow_origin(tower_http::cors::AllowOrigin::predicate(move |origin: &HeaderValue, _request_parts: &axum::http::request::Parts| {
+            // Convert the origin header to string
+            if let Ok(origin_str) = origin.to_str() {
+                // Check if this origin is in our allowed list
+                // This will properly match the exact origin including protocol
+                origins.iter().any(|allowed| allowed == origin_str)
+            } else {
+                false
+            }
+        }));
     
     Ok(cors)
 }
