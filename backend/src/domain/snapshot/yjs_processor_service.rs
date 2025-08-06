@@ -189,12 +189,26 @@ impl YjsProcessorService {
             error!("[DECODE_SMALL_UPDATE] update_id: {}, full_hex: {}", update_id, hex::encode(payload));
         }
         
-        // Analyze update structure
+        // Analyze update structure and add CRITICAL validation
         if payload.len() >= 2 {
             let msg_type = payload[0];
             let msg_subtype = if payload.len() > 1 { Some(payload[1]) } else { None };
             error!("[DECODE_UPDATE_TYPE] update_id: {}, msg_type: {:#04x}, subtype: {:?}, size: {}", 
                    update_id, msg_type, msg_subtype.map(|b| format!("{:#04x}", b)), payload.len());
+            
+            // CRITICAL VALIDATION: Block sync protocol messages that shouldn't be in database
+            // These cause 15GB+ memory allocation attempts
+            if msg_type == 0x00 {
+                error!(
+                    "[DECODE_SYNC_BLOCKED] CRITICAL: Sync protocol message found in database! This should never be persisted. \
+                    script: {}, update_id: {}, msg_type: {:#04x}, subtype: {:?}, size: {}, hex: {}. \
+                    Skipping to prevent memory explosion.",
+                    script_id, update_id, msg_type, msg_subtype.map(|b| format!("{:#04x}", b)), 
+                    payload.len(), hex::encode(&payload[..payload.len().min(50)])
+                );
+                // Return success to continue processing other updates, but don't apply this one
+                return Ok(());
+            }
         }
         
         // Try to decode as direct YJS Update first (most common case for stored updates)
@@ -203,10 +217,28 @@ impl YjsProcessorService {
                 error!("[DECODE_V1_SUCCESS] update_id: {}, script: {}, decoded_update_size: {:?}", 
                       update_id, script_id, std::mem::size_of_val(&update));
                 
+                // MEMORY CAP: Check memory before applying update
+                let before_mem = get_memory_usage();
+                const MEMORY_SPIKE_THRESHOLD: usize = 100_000_000; // 100MB threshold for single operation
+                
                 // Wrap apply_update in a catch_unwind to prevent crashes
                 let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     txn.apply_update(update)
                 }));
+                
+                // Check memory after operation
+                let after_mem = get_memory_usage();
+                let mem_delta = after_mem.saturating_sub(before_mem);
+                
+                if mem_delta > MEMORY_SPIKE_THRESHOLD {
+                    error!(
+                        "[MEMORY_SPIKE_DETECTED] CRITICAL: Large memory allocation detected! \
+                        script: {}, update_id: {}, memory_delta: {}, before: {}, after: {}. \
+                        This indicates a potential bug in YJS update processing.",
+                        script_id, update_id, format_bytes(mem_delta), 
+                        format_bytes(before_mem), format_bytes(after_mem)
+                    );
+                }
                 
                 match result {
                     Ok(Ok(())) => return Ok(()),
@@ -227,10 +259,27 @@ impl YjsProcessorService {
                     Ok(update) => {
                         debug!("Successfully decoded and applying direct V2 update {} for script {}", update_id, script_id);
                         
+                        // MEMORY CAP: Check memory before applying update
+                        let before_mem = get_memory_usage();
+                        const MEMORY_SPIKE_THRESHOLD: usize = 100_000_000; // 100MB threshold
+                        
                         // Wrap apply_update in a catch_unwind to prevent crashes
                         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                             txn.apply_update(update)
                         }));
+                        
+                        // Check memory after operation
+                        let after_mem = get_memory_usage();
+                        let mem_delta = after_mem.saturating_sub(before_mem);
+                        
+                        if mem_delta > MEMORY_SPIKE_THRESHOLD {
+                            error!(
+                                "[MEMORY_SPIKE_DETECTED] CRITICAL: Large memory allocation in V2 update! \
+                                script: {}, update_id: {}, memory_delta: {}, before: {}, after: {}",
+                                script_id, update_id, format_bytes(mem_delta), 
+                                format_bytes(before_mem), format_bytes(after_mem)
+                            );
+                        }
                         
                         match result {
                             Ok(Ok(())) => return Ok(()),
@@ -279,59 +328,20 @@ impl YjsProcessorService {
                     YrsSyncMessage::Sync(sync_message_enum) => {
                         match sync_message_enum {
                             YrsInnerSyncMessage::SyncStep1(sv_bytes) => {
-                                let before_encode_mem = get_memory_usage();
-                                error!("[SYNCSTEP1_START] script: {}, update_id: {}, sv_len: {}, memory: {}", 
-                                      script_id, update_id, sv_bytes.len(), format_bytes(before_encode_mem));
+                                // IMPORTANT: Skip SyncStep1 messages during snapshot processing
+                                // SyncStep1 is a client telling the server what state it has - it's not an update to apply
+                                // These messages should never be stored in the database in the first place
+                                // They're only meant for real-time sync negotiation between clients
+                                // 
+                                // The previous implementation incorrectly tried to generate a full state update
+                                // using encode_state_as_update_v1() which caused memory explosions with corrupted counters
+                                // especially in production where network latency causes out-of-order message delivery
                                 
-                                // Safety check: SyncStep1 state vectors should be reasonably small
-                                const MAX_STATE_VECTOR_SIZE: usize = 10_000; // 10KB max for state vector
-                                if sv_bytes.len() > MAX_STATE_VECTOR_SIZE {
-                                    error!("[SYNCSTEP1_ERROR] State vector too large: {} bytes for script {}, update {}", 
-                                          sv_bytes.len(), script_id, update_id);
-                                    return Err(anyhow::anyhow!("State vector exceeds maximum size of {} bytes", MAX_STATE_VECTOR_SIZE));
-                                }
+                                error!("[SYNCSTEP1_SKIP] Skipping SyncStep1 message during snapshot processing - script: {}, update_id: {}, sv_len: {}", 
+                                      script_id, update_id, sv_bytes.len());
                                 
-                                let sv = sv_bytes;
-                                
-                                // Log document state before encoding
-                                // Note: Store methods for size estimation are not available in this yrs version
-                                
-                                // Use catch_unwind to prevent memory allocation panics from crashing the server
-                                let update_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                                    txn.encode_state_as_update_v1(&sv)
-                                }));
-                                
-                                let update_bytes = match update_result {
-                                    Ok(bytes) => {
-                                        let after_encode_mem = get_memory_usage();
-                                        error!("[SYNCSTEP1_ENCODED] update_size: {}, memory_delta: {}, first_50_hex: {:?}",
-                                              format_bytes(bytes.len()), 
-                                              format_bytes(after_encode_mem.saturating_sub(before_encode_mem)),
-                                              hex::encode(&bytes[..bytes.len().min(50)]));
-                                        bytes
-                                    },
-                                    Err(panic_info) => {
-                                        let after_encode_mem = get_memory_usage();
-                                        error!("[SYNCSTEP1_PANIC] Memory allocation panic for script {}, update {}, memory_delta: {}, panic: {:?}", 
-                                              script_id, update_id, 
-                                              format_bytes(after_encode_mem.saturating_sub(before_encode_mem)),
-                                              panic_info);
-                                        return Err(anyhow::anyhow!("Failed to encode state vector: memory allocation error"));
-                                    }
-                                };
-                                
-                                // Safety check: Generated update should not be unreasonably large
-                                const MAX_UPDATE_SIZE: usize = 100_000_000; // 100MB max for generated update
-                                if update_bytes.len() > MAX_UPDATE_SIZE {
-                                    error!("Generated update too large ({} bytes) for script {}, update {}", update_bytes.len(), script_id, update_id);
-                                    return Err(anyhow::anyhow!("Generated update exceeds maximum size of {} bytes", MAX_UPDATE_SIZE));
-                                }
-                                
-                                let update = Update::decode_v1(&update_bytes)?;
-                                if let Err(e) = txn.apply_update(update) {
-                                    error!("Failed to apply YJS SyncStep1 update {} for script {}: {:?}", update_id, script_id, e);
-                                    return Err(anyhow::anyhow!("Failed to apply YJS SyncStep1 update: {}", e));
-                                }
+                                // Do nothing - SyncStep1 messages should not modify the document state
+                                // They are only used for sync negotiation in real-time connections
                             }
                             YrsInnerSyncMessage::SyncStep2(update_payload_bytes) => {
                                 trace!("Handling SyncStep2 for script_id: {}, update_id: {}", script_id, update_id);

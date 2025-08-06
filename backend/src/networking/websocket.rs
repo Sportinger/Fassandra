@@ -370,27 +370,45 @@ async fn handle_socket(
                             }
                             
                             // Analyze the binary structure
-                            if bin.len() >= 2 {
+                            let should_persist = if bin.len() >= 2 {
                                 let msg_type = bin[0];
                                 let msg_subtype = if bin.len() > 1 { Some(bin[1]) } else { None };
                                 tracing::error!("[WS_CONTENT_TYPE] script: {}, msg_type: {:#04x}, subtype: {:?}", 
                                               script_id, msg_type, msg_subtype.map(|b| format!("{:#04x}", b)));
-                            }
-                            
-                            tracing::error!("[WS_PERSIST_START] script: {}, size: {} bytes, session: {}, user: {}", 
-                                          script_id, bin.len(), session_id, user_id);
-                            
-                            if let Err(e) = persistence_event_tx.send(YjsPersistenceEvent {
-                                script_id: script_id.clone(),
-                                update_data: bin.clone(),
-                                user_id: Some(Uuid::parse_str(&user_id).unwrap_or_else(|_| Uuid::nil())),
-                                received_at: Utc::now(),
-                            }).await {
-                                tracing::error!("[WS_PERSIST_ERROR] Failed to send persistence event: {}", e);
+                                
+                                // CRITICAL FIX: Filter out sync protocol messages (0x00)
+                                // These are YJS sync negotiation messages that should NEVER be persisted
+                                // They cause 15GB memory allocation when replayed during snapshot processing
+                                if msg_type == 0x00 {
+                                    tracing::error!(
+                                        "[WS_SYNC_FILTERED] BLOCKING sync protocol message from persistence - script: {}, msg_type: {:#04x}, subtype: {:?}, size: {}, hex: {}",
+                                        script_id, msg_type, msg_subtype.map(|b| format!("{:#04x}", b)), 
+                                        bin.len(), hex::encode(&bin[..bin.len().min(50)])
+                                    );
+                                    false // Don't persist sync messages
+                                } else {
+                                    true // Persist regular updates
+                                }
                             } else {
-                                let after_mem = get_process_memory();
-                                tracing::error!("[WS_PERSIST_QUEUED] script: {}, size: {}, memory_delta: {} MB", 
-                                              script_id, bin.len(), after_mem - before_mem);
+                                true // Persist if we can't determine type (shouldn't happen)
+                            };
+                            
+                            if should_persist {
+                                tracing::error!("[WS_PERSIST_START] script: {}, size: {} bytes, session: {}, user: {}", 
+                                              script_id, bin.len(), session_id, user_id);
+                                
+                                if let Err(e) = persistence_event_tx.send(YjsPersistenceEvent {
+                                    script_id: script_id.clone(),
+                                    update_data: bin.clone(),
+                                    user_id: Some(Uuid::parse_str(&user_id).unwrap_or_else(|_| Uuid::nil())),
+                                    received_at: Utc::now(),
+                                }).await {
+                                    tracing::error!("[WS_PERSIST_ERROR] Failed to send persistence event: {}", e);
+                                } else {
+                                    let after_mem = get_process_memory();
+                                    tracing::error!("[WS_PERSIST_QUEUED] script: {}, size: {}, memory_delta: {} MB", 
+                                                  script_id, bin.len(), after_mem - before_mem);
+                                }
                             }
                         } else {
                             tracing::debug!("[WS_AWARENESS_SKIP] script: {}, size: {} bytes", script_id, bin.len());
