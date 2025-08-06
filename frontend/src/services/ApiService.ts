@@ -40,15 +40,39 @@ export class ApiService {
     private token: string | null = null;
 
     constructor(baseUrl?: string) {
-        // Handle empty strings properly - empty string means use relative URLs
-        const envBaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) ||
-            (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) ||
-            '';
+        // Check if we're in a Capacitor app context
+        const isCapacitorApp = typeof window !== 'undefined' && (
+            window.location.protocol === 'capacitor:' || 
+            window.location.protocol === 'ionic:' ||
+            (window as any).Capacitor !== undefined
+        );
         
-        // Handle quoted empty strings and clean up
-        const cleanEnvUrl = envBaseUrl.replace(/^["']|["']$/g, '').trim();
-        
-        this.baseUrl = baseUrl || (cleanEnvUrl !== '' ? cleanEnvUrl : '');
+        if (isCapacitorApp) {
+            // In Capacitor app, always use the configured backend URL
+            const envBaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) ||
+                (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) ||
+                'https://mylayer.org'; // Fallback to production URL
+            
+            // Handle quoted empty strings and clean up
+            const cleanEnvUrl = envBaseUrl.replace(/^["']|["']$/g, '').trim();
+            
+            // Never use empty string for Capacitor - must have a real backend URL
+            this.baseUrl = baseUrl || (cleanEnvUrl !== '' ? cleanEnvUrl : 'https://mylayer.org');
+            
+            console.log('[ApiService] 📱 Capacitor app detected - using backend:', this.baseUrl);
+        } else {
+            // In browser, use relative URLs (empty string) or configured URL
+            const envBaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) ||
+                (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) ||
+                '';
+            
+            // Handle quoted empty strings and clean up
+            const cleanEnvUrl = envBaseUrl.replace(/^["']|["']$/g, '').trim();
+            
+            this.baseUrl = baseUrl || (cleanEnvUrl !== '' ? cleanEnvUrl : '');
+            
+            console.log('[ApiService] 🌐 Browser context - base URL:', JSON.stringify(this.baseUrl));
+        }
         
         // Debug logging
         console.log('[ApiService] Base URL set to:', JSON.stringify(this.baseUrl));

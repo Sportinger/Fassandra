@@ -126,6 +126,7 @@ export const useEditorInstance = ({
       CueConnectionMark,
       Collaboration.configure({
         document: ydoc,
+        field: 'default', // Explicitly specify the fragment name
       }),
       CollaborationCursor.configure({
         provider: provider,

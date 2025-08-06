@@ -235,6 +235,7 @@ export const useEditorCore = ({
             }),
             Collaboration.configure({
               document: ydoc,
+              field: 'default', // Explicitly specify the fragment name
             }),
             CollaborationCursor.configure({
               provider: provider,

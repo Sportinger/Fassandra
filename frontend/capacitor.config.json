@@ -1,6 +1,6 @@
 {
-  "appId": "com.pessoa.app",
-  "appName": "Pessoa",
+  "appId": "com.romankuskowski.theatereditor",
+  "appName": "Theater Editor",
   "webDir": "dist",
   "server": {
     "androidScheme": "https",

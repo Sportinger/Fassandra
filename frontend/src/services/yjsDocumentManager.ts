@@ -30,6 +30,18 @@ class YjsDocumentManager {
       console.log(`[YjsDocumentManager] Creating new document for script: ${scriptId}`);
       const doc = new Y.Doc();
       
+      // Generate a stable client ID based on user session to prevent conflicts
+      // This helps ensure consistent state across reconnections
+      const storedClientId = sessionStorage.getItem(`yjs-client-id-${scriptId}`);
+      if (storedClientId) {
+        (doc as any).clientID = parseInt(storedClientId, 10);
+        console.log(`[YjsDocumentManager] Restored client ID: ${storedClientId} for script: ${scriptId}`);
+      } else {
+        const newClientId = doc.clientID.toString();
+        sessionStorage.setItem(`yjs-client-id-${scriptId}`, newClientId);
+        console.log(`[YjsDocumentManager] Stored new client ID: ${newClientId} for script: ${scriptId}`);
+      }
+      
       // Initialize default fragment for Tiptap
       doc.transact(() => {
         doc.getXmlFragment('default');
@@ -137,7 +149,13 @@ class YjsDocumentManager {
    */
   clearAll(): void {
     console.warn('[YjsDocumentManager] Clearing all documents');
-    this.documents.forEach(doc => doc.destroy());
+    
+    // Clear stored client IDs from sessionStorage
+    this.documents.forEach((doc, scriptId) => {
+      sessionStorage.removeItem(`yjs-client-id-${scriptId}`);
+      doc.destroy();
+    });
+    
     this.documents.clear();
     this.refCounts.clear();
   }

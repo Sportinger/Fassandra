@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.pessoa.app"
+    namespace "com.romankuskowski.theatereditor"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.pessoa.app"
+        applicationId "com.romankuskowski.theatereditor"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
