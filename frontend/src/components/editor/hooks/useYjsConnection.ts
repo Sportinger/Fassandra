@@ -290,6 +290,10 @@ export const useYjsConnection = ({
 
       try {
         console.log(`[YJS] 🔨 ${deviceType}: Creating WebSocketProvider with config:`, providerConfig);
+        // FIX: For mobile, the room is already in the URL path, so pass empty string for roomName
+        // The URL is already: ws://host/api/collab/SCRIPT_ID?token=...
+        // WebsocketProvider expects: (url, roomName, doc, config)
+        // When roomName is empty, it uses the URL as-is without appending another room
         currentProvider = new WebsocketProvider(wsUrlWithToken, '', currentDoc, providerConfig);
         console.log(`[YJS] ✅ ${deviceType}: WebSocket provider created successfully with token in URL`);
         console.log(`[YJS] 🔧 ${deviceType}: Setting up WebSocket provider handlers...`);
@@ -330,10 +334,25 @@ export const useYjsConnection = ({
     // Store provider ref for cleanup
     providerRef.current = currentProvider;
     
+    // Add page unload handler to immediately close WebSocket
+    const handleBeforeUnload = () => {
+      console.log('[YJS] Page unloading - closing WebSocket immediately');
+      if (providerRef.current && providerRef.current.ws) {
+        // Send close frame immediately to notify backend
+        providerRef.current.ws.close(1000, 'Page unload');
+      }
+    };
+    
+    // Register unload handler
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
     // Cleanup function
     return () => {
       console.log("Cleaning up WebSocket provider (keeping Yjs doc persistent)...");
       logDebugInfo('Editor', 'Cleaning up WebSocket provider (keeping doc)');
+      
+      // Remove unload handler
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       
       // 🔧 DISABLED: Offline storage - removed persistence cleanup
       // if (persistenceRef.current) {
@@ -344,6 +363,10 @@ export const useYjsConnection = ({
       // 🔧 FIX: Only destroy provider, NOT the document (keep it persistent)
       if (providerRef.current) {
         console.log('[YJS] Destroying WebSocket provider, but keeping document');
+        // Explicitly close WebSocket before destroying provider
+        if (providerRef.current.ws) {
+          providerRef.current.ws.close(1000, 'Component unmount');
+        }
         providerRef.current.destroy();
         providerRef.current = null;
       }
@@ -394,6 +417,8 @@ const setupWebSocketProviderHandlers = (
       hasConnectedOnce = true;
       connectionAttempts = 0;
       setIsMobileFallback(false);
+      // Clear any lingering error messages
+      setErrorMessage(null);
       // Show success message briefly for mobile users
       if (browserInfo.isMobile) {
         setErrorMessage('Mobile connection established!');
@@ -428,27 +453,33 @@ const setupWebSocketProviderHandlers = (
     console.error(`WebSocket error (attempt ${connectionAttempts}):`, event);
     logDebugInfo('Editor', `WebSocket error (attempt ${connectionAttempts}): ${event.type}, Browser: ${browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : browserInfo.isSafari ? 'Safari' : 'Other'}`);
     
-    // Browser-specific error handling
+    // Browser-specific error handling - increased thresholds to reduce false positives
     if (browserInfo.isChrome) {
       console.log('Chrome-specific error handling');
-      if (connectionAttempts >= 2) {
+      if (connectionAttempts >= 5) {
         setErrorMessage('Chrome WebSocket connection failed. Try refreshing the page or switching to Firefox.');
+      } else if (connectionAttempts >= 3) {
+        setErrorMessage(`Chrome WebSocket struggling to connect (attempt ${connectionAttempts}/5). Still trying...`);
       } else {
-        setErrorMessage('Chrome WebSocket connection issue. Retrying...');
+        setErrorMessage('Chrome WebSocket connecting...');
       }
     } else if (browserInfo.isSafari) {
       console.log('Safari-specific error handling');
-      if (connectionAttempts >= 2) {
+      if (connectionAttempts >= 5) {
         setErrorMessage('Safari WebSocket connection failed. Try refreshing the page or switching to Firefox/Chrome.');
+      } else if (connectionAttempts >= 3) {
+        setErrorMessage(`Safari WebSocket struggling to connect (attempt ${connectionAttempts}/5). Still trying...`);
       } else {
-        setErrorMessage('Safari WebSocket connection issue. Retrying...');
+        setErrorMessage('Safari WebSocket connecting...');
       }
     } else if (browserInfo.isFirefox) {
       console.log('Firefox-specific error handling');
-      if (connectionAttempts >= 3) {
+      if (connectionAttempts >= 6) {
         setErrorMessage('Firefox WebSocket connection failed. Try refreshing the page.');
+      } else if (connectionAttempts >= 3) {
+        setErrorMessage(`Firefox WebSocket reconnecting (attempt ${connectionAttempts}/6)...`);
       } else {
-        setErrorMessage('Firefox WebSocket connection issue. Retrying...');
+        setErrorMessage('Firefox WebSocket connecting...');
       }
     } else {
       // 🎭 THEATER PRIORITY: Enhanced mobile error handling for rehearsal environments
@@ -457,7 +488,7 @@ const setupWebSocketProviderHandlers = (
         console.log(`🎭 ${deviceType} WebSocket error - providing theater-specific guidance`);
         logDebugInfo('Editor', `${deviceType} WebSocket error (attempt ${connectionAttempts})`);
         
-        if (connectionAttempts >= 3) {
+        if (connectionAttempts >= 8) {  // Increased from 3 to 8 for mobile
           setIsMobileFallback(true);
           // 🎭 THEATER GUIDANCE: Specific troubleshooting for mobile rehearsal scenarios
           if (deviceType === 'iPhone' || deviceType === 'iPad') {
@@ -467,7 +498,7 @@ const setupWebSocketProviderHandlers = (
           } else {
             setErrorMessage('🎭 Mobile connection unstable. Working in offline mode. Try refreshing or switching to WiFi.');
           }
-        } else if (connectionAttempts === 2) {
+        } else if (connectionAttempts >= 5) {  // Changed from === 2
           // 🎭 THEATER GUIDANCE: Second attempt - provide specific help
           if (deviceType === 'iPhone' || deviceType === 'iPad') {
             setErrorMessage(`🎭 ${deviceType}: Connection issue. Checking iOS Safari compatibility... (attempt ${connectionAttempts})`);
@@ -475,15 +506,20 @@ const setupWebSocketProviderHandlers = (
             setErrorMessage(`🎭 ${deviceType}: Connection issue. Checking mobile browser compatibility... (attempt ${connectionAttempts})`);
           }
         } else {
-          setErrorMessage(`🎭 ${deviceType}: Connecting to rehearsal session... (attempt ${connectionAttempts})`);
+          // Only show connecting message for first 2 attempts
+          if (connectionAttempts <= 2) {
+            setErrorMessage(`🎭 ${deviceType}: Connecting to rehearsal session... (attempt ${connectionAttempts})`);
+          }
         }
-      } else if (connectionAttempts >= 3) {
+      } else if (connectionAttempts >= 7) {  // Increased from 3 to 7 for desktop
         console.log('Enabling fallback mode for unreliable connection');
         logDebugInfo('Editor', 'Enabling fallback mode');
         setIsMobileFallback(true);
         setErrorMessage('Connection unstable. Working in offline mode.');
+      } else if (connectionAttempts >= 4) {
+        setErrorMessage(`Connection struggling (attempt ${connectionAttempts}/7). Still trying...`);
       } else {
-        setErrorMessage(`Connection failed: ${event.type}`);
+        setErrorMessage(`Connecting (attempt ${connectionAttempts})...`);
       }
     }
   });

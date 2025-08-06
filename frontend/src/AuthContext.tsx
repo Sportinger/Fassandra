@@ -99,6 +99,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       logDebugInfo('Auth', 'Migrated token from localStorage to sessionStorage');
     }
     
+    // CRITICAL FIX: Set token in API service immediately on initialization
+    if (storedToken) {
+      setApiToken(storedToken);
+      logDebugInfo('Auth', 'Initial token set in ApiService immediately');
+    }
+    
     return storedToken;
   });
   
@@ -117,7 +123,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   });
 
   // Track when token is ready in ApiService
-  const [tokenReady, setTokenReady] = useState(false);
+  // Initialize as true if we have a token from storage
+  const [tokenReady, setTokenReady] = useState(!!token);
 
   // Use useCallback for setToken to ensure stable reference
   const setToken = useCallback((newToken: string | null, newUser?: User | null) => {

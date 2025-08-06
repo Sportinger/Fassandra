@@ -52,7 +52,8 @@ pub const CLIENT_TIMEOUT: Duration = Duration::from_secs(120);
 pub const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(15); // Reduced to prevent y-websocket 30s timeout
 
 /// Global broadcast channel for all WebSocket messages  
-pub static GLOBAL_BROADCAST: Lazy<(Sender<(String, String, Vec<u8>)>, std::sync::Mutex<Option<Receiver<(String, String, Vec<u8>)>>>)> = Lazy::new(|| {
+/// Format: (script_id, sender_user_id, sender_session_id, data)
+pub static GLOBAL_BROADCAST: Lazy<(Sender<(String, String, String, Vec<u8>)>, std::sync::Mutex<Option<Receiver<(String, String, String, Vec<u8>)>>>)> = Lazy::new(|| {
     let (tx, rx) = broadcast::channel(1000);
     (tx, std::sync::Mutex::new(Some(rx))) // Keep the first receiver alive but unused
 });
@@ -284,14 +285,18 @@ async fn handle_socket(
     loop {
         tokio::select! {
             // Handle broadcast messages from other clients  
-            Ok((broadcast_script_id, sender_user_id, data)) = rx.recv() => {
-                // Only handle messages for this script - allow same user for y-websocket keepalive
-                if broadcast_script_id == script_id {
-                    tracing::debug!("Broadcasting message from user {} to session {} for script {} (same_user: {})", sender_user_id, session_id, script_id, sender_user_id == user_id);
+            Ok((broadcast_script_id, sender_user_id, sender_session_id, data)) = rx.recv() => {
+                // Only handle messages for this script AND not from the same session
+                // This prevents echoing back the sender's own messages which causes flickering
+                if broadcast_script_id == script_id && sender_session_id != session_id {
+                    tracing::debug!("Relaying message from session {} (user {}) to session {} (user {}) for script {}", 
+                                   sender_session_id, sender_user_id, session_id, user_id, script_id);
                     if socket_tx.send(Message::Binary(data)).await.is_err() {
                         tracing::debug!("Failed to send broadcast message to session {}, connection likely closed", session_id);
                         break;
                     }
+                } else if sender_session_id == session_id {
+                    tracing::trace!("Skipping echo-back to sender session {} for script {}", session_id, script_id);
                 }
             }
             
@@ -415,9 +420,10 @@ async fn handle_socket(
                         }
                         
                         // Always broadcast to all other clients (including awareness updates for real-time cursors)
-                        // Send to global broadcast channel - other clients will filter by script_id and user_id
-                        let _ = GLOBAL_BROADCAST.0.send((script_id.clone(), user_id.clone(), bin.clone()));
-                        tracing::debug!("Broadcasted message from user {} for script {} to global channel", user_id, script_id);
+                        // Send to global broadcast channel - other clients will filter by script_id and session_id
+                        // Including session_id prevents echo-back to sender which causes flickering
+                        let _ = GLOBAL_BROADCAST.0.send((script_id.clone(), user_id.clone(), session_id.clone(), bin.clone()));
+                        tracing::debug!("Broadcasted message from session {} (user {}) for script {} to global channel", session_id, user_id, script_id);
                     }
                     
                     Message::Ping(data) => {
@@ -447,12 +453,41 @@ async fn handle_socket(
     }
     
     // Clean up when done
-    session.clients.remove(&session_id);
+    tracing::info!("WebSocket cleanup starting for session: {}, script: {}, user: {}", 
+                  session_id, script_id, user_id);
     
-    // If no clients left in the session, remove the session
-    if session.clients.is_empty() {
-        SESSIONS.remove(&script_id);
+    // Remove this client from the session
+    if let Some((removed_session_id, removed_user_id)) = session.clients.remove(&session_id) {
+        tracing::info!("Removed client session {} (user: {}) from script {}", 
+                      removed_session_id, removed_user_id, script_id);
+    } else {
+        tracing::warn!("Session {} was already removed from script {}", session_id, script_id);
     }
     
-    tracing::info!("WebSocket connection closed: {}", session_id);
+    // Log remaining clients
+    let remaining_clients = session.clients.len();
+    tracing::info!("Script {} has {} remaining clients after removing session {}", 
+                  script_id, remaining_clients, session_id);
+    
+    // If no clients left in the session, remove the session from global map
+    if remaining_clients == 0 {
+        tracing::info!("No clients remaining for script {}, removing session from global map", script_id);
+        if let Some((removed_script_id, removed_session)) = SESSIONS.remove(&script_id) {
+            let final_client_count = removed_session.clients.len();
+            tracing::info!("Successfully removed session for script {} (final client count: {})", 
+                          removed_script_id, final_client_count);
+        } else {
+            tracing::warn!("Session for script {} was already removed from global map", script_id);
+        }
+    } else {
+        // Log who's still connected
+        let connected_users: Vec<String> = session.clients.iter()
+            .map(|entry| format!("session={}, user={}", entry.key(), entry.value()))
+            .collect();
+        tracing::info!("Script {} still has active connections: [{}]", 
+                      script_id, connected_users.join(", "));
+    }
+    
+    tracing::info!("WebSocket connection closed: session={}, script={}, user={}", 
+                  session_id, script_id, user_id);
 } 
