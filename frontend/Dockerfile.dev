@@ -34,5 +34,6 @@ RUN openssl req -x509 -newkey rsa:4096 -keyout /app/ssl/dev/key.pem -out /app/ss
 # Expose both HTTP and HTTPS ports
 EXPOSE 8080 8443
 
-# Run Vite dev server with hot reload (using dev config without HTTPS)
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "8080", "--config", "vite.config.dev.ts"]
+# Run Vite dev server with hot reload
+# The dev script in package.json already specifies vite.config.dev.ts
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "8080"]
