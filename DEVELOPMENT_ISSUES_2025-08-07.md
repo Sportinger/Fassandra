@@ -102,6 +102,4 @@ This is the standard development setup used by most modern frameworks:
 ## Test Credentials
 
 - Email: `a@b.c`
-- Password: (same as admin@pessoa.de)
-- Email: `admin@pessoa.de`
-- Password: (check with admin)
+- Password: `a@b.d123abCD`
