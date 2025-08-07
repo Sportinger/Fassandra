@@ -36,7 +36,7 @@ echo "✅ Docker is running"
 
 # CLEAN EXISTING CONTAINERS (DEV ONLY)
 echo "🧹 Cleaning existing dev containers..."
-docker compose -f docker-compose.yml down 2>/dev/null || true
+docker compose --env-file .env.dev -f docker-compose.yml down 2>/dev/null || true
 docker stop $(docker ps -aq --filter "name=${APP_NAME}") 2>/dev/null || true
 docker rm $(docker ps -aq --filter "name=${APP_NAME}") 2>/dev/null || true
 echo "✅ Cleaned existing containers"
@@ -67,7 +67,7 @@ echo "✅ Frontend built successfully"
 # CHECK REQUIRED FILES FOR DEV
 echo "📋 Checking required files..."
 COMPOSE_FILE="docker-compose.yml"
-ENV_FILE=".env"
+ENV_FILE=".env.dev"
 
 if [ ! -f "$COMPOSE_FILE" ]; then
     echo "⚠️  No docker-compose.yml found, looking for alternatives..."
@@ -83,26 +83,18 @@ fi
 echo "✅ Using compose file: $COMPOSE_FILE"
 
 if [ ! -f "$ENV_FILE" ]; then
-    echo "⚠️  No .env file found, looking for alternatives..."
-    if [ -f ".env.development" ]; then
-        cp .env.development .env
-        echo "✅ Using .env.development"
-    elif [ -f ".env.example" ]; then
-        cp .env.example .env
-        echo "✅ Created .env from .env.example (please review and update)"
-    else
-        echo "⚠️  No .env file found - services may use default values"
-    fi
+    echo "❌ No .env.dev file found - required for development"
+    exit 1
 else
-    echo "✅ .env file present"
+    echo "✅ Using environment file: $ENV_FILE"
 fi
 
 # START SERVICES
 echo "🚀 Starting development services..."
-if ! docker compose -f $COMPOSE_FILE up -d; then
+if ! docker compose --env-file $ENV_FILE -f $COMPOSE_FILE up -d; then
     echo "❌ Failed to start services"
     echo "Showing docker compose logs:"
-    docker compose -f $COMPOSE_FILE logs
+    docker compose --env-file $ENV_FILE -f $COMPOSE_FILE logs
     exit 1
 fi
 
@@ -125,7 +117,7 @@ fi
 # SHOW STATUS
 echo ""
 echo "📊 Final container status:"
-docker compose -f $COMPOSE_FILE ps
+docker compose --env-file $ENV_FILE -f $COMPOSE_FILE ps
 
 # HEALTH CHECKS
 echo ""
@@ -175,9 +167,9 @@ echo "   Backend:   http://${DOMAIN}:${API_PORT}/api"
 echo "   WebSocket: ws://${DOMAIN}:${COLLAB_PORT}/api/collab"
 echo ""
 echo "📋 Useful commands:"
-echo "   View logs:      docker compose -f $COMPOSE_FILE logs -f"
-echo "   Stop services:  docker compose -f $COMPOSE_FILE down"
-echo "   Restart:        docker compose -f $COMPOSE_FILE restart"
-echo "   Shell access:   docker compose -f $COMPOSE_FILE exec [service] sh"
+echo "   View logs:      docker compose --env-file $ENV_FILE -f $COMPOSE_FILE logs -f"
+echo "   Stop services:  docker compose --env-file $ENV_FILE -f $COMPOSE_FILE down"
+echo "   Restart:        docker compose --env-file $ENV_FILE -f $COMPOSE_FILE restart"
+echo "   Shell access:   docker compose --env-file $ENV_FILE -f $COMPOSE_FILE exec [service] sh"
 echo ""
 echo "🔄 Hot reload should be enabled for development"
