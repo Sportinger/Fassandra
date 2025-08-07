@@ -43,7 +43,7 @@ class UploadStateManager {
         // Clean up completed uploads older than 5 minutes
         const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
         for (const [id, upload] of this.state.uploads) {
-          if (upload.uploadComplete && new Date(upload.uploadStartTime).getTime() < fiveMinutesAgo) {
+          if (upload.uploadComplete && upload.uploadStartTime && new Date(upload.uploadStartTime).getTime() < fiveMinutesAgo) {
             this.state.uploads.delete(id);
             this.state.sessionIds.delete(id);
           }

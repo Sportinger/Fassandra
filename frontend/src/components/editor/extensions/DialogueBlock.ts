@@ -247,7 +247,7 @@ export const DialogueBlock = Node.create<DialogueBlockOptions>({
               return true;
             },
             
-            dragend: (view, event) => {
+            dragend: (view, _event) => {
               // Clean up draggable attributes
               view.dom.querySelectorAll('[data-type="dialogue-block"][draggable="true"]').forEach(el => {
                 el.removeAttribute('draggable');

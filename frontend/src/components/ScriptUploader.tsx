@@ -11,7 +11,6 @@ interface ScriptUploaderProps {
 }
 
 const ScriptUploader: React.FC<ScriptUploaderProps> = ({ 
-    onScriptCreated, 
     onClose, 
     onBackgroundUploadStart 
 }) => {

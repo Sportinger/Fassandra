@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import fs from 'fs';
 
 // Check for SSL certificates in multiple locations (only in development)
-let sslConfig = null;
+let sslConfig: any = null;
 if (process.env.NODE_ENV !== 'production') {
   const sslPaths = [
     { key: './ssl/private/server.key', cert: './ssl/certs/server.crt' },
@@ -28,7 +28,6 @@ if (process.env.NODE_ENV !== 'production') {
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
-  const env = loadEnv(mode, process.cwd(), '');
   
   // Use .env.android file when mode is 'android'
   if (mode === 'android') {
@@ -40,9 +39,9 @@ export default defineConfig(({ mode }) => {
     server: {
     port: 8080,     // Standard port for hot reload
     host: true,     // Allow access from host to container
-    allowedHosts: process.env.VITE_APP_DOMAIN ? [process.env.VITE_APP_DOMAIN] : ['localhost', '192.168.2.111'],
+    allowedHosts: process.env.VITE_APP_DOMAIN ? [process.env.VITE_APP_DOMAIN] : ['localhost', '192.168.2.141'],
     // Only use HTTPS in development mode
-    https: process.env.NODE_ENV !== 'production' ? sslConfig : false,
+    https: process.env.NODE_ENV !== 'production' && sslConfig ? sslConfig : undefined,
     watch: {
       usePolling: true,  // Docker-safe file watching
       interval: 500,     // Polling interval (ms)

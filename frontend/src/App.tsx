@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, Profiler } from 'react';
 import type { JSX } from 'react';
 import { useAuth } from './AuthContext'
+import { onRenderCallback } from './utils/profiling'
 import { Login } from './components/Login'
 import { Register } from './components/Register'
 import { ScriptList, ScriptListRef } from './components/ScriptList' // Import ref type
@@ -149,13 +150,15 @@ function App(): JSX.Element {
     // Show Script List if logged in and viewing scripts
     viewComponent = (
       <RouteErrorBoundary routeName="Script List">
-        <ScriptList
-          ref={scriptListRef}
-          onSelectScript={handleNavigateToEditor}
-          onUploadClick={openUploader}
-          onScriptClickStart={handleScriptClickStart}
-          refreshTrigger={refreshTrigger}
-        />
+        <Profiler id="ScriptList" onRender={onRenderCallback}>
+          <ScriptList
+            ref={scriptListRef}
+            onSelectScript={handleNavigateToEditor}
+            onUploadClick={openUploader}
+            onScriptClickStart={handleScriptClickStart}
+            refreshTrigger={refreshTrigger}
+          />
+        </Profiler>
       </RouteErrorBoundary>
     );
   } else if (currentView === 'editor' && selectedScriptId) {
@@ -163,11 +166,13 @@ function App(): JSX.Element {
     viewComponent = (
       <RouteErrorBoundary routeName="Editor">
         <div>
-          <Editor
-            scriptId={selectedScriptId}
-            initialTitle={selectedScriptTitle || undefined}
-            onNavigateBack={handleNavigateToScripts}
-          />
+          <Profiler id="Editor" onRender={onRenderCallback}>
+            <Editor
+              scriptId={selectedScriptId}
+              initialTitle={selectedScriptTitle || undefined}
+              onNavigateBack={handleNavigateToScripts}
+            />
+          </Profiler>
         </div>
       </RouteErrorBoundary>
     );
@@ -192,12 +197,14 @@ function App(): JSX.Element {
         <div className="App">
           {token && (
             <ErrorBoundary level="section" isolate={true}>
-              <Header 
-                currentView={currentView === 'auth' ? 'scripts' : currentView}
-                scriptTitle={selectedScriptTitle || undefined}
-                onNavigateToScripts={handleNavigateToScripts}
-                onThumbnailsRefreshed={handleThumbnailsRefreshed}
-              />
+              <Profiler id="Header" onRender={onRenderCallback}>
+                <Header 
+                  currentView={currentView === 'auth' ? 'scripts' : currentView}
+                  scriptTitle={selectedScriptTitle || undefined}
+                  onNavigateToScripts={handleNavigateToScripts}
+                  onThumbnailsRefreshed={handleThumbnailsRefreshed}
+                />
+              </Profiler>
             </ErrorBoundary>
           )}
 

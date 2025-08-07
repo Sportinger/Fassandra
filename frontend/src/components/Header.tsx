@@ -184,7 +184,7 @@ export const Header: React.FC<HeaderProps> = ({
     setIsMenuOpen(false);
     
     try {
-      const generatedCount = await regenerateAllThumbnails(token);
+      const generatedCount = await regenerateAllThumbnails();
       logger.debug('Header', `Generated ${generatedCount} thumbnails`);
       
       // Call the callback to refresh the script list if provided

@@ -5,7 +5,17 @@ import { WebsocketProvider } from 'y-websocket';
 
 import Collaboration from '@tiptap/extension-collaboration';
 import { CollaborationCursor } from '@tiptap/extension-collaboration-cursor';
-import StarterKit from '@tiptap/starter-kit';
+// Import individual extensions instead of StarterKit for better tree shaking
+import { Document } from '@tiptap/extension-document';
+import { Paragraph } from '@tiptap/extension-paragraph';
+import { Text } from '@tiptap/extension-text';
+import { Bold } from '@tiptap/extension-bold';
+import { Italic } from '@tiptap/extension-italic';
+import { Strike } from '@tiptap/extension-strike';
+import { Code } from '@tiptap/extension-code';
+import { History } from '@tiptap/extension-history';
+import { Dropcursor } from '@tiptap/extension-dropcursor';
+import { Gapcursor } from '@tiptap/extension-gapcursor';
 import { Color } from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { TextAlign } from '@tiptap/extension-text-align';
@@ -274,9 +284,17 @@ export const useEditorCore = ({
       ? {
           // Collaborative editor with YJS
           extensions: [
-            StarterKit.configure({
-              history: false, // Important: disable history for YJS
-            }),
+            // Core extensions (StarterKit replacements)
+            Document,
+            Paragraph,
+            Text,
+            Bold,
+            Italic,
+            Strike,
+            Code,
+            // No History - disabled for YJS
+            Dropcursor,
+            Gapcursor,
             Collaboration.configure({
               document: ydoc,
               field: 'default', // Explicitly specify the fragment name
@@ -316,9 +334,17 @@ export const useEditorCore = ({
       : {
           // Local editor without collaboration
           extensions: [
-            StarterKit.configure({
-              // History is enabled by default in StarterKit
-            }),
+            // Core extensions (StarterKit replacements)
+            Document,
+            Paragraph,
+            Text,
+            Bold,
+            Italic,
+            Strike,
+            Code,
+            History, // Enabled for local editing
+            Dropcursor,
+            Gapcursor,
             DialogueBlock,
             Speaker,
             DialogueText,

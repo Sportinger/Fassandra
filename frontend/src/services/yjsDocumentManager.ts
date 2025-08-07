@@ -124,7 +124,7 @@ class YjsDocumentManager {
               origin: origin?.constructor?.name || origin || 'unknown',
               stateVectorSize: state.length,
               clientID: doc.clientID,
-              updateCounter: doc.store.clients.get(doc.clientID)?.clock || 0
+              updateCounter: (doc.store.clients.get(doc.clientID) as any)?.clock || 0
             })}`);
           }
         } catch (error) {
@@ -182,7 +182,7 @@ class YjsDocumentManager {
   forceDestroyDocument(scriptId: string): void {
     const doc = this.documents.get(scriptId);
     if (doc) {
-      logger.warn('yjsDocumentManager', 'Warning:', `[YjsDocumentManager] Force destroying document ${scriptId}`);
+      logger.warn('yjsDocumentManager', `[YjsDocumentManager] Force destroying document ${scriptId}`);
       
       // Clear any pending cleanup timers
       const timer = this.cleanupTimers.get(scriptId);
@@ -192,8 +192,8 @@ class YjsDocumentManager {
       }
       
       // Remove all event listeners before destroying
-      doc.off('update');
-      doc.off('destroy');
+      doc.off('update', () => {});
+      doc.off('destroy', () => {});
       
       doc.destroy();
       this.documents.delete(scriptId);
@@ -241,7 +241,7 @@ class YjsDocumentManager {
    * Clear all documents (for testing/logout scenarios)
    */
   clearAll(): void {
-    logger.warn('yjsDocumentManager', 'Warning:', '[YjsDocumentManager] Clearing all documents');
+    logger.warn('yjsDocumentManager', '[YjsDocumentManager] Clearing all documents');
     
     // Clear all cleanup timers first
     this.cleanupTimers.forEach(timer => clearTimeout(timer));
@@ -252,8 +252,8 @@ class YjsDocumentManager {
       sessionStorage.removeItem(`yjs-client-id-${scriptId}`);
       
       // Remove all event listeners before destroying
-      doc.off('update');
-      doc.off('destroy');
+      doc.off('update', () => {});
+      doc.off('destroy', () => {});
       
       doc.destroy();
     });

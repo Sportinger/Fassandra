@@ -1,0 +1,58 @@
+/* Card container */
+.card {
+  background: var(--color-background, #fff);
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease;
+}
+
+/* Padding variants */
+.padding-none {
+  padding: 0;
+}
+
+.padding-small {
+  padding: 0.75rem;
+}
+
+.padding-medium {
+  padding: 1.25rem;
+}
+
+.padding-large {
+  padding: 2rem;
+}
+
+/* States */
+.hoverable:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:active {
+  transform: translateY(0);
+}
+
+/* Card sections */
+.header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-border, #e9ecef);
+  font-weight: 600;
+}
+
+.body {
+  padding: 1.25rem;
+}
+
+.footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--color-border, #e9ecef);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}

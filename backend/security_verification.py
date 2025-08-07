@@ -18,7 +18,7 @@ import threading
 import uuid
 
 # Configuration
-BASE_URL = "https://192.168.2.111:8443"  # Your backend URL
+BASE_URL = "https://192.168.2.141:8443"  # Your backend URL
 TIMEOUT = 10
 
 class SecurityTester:
@@ -335,7 +335,7 @@ class SecurityTester:
             self.script_id = response.json()['id']
             
             # Test 1: Valid token should work
-            ws_url = f"wss://192.168.2.111:8443/api/collab/{self.script_id}?token={self.token}"
+            ws_url = f"wss://192.168.2.141:8443/api/collab/{self.script_id}?token={self.token}"
             try:
                 ws = websocket.create_connection(ws_url, timeout=5, sslopt={"cert_reqs": 0})
                 ws.close()
@@ -346,7 +346,7 @@ class SecurityTester:
                 valid_connection_works = False
             
             # Test 2: Invalid token should be rejected
-            invalid_ws_url = f"wss://192.168.2.111:8443/api/collab/{self.script_id}?token=invalid_token"
+            invalid_ws_url = f"wss://192.168.2.141:8443/api/collab/{self.script_id}?token=invalid_token"
             try:
                 ws = websocket.create_connection(invalid_ws_url, timeout=5, sslopt={"cert_reqs": 0})
                 ws.close()
@@ -358,7 +358,7 @@ class SecurityTester:
             
             # Test 3: Different user's script should be rejected
             fake_script_id = str(uuid.uuid4())
-            unauthorized_ws_url = f"wss://192.168.2.111:8443/api/collab/{fake_script_id}?token={self.token}"
+            unauthorized_ws_url = f"wss://192.168.2.141:8443/api/collab/{fake_script_id}?token={self.token}"
             try:
                 ws = websocket.create_connection(unauthorized_ws_url, timeout=5, sslopt={"cert_reqs": 0})
                 ws.close()

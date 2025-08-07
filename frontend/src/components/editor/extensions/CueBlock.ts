@@ -165,7 +165,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
         key: cueBlockDragKey,
         props: {
           handleDOMEvents: {
-            mousedown: (view, event) => {
+            mousedown: (_view, event) => {
               const target = event.target as HTMLElement;
               const connectionDragArea = target.closest('.cue-connection-drag-area');
               const moveDragArea = target.closest('.cue-move-drag-area');
@@ -258,7 +258,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
               return false;
             },
             
-            dragend: (view, event) => {
+            dragend: (view, _event) => {
               // Remove dragging class
               const draggingElement = (view as any).cueBlockDragging;
               if (draggingElement) {
@@ -318,7 +318,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
               return true;
             },
             
-            dragleave: (view, event) => {
+            dragleave: (view, _event) => {
               // Clear drop decorations when leaving editor
               if ((view as any).cueDropDecorations) {
                 view.dispatch(view.state.tr.setMeta('removeDropDecoration', true));
@@ -332,6 +332,8 @@ export const CueBlock = Node.create<CueBlockOptions>({
               if (!currentDragData || !currentDragData.isConnectionDrag) {
                 return false;
               }
+              
+              if (!event) return false;
               
               event.preventDefault();
               event.stopPropagation(); // Prevent ProseMirror from handling this
@@ -347,7 +349,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
               const cueData = currentDragData;
               
               try {
-                const pos = view.posAtCoords({ left: event.clientX, top: event.clientY });
+                const pos = view.posAtCoords({ left: (event as DragEvent).clientX, top: (event as DragEvent).clientY });
                 
                 if (!pos) return false;
                 
@@ -613,7 +615,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
         const newState = transaction.doc;
         
         // Find deleted cue blocks
-        oldState.descendants((node, pos) => {
+        oldState.descendants((node, _pos) => {
           if (node.type.name === 'cueBlock') {
             const cueType = node.attrs.cueType;
             const cueNumber = node.attrs.cueNumber;

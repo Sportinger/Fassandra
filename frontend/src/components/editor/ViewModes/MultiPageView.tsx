@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { Ruler } from '../Ruler';
 import '../styles/responsive.css';
@@ -19,9 +19,7 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
   showRuler,
   className = '',
   onToggleRuler,
-  onToggleViewMode,
-  rehearsalMode = false,
-  rehearsalLinePosition = 0
+  onToggleViewMode
 }) => {
   const [pageCount, setPageCount] = useState(3);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -178,8 +176,13 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
       }
     }
     
-    const totalChars = pageContents.reduce((sum, content) => sum + content.length, 0);
-    const avgCharsPerPage = totalChars / pageContents.length;
+    const stats = useMemo(() => {
+      const totalChars = pageContents.reduce((sum, content) => sum + content.length, 0);
+      const avgCharsPerPage = totalChars / pageContents.length;
+      return { totalChars, avgCharsPerPage };
+    }, [pageContents]);
+    
+    const { totalChars, avgCharsPerPage } = stats;
     
     logger.debug('MultiPageView', `🚀 EFFICIENCY: ${pageContents.length} pages, avg ${Math.round(avgCharsPerPage)} chars/page`);
     logger.debug('MultiPageView', `📐 FOOTER-SAFE: usableContentHeight = ${usableContentHeight}px (header: ${headerMargin}px, footer: ${footerMargin}px)`);
