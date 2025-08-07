@@ -42,10 +42,24 @@ export const Login: React.FC = () => {
       
       // Wait for animation to complete (300ms) then set token
       setTimeout(async () => {
-        // Since the backend sets cookies, we just need to mark as authenticated
-        // and fetch the user data
-        setToken('authenticated', response.user);
-        logDebugInfo('Login', 'Authentication state set after exit animation');
+        // For mobile apps (Capacitor), use JWT token from response body
+        // For web apps, use cookie-based auth with 'authenticated' flag
+        // Check for Capacitor using multiple methods
+        const isCapacitor = (window as any).Capacitor !== undefined || 
+                           (window.location.hostname === 'localhost' && window.location.protocol === 'https:');
+        let token = 'authenticated';
+        
+        if (isCapacitor && response.token) {
+          // Mobile app: Use JWT token from login response
+          token = response.token;
+          logDebugInfo('Login', `Using JWT token from login response for mobile app: ${token ? token.substring(0, 20) + '...' : 'empty'}`);
+        } else if (!isCapacitor) {
+          // Web app: Use cookie-based auth
+          logDebugInfo('Login', 'Using cookie-based authentication for web app');
+        }
+        
+        setToken(token, response.user);
+        logDebugInfo('Login', `Authentication state set after exit animation (${isCapacitor ? 'mobile/JWT' : 'web/cookie'})`);
       }, 300);
       
     } catch (err) {

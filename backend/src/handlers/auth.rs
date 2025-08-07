@@ -102,6 +102,7 @@ pub async fn register(
 pub async fn login(
     State(pool): State<Arc<PgPool>>, 
     cookies: Cookies,
+    headers: axum::http::HeaderMap,
     Json(payload): Json<LoginPayload>
 ) -> Result<Json<serde_json::Value>, AppError> {
     // Fetch all fields needed for the token
@@ -125,11 +126,22 @@ pub async fn login(
     // Pass all required fields to generate_token
     let token = generate_token(user.id, &user.email, &user.username, &user.role)?;
     
-    // Set the authentication cookie
+    // Set the authentication cookie (for web clients)
     set_auth_cookie(&cookies, &token)?;
     
+    // Check if this is a mobile client (Capacitor/Ionic app)
+    // Mobile clients need the JWT token in the response body since cookies don't work cross-origin
+    let is_mobile_client = headers.get("x-mobile-app")
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v == "true")
+        .unwrap_or(false)
+        || headers.get("user-agent")
+            .and_then(|v| v.to_str().ok())
+            .map(|ua| ua.contains("Capacitor") || ua.contains("Ionic"))
+            .unwrap_or(false);
+    
     // Return success response with user info
-    Ok(Json(serde_json::json!({
+    let mut response = serde_json::json!({
         "message": "Login successful",
         "user": {
             "id": user.id,
@@ -137,7 +149,14 @@ pub async fn login(
             "username": user.username,
             "role": user.role
         }
-    })))
+    });
+    
+    // Include token in response for mobile clients
+    if is_mobile_client {
+        response["token"] = serde_json::Value::String(token.clone());
+    }
+    
+    Ok(Json(response))
 }
 
 /// Payload for console log forwarding from mobile browsers.

@@ -16,9 +16,21 @@ export const setApiToken = (token: string | null) => {
 // --- Authentication --- //
 
 export const login = async (email: string, password: string): Promise<any> => {
+    // Check if we're in a Capacitor app
+    const isCapacitor = (window as any).Capacitor !== undefined || 
+                       (window.location.hostname === 'localhost' && window.location.protocol === 'https:');
+    
+    const headers: Record<string, string> = {};
+    
+    // Add mobile app header for Capacitor apps so backend returns JWT in response body
+    if (isCapacitor) {
+        headers['X-Mobile-App'] = 'true';
+    }
+    
     return apiService.request('/login', {
         method: 'POST',
         body: { email, password },
+        headers,
         requireAuth: false, // Login doesn't require auth token
         validate: { email, password }
     });
