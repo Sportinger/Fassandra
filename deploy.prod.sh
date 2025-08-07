@@ -128,13 +128,13 @@ if [ "$REBUILD_FRONTEND" = true ]; then
 fi
 
 # If no specific rebuild requested, only rebuild frontend by default
+# NEVER rebuild backend unless explicitly requested with --rebuild-backend
 if [ "$REBUILD_BACKEND" = false ] && [ "$REBUILD_FRONTEND" = false ]; then
-    # Frontend always needs rebuild for HTML/JS changes
+    # Only rebuild frontend by default (for JS/CSS changes)
     rebuild_frontend
-    touch /tmp/last_deploy_frontend
-    
-    # Just restart backend (don't rebuild unless explicitly requested)
+    # Just restart backend container without rebuilding
     docker compose -f docker-compose.production.yml restart backend >/dev/null 2>&1
+    touch /tmp/last_deploy_frontend
 fi
 
 # Restart Caddy

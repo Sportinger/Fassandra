@@ -25,7 +25,30 @@ class YjsDocumentManager {
    * Get or create a document for a script
    * Increments reference count to track active users
    */
-  getDocument(scriptId: string): Y.Doc {
+  getDocument(scriptId: string, forceNew: boolean = false): Y.Doc {
+    // If forcing new document, mark the old one for cleanup but don't destroy immediately
+    if (forceNew && this.documents.has(scriptId)) {
+      console.log(`[YjsDocumentManager] Force creating new document for script: ${scriptId}, marking old one for cleanup`);
+      const oldDoc = this.documents.get(scriptId);
+      
+      // Schedule cleanup after a delay to allow provider to disconnect properly
+      if (oldDoc) {
+        setTimeout(() => {
+          console.log(`[YjsDocumentManager] Delayed cleanup of old document for script: ${scriptId}`);
+          // Only destroy if it's still the same document (not replaced)
+          if (this.documents.get(scriptId) === oldDoc) {
+            oldDoc.destroy();
+          }
+        }, 500); // Give provider 500ms to cleanup
+      }
+      
+      // Remove from maps immediately to force new document creation
+      this.documents.delete(scriptId);
+      this.refCounts.delete(scriptId);
+      // Clear the stored client ID to get a fresh one
+      sessionStorage.removeItem(`yjs-client-id-${scriptId}`);
+    }
+    
     if (!this.documents.has(scriptId)) {
       console.log(`[YjsDocumentManager] Creating new document for script: ${scriptId}`);
       const doc = new Y.Doc();
@@ -47,17 +70,21 @@ class YjsDocumentManager {
         doc.getXmlFragment('default');
       }, 'initializeDefaultFragment');
 
-      // Add debug logging
+      // Add debug logging with error handling
       doc.on('update', (update: Uint8Array, origin: any) => {
-        const state = Y.encodeStateVector(doc);
-        console.log(`[YjsDocumentManager] Document ${scriptId} updated:`, {
-          updateSize: update.length,
-          origin: origin?.constructor?.name || origin || 'unknown',
-          stateVectorSize: state.length,
-          clientID: doc.clientID,
-          // Log the counter to track regression issues
-          updateCounter: doc.store.clients.get(doc.clientID)?.clock || 0
-        });
+        try {
+          const state = Y.encodeStateVector(doc);
+          console.log(`[YjsDocumentManager] Document ${scriptId} updated:`, {
+            updateSize: update.length,
+            origin: origin?.constructor?.name || origin || 'unknown',
+            stateVectorSize: state.length,
+            clientID: doc.clientID,
+            // Log the counter to track regression issues
+            updateCounter: doc.store.clients.get(doc.clientID)?.clock || 0
+          });
+        } catch (error) {
+          console.error(`[YjsDocumentManager] Error processing update for ${scriptId}:`, error);
+        }
       });
 
       this.documents.set(scriptId, doc);

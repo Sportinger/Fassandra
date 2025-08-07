@@ -94,6 +94,7 @@ export const useEditorCore = ({
   
   // Track provider ref for cleanup
   const providerRef = useRef<WebsocketProvider | null>(null);
+  const previousScriptIdRef = useRef<string | null>(null);
 
   // 🔧 FIXED: Initialize Yjs document and WebSocket provider with proper dependencies
   useEffect(() => {
@@ -104,8 +105,13 @@ export const useEditorCore = ({
 
     debugLog(`[Editor Core] Initializing for script: ${stableScriptId}, user: ${stableUser.username}`);
 
-    // 🔧 FIX: Use document manager to get persistent document instance
-    const doc = yjsDocumentManager.getDocument(stableScriptId);
+    // 🔧 FIX: Detect script changes to force new document only when switching scripts
+    const isScriptChange = previousScriptIdRef.current !== null && previousScriptIdRef.current !== stableScriptId;
+    previousScriptIdRef.current = stableScriptId;
+
+    // 🔧 FIX: Reuse existing document on refresh to maintain WebSocket stability
+    // Only force new document when switching to a different script
+    const doc = yjsDocumentManager.getDocument(stableScriptId, isScriptChange); // Force new only on script change
     const docInfo = yjsDocumentManager.getDocumentInfo(stableScriptId);
     
     debugLog(`[Editor Core] Using persistent Y.Doc from manager:`, {
@@ -120,20 +126,31 @@ export const useEditorCore = ({
     // 🔧 DISABLED: Offline storage - removed IndexedDB persistence
     debugLog(`[Editor Core] Skipping IndexedDB persistence - always fetching from backend`);
 
-    // 🔧 FIXED: Create WebSocket provider with relative URL for proxy support
-    const websocketProvider = new WebsocketProvider(
-      WS_BASE_URL,
-      stableScriptId,
-      doc,
-      {
-        params: {
-          token: stableToken?.trim() || '',
-        },
-      }
-    );
+    // 🔧 FIXED: Create WebSocket provider with error handling
+    let websocketProvider: WebsocketProvider;
+    try {
+      websocketProvider = new WebsocketProvider(
+        WS_BASE_URL,
+        stableScriptId,
+        doc,
+        {
+          params: {
+            token: stableToken?.trim() || '',
+          },
+          // Prevent aggressive reconnection that might cause browser refresh
+          maxBackoffTime: 30000, // Max 30 seconds between reconnection attempts
+          resyncInterval: 5000, // Resync every 5 seconds when connected
+        }
+      );
 
-    setProvider(websocketProvider);
-    providerRef.current = websocketProvider;
+      setProvider(websocketProvider);
+      providerRef.current = websocketProvider;
+    } catch (error) {
+      console.error('[Editor Core] Failed to create WebSocket provider:', error);
+      setConnectionStatus('error');
+      setErrorMessage('Failed to initialize collaboration');
+      return;
+    }
 
     // Connection status handlers
     websocketProvider.on('status', (event: { status: string }) => {
@@ -200,18 +217,25 @@ export const useEditorCore = ({
         websocketProvider.awareness.off('change', trackAwareness);
       }
       
-      // 🔧 FIX: Only destroy provider, NOT the document (keep it persistent)
+      // 🔧 FIX: Disconnect provider gracefully before destroying
       if (providerRef.current) {
-        debugLog('[Editor Core] Destroying WebSocket provider, but keeping document');
-        providerRef.current.destroy();
-        providerRef.current = null;
+        debugLog('[Editor Core] Disconnecting and destroying WebSocket provider, but keeping document');
+        providerRef.current.disconnect();
+        // Small delay to allow proper disconnect before destroy
+        setTimeout(() => {
+          if (providerRef.current) {
+            providerRef.current.destroy();
+            providerRef.current = null;
+          }
+        }, 100);
       }
       
-      // 🔧 FIX: Release document reference but don't destroy it
+      // 🔧 FIX: Release document reference but don't destroy it on unmount
+      // Document persists for quick reconnection on refresh
       if (stableScriptId) {
         yjsDocumentManager.releaseDocument(stableScriptId);
         const docInfo = yjsDocumentManager.getDocumentInfo(stableScriptId);
-        debugLog('[Editor Core] Released document reference:', {
+        debugLog('[Editor Core] Released document reference (keeping for refresh):', {
           scriptId: stableScriptId,
           remainingRefCount: docInfo.refCount,
           stillExists: docInfo.exists
