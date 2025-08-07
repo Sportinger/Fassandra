@@ -1,5 +1,7 @@
 // Debug utilities for mobile browser troubleshooting
 
+import logger, { logDebug as log } from '../services/LoggingService';
+
 export const isMobile = (): boolean => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i.test(navigator.userAgent) ||
          /Mobi|Android/i.test(navigator.userAgent) ||
@@ -132,7 +134,8 @@ export const logDebugInfo = (prefix: string, info: any) => {
     sessionStorage.setItem('debugLog', JSON.stringify(debugLog));
   }
   
-  console.log(`[${prefix}]`, info);
+  // Use centralized logging service instead of direct console.log
+  log(prefix, typeof info === 'string' ? info : JSON.stringify(info));
 };
 
 export const getDebugLog = (): Array<{timestamp: string, prefix: string, info: string}> => {
