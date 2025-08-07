@@ -11,6 +11,7 @@ import { Header } from './components/Header';
 import { Script } from './types'; // Import Script type
 import { getScriptWithBlocks } from './api';
 import { YjsDocumentProvider } from './contexts/YjsDocumentContext';
+import { logDebugInfo } from './utils/debug';
 
 import './App.css'
 
@@ -183,7 +184,9 @@ function App(): JSX.Element {
 
   // 🚀 FIXED: Handle background upload start with correct type
   const handleBackgroundUploadStart = (placeholder: PlaceholderScript) => {
-    console.log('[App] Background upload started for:', placeholder.title);
+    if (import.meta.env.DEV) {
+      logDebugInfo('App', `Background upload started for: ${placeholder.title}`);
+    }
     
     // Close uploader modal immediately for better UX
     setIsUploaderOpen(false);
@@ -191,12 +194,16 @@ function App(): JSX.Element {
     // Pass the placeholder to ScriptList component
     if (scriptListRef.current) {
       scriptListRef.current.addUploadPlaceholder(placeholder);
-      console.log('[App] ✅ Placeholder passed to ScriptList');
+      if (import.meta.env.DEV) {
+        logDebugInfo('App', 'Placeholder passed to ScriptList');
+      }
     } else {
       console.error('[App] ScriptList ref not available for background upload');
     }
     
-    console.log('[App] ✅ Modal closed, upload continuing in background');
+    if (import.meta.env.DEV) {
+      logDebugInfo('App', 'Modal closed, upload continuing in background');
+    }
   };
 
   // Function to navigate back to scripts
