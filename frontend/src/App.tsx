@@ -4,7 +4,8 @@ import { useAuth } from './AuthContext'
 import { onRenderCallback } from './utils/profiling'
 import { Login } from './components/Login'
 import { Register } from './components/Register'
-import { ScriptList, ScriptListRef } from './components/ScriptList' // Import ref type
+// Use the new refactored ScriptList
+import { ScriptList, ScriptListRef } from './components/scripts/ScriptList'
 import { Editor } from './components/editor'
 import ScriptUploader from './components/ScriptUploader'
 import { PlaceholderScript } from './types'
