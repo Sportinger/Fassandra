@@ -41,28 +41,13 @@ docker stop $(docker ps -aq --filter "name=${APP_NAME}") 2>/dev/null || true
 docker rm $(docker ps -aq --filter "name=${APP_NAME}") 2>/dev/null || true
 echo "✅ Cleaned existing containers"
 
-# BUILD PHASE
-echo "🔨 Building backend for development..."
-if ! DOCKER_BUILDKIT=1 docker build \
-    $BUILD_OPTS \
-    -f backend/Dockerfile.dev \
-    -t ${APP_NAME}-backend:latest ./backend; then
-    echo "❌ Backend build FAILED - Dockerfile.dev is required for development"
+# BUILD PHASE (using docker-compose to build)
+echo "🔨 Building containers with docker-compose..."
+if ! DOCKER_BUILDKIT=1 docker compose --env-file .env.dev -f docker-compose.yml build $BUILD_OPTS; then
+    echo "❌ Build FAILED"
     exit 1
 fi
-echo "✅ Backend built successfully"
-
-echo "🔨 Building frontend for development..."
-if ! DOCKER_BUILDKIT=1 docker build \
-    $BUILD_OPTS \
-    -f frontend/Dockerfile.dev \
-    --build-arg VITE_API_BASE_URL=http://${DOMAIN}:${API_PORT} \
-    --build-arg VITE_WS_BASE_URL=ws://${DOMAIN}:${COLLAB_PORT}/api/collab \
-    -t ${APP_NAME}-frontend:latest ./frontend; then
-    echo "❌ Frontend build FAILED - Dockerfile.dev is required for development"
-    exit 1
-fi
-echo "✅ Frontend built successfully"
+echo "✅ All containers built successfully"
 
 # CHECK REQUIRED FILES FOR DEV
 echo "📋 Checking required files..."
@@ -138,12 +123,12 @@ else
     echo "⚠️  No database container found"
 fi
 
-# Frontend check
+# Frontend check (HTTPS with self-signed cert)
 echo -n "Frontend: "
-if curl -sI http://${DOMAIN}:${FRONTEND_PORT} | head -1 | grep -q "200\|301\|302\|304"; then
-    echo "✅ http://${DOMAIN}:${FRONTEND_PORT}"
+if curl -skI https://${DOMAIN}:${FRONTEND_PORT} | head -1 | grep -q "200\|301\|302\|304"; then
+    echo "✅ https://${DOMAIN}:${FRONTEND_PORT}"
 else
-    echo "⏳ Starting... (will be available at http://${DOMAIN}:${FRONTEND_PORT})"
+    echo "⏳ Starting... (will be available at https://${DOMAIN}:${FRONTEND_PORT})"
 fi
 
 # Backend check
@@ -162,7 +147,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "✅ LOCAL DEVELOPMENT DEPLOYMENT COMPLETE"
 echo ""
 echo "🌐 Access points:"
-echo "   Frontend:  http://${DOMAIN}:${FRONTEND_PORT}"
+echo "   Frontend:  https://${DOMAIN}:${FRONTEND_PORT} (self-signed cert)"
 echo "   Backend:   http://${DOMAIN}:${API_PORT}/api"
 echo "   WebSocket: ws://${DOMAIN}:${COLLAB_PORT}/api/collab"
 echo ""
