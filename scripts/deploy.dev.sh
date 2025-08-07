@@ -8,7 +8,7 @@ set -o pipefail
 
 # CONFIGURATION - LOCAL DEV SETTINGS
 APP_NAME="pessoa-dev"
-DOMAIN="192.168.2.111"  # Use actual IP for dev
+DOMAIN="192.168.2.141"  # Use actual IP for dev
 API_PORT="3000"  # Backend port (matches docker-compose.dev.yml)
 FRONTEND_PORT="8080"  # Frontend port (Vite dev server)
 COLLAB_PORT="8090"
