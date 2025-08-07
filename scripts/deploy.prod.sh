@@ -79,9 +79,9 @@ rsync -az --delete \
 
 # SYNC CONFIG FILES
 rsync -az \
-    ../.env.prod \
-    ../docker-compose.prod.yml \
-    ../Caddyfile \
+    ./.env.prod \
+    ./docker-compose.prod.yml \
+    ./Caddyfile \
     $USER@$SERVER:$APP_DIR/
 
 # REBUILD AND RESTART CONTAINERS
