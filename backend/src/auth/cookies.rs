@@ -11,6 +11,15 @@ const AUTH_COOKIE_NAME: &str = "auth_token";
 const CSRF_COOKIE_NAME: &str = "csrf_token";
 const COOKIE_MAX_AGE_DAYS: i64 = 7;
 
+/// Check if we're in production mode
+/// In production, cookies must be secure (HTTPS only)
+/// In development, cookies can be non-secure (for proxied HTTP)
+fn is_production() -> bool {
+    std::env::var("PRODUCTION").is_ok() || 
+    std::env::var("RUST_ENV").unwrap_or_default() == "production"
+}
+
+
 /// CSRF token store - in production, this should be in Redis or database
 pub type CsrfTokenStore = Arc<RwLock<HashMap<String, (Uuid, chrono::DateTime<Utc>)>>>;
 
@@ -26,7 +35,7 @@ pub fn set_auth_cookie(cookies: &Cookies, token: &str) -> Result<()> {
         .max_age(time::Duration::days(COOKIE_MAX_AGE_DAYS))
         .same_site(SameSite::Lax)
         .http_only(true)
-        .secure(true) // Set to true in production with HTTPS
+        .secure(is_production()) // Secure in production, non-secure in dev (for proxy)
         .build();
     
     cookies.add(cookie);
@@ -40,7 +49,7 @@ pub fn remove_auth_cookie(cookies: &Cookies) {
         .max_age(time::Duration::seconds(0))
         .same_site(SameSite::Lax)
         .http_only(true)
-        .secure(true)
+        .secure(is_production()) // Match the setting used when creating the cookie
         .build();
     
     cookies.add(cookie);
@@ -61,9 +70,9 @@ pub fn set_csrf_cookie(cookies: &Cookies, token: &str) {
     let cookie = Cookie::build((CSRF_COOKIE_NAME, token.to_string()))
         .path("/")
         .max_age(time::Duration::days(COOKIE_MAX_AGE_DAYS))
-        .same_site(SameSite::Strict)
+        .same_site(if is_production() { SameSite::Strict } else { SameSite::Lax })
         .http_only(false) // CSRF token needs to be readable by JavaScript
-        .secure(true)
+        .secure(is_production()) // Secure in production, non-secure in dev
         .build();
     
     cookies.add(cookie);
