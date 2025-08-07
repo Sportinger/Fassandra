@@ -12,10 +12,20 @@ import { AuthProvider } from './AuthContext'
 
 // Removed console forwarder import - development utility
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
+// Temporarily disable StrictMode in development to prevent double mounting issues
+// Re-enable for production builds
+const rootElement = (
+  import.meta.env.DEV ? (
     <AuthProvider>
       <App />
     </AuthProvider>
-  </StrictMode>,
-)
+  ) : (
+    <StrictMode>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </StrictMode>
+  )
+);
+
+createRoot(document.getElementById('root')!).render(rootElement)

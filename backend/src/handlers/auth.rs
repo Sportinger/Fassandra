@@ -25,14 +25,24 @@ pub async fn health() -> &'static str {
     "OK"
 }
 
-/// Enhanced health check using ServiceManager
-pub async fn health_with_service_manager() -> Result<Json<serde_json::Value>, AppError> {
-    // For now, return simple OK - in production this would check ServiceManager health
-    // TODO: Pass ServiceManager to health check for full health status
+/// Enhanced health check with database connectivity verification
+pub async fn health_with_service_manager(
+    State(pool): State<Arc<PgPool>>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    // Check database connectivity
+    let database_healthy = match sqlx::query("SELECT 1")
+        .fetch_one(pool.as_ref())
+        .await
+    {
+        Ok(_) => true,
+        Err(_) => false,
+    };
+    
     Ok(Json(serde_json::json!({
-        "status": "healthy",
+        "status": if database_healthy { "healthy" } else { "unhealthy" },
         "timestamp": chrono::Utc::now().to_rfc3339(),
-        "services": "operational"
+        "database": database_healthy,
+        "services": "operational" // Basic status since we can't access full ServiceManager here
     })))
 }
 
