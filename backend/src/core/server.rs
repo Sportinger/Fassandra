@@ -16,7 +16,7 @@ use anyhow::{Context, Result};
 use crate::networking::websocket;
 use crate::handlers::page_break_handlers::create_page_break_router;
 use crate::handlers::script::{script_routes, claude_session_routes};
-use crate::handlers::auth::{health_with_service_manager, register, login, receive_console_logs, get_current_user, logout, get_csrf_token};
+use crate::handlers::auth::{health_with_service_manager, register, login, receive_console_logs, get_current_user, logout, get_csrf_token, get_ws_token};
 use crate::auth::{rate_limit_middleware, AuthUser, create_csrf_store};
 use crate::services::persistence_event::YjsPersistenceEvent;
 use crate::infrastructure::Config;
@@ -245,6 +245,7 @@ fn api_routes_with_services(
     // Routes that use Arc<PgPool> state
     let pool_based_routes = Router::new()
         .route("/me", get(get_current_user))
+        .route("/ws-token", get(get_ws_token))
         .route("/debug/console-logs", post(receive_console_logs))
         .merge(websocket::ws_routes(persistence_event_tx.clone()))
         .merge(create_page_break_router());

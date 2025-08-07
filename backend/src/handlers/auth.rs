@@ -7,7 +7,7 @@ use tower_cookies::Cookies;
 use crate::auth::{
     hash_password, verify_password, generate_token, RegisterPayload, AuthUser,
     set_auth_cookie, remove_auth_cookie, generate_csrf_token, set_csrf_cookie,
-    store_csrf_token, CsrfTokenStore
+    store_csrf_token, CsrfTokenStore, get_auth_token_from_cookie
 };
 use crate::error::AppError;
 use crate::models::user::User;
@@ -240,4 +240,19 @@ pub async fn get_csrf_token(
     set_csrf_cookie(&cookies, &token);
     
     Ok(Json(CsrfTokenResponse { token }))
-} 
+}
+
+/// Get WebSocket token endpoint
+/// Returns the JWT token from the httpOnly cookie for WebSocket authentication
+pub async fn get_ws_token(
+    cookies: Cookies,
+    _auth: AuthUser, // Validates user is authenticated
+) -> Result<Json<serde_json::Value>, AppError> {
+    // Get the JWT token from the cookie
+    let token = get_auth_token_from_cookie(&cookies)
+        .ok_or_else(|| AppError::Unauthorized("No authentication token found".to_string()))?;
+    
+    Ok(Json(serde_json::json!({
+        "token": token
+    })))
+}
