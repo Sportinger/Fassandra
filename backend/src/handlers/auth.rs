@@ -1,9 +1,14 @@
-use axum::{extract::State, Json};
+use axum::{extract::State, Json, http::StatusCode};
 use std::sync::Arc;
 use sqlx::PgPool;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use validator::Validate;
-use crate::auth::{hash_password, verify_password, generate_token, RegisterPayload};
+use tower_cookies::Cookies;
+use crate::auth::{
+    hash_password, verify_password, generate_token, RegisterPayload, AuthUser,
+    set_auth_cookie, remove_auth_cookie, generate_csrf_token, set_csrf_cookie,
+    store_csrf_token, CsrfTokenStore
+};
 use crate::error::AppError;
 use crate::models::user::User;
 use chrono;
@@ -31,15 +36,20 @@ pub async fn health_with_service_manager() -> Result<Json<serde_json::Value>, Ap
     })))
 }
 
-/// Registers a new user and returns a JWT token.
+/// Registers a new user and sets authentication cookies.
 ///
 /// # Arguments
 /// * `State(pool)` - Shared PostgreSQL connection pool.
+/// * `cookies` - Cookie jar for setting HTTP cookies.
 /// * `Json(payload)` - Registration payload.
 ///
 /// # Returns
-/// * `Result<Json<String>, AppError>` - JWT token as JSON on success, or an AppError on failure.
-pub async fn register(State(pool): State<Arc<PgPool>>, Json(payload): Json<RegisterPayload>) -> Result<Json<String>, AppError> {
+/// * `Result<Json<serde_json::Value>, AppError>` - JSON response on success, or an AppError on failure.
+pub async fn register(
+    State(pool): State<Arc<PgPool>>, 
+    cookies: Cookies,
+    Json(payload): Json<RegisterPayload>
+) -> Result<Json<serde_json::Value>, AppError> {
     // 🔒 SECURITY: Validate payload including strong password requirements
     payload.validate()?;
     
@@ -64,18 +74,36 @@ pub async fn register(State(pool): State<Arc<PgPool>>, Json(payload): Json<Regis
 
     // Pass all required fields to generate_token
     let token = generate_token(user.id, &user.email, &user.username, &user.role)?;
-    Ok(Json(token))
+    
+    // Set the authentication cookie
+    set_auth_cookie(&cookies, &token)?;
+    
+    // Return success response with user info
+    Ok(Json(serde_json::json!({
+        "message": "Registration successful",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "username": user.username,
+            "role": user.role
+        }
+    })))
 }
 
-/// Authenticates a user and returns a JWT token.
+/// Authenticates a user and sets authentication cookies.
 ///
 /// # Arguments
 /// * `State(pool)` - Shared PostgreSQL connection pool.
+/// * `cookies` - Cookie jar for setting HTTP cookies.
 /// * `Json(payload)` - Login payload.
 ///
 /// # Returns
-/// * `Result<Json<String>, AppError>` - JWT token as JSON on success, or an AppError on failure.
-pub async fn login(State(pool): State<Arc<PgPool>>, Json(payload): Json<LoginPayload>) -> Result<Json<String>, AppError> {
+/// * `Result<Json<serde_json::Value>, AppError>` - JSON response on success, or an AppError on failure.
+pub async fn login(
+    State(pool): State<Arc<PgPool>>, 
+    cookies: Cookies,
+    Json(payload): Json<LoginPayload>
+) -> Result<Json<serde_json::Value>, AppError> {
     // Fetch all fields needed for the token
     let user: User = sqlx::query_as(
         "SELECT id, email, username, role, password_hash, created_at FROM users WHERE email=$1"
@@ -96,7 +124,20 @@ pub async fn login(State(pool): State<Arc<PgPool>>, Json(payload): Json<LoginPay
     }
     // Pass all required fields to generate_token
     let token = generate_token(user.id, &user.email, &user.username, &user.role)?;
-    Ok(Json(token))
+    
+    // Set the authentication cookie
+    set_auth_cookie(&cookies, &token)?;
+    
+    // Return success response with user info
+    Ok(Json(serde_json::json!({
+        "message": "Login successful",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "username": user.username,
+            "role": user.role
+        }
+    })))
 }
 
 /// Payload for console log forwarding from mobile browsers.
@@ -132,4 +173,71 @@ pub async fn receive_console_logs(
     tracing::info!("[Mobile Debug] Device info: {}", serde_json::to_string_pretty(&payload.device_info).unwrap_or_default());
     
     Ok(axum::http::StatusCode::OK)
+}
+
+/// Response structure for user information
+#[derive(Serialize)]
+pub struct UserInfoResponse {
+    pub id: uuid::Uuid,
+    pub email: String,
+    pub username: String,
+    pub role: String,
+    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// Get current user information endpoint
+/// Returns the authenticated user's information based on their JWT token
+pub async fn get_current_user(
+    State(pool): State<Arc<PgPool>>,
+    auth: AuthUser,
+) -> Result<Json<UserInfoResponse>, AppError> {
+    // Fetch user details from database using the authenticated user ID
+    let user: User = sqlx::query_as(
+        "SELECT id, email, username, role, password_hash, created_at FROM users WHERE id = $1"
+    )
+        .bind(auth.user_id)
+        .fetch_one(pool.as_ref())
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::RowNotFound => AppError::Unauthorized("User not found".to_string()),
+            _ => AppError::Db(e),
+        })?;
+    
+    // Return user info without sensitive data
+    Ok(Json(UserInfoResponse {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        created_at: user.created_at,
+    }))
+}
+
+/// Logout endpoint - removes authentication cookies
+pub async fn logout(cookies: Cookies) -> StatusCode {
+    remove_auth_cookie(&cookies);
+    StatusCode::OK
+}
+
+/// CSRF token response
+#[derive(Serialize)]
+pub struct CsrfTokenResponse {
+    pub token: String,
+}
+
+/// Get a new CSRF token
+pub async fn get_csrf_token(
+    State(csrf_store): State<CsrfTokenStore>,
+    cookies: Cookies,
+    auth: AuthUser,
+) -> Result<Json<CsrfTokenResponse>, AppError> {
+    let token = generate_csrf_token();
+    
+    // Store the token associated with the user
+    store_csrf_token(&csrf_store, &token, auth.user_id).await?;
+    
+    // Set the CSRF cookie
+    set_csrf_cookie(&cookies, &token);
+    
+    Ok(Json(CsrfTokenResponse { token }))
 } 

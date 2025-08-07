@@ -4,6 +4,7 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
+use tower_cookies::CookieManagerLayer;
 use std::net::SocketAddr;
 use std::env;
 use std::sync::Arc;
@@ -15,8 +16,8 @@ use anyhow::{Context, Result};
 use crate::networking::websocket;
 use crate::handlers::page_break_handlers::create_page_break_router;
 use crate::handlers::script::{script_routes, claude_session_routes};
-use crate::handlers::auth::{health_with_service_manager, register, login, receive_console_logs};
-use crate::auth::{rate_limit_middleware, AuthUser};
+use crate::handlers::auth::{health_with_service_manager, register, login, receive_console_logs, get_current_user, logout, get_csrf_token};
+use crate::auth::{rate_limit_middleware, AuthUser, create_csrf_store};
 use crate::services::persistence_event::YjsPersistenceEvent;
 use crate::infrastructure::Config;
 use crate::infrastructure::middleware::create_security_headers_middleware;
@@ -108,17 +109,20 @@ pub fn create_router(
     let extended_script_services = service_manager.get_extended_script_services();
     let claude_session_service = service_manager.get_claude_session_service();
     let cors = create_cors_layer().expect("Failed to create CORS layer");
+    let csrf_store = create_csrf_store();
     
     Router::new()
         .route("/health", get(health_with_service_manager))
         .route("/register", post(register))
         .route("/login", post(login))
-        .nest("/api", api_routes_with_services(service_manager.get_persistence_sender(), script_services.clone()))
+        .route("/logout", post(logout))
+        .nest("/api", api_routes_with_services(service_manager.get_persistence_sender(), script_services.clone(), csrf_store.clone()))
         .nest("/api/s", script_routes(service_manager.get_rate_limiter()).with_state(extended_script_services))
         .nest("/api/s/session", claude_session_routes().with_state(claude_session_service))
         .with_state(Arc::new(database_pool))
         .layer(
             ServiceBuilder::new()
+                .layer(CookieManagerLayer::new())  // Add cookie support
                 .layer(TraceLayer::new_for_http())
                 .layer(cors)
                 .layer(axum::middleware::from_fn_with_state(service_manager.get_rate_limiter(), rate_limit_middleware))
@@ -224,6 +228,7 @@ async fn get_script_with_blocks_wrapper(
 fn api_routes_with_services(
     persistence_event_tx: mpsc::Sender<YjsPersistenceEvent>,
     script_services: crate::handlers::script::ScriptServices,
+    csrf_store: crate::auth::CsrfTokenStore,
 ) -> Router<Arc<PgPool>> {
     // Routes that use ScriptServices
     let script_crud_routes = Router::new()
@@ -232,15 +237,22 @@ fn api_routes_with_services(
         .route("/scripts/:id/snapshot", post(store_content_snapshot_wrapper).get(get_content_snapshot_wrapper))
         .with_state(script_services);
     
+    // Create wrapper for CSRF endpoint
+    let csrf_route = Router::new()
+        .route("/csrf-token", get(get_csrf_token))
+        .with_state(csrf_store);
+    
     // Routes that use Arc<PgPool> state
     let pool_based_routes = Router::new()
+        .route("/me", get(get_current_user))
         .route("/debug/console-logs", post(receive_console_logs))
         .merge(websocket::ws_routes(persistence_event_tx.clone()))
         .merge(create_page_break_router());
     
-    // Combine both route sets
+    // Combine all route sets
     Router::new()
         .merge(script_crud_routes)
+        .merge(csrf_route)
         .merge(pool_based_routes)
 }
 

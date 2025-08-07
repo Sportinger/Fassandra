@@ -13,7 +13,7 @@ export const setApiToken = (token: string | null) => {
 
 // --- Authentication --- //
 
-export const login = async (email: string, password: string): Promise<string> => {
+export const login = async (email: string, password: string): Promise<any> => {
     return apiService.request('/login', {
         method: 'POST',
         body: { email, password },
@@ -22,13 +22,17 @@ export const login = async (email: string, password: string): Promise<string> =>
     });
 };
 
-export const register = async (email: string, username: string, password: string): Promise<string> => {
+export const register = async (email: string, username: string, password: string): Promise<any> => {
     return apiService.request('/register', {
         method: 'POST',
         body: { email, username, password },
         requireAuth: false, // Register doesn't require auth token
         validate: { email, username, password }
     });
+};
+
+export const getCurrentUser = async (): Promise<{ id: string; email: string; username: string; role: string; created_at: string }> => {
+    return apiService.get('/api/me');
 };
 
 // --- Scripts --- //

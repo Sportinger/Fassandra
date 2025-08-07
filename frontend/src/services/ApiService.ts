@@ -4,6 +4,7 @@
  */
 
 import { logDebugInfo } from '../utils/debug';
+import { getCSRFToken } from '../utils/csrf';
 
 /**
  * API Error class for handling HTTP errors
@@ -100,15 +101,26 @@ export class ApiService {
     /**
      * Build request headers
      */
-    private buildHeaders(options: RequestOptions): Record<string, string> {
+    private async buildHeaders(options: RequestOptions): Promise<Record<string, string>> {
         const headers: Record<string, string> = { ...options.headers };
 
-        // Add auth header if required
-        if (options.requireAuth !== false) {
-            if (!this.token) {
-                throw new ApiError('Authentication token is required', 401, 'Unauthorized');
-            }
+        // Note: Authentication is now handled via httpOnly cookies
+        // No need to add Authorization header for cookie-based auth
+        // Keep this for backward compatibility if a token is explicitly set
+        if (this.token && options.requireAuth !== false) {
             headers['Authorization'] = `Bearer ${this.token}`;
+        }
+
+        // Add CSRF token for state-changing requests (but not for auth endpoints)
+        const isAuthEndpoint = path === '/login' || path === '/register';
+        if (!isAuthEndpoint && options.method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method)) {
+            try {
+                const csrfToken = await getCSRFToken();
+                headers['X-CSRF-Token'] = csrfToken;
+            } catch (error) {
+                console.warn('Failed to get CSRF token:', error);
+                // Continue without CSRF token if it fails
+            }
         }
 
         // Add content-type for requests with body
@@ -136,8 +148,9 @@ export class ApiService {
         try {
             const response = await fetch(url, {
                 method,
-                headers: this.buildHeaders(options),
+                headers: await this.buildHeaders(options),
                 body: options.body ? JSON.stringify(options.body) : undefined,
+                credentials: 'include', // Include cookies in requests for httpOnly cookie support
             });
 
             logDebugInfo('API', `Response: ${response.status} ${response.statusText}`);

@@ -10,9 +10,6 @@ ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_WS_BASE_URL=${VITE_WS_BASE_URL}
 ENV NODE_ENV=development
 
-# Install openssl for certificate generation
-RUN apk add --no-cache openssl
-
 WORKDIR /app
 
 # Copy package files first for better layer caching
@@ -22,17 +19,11 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --prefer-offline --no-audit
 
-# Create SSL directories for dev server
-RUN mkdir -p /app/ssl/dev
-
-# Generate self-signed certificates for Vite dev server
-RUN openssl req -x509 -newkey rsa:4096 -keyout /app/ssl/dev/key.pem -out /app/ssl/dev/cert.pem -days 365 -nodes -subj "/C=US/ST=Dev/L=Local/O=Pessoa/CN=192.168.2.111"
-
 # The source code will be mounted via volume
 # No need to COPY source files
 
-# Expose both HTTP and HTTPS ports
-EXPOSE 8080 8443
+# Expose HTTP port only (no HTTPS in dev to avoid certificate issues)
+EXPOSE 8080
 
-# Run Vite dev server with hot reload
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "8080"]
+# Run Vite dev server with hot reload using dev config
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "8080", "--config", "vite.config.dev.ts"]
