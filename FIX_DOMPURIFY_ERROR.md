@@ -4,7 +4,7 @@
 The browser is getting `NS_ERROR_CORRUPTED_CONTENT` when trying to load `MultiPageView.tsx` because the Docker container doesn't have the DOMPurify dependency installed.
 
 ## Root Cause
-1. We added `dompurify` to package.json locally
+1. We added `dompurify` to pasckage.json locally
 2. The Docker container was built before this dependency was added
 3. The container is trying to serve a module that imports DOMPurify but doesn't have it installed
 
