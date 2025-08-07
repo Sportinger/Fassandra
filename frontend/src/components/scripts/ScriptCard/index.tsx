@@ -85,65 +85,68 @@ export const ScriptCard: React.FC<ScriptCardProps> = ({
   };
 
   return (
-    <div 
-      className={`${styles.scriptPage} ${script.thumbnail ? styles.withThumbnail : ''}`}
-      style={script.thumbnail ? { backgroundImage: `url(${script.thumbnail})` } : {}}
-      onClick={handleClick}
-    >
-      <div className={styles.badgeContainer}>
-        {script.is_public && <span className={styles.publicBadge}>Public</span>}
-        {script.created_by !== userId && <span className={styles.sharedBadge}>Shared</span>}
-      </div>
-      
-      <div className={styles.pageBody}>
-        {script.thumbnail ? (
-          <img 
-            src={script.thumbnail} 
-            alt={`Preview of ${script.title}`}
-            className={styles.thumbnailImage}
-          />
-        ) : (
-          <div className={styles.noThumbnail}>
-            <span className={styles.noThumbnailIcon}>📄</span>
-            <span className={styles.noThumbnailText}>Generating preview...</span>
-          </div>
-        )}
-      </div>
-
-      <div className={styles.pageFooter}>
-        {isRenaming ? (
-          <form onSubmit={handleRenameSubmit} className={styles.renameForm}>
-            <input
-              type="text"
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              className={styles.renameInput}
-              autoFocus
-              onBlur={handleRenameCancel}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  handleRenameCancel();
-                }
-              }}
-              onClick={(e) => e.stopPropagation()}
-            />
-          </form>
-        ) : (
-          <h3 className={styles.pageTitle} title={script.title}>{script.title}</h3>
-        )}
-        <p className={styles.pageDate}>
-          Created: {new Date(script.created_at).toLocaleDateString()}
-        </p>
+    <div className={styles.cardWrapper}>
+      <div 
+        className={`${styles.scriptPage} ${script.thumbnail ? styles.withThumbnail : ''}`}
+        style={script.thumbnail ? { backgroundImage: `url(${script.thumbnail})` } : {}}
+        onClick={handleClick}
+      >
         
-        <ScriptCardMenu
-          ref={menuRef}
-          isOpen={isMenuOpen}
-          isDeleting={isDeleting}
-          onToggle={handleMenuToggle}
-          onRename={handleStartRename}
-          onShare={handleShare}
-          onDelete={handleDelete}
-        />
+        <div className={styles.badgeContainer}>
+          {script.is_public && <span className={styles.publicBadge}>Public</span>}
+          {script.created_by !== userId && <span className={styles.sharedBadge}>Shared</span>}
+        </div>
+        
+        <div className={styles.pageBody}>
+          {script.thumbnail ? (
+            <img 
+              src={script.thumbnail} 
+              alt={`Preview of ${script.title}`}
+              className={styles.thumbnailImage}
+            />
+          ) : (
+            <div className={styles.noThumbnail}>
+              <span className={styles.noThumbnailIcon}>📄</span>
+              <span className={styles.noThumbnailText}>Generating preview...</span>
+            </div>
+          )}
+        </div>
+
+        <div className={styles.pageFooter}>
+          {isRenaming ? (
+            <form onSubmit={handleRenameSubmit} className={styles.renameForm}>
+              <input
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                className={styles.renameInput}
+                autoFocus
+                onBlur={handleRenameCancel}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    handleRenameCancel();
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </form>
+          ) : (
+            <h3 className={styles.pageTitle} title={script.title}>{script.title}</h3>
+          )}
+          <p className={styles.pageDate}>
+            Created: {new Date(script.created_at).toLocaleDateString()}
+          </p>
+          
+          <ScriptCardMenu
+            ref={menuRef}
+            isOpen={isMenuOpen}
+            isDeleting={isDeleting}
+            onToggle={handleMenuToggle}
+            onRename={handleStartRename}
+            onShare={handleShare}
+            onDelete={handleDelete}
+          />
+        </div>
       </div>
     </div>
   );
