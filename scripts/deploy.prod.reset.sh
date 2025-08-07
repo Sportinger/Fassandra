@@ -81,7 +81,7 @@ ssh $USER@$SERVER << 'EOF'
 cd /home/admin/app
 # First, properly stop mylayer app if it exists
 echo "Stopping mylayer app gracefully..."
-docker compose -f docker-compose.production.yml down 2>/dev/null || true
+docker compose -f docker-compose.prod.yml down 2>/dev/null || true
 # Now stop and remove EVERYTHING else
 echo "Stopping all containers..."
 docker stop $(docker ps -aq) 2>/dev/null || true
@@ -107,7 +107,7 @@ ssh $USER@$SERVER "mkdir -p $APP_DIR" || {
 
 # CHECK REQUIRED FILES
 echo "📋 Checking required files..."
-for file in .env.mylayer docker-compose.production.yml Caddyfile; do
+for file in .env.mylayer docker-compose.prod.yml Caddyfile; do
     if [ ! -f "$file" ]; then
         echo "❌ Missing required file: $file"
         exit 1
@@ -133,8 +133,8 @@ scp .env.mylayer $USER@$SERVER:$APP_DIR/.env || {
     echo "❌ Failed to transfer .env.mylayer"
     exit 1
 }
-scp docker-compose.production.yml $USER@$SERVER:$APP_DIR/ || {
-    echo "❌ Failed to transfer docker-compose.production.yml"
+scp docker-compose.prod.yml $USER@$SERVER:$APP_DIR/ || {
+    echo "❌ Failed to transfer docker-compose.prod.yml"
     exit 1
 }
 scp Caddyfile $USER@$SERVER:$APP_DIR/ || {
@@ -191,10 +191,10 @@ mkdir -p backend frontend
 
 # Start services
 echo "🚀 Starting services..."
-if ! docker compose -f docker-compose.production.yml up -d; then
+if ! docker compose -f docker-compose.prod.yml up -d; then
     echo "❌ Failed to start services"
     echo "Showing docker compose logs:"
-    docker compose -f docker-compose.production.yml logs
+    docker compose -f docker-compose.prod.yml logs
     exit 1
 fi
 
@@ -214,7 +214,7 @@ fi
 # Show actual status
 echo ""
 echo "📊 Final container status:"
-docker compose -f docker-compose.production.yml ps
+docker compose -f docker-compose.prod.yml ps
 
 echo ""
 echo "🔍 Quick health check:"
@@ -251,7 +251,7 @@ echo "✅ DEPLOYMENT COMPLETE"
 echo "🌐 https://$DOMAIN"
 echo ""
 echo "📋 Check logs with:"
-echo "   ssh $USER@$SERVER 'cd $APP_DIR && docker compose -f docker-compose.production.yml logs -f'"
+echo "   ssh $USER@$SERVER 'cd $APP_DIR && docker compose -f docker-compose.prod.yml logs -f'"
 echo ""
 echo "💡 Fast deployments now available with:"
 echo "   ./deploy.prod.sh"
