@@ -101,7 +101,7 @@ export class ApiService {
     /**
      * Build request headers
      */
-    private async buildHeaders(options: RequestOptions): Promise<Record<string, string>> {
+    private async buildHeaders(options: RequestOptions, path: string): Promise<Record<string, string>> {
         const headers: Record<string, string> = { ...options.headers };
 
         // Note: Authentication is now handled via httpOnly cookies
@@ -148,7 +148,7 @@ export class ApiService {
         try {
             const response = await fetch(url, {
                 method,
-                headers: await this.buildHeaders(options),
+                headers: await this.buildHeaders(options, path),
                 body: options.body ? JSON.stringify(options.body) : undefined,
                 credentials: 'include', // Include cookies in requests for httpOnly cookie support
             });

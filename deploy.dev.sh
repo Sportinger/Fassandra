@@ -8,9 +8,9 @@ set -o pipefail
 
 # CONFIGURATION - LOCAL DEV SETTINGS
 APP_NAME="pessoa-dev"
-DOMAIN="localhost"
-API_PORT="8089"
-FRONTEND_PORT="3000"
+DOMAIN="192.168.2.111"  # Use actual IP for dev
+API_PORT="3000"  # Backend port (matches docker-compose.yml)
+FRONTEND_PORT="8080"  # Frontend port (Vite dev server)
 COLLAB_PORT="8090"
 
 # Parse arguments
@@ -47,23 +47,8 @@ if ! DOCKER_BUILDKIT=1 docker build \
     $BUILD_OPTS \
     -f backend/Dockerfile.dev \
     -t ${APP_NAME}-backend:latest ./backend; then
-    
-    echo "⚠️  No Dockerfile.dev found, trying production Dockerfile with dev target..."
-    if ! DOCKER_BUILDKIT=1 docker build \
-        $BUILD_OPTS \
-        -f backend/Dockerfile \
-        --target development \
-        -t ${APP_NAME}-backend:latest ./backend; then
-        
-        echo "⚠️  No dev target, using production build..."
-        if ! DOCKER_BUILDKIT=1 docker build \
-            $BUILD_OPTS \
-            -f backend/Dockerfile \
-            -t ${APP_NAME}-backend:latest ./backend; then
-            echo "❌ Backend build FAILED"
-            exit 1
-        fi
-    fi
+    echo "❌ Backend build FAILED - Dockerfile.dev is required for development"
+    exit 1
 fi
 echo "✅ Backend built successfully"
 
@@ -74,17 +59,8 @@ if ! DOCKER_BUILDKIT=1 docker build \
     --build-arg VITE_API_BASE_URL=http://${DOMAIN}:${API_PORT} \
     --build-arg VITE_WS_BASE_URL=ws://${DOMAIN}:${COLLAB_PORT}/api/collab \
     -t ${APP_NAME}-frontend:latest ./frontend; then
-    
-    echo "⚠️  No Dockerfile.dev found, trying production Dockerfile..."
-    if ! DOCKER_BUILDKIT=1 docker build \
-        $BUILD_OPTS \
-        -f frontend/Dockerfile \
-        --build-arg VITE_API_BASE_URL=http://${DOMAIN}:${API_PORT} \
-        --build-arg VITE_WS_BASE_URL=ws://${DOMAIN}:${COLLAB_PORT}/api/collab \
-        -t ${APP_NAME}-frontend:latest ./frontend; then
-        echo "❌ Frontend build FAILED"
-        exit 1
-    fi
+    echo "❌ Frontend build FAILED - Dockerfile.dev is required for development"
+    exit 1
 fi
 echo "✅ Frontend built successfully"
 

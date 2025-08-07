@@ -74,6 +74,11 @@ export default defineConfig(({ mode }) => {
         changeOrigin: true,
         secure: false,
       },
+      '/logout': {
+        target: process.env.VITE_BACKEND_URL || 'http://backend:3000',
+        changeOrigin: true,
+        secure: false,
+      },
       '/health': {
         target: process.env.VITE_BACKEND_URL || 'http://backend:3000',
         changeOrigin: true,

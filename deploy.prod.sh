@@ -98,7 +98,7 @@ rebuild_backend() {
     echo "  Backend: rebuilding..."
     cd backend
     DOCKER_BUILDKIT=1 docker build -q \
-        -f Dockerfile \
+        -f Dockerfile.prod \
         --target runtime \
         -t mylayer-backend:latest . >/dev/null 2>&1
     cd ..
@@ -110,7 +110,7 @@ rebuild_frontend() {
     echo "  Frontend: rebuilding..."
     cd frontend
     DOCKER_BUILDKIT=1 docker build -q \
-        -f Dockerfile \
+        -f Dockerfile.prod \
         --build-arg VITE_API_BASE_URL=https://$DOMAIN \
         --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
         -t mylayer-frontend:latest . >/dev/null 2>&1
