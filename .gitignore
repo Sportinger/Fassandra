@@ -56,3 +56,7 @@ frontend/coverage/
 # Temporary setup files (used during initial deployment)
 .setup-files/
 .dev-files/
+
+# Claude Flow
+.claude-flow/
+scripts/.claude-flow/
