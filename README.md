@@ -48,14 +48,15 @@ A modern web-based theater script editor with real-time collaboration, AI integr
 - `env.production` - Production-specific settings
 
 #### Docker Configurations
-- `docker-compose.dev.yml` - Development environment setup
-- `docker-compose.prod.yml` - Production deployment
+- `docker-compose.yml` - Development environment setup
+- `docker-compose.production.yml` - Production deployment
 - `backend/Dockerfile.dev` - Backend development container
 - `backend/Dockerfile.prod` - Backend production build
 - `frontend/Dockerfile.dev` - Frontend development container
 - `frontend/Dockerfile.prod` - Frontend production build
 
 #### Vite Configurations
+- `frontend/vite.config.ts` - Base Vite configuration
 - `frontend/vite.config.dev.ts` - Development-specific settings
 - `frontend/vite.config.prod.ts` - Production build settings
 
@@ -79,7 +80,7 @@ cp env.example .env.dev
 
 3. **Start development environment with Docker**
 ```bash
-docker-compose -f docker-compose.dev.yml up -d
+docker-compose up -d
 ```
 
 This will start:
@@ -114,7 +115,7 @@ docker build -f frontend/Dockerfile.prod -t mylayer-frontend:latest ./frontend
 
 3. **Deploy with Docker Compose**
 ```bash
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose -f docker-compose.production.yml up -d
 ```
 
 4. **Quick deployment scripts**
@@ -182,8 +183,7 @@ pessoa/
 │   └── Dockerfile.* # Docker configurations
 ├── scripts/         # Deployment scripts
 ├── tests/          # E2E tests
-├── docker-compose.dev.yml
-└── docker-compose.prod.yml
+└── docker-compose.yml
 ```
 
 ## API Endpoints

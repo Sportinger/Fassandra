@@ -38,11 +38,29 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           ws: true,
+          configure: (proxy, options) => {
+            proxy.on('proxyRes', (proxyRes, req, res) => {
+              // Forward cookies from backend, ensuring secure flag is preserved
+              const setCookieHeader = proxyRes.headers['set-cookie'];
+              if (setCookieHeader) {
+                // The cookies already have secure flag from backend
+                res.setHeader('set-cookie', setCookieHeader);
+              }
+            });
+          }
         },
         '/login': {
           target: process.env.VITE_BACKEND_URL || 'http://backend:3000',
           changeOrigin: true,
           secure: false,
+          configure: (proxy, options) => {
+            proxy.on('proxyRes', (proxyRes, req, res) => {
+              const setCookieHeader = proxyRes.headers['set-cookie'];
+              if (setCookieHeader) {
+                res.setHeader('set-cookie', setCookieHeader);
+              }
+            });
+          }
         },
         '/register': {
           target: process.env.VITE_BACKEND_URL || 'http://backend:3000',
