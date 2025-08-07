@@ -4,7 +4,7 @@ import { login } from '../api';
 import { logDebugInfo } from '../utils/debug';
 import styles from './Header.module.css';
 import authStyles from './Auth.module.css';
-
+import { getErrorMessage } from '../types/common';
 import logger from '../services/LoggingService';
 /**
  * Login form component for user authentication.
@@ -48,8 +48,8 @@ export const Login: React.FC = () => {
         logDebugInfo('Login', 'Authentication state set after exit animation');
       }, 300);
       
-    } catch (err: any) { // Catch specific errors if possible
-      const errorMsg = err.message || 'Login failed';
+    } catch (err) {
+      const errorMsg = getErrorMessage(err);
       logDebugInfo('Login', `Login failed: ${errorMsg}`);
       setError(errorMsg);
       logger.error('Login', 'Error:', err);
