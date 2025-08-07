@@ -47,6 +47,23 @@
   line-height: 1;
   user-select: none;
   transform-style: preserve-3d;
+  transition: transform 0.15s ease-out;
+  will-change: transform;
+  position: relative;
+}
+
+/* Parallax effect for the + icon */
+.tiltCard {
+  --parallax-x: 0px;
+  --parallax-y: 0px;
+}
+
+.tiltCard .addIcon {
+  transform: 
+    translateZ(60px)
+    translateX(var(--parallax-x))
+    translateY(var(--parallax-y))
+    scale(calc(1 + var(--hover) * 0.15)); /* Gets 15% bigger when hovering */
 }
 
 .optionsContainer {

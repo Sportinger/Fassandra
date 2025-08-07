@@ -2,7 +2,10 @@ use argon2::{Argon2, PasswordHasher};
 use argon2::password_hash::SaltString;
 use rand::rngs::OsRng;
 use std::env;
-// TODO Do we need this?
+
+/// Utility for generating Argon2 password hashes
+/// Used for creating password hashes for environment variables (e.g., ADMIN_PLACEHOLDER_HASH)
+/// Usage: cargo run --bin hash_password <password>
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {

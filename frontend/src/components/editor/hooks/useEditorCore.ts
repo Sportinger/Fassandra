@@ -59,7 +59,15 @@ const WS_BASE_URL = typeof window !== 'undefined'
 
 // 🔧 FIXED: Reduce console spam - only log important events
 const debugLog = (message: string, ...args: any[]) => {
-  if (import.meta.env.DEV) {
+  // Only log critical events to reduce noise
+  const criticalEvents = [
+    'Initializing for script',
+    'WebSocket connection error',
+    'Connection lost',
+    'Failed to fetch'
+  ];
+  
+  if (import.meta.env.DEV && criticalEvents.some(event => message.includes(event))) {
     logger.debug('useEditorCore', message, ...args);
   }
 };
@@ -107,6 +115,12 @@ export const useEditorCore = ({
 
   // 🔧 FIXED: Initialize Yjs document and WebSocket provider with proper dependencies
   useEffect(() => {
+    // Skip initialization if already initialized for this script
+    if (providerRef.current && previousScriptIdRef.current === stableScriptId) {
+      debugLog(`[Editor Core] Skipping re-initialization for script: ${stableScriptId}`);
+      return;
+    }
+
     if (!stableScriptId || !stableUser || !stableHasToken || !stableToken) {
       setConnectionStatus('authenticating');
       return;

@@ -27,6 +27,10 @@ export const useCssTilt = () => {
     ref.current.style.setProperty('--tilt-y', `${tiltY}deg`);
     ref.current.style.setProperty('--shadow-x', `${tiltY * -0.5}px`);
     ref.current.style.setProperty('--shadow-y', `${tiltX * -0.5 + 8}px`);
+    
+    // Add parallax offset variables
+    ref.current.style.setProperty('--parallax-x', `${tiltY * 2}px`);
+    ref.current.style.setProperty('--parallax-y', `${tiltX * -2}px`);
   }, []);
 
   const handleMouseEnter = useCallback(() => {
@@ -41,6 +45,8 @@ export const useCssTilt = () => {
     ref.current.style.setProperty('--shadow-x', '0px');
     ref.current.style.setProperty('--shadow-y', '8px');
     ref.current.style.setProperty('--hover', '0');
+    ref.current.style.setProperty('--parallax-x', '0px');
+    ref.current.style.setProperty('--parallax-y', '0px');
   }, []);
 
   return {

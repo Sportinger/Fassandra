@@ -187,8 +187,10 @@ impl ContentExtractorService {
                     source: None,
                     speakers: None,
                     page_number,
-                    scene_number: None, // TODO: Extract from attributes or context
-                    scene_title: None, // TODO: Extract from attributes or context
+                    scene_number: attributes_map.get("data-scene-number").cloned(),
+                    scene_title: attributes_map.get("data-scene-name")
+                        .or_else(|| attributes_map.get("data-scene-title"))
+                        .cloned(),
                     extra: HashMap::new(),
                 }))
             }
@@ -204,8 +206,10 @@ impl ContentExtractorService {
                     source: None,
                     speakers: None,
                     page_number,
-                    scene_number: None, // TODO: Extract from attributes or context
-                    scene_title: None, // TODO: Extract from attributes or context
+                    scene_number: attributes_map.get("data-scene-number").cloned(),
+                    scene_title: attributes_map.get("data-scene-name")
+                        .or_else(|| attributes_map.get("data-scene-title"))
+                        .cloned(),
                     extra: HashMap::new(),
                 }))
             }
@@ -221,8 +225,10 @@ impl ContentExtractorService {
                     speaker: None,
                     speakers: None,
                     page_number,
-                    scene_number: None, // TODO: Extract from attributes or context
-                    scene_title: None, // TODO: Extract from attributes or context
+                    scene_number: attributes_map.get("data-scene-number").cloned(),
+                    scene_title: attributes_map.get("data-scene-name")
+                        .or_else(|| attributes_map.get("data-scene-title"))
+                        .cloned()
                 }))
             }
             "monologue" => {
@@ -237,8 +243,10 @@ impl ContentExtractorService {
                     source: None,
                     speakers: None,
                     page_number,
-                    scene_number: None, // TODO: Extract from attributes or context
-                    scene_title: None, // TODO: Extract from attributes or context
+                    scene_number: attributes_map.get("data-scene-number").cloned(),
+                    scene_title: attributes_map.get("data-scene-name")
+                        .or_else(|| attributes_map.get("data-scene-title"))
+                        .cloned()
                 }))
             }
             "joint_dialogue" => {
@@ -254,8 +262,10 @@ impl ContentExtractorService {
                     reading_text: None,
                     source: None,
                     page_number,
-                    scene_number: None, // TODO: Extract from attributes or context
-                    scene_title: None, // TODO: Extract from attributes or context
+                    scene_number: attributes_map.get("data-scene-number").cloned(),
+                    scene_title: attributes_map.get("data-scene-name")
+                        .or_else(|| attributes_map.get("data-scene-title"))
+                        .cloned(),
                     extra: HashMap::new(),
                 }))
             }
@@ -275,8 +285,10 @@ impl ContentExtractorService {
                     lines: None,
                     speakers: None,
                     page_number,
-                    scene_number: None, // TODO: Extract from attributes or context
-                    scene_title: None, // TODO: Extract from attributes or context
+                    scene_number: attributes_map.get("data-scene-number").cloned(),
+                    scene_title: attributes_map.get("data-scene-name")
+                        .or_else(|| attributes_map.get("data-scene-title"))
+                        .cloned()
                 }))
             }
             _ => Err(format!("Unknown Pessoa block type: {}", block_type)),

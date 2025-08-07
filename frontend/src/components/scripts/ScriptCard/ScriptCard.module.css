@@ -26,18 +26,75 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
-/* Tilt effect using CSS variables (no scale for scripts) */
+/* Tilt effect using CSS variables with scale */
 .tiltCard {
   --tilt-x: 0deg;
   --tilt-y: 0deg;
   --shadow-x: 0px;
   --shadow-y: 8px;
   --hover: 0;
+  --parallax-x: 0px;
+  --parallax-y: 0px;
   
-  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) !important;
+  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) scale(calc(1 + var(--hover) * 0.03)) !important;
   box-shadow: var(--shadow-x) var(--shadow-y) 20px rgba(0, 0, 0, 0.15) !important;
   transform-style: preserve-3d;
   transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+/* Parallax layers for card elements - 50% more subtle */
+.tiltCard .badgeContainer {
+  transform: 
+    translate3d(
+      calc(var(--parallax-x) * 0.75),
+      calc(var(--parallax-y) * 0.75),
+      25px
+    )
+    scale(calc(1 + var(--hover) * 0.05));
+  transition: transform 0.15s ease-out;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tiltCard .pageTitle {
+  transform: 
+    translate3d(
+      calc(var(--parallax-x) * 0.5),
+      calc(var(--parallax-y) * 0.5),
+      15px
+    )
+    scale(calc(1 + var(--hover) * 0.025));
+  transition: transform 0.15s ease-out;
+  display: inline-block;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tiltCard .pageDate {
+  transform: 
+    translate3d(
+      calc(var(--parallax-x) * 0.35),
+      calc(var(--parallax-y) * 0.35),
+      10px
+    )
+    scale(calc(1 + var(--hover) * 0.015));
+  transition: transform 0.15s ease-out;
+  display: inline-block;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tiltCard .menuContainer {
+  transform: 
+    translate3d(
+      calc(var(--parallax-x) * 0.6),
+      calc(var(--parallax-y) * 0.6),
+      20px
+    )
+    scale(calc(1 + var(--hover) * 0.04));
+  transition: transform 0.15s ease-out;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 .scriptPage.withThumbnail {
@@ -56,6 +113,7 @@
   gap: 0.25rem;
   z-index: 3;
   transform-style: preserve-3d;
+  will-change: transform;
 }
 
 .publicBadge {
