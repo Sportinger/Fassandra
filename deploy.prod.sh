@@ -51,7 +51,7 @@ if [ "$RESTART_ONLY" = true ]; then
     echo "🔄 Restarting containers only..."
     ssh $USER@$SERVER << 'EOF'
 cd /home/admin/app
-docker compose -f docker-compose.production.yml restart
+docker compose --env-file .env.prod -f docker-compose.production.yml restart
 EOF
     echo "✅ Containers restarted"
     exit 0
@@ -79,13 +79,10 @@ rsync -az --delete \
 
 # SYNC CONFIG FILES
 rsync -az \
-    .env.mylayer \
+    .env.prod \
     docker-compose.production.yml \
     Caddyfile \
     $USER@$SERVER:$APP_DIR/
-
-# Rename .env.mylayer to .env on server
-ssh $USER@$SERVER "cd $APP_DIR && cp .env.mylayer .env" 2>/dev/null
 
 # REBUILD AND RESTART CONTAINERS
 
@@ -102,7 +99,7 @@ rebuild_backend() {
         --target runtime \
         -t mylayer-backend:latest . >/dev/null 2>&1
     cd ..
-    docker compose -f docker-compose.production.yml up -d --force-recreate backend >/dev/null 2>&1
+    docker compose --env-file .env.prod -f docker-compose.production.yml up -d --force-recreate backend >/dev/null 2>&1
 }
 
 # Function to rebuild frontend
@@ -115,7 +112,7 @@ rebuild_frontend() {
         --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
         -t mylayer-frontend:latest . >/dev/null 2>&1
     cd ..
-    docker compose -f docker-compose.production.yml up -d --force-recreate frontend >/dev/null 2>&1
+    docker compose --env-file .env.prod -f docker-compose.production.yml up -d --force-recreate frontend >/dev/null 2>&1
 }
 
 # Check what needs rebuilding
@@ -133,12 +130,12 @@ if [ "$REBUILD_BACKEND" = false ] && [ "$REBUILD_FRONTEND" = false ]; then
     # Only rebuild frontend by default (for JS/CSS changes)
     rebuild_frontend
     # Just restart backend container without rebuilding
-    docker compose -f docker-compose.production.yml restart backend >/dev/null 2>&1
+    docker compose --env-file .env.prod -f docker-compose.production.yml restart backend >/dev/null 2>&1
     touch /tmp/last_deploy_frontend
 fi
 
 # Restart Caddy
-docker compose -f docker-compose.production.yml restart caddy >/dev/null 2>&1
+docker compose --env-file .env.prod -f docker-compose.production.yml restart caddy >/dev/null 2>&1
 
 # Wait briefly
 sleep 5
