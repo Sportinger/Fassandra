@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useCssTilt } from '../../../hooks/useCssTilt';
 import styles from './ScriptCreator.module.css';
 
 interface ScriptCreatorProps {
@@ -11,6 +12,8 @@ export const ScriptCreator: React.FC<ScriptCreatorProps> = ({ onCreate, onUpload
   const [scriptName, setScriptName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  const tilt = useCssTilt();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -54,53 +57,61 @@ export const ScriptCreator: React.FC<ScriptCreatorProps> = ({ onCreate, onUpload
   };
 
   return (
-    <div 
-      ref={containerRef}
-      className={`${styles.scriptSlot} ${styles.addSlot}`}
-      onClick={state === 'plus' ? handlePlusClick : undefined}
-    >
-      {state === 'plus' && (
-        <div className={styles.addIcon}>+</div>
-      )}
+    <div className={styles.cardWrapper}>
+      <div 
+        ref={(el) => {
+          containerRef.current = el;
+          tilt.ref.current = el;
+        }}
+        className={`${styles.scriptSlot} ${styles.addSlot} ${styles.tiltCard}`}
+        onClick={state === 'plus' ? handlePlusClick : undefined}
+        onMouseMove={tilt.onMouseMove}
+        onMouseEnter={tilt.onMouseEnter}
+        onMouseLeave={tilt.onMouseLeave}
+      >
+        {state === 'plus' && (
+          <div className={styles.addIcon}>+</div>
+        )}
 
-      {state === 'options' && (
-        <div className={styles.optionsContainer}>
-          <button 
-            onClick={handleCreateOption}
-            className={styles.optionButton}
-          >
-            Create New Script
-          </button>
-          <button 
-            onClick={onUploadClick}
-            className={styles.optionButton}
-          >
-            Upload Script
-          </button>
-        </div>
-      )}
-      
-      {state === 'input' && (
-        <form onSubmit={handleCreate} className={styles.createForm}>
-          <input
-            type="text"
-            value={scriptName}
-            onChange={(e) => setScriptName(e.target.value)}
-            placeholder="New script name"
-            autoFocus
-            required
-            disabled={isCreating}
-            className={styles.nameInput}
-          />
-          <button 
-            type="submit" 
-            disabled={isCreating}
-            className={styles.createButton}
-          >
-            {isCreating ? 'Creating...' : 'Create'}
-          </button>
-        </form>
-      )}
+        {state === 'options' && (
+          <div className={styles.optionsContainer}>
+            <button 
+              onClick={handleCreateOption}
+              className={styles.optionButton}
+            >
+              Create New Script
+            </button>
+            <button 
+              onClick={onUploadClick}
+              className={styles.optionButton}
+            >
+              Upload Script
+            </button>
+          </div>
+        )}
+        
+        {state === 'input' && (
+          <form onSubmit={handleCreate} className={styles.createForm}>
+            <input
+              type="text"
+              value={scriptName}
+              onChange={(e) => setScriptName(e.target.value)}
+              placeholder="New script name"
+              autoFocus
+              required
+              disabled={isCreating}
+              className={styles.nameInput}
+            />
+            <button 
+              type="submit" 
+              disabled={isCreating}
+              className={styles.createButton}
+            >
+              {isCreating ? 'Creating...' : 'Create'}
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   );
 };
