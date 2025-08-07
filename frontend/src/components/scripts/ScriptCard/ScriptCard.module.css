@@ -1,6 +1,7 @@
 .cardWrapper {
   width: 250px;
   height: 380px;
+  perspective: 1000px;
 }
 
 .scriptPage {
@@ -23,6 +24,20 @@
 
 .scriptPage:hover {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Tilt effect using CSS variables (no scale for scripts) */
+.tiltCard {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  --shadow-x: 0px;
+  --shadow-y: 8px;
+  --hover: 0;
+  
+  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) !important;
+  box-shadow: var(--shadow-x) var(--shadow-y) 20px rgba(0, 0, 0, 0.15) !important;
+  transform-style: preserve-3d;
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
 }
 
 .scriptPage.withThumbnail {

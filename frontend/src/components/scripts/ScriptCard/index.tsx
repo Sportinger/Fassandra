@@ -27,6 +27,8 @@ export const ScriptCard: React.FC<ScriptCardProps> = ({
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(script.title);
   const menuRef = useRef<HTMLDivElement>(null);
+  
+  const tilt = useCssTilt();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -88,9 +90,13 @@ export const ScriptCard: React.FC<ScriptCardProps> = ({
   return (
     <div className={styles.cardWrapper}>
       <div 
-        className={`${styles.scriptPage} ${script.thumbnail ? styles.withThumbnail : ''}`}
+        ref={tilt.ref}
+        className={`${styles.scriptPage} ${script.thumbnail ? styles.withThumbnail : ''} ${styles.tiltCard}`}
         style={script.thumbnail ? { backgroundImage: `url(${script.thumbnail})` } : {}}
         onClick={handleClick}
+        onMouseMove={tilt.onMouseMove}
+        onMouseEnter={tilt.onMouseEnter}
+        onMouseLeave={tilt.onMouseLeave}
       >
         
         <div className={styles.badgeContainer}>

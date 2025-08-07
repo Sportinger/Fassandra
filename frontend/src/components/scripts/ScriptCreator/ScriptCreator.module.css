@@ -129,5 +129,6 @@
   
   transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) scale(calc(1 + var(--hover) * 0.03)) !important;
   box-shadow: var(--shadow-x) var(--shadow-y) 20px rgba(0, 0, 0, 0.15) !important;
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
 }
 
