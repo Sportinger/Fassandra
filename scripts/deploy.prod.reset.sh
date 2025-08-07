@@ -29,9 +29,9 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "🔨 Building backend (this takes 2-5 minutes)..."
 if ! DOCKER_BUILDKIT=1 docker build \
     $BUILD_OPTS \
-    -f backend/Dockerfile.prod \
+    -f ../backend/Dockerfile.prod \
     --target runtime \
-    -t mylayer-backend:latest ./backend; then
+    -t mylayer-backend:latest ../backend; then
     echo "❌ Backend build FAILED"
     echo "Check: Does backend/Dockerfile.prod exist?"
     echo "Check: Is Docker running?"
@@ -42,10 +42,10 @@ echo "✅ Backend built successfully"
 echo "🔨 Building frontend..."
 if ! DOCKER_BUILDKIT=1 docker build \
     $BUILD_OPTS \
-    -f frontend/Dockerfile.prod \
+    -f ../frontend/Dockerfile.prod \
     --build-arg VITE_API_BASE_URL=https://$DOMAIN \
     --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
-    -t mylayer-frontend:latest ./frontend; then
+    -t mylayer-frontend:latest ../frontend; then
     echo "❌ Frontend build FAILED"
     echo "Check: Does frontend/Dockerfile.prod exist?"
     echo "Check: Are the VITE args correct?"
@@ -107,7 +107,7 @@ ssh $USER@$SERVER "mkdir -p $APP_DIR" || {
 
 # CHECK REQUIRED FILES
 echo "📋 Checking required files..."
-for file in .env.prod docker-compose.prod.yml Caddyfile; do
+for file in ../.env.prod ../docker-compose.prod.yml ../Caddyfile; do
     if [ ! -f "$file" ]; then
         echo "❌ Missing required file: $file"
         exit 1
@@ -129,15 +129,15 @@ fi
 echo "✅ Images transferred"
 
 echo "📡 Transferring config files..."
-scp .env.prod $USER@$SERVER:$APP_DIR/.env || {
+scp ../.env.prod $USER@$SERVER:$APP_DIR/.env || {
     echo "❌ Failed to transfer .env.prod"
     exit 1
 }
-scp docker-compose.prod.yml $USER@$SERVER:$APP_DIR/ || {
+scp ../docker-compose.prod.yml $USER@$SERVER:$APP_DIR/ || {
     echo "❌ Failed to transfer docker-compose.prod.yml"
     exit 1
 }
-scp Caddyfile $USER@$SERVER:$APP_DIR/ || {
+scp ../Caddyfile $USER@$SERVER:$APP_DIR/ || {
     echo "❌ Failed to transfer Caddyfile"
     exit 1
 }
@@ -145,8 +145,8 @@ echo "✅ Config files transferred"
 
 # Sync essential build files for rsync deployments
 echo "📡 Syncing build files for future fast deployments..."
-rsync -az ./backend/Dockerfile.prod ./backend/Cargo.toml ./backend/Cargo.lock $USER@$SERVER:$APP_DIR/backend/ 2>/dev/null || true
-rsync -az ./frontend/Dockerfile.prod ./frontend/package.json ./frontend/package-lock.json $USER@$SERVER:$APP_DIR/frontend/ 2>/dev/null || true
+rsync -az ../backend/Dockerfile.prod ../backend/Cargo.toml ../backend/Cargo.lock $USER@$SERVER:$APP_DIR/backend/ 2>/dev/null || true
+rsync -az ../frontend/Dockerfile.prod ../frontend/package.json ../frontend/package-lock.json $USER@$SERVER:$APP_DIR/frontend/ 2>/dev/null || true
 
 # CLEANUP LOCAL
 rm -f backend.tar.gz frontend.tar.gz

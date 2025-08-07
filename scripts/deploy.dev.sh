@@ -13,6 +13,13 @@ API_PORT="3000"  # Backend port (matches docker-compose.dev.yml)
 FRONTEND_PORT="8080"  # Frontend port (Vite dev server)
 COLLAB_PORT="8090"
 
+# Get the script directory and project root
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Change to project root
+cd "$PROJECT_ROOT"
+
 # Parse arguments
 BUILD_OPTS=""
 if [[ "$1" == "--no-cache" ]]; then
