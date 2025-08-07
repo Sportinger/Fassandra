@@ -1,0 +1,7 @@
+[registries.crates-io]
+protocol = "sparse"
+
+[build]
+# Prevent cargo from updating to packages that require Rust 2024
+# This pins the resolver to avoid pulling in base64ct 1.8.0
+resolver = "2"
