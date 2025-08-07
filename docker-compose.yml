@@ -24,39 +24,40 @@ services:
     container_name: ${CONTAINER_PREFIX:-dev_}pessoa_backend
     build:
       context: ./backend
-      dockerfile: Dockerfile
-      target: runtime
+      dockerfile: Dockerfile.dev
+      target: development
     ports:
       - "3000:3000"
     environment:
       - DATABASE_URL=postgres://pessoa_user:${POSTGRES_PASSWORD:-dev_password_123}@db:5432/pessoa_db
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - JWT_SECRET=${JWT_SECRET}
-      # Minimal logging for clean development:
-      # Only warnings and errors by default
-      # To debug specific issues, temporarily add modules like:
-      # backend::services::claude=info,backend::handlers::script_upload=debug
-      - RUST_LOG=warn,backend::services::claude_session=info
+      # Development logging - more verbose for debugging
+      - RUST_LOG=debug,backend::services::claude_session=info
+      - RUST_BACKTRACE=1
       - CLAUDE_CODE_DEBUG=1
-      - HOME=/home/appuser
+      - HOME=/app
       - BACKEND_PORT=3000
     depends_on:
       db:
         condition: service_healthy
     volumes:
-      # Don't mount source code over the binary
+      # Mount source code for hot reloading with cargo-watch
+      - ./backend/src:/app/src
+      - ./backend/Cargo.toml:/app/Cargo.toml
+      - ./backend/Cargo.lock:/app/Cargo.lock
+      - ./backend/migrations:/app/migrations
+      - ./backend/scripts:/app/scripts
+      - ./backend/.sqlx:/app/.sqlx
+      # Cache cargo registry and target directory for faster rebuilds
       - cargo_cache:/usr/local/cargo/registry
       - target_cache:/app/target
-      # Persist Claude Code configuration to a stable location
-      - claude_config:/home/appuser/.claude
-      # Persist Claude Code config directory
-      - claude_config_json:/home/appuser/.config/claude-code
+      # Persist Claude Code configuration (dev runs as root)
+      - claude_config:/root/.claude
       # Persist Gemini CLI configuration
-      - gemini_config:/home/appuser/.gemini
+      - gemini_config:/root/.gemini
       # Persist uploaded files - bind mount for easy access
       - ./backend/uploads:/app/uploads
-    entrypoint: ["/app/docker-entrypoint.sh"]
-    command: ["/app/backend"]
     restart: unless-stopped
     # Add memory limits to match production environment
     deploy:
@@ -82,7 +83,8 @@ services:
       - ./frontend/src:/app/src:ro          # Mount source code for hot reload
       - ./frontend/public:/app/public:ro    # Mount public assets
       - ./frontend/index.html:/app/index.html:ro  # Mount index.html
-      - ./frontend/vite.config.ts:/app/vite.config.ts:ro  # Mount vite config
+      - ./frontend/vite.config.dev.ts:/app/vite.config.dev.ts:ro  # Mount dev vite config
+      - ./frontend/vite.config.prod.ts:/app/vite.config.prod.ts:ro  # Mount prod vite config
       - ./frontend/tsconfig.json:/app/tsconfig.json:ro    # Mount tsconfig
       - ./frontend/tsconfig.app.json:/app/tsconfig.app.json:ro  # Mount tsconfig
       - ./frontend/tsconfig.node.json:/app/tsconfig.node.json:ro  # Mount tsconfig
@@ -122,7 +124,7 @@ volumes:
     name: ${CONTAINER_PREFIX:-dev_}target_cache
   pgadmin_data:
     name: ${CONTAINER_PREFIX:-dev_}pgadmin_data
-  # Claude Code configuration volumes
+  # Claude Code configuration volume
   claude_config:
     name: ${CONTAINER_PREFIX:-dev_}claude_config
   claude_config_json:

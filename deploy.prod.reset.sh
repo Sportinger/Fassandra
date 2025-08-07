@@ -29,11 +29,11 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "🔨 Building backend (this takes 2-5 minutes)..."
 if ! DOCKER_BUILDKIT=1 docker build \
     $BUILD_OPTS \
-    -f backend/Dockerfile \
+    -f backend/Dockerfile.prod \
     --target runtime \
     -t mylayer-backend:latest ./backend; then
     echo "❌ Backend build FAILED"
-    echo "Check: Does backend/Dockerfile exist?"
+    echo "Check: Does backend/Dockerfile.prod exist?"
     echo "Check: Is Docker running?"
     exit 1
 fi
@@ -42,12 +42,12 @@ echo "✅ Backend built successfully"
 echo "🔨 Building frontend..."
 if ! DOCKER_BUILDKIT=1 docker build \
     $BUILD_OPTS \
-    -f frontend/Dockerfile \
+    -f frontend/Dockerfile.prod \
     --build-arg VITE_API_BASE_URL=https://$DOMAIN \
     --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
     -t mylayer-frontend:latest ./frontend; then
     echo "❌ Frontend build FAILED"
-    echo "Check: Does frontend/Dockerfile exist?"
+    echo "Check: Does frontend/Dockerfile.prod exist?"
     echo "Check: Are the VITE args correct?"
     exit 1
 fi
@@ -145,8 +145,8 @@ echo "✅ Config files transferred"
 
 # Sync essential build files for rsync deployments
 echo "📡 Syncing build files for future fast deployments..."
-rsync -az ./backend/Dockerfile ./backend/Cargo.toml ./backend/Cargo.lock $USER@$SERVER:$APP_DIR/backend/ 2>/dev/null || true
-rsync -az ./frontend/Dockerfile ./frontend/package.json ./frontend/package-lock.json $USER@$SERVER:$APP_DIR/frontend/ 2>/dev/null || true
+rsync -az ./backend/Dockerfile.prod ./backend/Cargo.toml ./backend/Cargo.lock $USER@$SERVER:$APP_DIR/backend/ 2>/dev/null || true
+rsync -az ./frontend/Dockerfile.prod ./frontend/package.json ./frontend/package-lock.json $USER@$SERVER:$APP_DIR/frontend/ 2>/dev/null || true
 
 # CLEANUP LOCAL
 rm -f backend.tar.gz frontend.tar.gz
