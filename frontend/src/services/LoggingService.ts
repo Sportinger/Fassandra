@@ -4,6 +4,8 @@
  * Replaces direct console.log usage throughout the application
  */
 
+import { LogData, UserActionDetails, RemoteErrorEntry } from '../types/common';
+
 export enum LogLevel {
   DEBUG = 0,
   INFO = 1,
@@ -17,7 +19,7 @@ interface LogEntry {
   timestamp: Date;
   category: string;
   message: string;
-  data?: any;
+  data?: LogData;
 }
 
 class LoggingService {
@@ -58,7 +60,7 @@ class LoggingService {
     }
   }
 
-  private log(level: LogLevel, category: string, message: string, data?: any): void {
+  private log(level: LogLevel, category: string, message: string, data?: LogData): void {
     const entry: LogEntry = {
       level,
       timestamp: new Date(),
@@ -148,7 +150,7 @@ class LoggingService {
   /**
    * Send errors to remote monitoring service
    */
-  private async sendToRemoteMonitoring(errorEntry: any): Promise<void> {
+  private async sendToRemoteMonitoring(errorEntry: RemoteErrorEntry): Promise<void> {
     const monitoringEndpoint = import.meta.env.VITE_MONITORING_ENDPOINT;
     if (!monitoringEndpoint) return;
     
@@ -176,19 +178,19 @@ class LoggingService {
   }
 
   // Public logging methods
-  debug(category: string, message: string, data?: any): void {
+  debug(category: string, message: string, data?: LogData): void {
     this.log(LogLevel.DEBUG, category, message, data);
   }
 
-  info(category: string, message: string, data?: any): void {
+  info(category: string, message: string, data?: LogData): void {
     this.log(LogLevel.INFO, category, message, data);
   }
 
-  warn(category: string, message: string, data?: any): void {
+  warn(category: string, message: string, data?: LogData): void {
     this.log(LogLevel.WARN, category, message, data);
   }
 
-  error(category: string, message: string, data?: any): void {
+  error(category: string, message: string, data?: LogData): void {
     this.log(LogLevel.ERROR, category, message, data);
   }
 
@@ -290,7 +292,7 @@ class LoggingService {
   /**
    * Log user actions for analytics
    */
-  logUserAction(action: string, details?: any): void {
+  logUserAction(action: string, details?: UserActionDetails): void {
     this.info('UserAction', action, {
       ...details,
       timestamp: new Date().toISOString(),

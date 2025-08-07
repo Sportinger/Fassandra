@@ -1,6 +1,6 @@
 import { logDebugInfo } from '../utils/debug';
 import { getCSRFToken } from '../utils/csrf';
-
+import { RequestBody, ValidationRules } from '../types/common';
 import logger from '../services/LoggingService';
 /**
  * Generic API Service
@@ -27,10 +27,10 @@ export class ApiError extends Error {
  */
 interface RequestOptions {
     method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
-    body?: any;
+    body?: RequestBody;
     headers?: Record<string, string>;
     requireAuth?: boolean;
-    validate?: Record<string, any>;
+    validate?: ValidationRules;
 }
 
 /**
@@ -216,23 +216,23 @@ export class ApiService {
     /**
      * Convenience methods for common HTTP verbs
      */
-    async get<T>(path: string, validate?: Record<string, any>): Promise<T> {
+    async get<T>(path: string, validate?: ValidationRules): Promise<T> {
         return this.request<T>(path, { method: 'GET', validate });
     }
 
-    async post<T>(path: string, body?: any, validate?: Record<string, any>): Promise<T> {
+    async post<T>(path: string, body?: RequestBody, validate?: ValidationRules): Promise<T> {
         return this.request<T>(path, { method: 'POST', body, validate });
     }
 
-    async patch<T>(path: string, body?: any, validate?: Record<string, any>): Promise<T> {
+    async patch<T>(path: string, body?: RequestBody, validate?: ValidationRules): Promise<T> {
         return this.request<T>(path, { method: 'PATCH', body, validate });
     }
 
-    async put<T>(path: string, body?: any, validate?: Record<string, any>): Promise<T> {
+    async put<T>(path: string, body?: RequestBody, validate?: ValidationRules): Promise<T> {
         return this.request<T>(path, { method: 'PUT', body, validate });
     }
 
-    async delete<T>(path: string, validate?: Record<string, any>): Promise<T> {
+    async delete<T>(path: string, validate?: ValidationRules): Promise<T> {
         return this.request<T>(path, { method: 'DELETE', validate });
     }
 }

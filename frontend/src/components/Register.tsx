@@ -3,7 +3,7 @@ import { useAuth } from '../AuthContext';
 import { register } from '../api';
 import styles from './Header.module.css';
 import authStyles from './Auth.module.css';
-
+import { getErrorMessage } from '../types/common';
 import logger from '../services/LoggingService';
 /**
  * Registration form component for new users.
@@ -47,8 +47,8 @@ export const Register: React.FC = () => {
         setToken('authenticated', response.user);
       }, 300);
       
-    } catch (err: any) {
-      setError(err.message || 'Registration failed');
+    } catch (err) {
+      setError(getErrorMessage(err));
       logger.error('Register', 'Error:', err);
     }
   };
