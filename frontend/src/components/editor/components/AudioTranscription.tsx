@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Editor as EditorInstance } from '@tiptap/react';
 import './AudioTranscription.css';
 
+import logger from '../../../services/LoggingService';
 // Speech Recognition API type declarations
 declare global {
   interface Window {
@@ -202,7 +203,7 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
         }
       });
       
-      console.log('🎤 🔧 Setting up optimized audio monitoring...');
+      logger.debug('AudioTranscription', '🎤 🔧 Setting up optimized audio monitoring...');
       
       streamRef.current = stream;
       
@@ -254,11 +255,11 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
           
           // Enhanced logging for debugging
           if (frameCount % 60 === 0) {
-            console.log(`🎤 📊 Audio level: ${level}% (RMS: ${rms.toFixed(3)}, Gain: ${microphoneGain}x)`);
+            logger.debug('AudioTranscription', `🎤 📊 Audio level: ${level}% (RMS: ${rms.toFixed(3)}, Gain: ${microphoneGain}x)`);
             if (level > 5) {
-              console.log('🎤 ✅ Audio detected - good level!');
+              logger.debug('AudioTranscription', '🎤 ✅ Audio detected - good level!');
             } else {
-              console.log('🎤 💡 Very low audio - try speaking louder or increasing gain');
+              logger.debug('AudioTranscription', '🎤 💡 Very low audio - try speaking louder or increasing gain');
             }
           }
           
@@ -279,7 +280,7 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
   // Restart speech recognition with debouncing
   const restartSpeechRecognition = useCallback(() => {
     if (!shouldRestartRef.current) {
-      console.log('🎤 Restart cancelled - shouldRestart is false');
+      logger.debug('AudioTranscription', '🎤 Restart cancelled - shouldRestart is false');
       return;
     }
     
@@ -293,10 +294,10 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
     restartTimeoutRef.current = setTimeout(() => {
       if (recognitionRef.current && shouldRestartRef.current) {
         try {
-          console.log('🎤 🔄 Restarting speech recognition...');
+          logger.debug('AudioTranscription', '🎤 🔄 Restarting speech recognition...');
           recognitionRef.current.start();
         } catch (error) {
-          console.log('🎤 ❌ Failed to restart recognition:', error);
+          logger.debug('AudioTranscription', '🎤 ❌ Failed to restart recognition:', error);
         }
       }
       restartTimeoutRef.current = null;
@@ -322,7 +323,7 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
       recognition.maxAlternatives = 1;
       
       // Additional debugging and configuration
-      console.log('🎤 Speech recognition configuration:', {
+      logger.debug('AudioTranscription', '🎤 Speech recognition configuration:', {
         continuous: recognition.continuous,
         interimResults: recognition.interimResults,
         lang: recognition.lang,
@@ -330,21 +331,21 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
       });
       
       recognition.onstart = () => {
-        console.log('🎤 ✅ Speech recognition started successfully');
-        console.log('🎤 📊 Audio levels are being detected, waiting for speech...');
+        logger.debug('AudioTranscription', '🎤 ✅ Speech recognition started successfully');
+        logger.debug('AudioTranscription', '🎤 📊 Audio levels are being detected, waiting for speech...');
       };
       
       recognition.onresult = (event: SpeechRecognitionEvent) => {
-        console.log('🎤 Speech recognition result event triggered');
-        console.log('🎤 Event details:', event);
-        console.log('🎤 Results length:', event.results.length);
+        logger.debug('AudioTranscription', '🎤 Speech recognition result event triggered');
+        logger.debug('AudioTranscription', '🎤 Event details:', event);
+        logger.debug('AudioTranscription', '🎤 Results length:', event.results.length);
         
         let interimTranscript = '';
         let finalTranscript = '';
         
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
-          console.log(`🎤 Result ${i}: "${transcript}" (final: ${event.results[i].isFinal})`);
+          logger.debug('AudioTranscription', `🎤 Result ${i}: "${transcript}" (final: ${event.results[i].isFinal})`);
           
           if (event.results[i].isFinal) {
             finalTranscript += transcript;
@@ -358,10 +359,10 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
         
         // Console logging for transcribed text
         if (finalTranscript) {
-          console.log('🎤 ✅ Final transcription:', finalTranscript);
+          logger.debug('AudioTranscription', '🎤 ✅ Final transcription:', finalTranscript);
         }
         if (interimTranscript) {
-          console.log('🎤 ⏳ Interim transcription:', interimTranscript);
+          logger.debug('AudioTranscription', '🎤 ⏳ Interim transcription:', interimTranscript);
         }
         
         if (finalTranscript && editor) {
@@ -374,24 +375,24 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
       };
       
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.log('🎤 ❌ Speech recognition error:', event.error);
-        console.log('🎤 Error message:', event.message);
+        logger.debug('AudioTranscription', '🎤 ❌ Speech recognition error:', event.error);
+        logger.debug('AudioTranscription', '🎤 Error message:', event.message);
         
         if (event.error === 'no-speech') {
-          console.log('🎤 No speech detected, will restart...');
-          console.log('🎤 💡 TIP: Try speaking louder, clearer, and closer to the microphone');
-          console.log('🎤 💡 TIP: Try saying something like "Hello, this is a test" clearly');
+          logger.debug('AudioTranscription', '🎤 No speech detected, will restart...');
+          logger.debug('AudioTranscription', '🎤 💡 TIP: Try speaking louder, clearer, and closer to the microphone');
+          logger.debug('AudioTranscription', '🎤 💡 TIP: Try saying something like "Hello, this is a test" clearly');
           restartSpeechRecognition();
         } else {
-          console.log('🎤 Setting error:', event.error);
+          logger.debug('AudioTranscription', '🎤 Setting error:', event.error);
           setError(`Speech recognition error: ${event.error}`);
         }
       };
       
       recognition.onend = () => {
-        console.log('🎤 Speech recognition ended');
+        logger.debug('AudioTranscription', '🎤 Speech recognition ended');
         if (shouldRestartRef.current) {
-          console.log('🎤 Will restart recognition...');
+          logger.debug('AudioTranscription', '🎤 Will restart recognition...');
           restartSpeechRecognition();
         }
       };
@@ -521,9 +522,9 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
          recognitionRef.current = recognition;
          shouldRestartRef.current = true;
          
-         console.log('🎤 Starting speech recognition with optimized audio settings...');
+         logger.debug('AudioTranscription', '🎤 Starting speech recognition with optimized audio settings...');
          recognition.start();
-         console.log('🎤 Recognition.start() called, setting listening to true');
+         logger.debug('AudioTranscription', '🎤 Recognition.start() called, setting listening to true');
          setIsListening(true);
         
       } catch (error: any) {
@@ -536,7 +537,7 @@ export const AudioTranscription: React.FC<AudioTranscriptionProps> = ({
   useEffect(() => {
     if (gainNodeRef.current && isListening) {
       gainNodeRef.current.gain.value = microphoneGain;
-      console.log(`🎤 🔧 Updated microphone gain to ${microphoneGain}x`);
+      logger.debug('AudioTranscription', `🎤 🔧 Updated microphone gain to ${microphoneGain}x`);
     }
   }, [microphoneGain, isListening]);
 

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef } from 'react';
 import * as Y from 'yjs';
 import { yjsDocumentManager } from '../services/yjsDocumentManager';
 
+import logger from '../services/LoggingService';
 interface YjsDocumentContextValue {
   getDocument: (scriptId: string) => Y.Doc;
   releaseDocument: (scriptId: string) => void;
@@ -24,10 +25,10 @@ export const YjsDocumentProvider: React.FC<YjsDocumentProviderProps> = ({ childr
   const isMountedRef = useRef(true);
 
   useEffect(() => {
-    console.log('[YjsDocumentProvider] Mounted');
+    logger.debug('YjsDocumentContext', '[YjsDocumentProvider] Mounted');
     
     return () => {
-      console.log('[YjsDocumentProvider] Unmounting');
+      logger.debug('YjsDocumentContext', '[YjsDocumentProvider] Unmounting');
       isMountedRef.current = false;
       // Note: We don't clear documents here as they might be needed across navigation
       // Documents are cleared on logout or explicit cleanup
@@ -92,13 +93,13 @@ export const useYjsDocumentLifecycle = (scriptId: string | null) => {
 
     // If script ID changed, release old document
     if (scriptIdRef.current && scriptIdRef.current !== scriptId) {
-      console.log(`[useYjsDocumentLifecycle] Script changed from ${scriptIdRef.current} to ${scriptId}`);
+      logger.debug('YjsDocumentContext', `[useYjsDocumentLifecycle] Script changed from ${scriptIdRef.current} to ${scriptId}`);
       releaseDocument(scriptIdRef.current);
       docRef.current = null;
     }
 
     // Get new document
-    console.log(`[useYjsDocumentLifecycle] Acquiring document for script: ${scriptId}`);
+    logger.debug('YjsDocumentContext', `[useYjsDocumentLifecycle] Acquiring document for script: ${scriptId}`);
     const doc = getDocument(scriptId);
     docRef.current = doc;
     scriptIdRef.current = scriptId;
@@ -106,7 +107,7 @@ export const useYjsDocumentLifecycle = (scriptId: string | null) => {
     // Cleanup on unmount or script change
     return () => {
       if (scriptId) {
-        console.log(`[useYjsDocumentLifecycle] Releasing document for script: ${scriptId}`);
+        logger.debug('YjsDocumentContext', `[useYjsDocumentLifecycle] Releasing document for script: ${scriptId}`);
         releaseDocument(scriptId);
         docRef.current = null;
       }

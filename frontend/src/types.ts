@@ -47,7 +47,7 @@ export interface Script {
 /**
  * Upload status for placeholder scripts.
  */
-export type UploadStatus = 'uploading' | 'analyzing' | 'creating' | 'completed' | 'failed';
+export type UploadStatus = 'uploading' | 'analyzing' | 'creating' | 'processing' | 'completed' | 'complete' | 'failed' | 'error';
 
 /**
  * Extended Script interface for placeholder scripts during upload process.
@@ -56,6 +56,8 @@ export type UploadStatus = 'uploading' | 'analyzing' | 'creating' | 'completed' 
 export interface PlaceholderScript extends Script {
   fileData?: File; // File to be uploaded in background
   sessionService?: any; // Claude session service for cancellation
+  uploadComplete?: boolean; // Whether upload is complete
+  uploadStartTime?: number; // Timestamp when upload started
 }
 
 /**

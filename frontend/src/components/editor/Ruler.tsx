@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 
+import logger from '../../services/LoggingService';
 interface RulerProps {
   className?: string;
   headerMargin?: number;
@@ -160,7 +161,7 @@ export const Ruler: React.FC<RulerProps> = ({
     
     // Debug logging for footer positioning
     if (pageIndex === 0) {
-      console.log('🔧 Ruler calculations:', {
+      logger.debug('Ruler', '🔧 Ruler calculations:', {
         pageHeight,
         headerMargin,
         footerMargin,

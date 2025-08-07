@@ -1,19 +1,20 @@
 import { formatContentElement } from './formatters';
 
+import logger from '../../../services/LoggingService';
 /**
  * Convert blocks to TipTap content format with proper dialogue block structure
  */
 export const convertBlocksToTiptapContent = (blocks: any[]) => {
-  console.log('[Content Converter] Converting blocks:', blocks);
+  logger.debug('contentConverters', '[Content Converter] Converting blocks:', blocks);
   
   if (!blocks || blocks.length === 0) {
-    console.log('[Content Converter] No blocks provided, returning empty paragraph');
+    logger.debug('contentConverters', '[Content Converter] No blocks provided, returning empty paragraph');
     return '<p></p>'; // Default empty paragraph
   }
 
   let currentPageNumber = 0;
   const convertedContent = blocks.map((block, index) => {
-    console.log(`[Content Converter] Processing block ${index}:`, { 
+    logger.debug('contentConverters', `[Content Converter] Processing block ${index}:`, { 
       blockType: block.block_type, 
       contentLength: block.content?.length,
       content: block.content?.substring(0, 100) + '...',
@@ -29,7 +30,7 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
       result += `<div data-type="page-indicator" data-page-number="${currentPageNumber}" class="page-indicator">
         <span class="page-label" contenteditable="false">SEITE ${currentPageNumber}</span>
       </div>`;
-      console.log(`[Content Converter] Inserting page indicator for page ${currentPageNumber}`);
+      logger.debug('contentConverters', `[Content Converter] Inserting page indicator for page ${currentPageNumber}`);
     }
     
     const blockType = block.block_type;
@@ -45,7 +46,7 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
           try {
             // Parse the JSON content
             const element = JSON.parse(contentJsonString);
-            console.log(`[Content Converter] Parsed ${blockType} element:`, element);
+            logger.debug('contentConverters', `[Content Converter] Parsed ${blockType} element:`, element);
             
             // Extract speaker(s) and text
             let speakerName = '';
@@ -77,7 +78,7 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
               dialogueText = readingText ? `(Reading) ${readingText}` : '(Reading)';
             }
             
-            console.log(`[Content Converter] Creating dialogue block - Speaker: "${speakerName}", Text: "${dialogueText}"`);
+            logger.debug('contentConverters', `[Content Converter] Creating dialogue block - Speaker: "${speakerName}", Text: "${dialogueText}"`);
             
             // Create proper dialogue block HTML
             const dialogueHTML = `<div data-type="dialogue-block" data-layout="default">
@@ -87,11 +88,11 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
               </div>
             </div>`;
             
-            console.log(`[Content Converter] Generated dialogue HTML:`, dialogueHTML);
+            logger.debug('contentConverters', `[Content Converter] Generated dialogue HTML:`, dialogueHTML);
             result += dialogueHTML;
             return result;
           } catch (parseError) {
-            console.error(`[Content Converter] Failed to parse ${blockType} JSON, falling back to text:`, contentJsonString, parseError);
+            logger.error('contentConverters', `[Content Converter] Failed to parse ${blockType} JSON, falling back to text: ${contentJsonString}`, parseError);
             // Fallback: treat as plain text dialogue
             const fallbackText = contentJsonString.substring(0, 200) + (contentJsonString.length > 200 ? '...' : '');
             result += `<div data-type="dialogue-block" data-layout="default">
@@ -109,7 +110,7 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
             // Use scene_number and scene_title from the block object, not from JSON content
             const sceneNumber = block.scene_number || '1';
             const sceneTitle = block.scene_title || 'Untitled Scene';
-            console.log(`[Content Converter] Creating scene block - Number: "${sceneNumber}", Title: "${sceneTitle}" from block fields`);
+            logger.debug('contentConverters', `[Content Converter] Creating scene block - Number: "${sceneNumber}", Title: "${sceneTitle}" from block fields`);
             
             // Create proper scene block HTML with both data attributes for the extension
             const sceneHTML = `<div data-type="scene-block" data-scene-number="${sceneNumber}" data-scene-name="${sceneTitle}">
@@ -118,11 +119,11 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
               <span class="scene-name" contenteditable="true">${sceneTitle}</span>
             </div>`;
             
-            console.log(`[Content Converter] Generated scene HTML:`, sceneHTML);
+            logger.debug('contentConverters', `[Content Converter] Generated scene HTML:`, sceneHTML);
             result += sceneHTML;
             return result;
           } catch (parseError) {
-            console.error(`[Content Converter] Failed to create scene-block, falling back to text:`, parseError);
+            logger.error('contentConverters', `[Content Converter] Failed to create scene-block, falling back to text`, parseError);
             // Fallback: treat as plain text
             result += `<p><strong>Scene: ${block.scene_number || ''} ${block.scene_title || contentJsonString}</strong></p>`;
             return result;
@@ -134,13 +135,13 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
             // Parse the JSON content
             const element = JSON.parse(contentJsonString);
             const description = element.description || element.text || '';
-            console.log(`[Content Converter] Creating stage direction: "${description}"`);
+            logger.debug('contentConverters', `[Content Converter] Creating stage direction: "${description}"`);
             
             // Create paragraph for stage direction
             result += `<p><em>(${description})</em></p>`;
             return result;
           } catch (parseError) {
-            console.error(`[Content Converter] Failed to parse stage_direction JSON, falling back to text:`, contentJsonString, parseError);
+            logger.error('contentConverters', `[Content Converter] Failed to parse stage_direction JSON, falling back to text: ${contentJsonString}`, parseError);
             // Fallback: treat as plain text stage direction
             result += `<p><em>(${contentJsonString})</em></p>`;
             return result;
@@ -151,7 +152,7 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
           // Handle paragraph blocks - could be JSON string or plain text
           try {
             const actualText = JSON.parse(contentJsonString);
-            console.log(`[Content Converter] Creating paragraph from JSON: "${actualText}"`);
+            logger.debug('contentConverters', `[Content Converter] Creating paragraph from JSON: "${actualText}"`);
             if (typeof actualText === 'string') {
               result += `<p>${actualText}</p>`;
               return result;
@@ -161,7 +162,7 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
             }
           } catch (e) {
             // If JSON parsing fails, treat as plain text
-            console.log(`[Content Converter] Creating paragraph from plain text: "${contentJsonString}"`);
+            logger.debug('contentConverters', `[Content Converter] Creating paragraph from plain text: "${contentJsonString}"`);
             result += `<p>${contentJsonString}</p>`;
             return result;
           }
@@ -176,16 +177,16 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
             const cueNumber = element.cueNumber || element.number || '';
             const cueContent = element.content || element.text || '';
             
-            console.log(`[Content Converter] Creating cue block - Type: "${cueType}", Number: "${cueNumber}", Content: "${cueContent}"`);
+            logger.debug('contentConverters', `[Content Converter] Creating cue block - Type: "${cueType}", Number: "${cueNumber}", Content: "${cueContent}"`);
             
             // Create proper cue block HTML that matches the extension's structure
             const cueHTML = `<div data-type="cue-block" data-cue-type="${cueType}" data-cue-number="${cueNumber}">${cueContent}</div>`;
             
-            console.log(`[Content Converter] Generated cue HTML:`, cueHTML);
+            logger.debug('contentConverters', `[Content Converter] Generated cue HTML:`, cueHTML);
             result += cueHTML;
             return result;
           } catch (parseError) {
-            console.error(`[Content Converter] Failed to parse cue block JSON, skipping:`, contentJsonString, parseError);
+            logger.error('contentConverters', `[Content Converter] Failed to parse cue block JSON, skipping: ${contentJsonString}`, parseError);
             // Skip malformed cue blocks
             return result;
           }
@@ -193,7 +194,7 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
         
         case 'content': {
           // Handle content blocks (raw HTML from content snapshots)
-          console.log(`[Content Converter] Processing content block with raw HTML: "${contentJsonString}"`);
+          logger.debug('contentConverters', `[Content Converter] Processing content block with raw HTML: "${contentJsonString}"`);
           // Content blocks contain raw HTML, don't try to parse as JSON
           // Clean up any duplicate cue UI elements that might have been saved
           let cleanedContent = contentJsonString;
@@ -210,7 +211,7 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
         }
         
         default: {
-          console.log(`[Content Converter] Unknown block type "${blockType}", using fallback formatting`);
+          logger.debug('contentConverters', `[Content Converter] Unknown block type "${blockType}", using fallback formatting`);
           // For unknown block types, use the original formatting
           const formattedText = formatContentElement(blockType, contentJsonString);
           result += `<p>${formattedText}</p>`;
@@ -218,7 +219,7 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
         }
       }
     } catch (e) {
-      console.error(`[Content Converter] Failed to convert block of type '${blockType}':`, contentJsonString, e);
+      logger.error('contentConverters', `[Content Converter] Failed to convert block of type '${blockType}': ${contentJsonString}`, e);
       // Fallback to original formatting
       const formattedText = formatContentElement(blockType, contentJsonString);
     return `<p>${formattedText}</p>`;
@@ -226,8 +227,8 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
   });
   
   const finalContent = convertedContent.join('');
-  console.log('[Content Converter] Final converted content length:', finalContent.length);
-  console.log('[Content Converter] Final converted content preview:', finalContent.substring(0, 500) + '...');
+  logger.debug('contentConverters', '[Content Converter] Final converted content length:', finalContent.length);
+  logger.debug('contentConverters', finalContent.substring(0, 500) + '...');
 
   
   return finalContent;

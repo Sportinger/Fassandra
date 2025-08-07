@@ -92,16 +92,14 @@ export const CueConnectionMark = Mark.create({
     ];
   },
 
-  renderHTML({ HTMLAttributes, mark }) {
+  renderHTML({ HTMLAttributes }) {
     // Count how many cue marks are on this text
     let cueCount = 1;
     let allCueTypes = [HTMLAttributes['data-cue-type'] || 'default'];
     
-    // Check if we can access other marks on the same node
-    if (mark && mark.node && mark.node.marks) {
-      const cueMarks = mark.node.marks.filter(m => m.type.name === 'cueConnection');
-      cueCount = cueMarks.length;
-      allCueTypes = cueMarks.map(m => m.attrs.cueType || 'default');
+    // Note: We can't access other marks from here, so we rely on the data-cue-count attribute
+    if (HTMLAttributes['data-cue-count']) {
+      cueCount = parseInt(HTMLAttributes['data-cue-count'], 10) || 1;
     }
     
     const attrs = mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {

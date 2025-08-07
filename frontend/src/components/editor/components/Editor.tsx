@@ -1,8 +1,3 @@
-/**
- * Main Editor Component
- * Orchestrates all editor sub-systems with responsive design
- */
-
 import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useAuth } from '../../../AuthContext';
 import { Header } from '../../Header';
@@ -16,7 +11,7 @@ import { SinglePageView, MultiPageView } from '../ViewModes';
 import { AudioTranscription } from './AudioTranscription';
 import type { EditorProps, ViewMode } from '../types';
 
-// Import the consolidated styles
+import logger from '../../../services/LoggingService';
 import '../styles/variables.css';
 import '../styles/responsive.css';
 import '../styles/toolbar.css';
@@ -26,8 +21,12 @@ import '../styles/page-indicators.css';
 import '../styles/search.css';
 import '../styles/cue-connections.css';
 import '../styles/rehearsal-line.css';
+/**
+ * Main Editor Component
+ * Orchestrates all editor sub-systems with responsive design
+ */
 
-
+// Import the consolidated styles
 export const Editor: React.FC<EditorProps> = ({ 
   scriptId, 
   initialTitle, 
@@ -808,7 +807,7 @@ export const Editor: React.FC<EditorProps> = ({
         onToggleRehearsalMode={() => {
           const newMode = !rehearsalMode;
           setRehearsalMode(newMode);
-          console.log('Rehearsal mode toggled:', newMode);
+          logger.debug('Editor', 'Rehearsal mode toggled:', newMode);
           
           // If turning on rehearsal mode and line position is set, scroll to it
           if (newMode && rehearsalLinePosition > 0 && viewMode === 'single-page') {

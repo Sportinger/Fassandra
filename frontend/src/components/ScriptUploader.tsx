@@ -3,6 +3,7 @@ import { useAuth } from '../AuthContext';
 import { PlaceholderScript, UploadStatus } from '../types';
 import styles from './ScriptUploader.module.css';
 
+import logger from '../services/LoggingService';
 interface ScriptUploaderProps {
     onScriptCreated?: (scriptId: string) => void;
     onClose: () => void;
@@ -53,7 +54,7 @@ const ScriptUploader: React.FC<ScriptUploaderProps> = ({
             return;
         }
 
-        console.log('[ScriptUploader] 🚀 Starting background upload for PDF:', selectedFile.name);
+        logger.debug('ScriptUploader', '[ScriptUploader] 🚀 Starting background upload for PDF:', selectedFile.name);
 
         // Create placeholder script with file data for real upload
         const placeholderId = `placeholder-${Date.now()}`;
@@ -77,7 +78,7 @@ const ScriptUploader: React.FC<ScriptUploaderProps> = ({
         // Close modal immediately for better UX
         onClose();
         
-        console.log('[ScriptUploader] ✅ Modal closed, upload delegated to ScriptList');
+        logger.debug('ScriptUploader', '[ScriptUploader] ✅ Modal closed, upload delegated to ScriptList');
 
         // Reset state
         setSelectedFile(null);

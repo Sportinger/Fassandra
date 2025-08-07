@@ -8,6 +8,7 @@ import { useUploadState } from '../hooks/useUploadState';
 import UploadStateManager from '../services/UploadStateManager';
 import styles from './ScriptList.module.css';
 
+import logger from '../services/LoggingService';
 /**
  * Props for the ScriptList component.
  * @property {(scriptId: string, scriptTitle: string) => void} onSelectScript - Callback when a script is selected.
@@ -70,7 +71,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   // 🚀 EXPOSE METHODS: Allow parent to add upload placeholders
   useImperativeHandle(ref, () => ({
     addUploadPlaceholder: (placeholder: PlaceholderScript) => {
-      console.log('[ScriptList] Adding upload placeholder:', placeholder.title);
+      logger.debug('ScriptList', '[ScriptList] Adding upload placeholder:', placeholder.title);
       // Add to persistent state
       addUpload(placeholder);
       
@@ -82,7 +83,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   // 🚀 REAL UPLOAD LOGIC: Implement actual API calls with detailed progress
   const performRealBackgroundUpload = async (placeholder: PlaceholderScript) => {
     if (!token || !placeholder.fileData) {
-      console.error('[ScriptList] Missing token or file data for upload');
+      logger.error('ScriptList', 'Error:', '[ScriptList] Missing token or file data for upload');
       return;
     }
     
@@ -91,7 +92,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     };
 
     try {
-      console.log('[ScriptList] 🚀 Starting REAL upload for:', placeholder.title);
+      logger.debug('ScriptList', '[ScriptList] 🚀 Starting REAL upload for:', placeholder.title);
       
       // Stage 1: File validation and preparation (5% progress)
       updateUploadStatus({ 
@@ -173,20 +174,20 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       let responseData: { session_id: string; message: string };
       try {
         responseData = await uploadResponse.json();
-        console.log('[ScriptList] Upload response:', responseData);
+        logger.debug('ScriptList', '[ScriptList] Upload response:', responseData);
       } catch (parseError: any) {
-        console.error('[ScriptList] Failed to parse JSON response:', parseError);
-        console.error('[ScriptList] Response status:', uploadResponse.status);
-        console.error('[ScriptList] Response headers:', uploadResponse.headers);
+        logger.error('ScriptList', '[ScriptList] Failed to parse JSON response:', parseError);
+        logger.error('ScriptList', '[ScriptList] Response status:', uploadResponse.status);
+        logger.error('ScriptList', '[ScriptList] Response headers:', uploadResponse.headers);
         throw new Error(`Upload failed: Could not parse server response`);
       }
 
       if (!responseData || !responseData.session_id) {
-        console.error('[ScriptList] Response missing session_id:', responseData);
+        logger.error('ScriptList', '[ScriptList] Response missing session_id:', responseData);
         throw new Error('Upload started, but no session ID returned');
       }
 
-      console.log('[ScriptList] Claude Code session started:', responseData.session_id);
+      logger.debug('ScriptList', '[ScriptList] Claude Code session started:', responseData.session_id);
       
       // Monitor the session via WebSocket
       updateUploadStatus({ 
@@ -210,7 +211,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
             });
           } else if (update.type === 'output' && update.line) {
             // Show Claude output in substage
-            console.log('[Claude Output]', update.line);
+            logger.debug('ScriptList', '[Claude Output]', update.line);
             // Show relevant Claude status messages
             if (update.line.includes('Reading PDF') || update.line.includes('Parsing')) {
               updateUploadStatus({ 
@@ -229,7 +230,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         },
         async (scriptId) => {
           // Handle completion
-          console.log('[ScriptList] Claude Code completed with script ID:', scriptId);
+          logger.debug('ScriptList', '[ScriptList] Claude Code completed with script ID:', scriptId);
           
           updateUploadStatus({ 
             uploadStatus: 'creating' as UploadStatus,
@@ -259,7 +260,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
           // Refresh scripts list to get the new script
           await fetchScripts();
           
-          console.log('[ScriptList] ✅ Real upload completed successfully');
+          logger.debug('ScriptList', '[ScriptList] ✅ Real upload completed successfully');
         },
         (error) => {
           // Handle error
@@ -274,7 +275,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       (placeholder as any).sessionService = sessionService;
       
     } catch (error: any) {
-      console.error('[ScriptList] ❌ Real upload failed:', error);
+      logger.error('ScriptList', '[ScriptList] ❌ Real upload failed:', error);
       updateUploadStatus({ 
         uploadStatus: 'failed' as UploadStatus, 
         uploadError: error.message || 'Upload failed',
@@ -308,7 +309,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         await placeholder.sessionService.cancelSession();
         placeholder.sessionService.disconnect();
       } catch (error) {
-        console.error('[ScriptList] Failed to cancel session:', error);
+        logger.error('ScriptList', '[ScriptList] Failed to cancel session:', error);
       }
     }
     
@@ -479,7 +480,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       setRenameValue('');
     } catch (err: any) {
       setError(err.message || 'Failed to rename script');
-      console.error(err);
+      logger.error('ScriptList', 'Error:', err);
     }
   };
 
@@ -554,7 +555,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         logDebugInfo('ScriptList', 'Auth error detected - not auto-logging out to preserve page refresh behavior');
         setError('Authentication expired. Please refresh the page or log in again.');
       }
-      console.error(err);
+      logger.error('ScriptList', 'Error:', err);
     } finally {
       setLoading(false);
     }
@@ -577,14 +578,14 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   // Reconnect to ongoing Claude sessions on mount
   useEffect(() => {
     if (token && uploads.length > 0) {
-      console.log('[ScriptList] Checking for ongoing uploads to reconnect...');
+      logger.debug('ScriptList', '[ScriptList] Checking for ongoing uploads to reconnect...');
       
       uploads.forEach(upload => {
         // Only reconnect if upload is not complete and has a session ID
         if (!upload.uploadComplete && upload.uploadStatus === 'processing') {
           const sessionId = getSessionId(upload.id);
           if (sessionId) {
-            console.log(`[ScriptList] Reconnecting to session ${sessionId} for upload ${upload.title}`);
+            logger.debug('ScriptList', `[ScriptList] Reconnecting to session ${sessionId} for upload ${upload.title}`);
             
             // Create WebSocket connection to monitor existing session
             const sessionService = new ClaudeSessionService(
@@ -598,7 +599,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
                     uploadSubStage: `Processing: ${update.status || 'Working...'}`
                   });
                 } else if (update.type === 'output' && update.line) {
-                  console.log('[Claude Output]', update.line);
+                  logger.debug('ScriptList', '[Claude Output]', update.line);
                   updateUpload(upload.id, {
                     uploadSubStage: 'Claude Code is working...'
                   });
@@ -606,7 +607,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
               },
               (scriptId) => {
                 // On complete
-                console.log('[ScriptList] Claude session completed! Script ID:', scriptId);
+                logger.debug('ScriptList', '[ScriptList] Claude session completed! Script ID:', scriptId);
                 updateUpload(upload.id, {
                   uploadStatus: 'complete' as const,
                   uploadProgress: 100,
@@ -624,11 +625,11 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
               },
               (error) => {
                 // On error
-                console.error('[ScriptList] Claude session error:', error);
+                logger.error('ScriptList', '[ScriptList] Claude session error:', error);
                 updateUpload(upload.id, {
                   uploadStatus: 'error' as const,
                   uploadError: error,
-                  uploadSubStage: null
+                  uploadSubStage: undefined
                 });
               }
             );
@@ -656,7 +657,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       setAddSlotState('plus'); // Hide input form
     } catch (err: any) {
       setError(err.message || 'Failed to create script');
-      console.error(err);
+      logger.error('ScriptList', 'Error:', err);
     }
   };
 
@@ -683,7 +684,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         setScripts(prev => prev.filter(script => script.id !== scriptId));
       } catch (err: any) {
         setError(err.message || 'Failed to delete script');
-        console.error(err);
+        logger.error('ScriptList', 'Error:', err);
       } finally {
         setDeletingScriptId(null);
       }
@@ -710,7 +711,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         const shares = await getScriptShares(scriptId);
         setScriptShares(shares);
       } catch (err: any) {
-        console.error('Failed to load shares:', err);
+        logger.error('ScriptList', 'Failed to load shares:', err);
         setError(err.message || 'Failed to load shares');
       } finally {
         setSharingLoading(false);
@@ -794,7 +795,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   const handleScriptClick = (scriptId: string, scriptTitle: string, isPlaceholder?: boolean, uploadStatus?: UploadStatus) => {
     // Prevent clicking on placeholders that aren't completed
     if (isPlaceholder && uploadStatus !== 'completed') {
-      console.log('[ScriptList] ❌ Cannot click placeholder that is still uploading');
+      logger.debug('ScriptList', '[ScriptList] ❌ Cannot click placeholder that is still uploading');
       return;
     }
 

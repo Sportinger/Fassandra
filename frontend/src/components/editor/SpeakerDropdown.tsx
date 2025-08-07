@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Editor as EditorInstance } from '@tiptap/react';
 import './styles/toolbar.css';
 
+import logger from '../../services/LoggingService';
 interface SpeakerDropdownProps {
   editor: EditorInstance | null;
   speakerNames: Set<string>;
@@ -37,7 +38,7 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
           }
         }
       } catch (error) {
-        console.warn('Failed to get current speaker:', error);
+        logger.warn('SpeakerDropdown', 'Failed to get current speaker:', error);
       }
     };
 
@@ -53,7 +54,7 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
   const handleSpeakerSelect = (speakerName: string) => {
     if (!editor) return;
 
-    console.log(`[SpeakerDropdown] Setting speaker to: ${speakerName}`);
+    logger.debug('SpeakerDropdown', `[SpeakerDropdown] Setting speaker to: ${speakerName}`);
     
     try {
       const { selection } = editor.state;
@@ -79,7 +80,7 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
         }
       }
     } catch (error) {
-      console.error('Failed to set speaker:', error);
+      logger.error('SpeakerDropdown', 'Failed to set speaker:', error);
     }
   };
 

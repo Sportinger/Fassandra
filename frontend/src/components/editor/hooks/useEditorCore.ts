@@ -1,8 +1,3 @@
-/**
- * useEditorCore Hook  
- * Core editor functionality that integrates with Pessoa's existing infrastructure
- */
-
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useEditor } from '@tiptap/react';
 import * as Y from 'yjs';
@@ -14,9 +9,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { Color } from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { TextAlign } from '@tiptap/extension-text-align';
-// 🔧 DISABLED: Offline storage - removed IndexeddbPersistence import
-// import { IndexeddbPersistence } from 'y-indexeddb';
-
+import logger from '../../../services/LoggingService';
 import { useAuth } from '../../../AuthContext';
 import { DialogueBlock } from '../extensions/DialogueBlock';
 import { Speaker } from '../extensions/Speaker';
@@ -27,9 +20,10 @@ import { PageIndicator } from '../extensions/PageIndicator';
 import { TrailingNode } from '../extensions/TrailingNode';
 import { CueConnectionMark } from '../extensions/CueConnectionMark';
 import { FontSize } from '../FontSizeExtension';
-import { getScriptWithBlocks, getContentSnapshot } from '../../../api';
+import { getScriptWithBlocks, getContentSnapshot, storeContentSnapshot } from '../../../api';
 import { convertBlocksToTiptapContent, extractSpeakerNames } from '../utils/contentConverters';
 import { isYDocEmpty } from '../utils/formatters';
+import { yjsDocumentManager } from '../../../services/yjsDocumentManager';
 import type { 
   UseEditorCoreProps, 
   UseEditorCoreReturn, 
@@ -37,9 +31,14 @@ import type {
   ContextMenu, 
   ToolbarContext 
 } from '../types/index';
-import { storeContentSnapshot } from '../../../api';
-import { yjsDocumentManager } from '../../../services/yjsDocumentManager';
 
+/**
+ * useEditorCore Hook  
+ * Core editor functionality that integrates with Pessoa's existing infrastructure
+ */
+
+// 🔧 DISABLED: Offline storage - removed IndexeddbPersistence import
+// import { IndexeddbPersistence } from 'y-indexeddb';
 // 🔧 SECURE ARCHITECTURE: WebSocket through HTTPS Frontend Proxy 
 // All traffic (HTTP + WebSocket) goes through frontend SSL termination
 // Frontend proxy (vite.config.ts) forwards to backend with ws: true enabled
@@ -51,7 +50,7 @@ const WS_BASE_URL = typeof window !== 'undefined'
 // 🔧 FIXED: Reduce console spam - only log important events
 const debugLog = (message: string, ...args: any[]) => {
   if (import.meta.env.DEV) {
-    console.log(message, ...args);
+    logger.debug('useEditorCore', message, ...args);
   }
 };
 
@@ -139,10 +138,10 @@ export const useEditorCore = ({
             const data = await response.json();
             wsToken = data.token;
           } else {
-            console.error('[Editor Core] Failed to get WebSocket token:', response.status);
+            logger.error('useEditorCore', '[Editor Core] Failed to get WebSocket token:', response.status);
           }
         } catch (error) {
-          console.error('[Editor Core] Error fetching WebSocket token:', error);
+          logger.error('useEditorCore', '[Editor Core] Error fetching WebSocket token:', error);
         }
       }
 
@@ -166,7 +165,7 @@ export const useEditorCore = ({
         setProvider(websocketProvider);
         providerRef.current = websocketProvider;
       } catch (error) {
-        console.error('[Editor Core] Failed to create WebSocket provider:', error);
+        logger.error('useEditorCore', '[Editor Core] Failed to create WebSocket provider:', error);
         setConnectionStatus('error');
         setErrorMessage('Failed to initialize collaboration');
         return;
@@ -194,7 +193,7 @@ export const useEditorCore = ({
       });
 
       websocketProvider.on('connection-error', (error: any) => {
-        console.error('[Editor] WebSocket connection error:', error);
+        logger.error('useEditorCore', '[Editor] WebSocket connection error:', error);
         setConnectionStatus('error');
         setErrorMessage('Failed to connect to collaboration server');
       });
@@ -219,7 +218,7 @@ export const useEditorCore = ({
             }));
           
           if (activeUsers.length > 0) {
-            console.log('🎭 [Theater Collaboration] Active team members:', activeUsers.map(u => `${u.name}${u.isTyping ? ' (typing)' : ''}`).join(', '));
+            logger.debug('useEditorCore', '🎭 [Theater Collaboration] Active team members:', activeUsers.map(u => `${u.name}${u.isTyping ? ' (typing)' : ''}`).join(', '));
           }
         }
       };
@@ -318,7 +317,7 @@ export const useEditorCore = ({
           // Local editor without collaboration
           extensions: [
             StarterKit.configure({
-              history: true, // Enable history for local mode
+              // History is enabled by default in StarterKit
             }),
             DialogueBlock,
             Speaker,
@@ -396,7 +395,7 @@ export const useEditorCore = ({
           setLastSyncTime(now);
           debugLog('[Real-time Sync] ✅ Content sync successful');
         } catch (error) {
-          console.error('[Real-time Sync] ❌ Content sync failed:', error);
+          logger.error('useEditorCore', '[Real-time Sync] ❌ Content sync failed:', error);
         }
       }
     };
@@ -439,7 +438,7 @@ export const useEditorCore = ({
         if (error.status === 404 || error.message?.includes('404')) {
           debugLog('[Editor] ⚠️ No content snapshot found (404), falling back to blocks...');
         } else {
-          console.error('[Editor] ❌ Error loading snapshot:', error);
+          logger.error('useEditorCore', '[Editor] ❌ Error loading snapshot:', error);
           debugLog('[Editor] ⚠️ Snapshot error, falling back to blocks...');
         }
       }
@@ -468,7 +467,7 @@ export const useEditorCore = ({
           setErrorMessage('Script appears to be empty');
         }
       } catch (blockError) {
-        console.error('[Editor] ❌ Failed to load blocks as fallback:', blockError);
+        logger.error('useEditorCore', '[Editor] ❌ Failed to load blocks as fallback:', blockError);
         setErrorMessage('Failed to load script content');
       }
     };
@@ -478,7 +477,13 @@ export const useEditorCore = ({
 
   // Context menu handlers
   const showContextMenu = useCallback((x: number, y: number, context: ToolbarContext) => {
-    setContextMenu({ x, y, context });
+    setContextMenu({ 
+      x, 
+      y, 
+      visible: true,
+      onSpeakerName: context === 'speaker-select',
+      onPageBackground: context === 'empty-page'
+    });
     setToolbarContext(context);
   }, []);
 

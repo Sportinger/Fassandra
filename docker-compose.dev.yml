@@ -80,14 +80,15 @@ services:
     depends_on:
       - backend
     volumes:
-      - ./frontend/src:/app/src:ro          # Mount source code for hot reload
-      - ./frontend/public:/app/public:ro    # Mount public assets
-      - ./frontend/index.html:/app/index.html:ro  # Mount index.html
-      - ./frontend/vite.config.dev.ts:/app/vite.config.dev.ts:ro  # Mount dev vite config
-      - ./frontend/vite.config.prod.ts:/app/vite.config.prod.ts:ro  # Mount prod vite config
-      - ./frontend/tsconfig.json:/app/tsconfig.json:ro    # Mount tsconfig
-      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json:ro  # Mount tsconfig
-      - ./frontend/tsconfig.node.json:/app/tsconfig.node.json:ro  # Mount tsconfig
+      - ./frontend/src:/app/src          # Mount source code for hot reload (read-write for dev!)
+      - ./frontend/public:/app/public    # Mount public assets
+      - ./frontend/index.html:/app/index.html  # Mount index.html
+      - ./frontend/vite.config.dev.ts:/app/vite.config.dev.ts  # Mount dev vite config
+      - ./frontend/vite.config.prod.ts:/app/vite.config.prod.ts  # Mount prod vite config
+      - ./frontend/tsconfig.json:/app/tsconfig.json    # Mount tsconfig
+      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json  # Mount tsconfig
+      - ./frontend/tsconfig.node.json:/app/tsconfig.node.json  # Mount tsconfig
+      - ./frontend/scripts:/app/scripts  # Mount scripts directory for our new tools
     environment:
       - VITE_API_BASE_URL=
       - VITE_WS_BASE_URL=

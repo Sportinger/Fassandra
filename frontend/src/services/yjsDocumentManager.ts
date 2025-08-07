@@ -1,6 +1,7 @@
 import * as Y from 'yjs';
 import { logDebugInfo } from '../utils/debug';
 
+import logger from '../services/LoggingService';
 /**
  * Singleton manager for Yjs documents
  * Ensures documents persist across WebSocket reconnections
@@ -10,11 +11,41 @@ class YjsDocumentManager {
   private static instance: YjsDocumentManager;
   private documents: Map<string, Y.Doc> = new Map();
   private refCounts: Map<string, number> = new Map();
+  private cleanupTimers: Map<string, NodeJS.Timeout> = new Map();
+  private maxIdleTime: number = 30000; // 30 seconds of idle time before cleanup
 
   private constructor() {
     if (import.meta.env.DEV) {
       logDebugInfo('YjsDocumentManager', 'Initialized singleton instance');
     }
+    
+    // Set up periodic cleanup check
+    this.startPeriodicCleanup();
+  }
+  
+  /**
+   * Start periodic cleanup of idle documents
+   */
+  private startPeriodicCleanup(): void {
+    setInterval(() => {
+      this.cleanupIdleDocuments();
+    }, 60000); // Check every minute
+  }
+  
+  /**
+   * Clean up documents with zero references
+   */
+  private cleanupIdleDocuments(): void {
+    const now = Date.now();
+    this.refCounts.forEach((count, scriptId) => {
+      if (count === 0) {
+        const doc = this.documents.get(scriptId);
+        if (doc) {
+          logger.debug('yjsDocumentManager', `Cleaning up idle document: ${scriptId}`);
+          this.forceDestroyDocument(scriptId);
+        }
+      }
+    });
   }
 
   static getInstance(): YjsDocumentManager {
@@ -97,7 +128,7 @@ class YjsDocumentManager {
             })}`);
           }
         } catch (error) {
-          console.error(`[YjsDocumentManager] Error processing update for ${scriptId}:`, error);
+          logger.error('yjsDocumentManager', `[YjsDocumentManager] Error processing update for ${scriptId}:`, error);
         }
       });
 
@@ -151,10 +182,25 @@ class YjsDocumentManager {
   forceDestroyDocument(scriptId: string): void {
     const doc = this.documents.get(scriptId);
     if (doc) {
-      console.warn(`[YjsDocumentManager] Force destroying document ${scriptId}`);
+      logger.warn('yjsDocumentManager', 'Warning:', `[YjsDocumentManager] Force destroying document ${scriptId}`);
+      
+      // Clear any pending cleanup timers
+      const timer = this.cleanupTimers.get(scriptId);
+      if (timer) {
+        clearTimeout(timer);
+        this.cleanupTimers.delete(scriptId);
+      }
+      
+      // Remove all event listeners before destroying
+      doc.off('update');
+      doc.off('destroy');
+      
       doc.destroy();
       this.documents.delete(scriptId);
       this.refCounts.delete(scriptId);
+      
+      // Clear stored client ID
+      sessionStorage.removeItem(`yjs-client-id-${scriptId}`);
     }
   }
 
@@ -195,11 +241,20 @@ class YjsDocumentManager {
    * Clear all documents (for testing/logout scenarios)
    */
   clearAll(): void {
-    console.warn('[YjsDocumentManager] Clearing all documents');
+    logger.warn('yjsDocumentManager', 'Warning:', '[YjsDocumentManager] Clearing all documents');
     
-    // Clear stored client IDs from sessionStorage
+    // Clear all cleanup timers first
+    this.cleanupTimers.forEach(timer => clearTimeout(timer));
+    this.cleanupTimers.clear();
+    
+    // Clear stored client IDs and destroy documents
     this.documents.forEach((doc, scriptId) => {
       sessionStorage.removeItem(`yjs-client-id-${scriptId}`);
+      
+      // Remove all event listeners before destroying
+      doc.off('update');
+      doc.off('destroy');
+      
       doc.destroy();
     });
     

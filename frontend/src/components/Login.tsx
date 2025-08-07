@@ -5,6 +5,7 @@ import { logDebugInfo } from '../utils/debug';
 import styles from './Header.module.css';
 import authStyles from './Auth.module.css';
 
+import logger from '../services/LoggingService';
 /**
  * Login form component for user authentication.
  *
@@ -51,7 +52,7 @@ export const Login: React.FC = () => {
       const errorMsg = err.message || 'Login failed';
       logDebugInfo('Login', `Login failed: ${errorMsg}`);
       setError(errorMsg);
-      console.error(err);
+      logger.error('Login', 'Error:', err);
     }
   };
 

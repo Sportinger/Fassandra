@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Editor as EditorInstance } from '@tiptap/react';
 import './styles/toolbar.css';
 
+import logger from '../../services/LoggingService';
 interface FontSizeDropdownProps {
   editor: EditorInstance | null;
   isVisible: boolean;
@@ -81,7 +82,7 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
           setCurrentSize(16);
         }
       } catch (error) {
-        console.warn('Font size detection failed:', error);
+        logger.warn('FontSizeDropdown', 'Font size detection failed:', error);
         setCurrentSize(16);
       }
     };
@@ -102,14 +103,14 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
   const handleFontSizeChange = (size: number) => {
     if (!editor) return;
 
-    console.log(`[FontSize] Applying ${size}px to selection`);
+    logger.debug('FontSizeDropdown', `[FontSize] Applying ${size}px to selection`);
     
     // Use our custom FontSize extension command
     editor.chain().focus().setFontSize(`${size}px`).run();
     
     // Debug: Check the HTML output
     setTimeout(() => {
-      console.log('[FontSize] HTML after change:', editor.getHTML());
+      logger.debug('FontSizeDropdown', '[FontSize] HTML after change:', editor.getHTML());
     }, 100);
     
     setCurrentSize(size);

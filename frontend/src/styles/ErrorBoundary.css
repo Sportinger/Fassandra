@@ -1,0 +1,128 @@
+.error-boundary-fallback {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  padding: 2rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  margin: 1rem;
+}
+
+.error-boundary-page {
+  min-height: 100vh;
+  margin: 0;
+  border-radius: 0;
+}
+
+.error-boundary-section {
+  min-height: 400px;
+}
+
+.error-container {
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+}
+
+.error-title {
+  font-size: 1.5rem;
+  color: #dc3545;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.error-message {
+  font-size: 1rem;
+  color: #6c757d;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.error-details {
+  background-color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.error-details summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: #495057;
+  padding: 0.5rem;
+  user-select: none;
+}
+
+.error-details summary:hover {
+  color: #007bff;
+}
+
+.error-details-content {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #dee2e6;
+}
+
+.error-stack {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  font-family: 'Courier New', monospace;
+  color: #495057;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.error-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.error-reset-button,
+.error-home-button {
+  padding: 0.5rem 1.5rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.error-reset-button {
+  background-color: #007bff;
+  color: white;
+}
+
+.error-reset-button:hover {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.error-home-button {
+  background-color: #6c757d;
+  color: white;
+}
+
+.error-home-button:hover {
+  background-color: #545b62;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.error-count-warning {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background-color: #fff3cd;
+  color: #856404;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}

@@ -220,7 +220,7 @@ export const DialogueBlock = Node.create<DialogueBlockOptions>({
               
               // Find the dialogue block element
               const blockEl = view.domAtPos(blockPos).node as HTMLElement;
-              if (!blockEl || blockEl.nodeType !== Node.ELEMENT_NODE) return true;
+              if (!blockEl || blockEl.nodeType !== 1) return true; // 1 is ELEMENT_NODE
               
               const dialogueBlockEl = blockEl.closest('[data-type="dialogue-block"]');
               if (!dialogueBlockEl) return true;
