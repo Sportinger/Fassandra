@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Script } from '../../../types';
 import { ScriptCardMenu } from './ScriptCardMenu';
+import { useCssTilt } from '../../../hooks/useCssTilt';
 import styles from './ScriptCard.module.css';
 
 interface ScriptCardProps {

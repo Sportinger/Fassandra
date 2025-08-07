@@ -119,3 +119,15 @@
   cursor: not-allowed;
 }
 
+/* Tilt effect using CSS variables */
+.tiltCard {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  --shadow-x: 0px;
+  --shadow-y: 8px;
+  --hover: 0;
+  
+  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) scale(calc(1 + var(--hover) * 0.03)) !important;
+  box-shadow: var(--shadow-x) var(--shadow-y) 20px rgba(0, 0, 0, 0.15) !important;
+}
+
