@@ -107,7 +107,7 @@ ssh $USER@$SERVER "mkdir -p $APP_DIR" || {
 
 # CHECK REQUIRED FILES
 echo "📋 Checking required files..."
-for file in .env.mylayer docker-compose.prod.yml Caddyfile; do
+for file in .env.prod docker-compose.prod.yml Caddyfile; do
     if [ ! -f "$file" ]; then
         echo "❌ Missing required file: $file"
         exit 1
@@ -129,8 +129,8 @@ fi
 echo "✅ Images transferred"
 
 echo "📡 Transferring config files..."
-scp .env.mylayer $USER@$SERVER:$APP_DIR/.env || {
-    echo "❌ Failed to transfer .env.mylayer"
+scp .env.prod $USER@$SERVER:$APP_DIR/.env || {
+    echo "❌ Failed to transfer .env.prod"
     exit 1
 }
 scp docker-compose.prod.yml $USER@$SERVER:$APP_DIR/ || {
