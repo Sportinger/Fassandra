@@ -14,9 +14,6 @@ import { LoadingSpinner } from './ui/LoadingSpinner';
 import { StatusIndicator } from './ui/StatusIndicator';
 import { SinglePageView, MultiPageView } from '../ViewModes';
 import { AudioTranscription } from './AudioTranscription';
-// Removed DemoModeManager import - development utility
-// import { ErrorDisplay } from './ui/ErrorDisplay';
-// import { StatusIndicator } from './ui/StatusIndicator';
 import type { EditorProps, ViewMode } from '../types';
 
 // Import the consolidated styles

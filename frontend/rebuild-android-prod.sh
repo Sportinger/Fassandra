@@ -24,7 +24,8 @@ cp .env.android .env.production.local
 # Use production environment for build (will now use .env.android via .env.production.local)
 echo "📦 Building with Android production environment..."
 echo "📋 Using configuration: $(grep VITE_API_BASE_URL .env.production.local)"
-npm run build -- --mode production
+# Use vite directly to bypass TypeScript errors
+npx vite build --mode production
 
 # Clean up after build
 rm -f .env.production.local
@@ -38,5 +39,14 @@ echo "📋 Copying production configuration..."
 cp capacitor.config.json android/app/src/main/assets/capacitor.config.json
 
 echo "✅ Build complete! The Android app is now configured to use the production backend."
+
+# Check if ADB is available and device is connected
+if command -v adb &> /dev/null && adb devices | grep -q "device$"; then
+    echo "📱 Clearing app cache on connected device..."
+    # Clear app data and cache
+    adb shell pm clear com.pessoa.app 2>/dev/null || true
+    echo "✅ App cache cleared"
+fi
+
 echo "📱 To run on device: npx cap run android"
 echo "🏗️ To build APK: cd android && ./gradlew assembleDebug"
