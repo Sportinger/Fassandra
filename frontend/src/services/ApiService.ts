@@ -105,9 +105,9 @@ export class ApiService {
         const headers: Record<string, string> = { ...options.headers };
 
         // Note: Authentication is now handled via httpOnly cookies
-        // No need to add Authorization header for cookie-based auth
-        // Keep this for backward compatibility if a token is explicitly set
-        if (this.token && options.requireAuth !== false) {
+        // Don't send Bearer token for cookie-based auth (token is just a flag)
+        // Only send actual JWT tokens, not placeholder values
+        if (this.token && this.token !== 'authenticated' && options.requireAuth !== false) {
             headers['Authorization'] = `Bearer ${this.token}`;
         }
 
