@@ -133,10 +133,10 @@ fi
 
 # Backend check
 echo -n "Backend API: "
-if curl -sI http://${DOMAIN}:${API_PORT}/api | head -1 | grep -q "200\|301\|302\|404"; then
-    echo "✅ http://${DOMAIN}:${API_PORT}/api"
+if curl -sI http://${DOMAIN}:${API_PORT}/health | head -1 | grep -q "200\|301\|302"; then
+    echo "✅ http://${DOMAIN}:${API_PORT} (auth: /login, /register | api: /api/*)"
 else
-    echo "⏳ Starting... (will be available at http://${DOMAIN}:${API_PORT}/api)"
+    echo "⏳ Starting... (will be available at http://${DOMAIN}:${API_PORT})"
 fi
 
 # WebSocket check
@@ -148,7 +148,9 @@ echo "✅ LOCAL DEVELOPMENT DEPLOYMENT COMPLETE"
 echo ""
 echo "🌐 Access points:"
 echo "   Frontend:  https://${DOMAIN}:${FRONTEND_PORT} (self-signed cert)"
-echo "   Backend:   http://${DOMAIN}:${API_PORT}/api"
+echo "   Backend:   http://${DOMAIN}:${API_PORT}"
+echo "     - Auth:  /login, /register, /logout"
+echo "     - API:   /api/scripts, /api/user, etc."
 echo "   WebSocket: ws://${DOMAIN}:${COLLAB_PORT}/api/collab"
 echo ""
 echo "📋 Useful commands:"

@@ -29,10 +29,10 @@ type AppView = 'auth' | 'scripts' | 'editor';
 
 /**
  * Checks if user is authenticated by looking directly at storage
- * @returns boolean indicating if user has a stored auth token
+ * @returns boolean indicating if user has a stored authentication flag
  */
 function hasStoredAuth(): boolean {
-  return !!(sessionStorage.getItem('authToken') || localStorage.getItem('authToken'));
+  return sessionStorage.getItem('isAuthenticated') === 'true';
 }
 
 /**
