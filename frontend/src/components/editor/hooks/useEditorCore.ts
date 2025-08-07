@@ -126,96 +126,117 @@ export const useEditorCore = ({
     // 🔧 DISABLED: Offline storage - removed IndexedDB persistence
     debugLog(`[Editor Core] Skipping IndexedDB persistence - always fetching from backend`);
 
-    // 🔧 FIXED: Create WebSocket provider with error handling
-    let websocketProvider: WebsocketProvider;
-    try {
-      websocketProvider = new WebsocketProvider(
-        WS_BASE_URL,
-        stableScriptId,
-        doc,
-        {
-          params: {
-            token: stableToken?.trim() || '',
-          },
-          // Prevent aggressive reconnection that might cause browser refresh
-          maxBackoffTime: 30000, // Max 30 seconds between reconnection attempts
-          resyncInterval: 5000, // Resync every 5 seconds when connected
+    // Function to fetch WebSocket token and create provider
+    const initializeWebSocket = async () => {
+      // Fetch the actual JWT token for WebSocket authentication
+      let wsToken = stableToken;
+      if (stableToken === 'authenticated') {
+        try {
+          const response = await fetch('/api/ws-token', {
+            credentials: 'include',
+          });
+          if (response.ok) {
+            const data = await response.json();
+            wsToken = data.token;
+          } else {
+            console.error('[Editor Core] Failed to get WebSocket token:', response.status);
+          }
+        } catch (error) {
+          console.error('[Editor Core] Error fetching WebSocket token:', error);
         }
-      );
-
-      setProvider(websocketProvider);
-      providerRef.current = websocketProvider;
-    } catch (error) {
-      console.error('[Editor Core] Failed to create WebSocket provider:', error);
-      setConnectionStatus('error');
-      setErrorMessage('Failed to initialize collaboration');
-      return;
-    }
-
-    // Connection status handlers
-    websocketProvider.on('status', (event: { status: string }) => {
-      switch (event.status) {
-        case 'connecting':
-          setConnectionStatus('connecting');
-          setErrorMessage(null);
-          break;
-        case 'connected':
-          setConnectionStatus('connected');
-          setErrorMessage(null);
-          debugLog('[Editor] WebSocket connected successfully');
-          break;
-        case 'disconnected':
-          setConnectionStatus('disconnected');
-          break;
-        default:
-          setConnectionStatus('error');
-          setErrorMessage(`Connection error: ${event.status}`);
       }
-    });
 
-    websocketProvider.on('connection-error', (error: any) => {
-      console.error('[Editor] WebSocket connection error:', error);
-      setConnectionStatus('error');
-      setErrorMessage('Failed to connect to collaboration server');
-    });
+      // 🔧 FIXED: Create WebSocket provider with error handling
+      let websocketProvider: WebsocketProvider;
+      try {
+        websocketProvider = new WebsocketProvider(
+          WS_BASE_URL,
+          stableScriptId,
+          doc,
+          {
+            params: {
+              token: wsToken?.trim() || '',
+            },
+            // Prevent aggressive reconnection that might cause browser refresh
+            maxBackoffTime: 30000, // Max 30 seconds between reconnection attempts
+            resyncInterval: 5000, // Resync every 5 seconds when connected
+          }
+        );
 
-    // 🔧 NEW: Track active users from awareness
-    const trackAwareness = () => {
-      if (websocketProvider.awareness) {
-        const awarenessStates = websocketProvider.awareness.getStates();
-        // Count all awareness states except our own
-        const userCount = Math.max(0, awarenessStates.size - 1);
-        setActiveUserCount(userCount);
-        debugLog(`[Collaboration] Active users: ${userCount} (excluding self)`);
-        
-        // 🎭 THEATER PRIORITY: Enhanced collaboration awareness for theater teams
-        const activeUsers = Array.from(awarenessStates.values())
-          .filter((state: any) => state.user && state.user.name !== stableUser?.username)
-          .map((state: any) => ({
-            name: state.user.name,
-            color: state.user.color,
-            lastSeen: Date.now(),
-            isTyping: state.cursor ? true : false
-          }));
-        
-        if (activeUsers.length > 0) {
-          console.log('🎭 [Theater Collaboration] Active team members:', activeUsers.map(u => `${u.name}${u.isTyping ? ' (typing)' : ''}`).join(', '));
+        setProvider(websocketProvider);
+        providerRef.current = websocketProvider;
+      } catch (error) {
+        console.error('[Editor Core] Failed to create WebSocket provider:', error);
+        setConnectionStatus('error');
+        setErrorMessage('Failed to initialize collaboration');
+        return;
+      }
+
+      // Connection status handlers
+      websocketProvider.on('status', (event: { status: string }) => {
+        switch (event.status) {
+          case 'connecting':
+            setConnectionStatus('connecting');
+            setErrorMessage(null);
+            break;
+          case 'connected':
+            setConnectionStatus('connected');
+            setErrorMessage(null);
+            debugLog('[Editor] WebSocket connected successfully');
+            break;
+          case 'disconnected':
+            setConnectionStatus('disconnected');
+            break;
+          default:
+            setConnectionStatus('error');
+            setErrorMessage(`Connection error: ${event.status}`);
         }
+      });
+
+      websocketProvider.on('connection-error', (error: any) => {
+        console.error('[Editor] WebSocket connection error:', error);
+        setConnectionStatus('error');
+        setErrorMessage('Failed to connect to collaboration server');
+      });
+
+      // 🔧 NEW: Track active users from awareness
+      const trackAwareness = () => {
+        if (websocketProvider.awareness) {
+          const awarenessStates = websocketProvider.awareness.getStates();
+          // Count all awareness states except our own
+          const userCount = Math.max(0, awarenessStates.size - 1);
+          setActiveUserCount(userCount);
+          debugLog(`[Collaboration] Active users: ${userCount} (excluding self)`);
+          
+          // 🎭 THEATER PRIORITY: Enhanced collaboration awareness for theater teams
+          const activeUsers = Array.from(awarenessStates.values())
+            .filter((state: any) => state.user && state.user.name !== stableUser?.username)
+            .map((state: any) => ({
+              name: state.user.name,
+              color: state.user.color,
+              lastSeen: Date.now(),
+              isTyping: state.cursor ? true : false
+            }));
+          
+          if (activeUsers.length > 0) {
+            console.log('🎭 [Theater Collaboration] Active team members:', activeUsers.map(u => `${u.name}${u.isTyping ? ' (typing)' : ''}`).join(', '));
+          }
+        }
+      };
+
+      // Set up awareness tracking
+      if (websocketProvider.awareness) {
+        websocketProvider.awareness.on('change', trackAwareness);
+        trackAwareness(); // Initial count
       }
     };
 
-    // Set up awareness tracking
-    if (websocketProvider.awareness) {
-      websocketProvider.awareness.on('change', trackAwareness);
-      trackAwareness(); // Initial count
-    }
+    // Call the async function to initialize WebSocket
+    initializeWebSocket();
 
     // 🔧 FIXED: Clean up properly to prevent memory leaks
     return () => {
       debugLog('[Editor Core] Cleaning up WebSocket provider (keeping Yjs doc persistent)...');
-      if (websocketProvider.awareness) {
-        websocketProvider.awareness.off('change', trackAwareness);
-      }
       
       // 🔧 FIX: Disconnect provider gracefully before destroying
       if (providerRef.current) {
