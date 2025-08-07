@@ -20,6 +20,8 @@ time = "0.3"
 thiserror = "1.0"
 jsonwebtoken = "9"
 tokio = { version = "1", features = ["full"] }
+# Pin base64ct to avoid Rust edition 2024 requirement
+base64ct = "=1.6.0"
 argon2 = "0.5"
 validator = { version = "0.16", features = ["derive"] }
 regex = "1.10"
@@ -50,6 +52,7 @@ rustix = "0.38"
 [[bin]]
 name = "hash_password"
 path = "scripts/hash_password.rs"
+
 
 
 [dev-dependencies]
