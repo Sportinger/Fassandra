@@ -17,6 +17,7 @@
 pub mod core;
 pub mod helpers;
 pub mod websocket_auth;
+pub mod cookies;
 
 // Re-export the main authentication types and functions
 pub use core::{
@@ -30,3 +31,10 @@ pub use helpers::{
 };
 
 pub use websocket_auth::WebSocketAuth;
+
+pub use cookies::{
+    set_auth_cookie, remove_auth_cookie, get_auth_token_from_cookie,
+    generate_csrf_token, set_csrf_cookie, get_csrf_token_from_cookie,
+    store_csrf_token, validate_csrf_token, create_csrf_store,
+    CsrfTokenStore
+};

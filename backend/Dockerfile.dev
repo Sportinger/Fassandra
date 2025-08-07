@@ -1,0 +1,109 @@
+# Development Dockerfile for Backend with Hot Reload Support
+FROM rust:1.82.0-slim-bullseye AS development
+
+# Set development environment
+ENV CARGO_HOME=/usr/local/cargo
+ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld"
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+ENV RUST_BACKTRACE=1
+ENV RUST_LOG=debug
+
+# Accept DATABASE_URL as build argument
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL:-postgres://dummyuser:dummypass@dummyhost:5432/dummydb}
+
+WORKDIR /app
+
+# Install all development dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        pkg-config \
+        libssl-dev \
+        ca-certificates \
+        lld \
+        # PDF processing tools
+        poppler-utils \
+        # Network debugging tools
+        net-tools \
+        iputils-ping \
+        # PostgreSQL client for debugging
+        postgresql-client \
+        # JSON tools for debugging
+        jq \
+        # Text editor for quick fixes
+        nano \
+        vim \
+        # Git for version control in container
+        git \
+        # Process monitoring
+        procps \
+        htop \
+        # NodeJS for Claude Code and other tools
+        curl \
+        gnupg && \
+    # Add NodeSource repository for Node.js 22.x
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    # Install Node.js and npm
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install global Node packages
+RUN npm install -g @anthropic-ai/claude-code @google/gemini-cli
+
+# Install Rust development tools
+RUN cargo install cargo-watch --locked && \
+    cargo install cargo-expand --locked && \
+    cargo install cargo-edit --locked && \
+    cargo install sqlx-cli --version=0.7.4 --features rustls,postgres --no-default-features --locked
+
+# Copy dependency files first for better caching
+COPY Cargo.toml Cargo.lock ./
+
+# Pin yrs version as in production
+RUN cargo update -p yrs --precise 0.24.0
+
+# Create dummy source to build dependencies
+RUN mkdir -p src && \
+    echo "fn main() {println!(\"Dummy main for dependency building\");}" > src/main.rs
+
+# Build dependencies only (this layer will be cached)
+RUN cargo build --release && \
+    rm -rf src
+
+# Copy migrations and .sqlx for database setup
+COPY migrations ./migrations
+COPY .sqlx ./.sqlx
+
+# Copy scripts
+COPY scripts ./scripts
+COPY execute_sql.sh ./execute_sql.sh
+COPY json_to_db.sh ./json_to_db.sh
+COPY init-claude.sh ./init-claude.sh
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+
+# Make scripts executable
+RUN chmod +x execute_sql.sh json_to_db.sh init-claude.sh docker-entrypoint.sh
+
+# Create necessary directories
+RUN mkdir -p uploads/scripts && \
+    mkdir -p /root/.claude && \
+    mkdir -p /root/.config/claude-code && \
+    mkdir -p /root/.gemini
+
+# Claude settings will be handled at runtime if they exist
+# Docker doesn't support || true syntax for COPY commands
+# Settings can be mounted as volumes or copied during container startup
+
+# The source code will be mounted as a volume for hot reload
+# Don't copy src/ here - it will be mounted from host
+
+# Set SQLX_OFFLINE for builds without database
+ENV SQLX_OFFLINE=true
+
+# Expose the backend port
+EXPOSE 8089
+
+# Default command uses cargo-watch for hot reloading
+# The source files should be mounted to /app/src
+CMD ["cargo", "watch", "-x", "run --bin backend", "-w", "src", "-w", "Cargo.toml", "--poll"]

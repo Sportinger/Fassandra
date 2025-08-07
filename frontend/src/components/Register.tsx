@@ -34,14 +34,16 @@ export const Register: React.FC = () => {
       return;
     }
     try {
-      const token = await register(email, username, password);
+      const response = await register(email, username, password);
       
       // Trigger exit animation
       setIsExiting(true);
       
       // Wait for animation to complete (300ms) then set token
       setTimeout(() => {
-        setToken(token);
+        // Since the backend sets cookies, we just need to mark as authenticated
+        // and set the user data
+        setToken('authenticated', response.user);
       }, 300);
       
     } catch (err: any) {

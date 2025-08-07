@@ -18,6 +18,7 @@ use axum::{
     middleware::Next,
     body::Body,
 };
+use tower_cookies::Cookies;
 use validator::Validate; // Removed unused import: ValidationErrors
 use regex::Regex;
 use lazy_static::lazy_static;
@@ -181,20 +182,28 @@ where
     type Rejection = AppError;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> std::result::Result<Self, Self::Rejection> {
-        let auth = parts.headers.get(AUTHORIZATION)
-            .ok_or_else(|| AppError::Unauthorized("Missing authorization header".to_string()))?;
-        
-        let auth_str = auth.to_str()
-            .map_err(|_| AppError::Unauthorized("Invalid authorization header".to_string()))?;
-        
-        if !auth_str.starts_with("Bearer ") {
-            return Err(AppError::Unauthorized("Invalid authorization header format".to_string()));
+        // First try to get token from Authorization header
+        if let Some(auth) = parts.headers.get(AUTHORIZATION) {
+            let auth_str = auth.to_str()
+                .map_err(|_| AppError::Unauthorized("Invalid authorization header".to_string()))?;
+            
+            if auth_str.starts_with("Bearer ") {
+                let token = &auth_str[7..];
+                let claims = verify_token(token)?;
+                return Ok(AuthUser { user_id: claims.sub });
+            }
         }
         
-        let token = &auth_str[7..];
-        let claims = verify_token(token)?;
+        // If no Authorization header, try to get token from cookies
+        if let Ok(cookies) = Cookies::from_request_parts(parts, _state).await {
+            if let Some(auth_cookie) = cookies.get("auth_token") {
+                let token = auth_cookie.value();
+                let claims = verify_token(token)?;
+                return Ok(AuthUser { user_id: claims.sub });
+            }
+        }
         
-        Ok(AuthUser { user_id: claims.sub })
+        Err(AppError::Unauthorized("Missing authentication".to_string()))
     }
 }
 

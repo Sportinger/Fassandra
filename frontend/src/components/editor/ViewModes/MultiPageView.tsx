@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import DOMPurify from 'dompurify';
 import { Ruler } from '../Ruler';
 import '../styles/responsive.css';
 
@@ -348,7 +349,7 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
                 }}>
                   <div 
                     className="ProseMirror"
-                    dangerouslySetInnerHTML={{ __html: pageContents[pageIndex] || '' }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(pageContents[pageIndex] || '') }}
                     style={{
                       width: '100%',
                       outline: 'none',

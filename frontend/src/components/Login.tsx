@@ -33,16 +33,18 @@ export const Login: React.FC = () => {
     logDebugInfo('Login', `Attempting login with email: ${email}`);
     
     try {
-      const token = await login(email, password);
-      logDebugInfo('Login', `Login successful, token received: ${token ? 'YES' : 'NO'}`);
+      const response = await login(email, password);
+      logDebugInfo('Login', `Login successful, user: ${response?.user?.username || 'UNKNOWN'}`);
       
       // Trigger exit animation
       setIsExiting(true);
       
       // Wait for animation to complete (300ms) then set token
-      setTimeout(() => {
-        setToken(token);
-        logDebugInfo('Login', 'Token set in auth context after exit animation');
+      setTimeout(async () => {
+        // Since the backend sets cookies, we just need to mark as authenticated
+        // and fetch the user data
+        setToken('authenticated', response.user);
+        logDebugInfo('Login', 'Authentication state set after exit animation');
       }, 300);
       
     } catch (err: any) { // Catch specific errors if possible

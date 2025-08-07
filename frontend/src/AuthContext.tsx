@@ -2,7 +2,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { AuthState, User } from './types';
 import { logDebugInfo } from './utils/debug';
-import { setApiToken } from './api';
+import { setApiToken, getCurrentUser } from './api';
 import UploadStateManager from './services/UploadStateManager';
 
 // Create the context with a default value for AuthState
@@ -27,51 +27,20 @@ interface AuthProviderProps {
 }
 
 /**
- * Parses a JWT token to extract user information.
+ * Fetches user information from the backend API.
  * 
- * WARNING: This is for demonstration purposes. In production, 
- * JWTs should not be decoded on the client side for authentication purposes.
+ * This is secure - user data comes from a secure API endpoint
+ * after authentication, not from decoding the JWT directly.
  * 
- * @param {string} token - JWT token string
- * @returns {User|null} - Parsed user data or null if parsing failed
+ * @returns {Promise<User|null>} - User data from API or null if fetch failed
  */
-function parseUserFromToken(token: string): User | null {
+async function fetchUserFromAPI(): Promise<User | null> {
   try {
-    // WARNING: THIS IS INSECURE - DO NOT DECODE JWTs CLIENT-SIDE FOR REAL APPS
-    // This is a placeholder. User data should ideally come from a secure API endpoint
-    // after login, not by decoding the JWT payload directly in the browser.
-    const payloadBase64 = token.split('.')[1];
-    if (!payloadBase64) {
-        console.error("JWT token missing payload section.");
-        return null;
-    }
-
-    // Correct Base64 URL decoding
-    const base64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
-    const decodedPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-    
-    const payload = JSON.parse(decodedPayload);
-
-    console.log("[AuthContext] Decoded JWT Payload:", payload); // Log the decoded payload
-
-    // Check for required fields from the JWT (using 'sub')
-    if (!payload || typeof payload.sub !== 'string' || typeof payload.email !== 'string' || typeof payload.username !== 'string' || typeof payload.role !== 'string') {
-        console.error("JWT payload missing expected fields (sub, email, username, role) or has wrong types.", payload);
-        return null;
-    }
-
-    // Map JWT claims to User interface fields
-    return {
-        id: payload.sub, // Map 'sub' claim to 'id'
-        email: payload.email,
-        username: payload.username,
-        role: payload.role,
-        created_at: '', // Provide empty string as 'created_at' is not in JWT
-    };
+    const userData = await getCurrentUser();
+    logDebugInfo('Auth', `User fetched from API: ${userData.username}`);
+    return userData;
   } catch (error) {
-    console.error('Failed to parse token:', error);
+    console.error('Failed to fetch user from API:', error);
     return null;
   }
 }
@@ -86,35 +55,19 @@ function parseUserFromToken(token: string): User | null {
  * @returns {React.ReactElement} Provider component with authentication context
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  // Use sessionStorage instead of localStorage with better mobile support
+  // Initialize token state - tokens will be managed via httpOnly cookies
+  // We'll keep a simple flag in memory to track authentication state
   const [token, setTokenState] = useState<string | null>(() => {
-    // Try both sessionStorage and localStorage for mobile compatibility
-    const storedToken = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
-    logDebugInfo('Auth', `Initial token from storage: ${storedToken ? 'YES' : 'NO'}`);
+    // Check if we have an auth flag in sessionStorage (not the actual token)
+    // This is just to maintain UI state across page refreshes
+    const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
+    logDebugInfo('Auth', `Initial auth state: ${isAuthenticated ? 'AUTHENTICATED' : 'NOT AUTHENTICATED'}`);
     
-    // If found in localStorage but not sessionStorage, migrate it
-    if (!sessionStorage.getItem('authToken') && localStorage.getItem('authToken')) {
-      sessionStorage.setItem('authToken', localStorage.getItem('authToken')!);
-      localStorage.removeItem('authToken'); // Clean up old storage
-      logDebugInfo('Auth', 'Migrated token from localStorage to sessionStorage');
-    }
-    
-    // CRITICAL FIX: Set token in API service immediately on initialization
-    if (storedToken) {
-      setApiToken(storedToken);
-      logDebugInfo('Auth', 'Initial token set in ApiService immediately');
-    }
-    
-    return storedToken;
+    // Return a placeholder token if authenticated (actual token is in httpOnly cookie)
+    return isAuthenticated ? 'authenticated' : null;
   });
   
-  const [user, setUserState] = useState<User | null>(() => {
-    // Initialize user from token in sessionStorage
-    const storedToken = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
-    const user = storedToken ? parseUserFromToken(storedToken) : null;
-    logDebugInfo('Auth', `Initial user parsed: ${user ? user.username : 'NO USER'}`);
-    return user;
-  });
+  const [user, setUserState] = useState<User | null>(null);
   
   // Add theme state with localStorage persistence
   const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
@@ -127,46 +80,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [tokenReady, setTokenReady] = useState(!!token);
 
   // Use useCallback for setToken to ensure stable reference
-  const setToken = useCallback((newToken: string | null, newUser?: User | null) => {
-    const userToSet = newUser !== undefined ? newUser : (newToken ? parseUserFromToken(newToken) : null);
-    console.log("AuthProvider setToken called:", { newToken, newUser, userToSet });
-    logDebugInfo('Auth', `setToken called - token: ${newToken ? 'YES' : 'NO'}, user: ${userToSet ? userToSet.username : 'NO USER'}`);
+  const setToken = useCallback(async (newToken: string | null, newUser?: User | null) => {
+    console.log("AuthProvider setToken called:", { newToken, newUser });
+    logDebugInfo('Auth', `setToken called - token: ${newToken ? 'YES' : 'NO'}`);
 
     setTokenState(newToken);
-    setUserState(userToSet);
     
-    // Update API service with new token
+    // If we have a new token but no user provided, fetch user from API
+    if (newToken && !newUser) {
+      // Set token in API service first so the API call will be authenticated
+      setApiToken(newToken);
+      const fetchedUser = await fetchUserFromAPI();
+      setUserState(fetchedUser);
+      logDebugInfo('Auth', `User fetched: ${fetchedUser ? fetchedUser.username : 'NO USER'}`);
+    } else {
+      setUserState(newUser || null);
+    }
+    
+    // Update API service (tokens are now in httpOnly cookies)
+    // The API service will use cookies automatically
     setApiToken(newToken);
 
     if (newToken) {
-      try {
-        // Save to both storages for mobile compatibility
-        sessionStorage.setItem('authToken', newToken);
-        localStorage.setItem('authToken', newToken); // Backup for mobile
-        logDebugInfo('Auth', 'Token saved to both sessionStorage and localStorage');
-      } catch (error) {
-        logDebugInfo('Auth', `Storage error: ${error}`);
-        // Fallback: try localStorage only
-        try {
-          localStorage.setItem('authToken', newToken);
-          logDebugInfo('Auth', 'Token saved to localStorage as fallback');
-        } catch (fallbackError) {
-          logDebugInfo('Auth', `Storage completely failed: ${fallbackError}`);
-        }
-      }
+      // Only store authentication flag, not the actual token
+      sessionStorage.setItem('isAuthenticated', 'true');
+      logDebugInfo('Auth', 'Authentication flag set');
     } else {
-      try {
-        // Remove from both storages
-        sessionStorage.removeItem('authToken');
-        localStorage.removeItem('authToken');
-        logDebugInfo('Auth', 'Token removed from both storages');
-        
-        // Clear upload state on logout
-        UploadStateManager.clearAll();
-        logDebugInfo('Auth', 'Upload state cleared');
-      } catch (error) {
-        logDebugInfo('Auth', `Storage removal error: ${error}`);
-      }
+      // Clear authentication flag
+      sessionStorage.removeItem('isAuthenticated');
+      logDebugInfo('Auth', 'Authentication flag removed');
+      
+      // Clear upload state on logout
+      UploadStateManager.clearAll();
+      logDebugInfo('Auth', 'Upload state cleared');
     }
   }, []); 
 
@@ -183,11 +129,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Set token in ApiService whenever token changes
+  // Set token in ApiService whenever token changes and fetch user if needed
   useEffect(() => {
     setApiToken(token);
     setTokenReady(true);
     logDebugInfo('Auth', `Token set in ApiService: ${token ? 'YES' : 'NO'}, ready: true`);
+    
+    // Fetch user data if we have a token but no user (e.g., on page refresh)
+    if (token && !user) {
+      fetchUserFromAPI().then(fetchedUser => {
+        if (fetchedUser) {
+          setUserState(fetchedUser);
+          logDebugInfo('Auth', `User fetched on mount: ${fetchedUser.username}`);
+        }
+      });
+    }
   }, [token]); // Run whenever token changes
 
   // Provide token, user, and setToken function
