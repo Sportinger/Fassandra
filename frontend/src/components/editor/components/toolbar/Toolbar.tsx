@@ -625,7 +625,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         });
         
         if (cueBlockPos >= 0 && cueBlockNode) {
-          const endPos = cueBlockPos + cueBlockNode.nodeSize;
+          const endPos = cueBlockPos + (cueBlockNode as any).nodeSize;
           editor?.chain()
             .focus()
             .setTextSelection(endPos)

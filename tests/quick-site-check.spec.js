@@ -6,7 +6,7 @@ test('Quick site check', async ({ browser }) => {
   });
   const page = await context.newPage();
   
-  await page.goto('https://192.168.2.111:8080');
+  await page.goto('https://192.168.2.141:8080');
   await page.waitForTimeout(2000);
   
   // Take screenshots

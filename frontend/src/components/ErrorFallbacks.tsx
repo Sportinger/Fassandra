@@ -81,7 +81,7 @@ export const MinimalErrorFallback: React.FC<ErrorFallbackProps> = ({ resetError 
   </div>
 );
 
-export const RouteErrorFallback: React.FC<ErrorFallbackProps> = ({ resetError }) => (
+export const RouteErrorFallback: React.FC<ErrorFallbackProps> = () => (
   <div className="error-fallback route-error">
     <div className="error-icon">🗺️</div>
     <h3>Page Not Found</h3>

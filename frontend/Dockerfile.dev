@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/root/.npm \
 RUN mkdir -p /app/ssl/dev
 
 # Generate self-signed certificates for Vite dev server
-RUN openssl req -x509 -newkey rsa:4096 -keyout /app/ssl/dev/key.pem -out /app/ssl/dev/cert.pem -days 365 -nodes -subj "/C=US/ST=Dev/L=Local/O=Pessoa/CN=192.168.2.111"
+RUN openssl req -x509 -newkey rsa:4096 -keyout /app/ssl/dev/key.pem -out /app/ssl/dev/cert.pem -days 365 -nodes -subj "/C=US/ST=Dev/L=Local/O=Pessoa/CN=192.168.2.141"
 
 # The source code will be mounted via volume
 # No need to COPY source files

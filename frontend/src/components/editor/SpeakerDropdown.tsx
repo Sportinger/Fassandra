@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Editor as EditorInstance } from '@tiptap/react';
 import './styles/toolbar.css';
 
@@ -105,15 +105,18 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
 
   if (!isVisible) return null;
 
-  // Convert Set to sorted array for display
-  const speakerList = Array.from(speakerNames).sort();
-  
-  // Add "New Speaker" option and current speaker if not in list
-  const allSpeakers = [
-    ...speakerList,
-    ...(speakerList.includes(currentSpeaker) ? [] : [currentSpeaker]),
-    '+ New Speaker'
-  ];
+  // Memoize speaker list calculation to avoid re-sorting on every render
+  const allSpeakers = useMemo(() => {
+    // Convert Set to sorted array for display
+    const speakerList = Array.from(speakerNames).sort();
+    
+    // Add "New Speaker" option and current speaker if not in list
+    return [
+      ...speakerList,
+      ...(speakerList.includes(currentSpeaker) ? [] : [currentSpeaker]),
+      '+ New Speaker'
+    ];
+  }, [speakerNames, currentSpeaker]);
 
   return (
     <div className="dropdownContainer" ref={dropdownRef}>
@@ -154,7 +157,7 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
             </button>
           ))}
           
-          {speakerList.length === 0 && (
+          {allSpeakers.length === 0 && (
             <div className="dropdownItem">
               No speakers found in script
             </div>

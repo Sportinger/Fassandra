@@ -20,7 +20,7 @@ export const TrailingNode = Extension.create({
   addProseMirrorPlugins() {
     const plugin = new Plugin({
       key: new PluginKey(this.name),
-      appendTransaction: (transactions, oldState, newState) => {
+      appendTransaction: (transactions, _oldState, newState) => {
         // Don't do anything if there's no change
         const docChanged = transactions.some(transaction => transaction.docChanged);
         if (!docChanged) {

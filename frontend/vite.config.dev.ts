@@ -1,14 +1,13 @@
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import fs from 'fs';
 
 // Development-specific Vite configuration with HTTPS for audio features
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+export default defineConfig(() => {
   
   // Use SSL certificates generated in Docker container
-  let httpsConfig = false;
+  let httpsConfig: any = false;
   const sslPath = '/app/ssl/dev';
   if (fs.existsSync(`${sslPath}/key.pem`) && fs.existsSync(`${sslPath}/cert.pem`)) {
     httpsConfig = {
@@ -29,7 +28,7 @@ export default defineConfig(({ mode }) => {
       },
       hmr: {
         protocol: 'wss', // Use secure WebSocket for HMR with HTTPS
-        host: '192.168.2.111',
+        host: '192.168.2.141',
         port: 8080,
       },
       proxy: {
@@ -38,8 +37,8 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           ws: true,
-          configure: (proxy, options) => {
-            proxy.on('proxyRes', (proxyRes, req, res) => {
+          configure: (proxy) => {
+            proxy.on('proxyRes', (proxyRes: any, _req: any, res: any) => {
               // Forward cookies from backend, ensuring secure flag is preserved
               const setCookieHeader = proxyRes.headers['set-cookie'];
               if (setCookieHeader) {
@@ -53,8 +52,8 @@ export default defineConfig(({ mode }) => {
           target: process.env.VITE_BACKEND_URL || 'http://backend:3000',
           changeOrigin: true,
           secure: false,
-          configure: (proxy, options) => {
-            proxy.on('proxyRes', (proxyRes, req, res) => {
+          configure: (proxy) => {
+            proxy.on('proxyRes', (proxyRes: any, _req: any, res: any) => {
               const setCookieHeader = proxyRes.headers['set-cookie'];
               if (setCookieHeader) {
                 res.setHeader('set-cookie', setCookieHeader);

@@ -5,6 +5,8 @@
 
 import { apiService } from './services/ApiService';
 import { Script, ScriptWithBlocks, Edit, ScriptShare, ScriptShareWithUser, ShareScriptRequest, ScriptLayout, CreateScriptLayoutRequest, UpdateScriptLayoutRequest } from './types';
+import { apiCache, CACHE_CONFIG, invalidateScriptCaches } from './utils/apiCache';
+import { createDebouncedAPI, createThrottledAPI } from './utils/rateLimit';
 
 // Set up the API service token (this would be called from AuthContext)
 export const setApiToken = (token: string | null) => {
@@ -37,25 +39,41 @@ export const getCurrentUser = async (): Promise<{ id: string; email: string; use
 
 // --- Scripts --- //
 
-export const getScripts = async (): Promise<Script[]> => {
-    const response = await apiService.get<Script[]>('/api/scripts');
+export const getScripts = async (forceRefresh = false): Promise<Script[]> => {
+    const response = await apiCache.cachedFetch(
+        '/api/scripts',
+        () => apiService.get<Script[]>('/api/scripts'),
+        { ttl: CACHE_CONFIG.scripts.list, forceRefresh }
+    );
     return Array.isArray(response) ? response : [];
 };
 
 export const createScript = async (title: string): Promise<Script> => {
-    return apiService.post('/api/scripts', { title }, { title });
+    const result = await apiService.post<Script>('/api/scripts', { title }, { title });
+    // Invalidate script list cache after creating
+    invalidateScriptCaches();
+    return result;
 };
 
-export const getScriptWithBlocks = async (scriptId: string): Promise<ScriptWithBlocks> => {
-    return apiService.get(`/api/scripts/${scriptId}`, { scriptId });
+export const getScriptWithBlocks = async (scriptId: string, forceRefresh = false): Promise<ScriptWithBlocks> => {
+    return apiCache.cachedFetch(
+        `/api/scripts/${scriptId}`,
+        () => apiService.get(`/api/scripts/${scriptId}`, { scriptId }),
+        { ttl: CACHE_CONFIG.scripts.detail, forceRefresh }
+    );
 };
 
 export const updateScript = async (scriptId: string, title: string): Promise<Script> => {
-    return apiService.patch(`/api/scripts/${scriptId}`, { title }, { scriptId, title });
+    const result = await apiService.patch<Script>(`/api/scripts/${scriptId}`, { title }, { scriptId, title });
+    // Invalidate caches after update
+    invalidateScriptCaches(scriptId);
+    return result;
 };
 
 export const deleteScript = async (scriptId: string): Promise<void> => {
-    return apiService.delete(`/api/scripts/${scriptId}`, { scriptId });
+    await apiService.delete(`/api/scripts/${scriptId}`, { scriptId });
+    // Invalidate caches after deletion
+    invalidateScriptCaches();
 };
 
 // --- Blocks --- //

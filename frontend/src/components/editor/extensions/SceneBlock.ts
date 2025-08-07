@@ -146,7 +146,7 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
 
   addCommands() {
     return {
-      insertSceneBlock: () => ({ commands, editor }) => {
+      insertSceneBlock: () => ({ commands }) => {
         // Insert scene with placeholder number, it will be updated automatically
         const result = commands.insertContent({
           type: this.name,

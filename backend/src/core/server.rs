@@ -68,7 +68,7 @@ pub async fn run_migrations(pool: &PgPool) -> Result<()> {
 fn create_cors_layer() -> Result<CorsLayer> {
     // Support multiple CORS origins from ALLOWED_ORIGINS environment variable
     let allowed_origins = env::var("ALLOWED_ORIGINS")
-        .unwrap_or_else(|_| "https://192.168.2.111:8080,https://192.168.2.111:8443,http://192.168.2.111:8080,http://localhost:8080,https://localhost:8080,https://localhost:8443,capacitor://localhost,ionic://localhost,http://localhost,https://mylayer.org,https://www.mylayer.org".to_string());
+        .unwrap_or_else(|_| "https://192.168.2.141:8080,https://192.168.2.141:8443,http://192.168.2.141:8080,http://localhost:8080,https://localhost:8080,https://localhost:8443,capacitor://localhost,ionic://localhost,http://localhost,https://mylayer.org,https://www.mylayer.org".to_string());
     
     // Parse all allowed origins into a vector
     let origins: Vec<String> = allowed_origins

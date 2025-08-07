@@ -6,7 +6,7 @@ module.exports = defineConfig({
   outputDir: './debug-screenshots/playwright-tests',
   
   use: {
-    baseURL: 'https://192.168.2.111:8080',
+    baseURL: 'https://192.168.2.141:8080',
     ignoreHTTPSErrors: true,
     screenshot: 'only-on-failure',
     viewport: { width: 700, height: 900 },
