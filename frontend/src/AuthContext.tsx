@@ -1,10 +1,11 @@
-// frontend/src/AuthContext.tsx
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { AuthState, User } from './types';
 import { logDebugInfo } from './utils/debug';
 import { setApiToken, getCurrentUser } from './api';
 import UploadStateManager from './services/UploadStateManager';
 
+import logger from './services/LoggingService';
+// frontend/src/AuthContext.tsx
 // Create the context with a default value for AuthState
 const defaultAuthState: AuthState = {
   token: null,
@@ -40,7 +41,7 @@ async function fetchUserFromAPI(): Promise<User | null> {
     logDebugInfo('Auth', `User fetched from API: ${userData.username}`);
     return userData;
   } catch (error) {
-    console.error('Failed to fetch user from API:', error);
+    logger.error('AuthContext', 'Failed to fetch user from API:', error);
     return null;
   }
 }
@@ -81,7 +82,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Use useCallback for setToken to ensure stable reference
   const setToken = useCallback(async (newToken: string | null, newUser?: User | null) => {
-    console.log("AuthProvider setToken called:", { newToken, newUser });
+    logger.debug('AuthContext', "AuthProvider setToken called:", { newToken, newUser });
     logDebugInfo('Auth', `setToken called - token: ${newToken ? 'YES' : 'NO'}`);
 
     setTokenState(newToken);

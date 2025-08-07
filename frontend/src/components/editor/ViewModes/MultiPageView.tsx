@@ -3,6 +3,7 @@ import DOMPurify from 'dompurify';
 import { Ruler } from '../Ruler';
 import '../styles/responsive.css';
 
+import logger from '../../../services/LoggingService';
 interface MultiPageViewProps {
   children: React.ReactNode;
   showRuler: boolean;
@@ -45,7 +46,7 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
         const rect = pageRef.current.getBoundingClientRect();
         const actualHeight = rect.height;
         if (actualHeight > 0 && actualHeight !== pageHeight) {
-          console.log('📏 Measuring actual page height:', actualHeight, 'vs hardcoded:', pageHeight);
+          logger.debug('MultiPageView', `Actual height: ${actualHeight} vs hardcoded: ${pageHeight}`);
           setPageHeight(actualHeight);
         }
       }
@@ -109,7 +110,7 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
       // If any elements would be cut, move the first one to next page
       if (elementsThatWouldBeCut.length > 0) {
         nextPageStart = elementsThatWouldBeCut[0].top;
-        console.log(`📄 Page ${pageIndex + 1}: ${elementsThatWouldBeCut.length} elements would be cut, moving to next page`);
+        logger.debug('MultiPageView', `📄 Page ${pageIndex + 1}: ${elementsThatWouldBeCut.length} elements would be cut, moving to next page`);
       } else {
         // No elements cut, use mathematical offset or find next element
         const nextElement = blockElements.find(el => el.top >= mathOffset - 10);
@@ -122,7 +123,7 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
       currentPageStart = nextPageStart;
       
       if (pageIndex <= 3) {
-        console.log(`📄 Page ${pageIndex + 1}: ${mathOffset}px → ${nextPageStart}px (footer-cut prevention)`);
+        logger.debug('MultiPageView', `📄 Page ${pageIndex + 1}: ${mathOffset}px → ${nextPageStart}px (footer-cut prevention)`);
       }
     }
     
@@ -160,7 +161,7 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
         
         // If element is too tall for any page, include it anyway to prevent disappearing  
         if (el.height > usableContentHeight) {
-          console.warn(`📄 Large element (${el.height}px) exceeds page height (${usableContentHeight}px), including anyway`);
+          logger.warn('MultiPageView', 'Warning:', `📄 Large element (${el.height}px) exceeds page height (${usableContentHeight}px), including anyway`);
           return true;
         }
         
@@ -173,16 +174,16 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
       pageContents.push(pageHTML);
       
       if (pageIndex < 3) { // Only log first few pages for performance
-        console.log(`📄 Page ${pageIndex + 1}: ${pageElements.length} elements, ${pageHTML.length} chars (FOOTER-SAFE!)`);
+        logger.debug('MultiPageView', `📄 Page ${pageIndex + 1}: ${pageElements.length} elements, ${pageHTML.length} chars (FOOTER-SAFE!)`);
       }
     }
     
     const totalChars = pageContents.reduce((sum, content) => sum + content.length, 0);
     const avgCharsPerPage = totalChars / pageContents.length;
     
-    console.log(`🚀 EFFICIENCY: ${pageContents.length} pages, avg ${Math.round(avgCharsPerPage)} chars/page`);
-    console.log(`📐 FOOTER-SAFE: usableContentHeight = ${usableContentHeight}px (header: ${headerMargin}px, footer: ${footerMargin}px)`);
-    console.log(`✂️ FOOTER-AWARE: Elements are now moved to next page instead of being cut by footer`);
+    logger.debug('MultiPageView', `🚀 EFFICIENCY: ${pageContents.length} pages, avg ${Math.round(avgCharsPerPage)} chars/page`);
+    logger.debug('MultiPageView', `📐 FOOTER-SAFE: usableContentHeight = ${usableContentHeight}px (header: ${headerMargin}px, footer: ${footerMargin}px)`);
+    logger.debug('MultiPageView', `✂️ FOOTER-AWARE: Elements are now moved to next page instead of being cut by footer`);
     
     return pageContents;
   }, [usableContentHeight, headerMargin, footerMargin]);
@@ -234,7 +235,7 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
 
   // Handle clicking on a page to make it editable
   const handlePageClick = useCallback((pageIndex: number) => {
-    console.log(`📝 Switching editor to page ${pageIndex + 1}`);
+    logger.debug('MultiPageView', `📝 Switching editor to page ${pageIndex + 1}`);
     setActiveEditPage(pageIndex);
   }, []);
 
@@ -242,7 +243,7 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
   const handleDarkAreaClick = useCallback((e: React.MouseEvent) => {
     // Only trigger if clicking on the background container, not on pages
     if (e.target === e.currentTarget) {
-      console.log('🖱️ Dark area clicked, showing context menu');
+      logger.debug('MultiPageView', '🖱️ Dark area clicked, showing context menu');
       setContextMenu({
         x: e.clientX,
         y: e.clientY,
@@ -253,7 +254,7 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
 
   // Handle context menu actions
   const handleContextMenuAction = useCallback((action: string) => {
-    console.log('📋 Context menu action:', action);
+    logger.debug('MultiPageView', '📋 Context menu action:', action);
     
     switch (action) {
       case 'toggle-ruler':
@@ -263,7 +264,7 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
         onToggleViewMode?.();
         break;
       default:
-        console.log('Unknown action:', action);
+        logger.debug('MultiPageView', 'Unknown action:', action);
     }
     
     setContextMenu({ x: 0, y: 0, visible: false });

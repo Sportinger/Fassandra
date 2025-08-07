@@ -1,22 +1,23 @@
+import React from 'react';
+import { Ruler } from '../../Ruler';
+import type { PageCanvasProps } from '../../types/index';
+
+import logger from '../../../../services/LoggingService';
 /**
  * PageCanvas Component
  * Responsive DIN A4 page container with ruler support
  */
-
-import React from 'react';
-import { Ruler } from '../../Ruler';
-import type { PageCanvasProps } from '../../types/index';
 
 export const PageCanvas: React.FC<PageCanvasProps> = ({ 
   children, 
   showRuler = false, 
   className = '' 
 }) => {
-  console.log('[PageCanvas] Received showRuler:', showRuler);
+  logger.debug('PageCanvas', '[PageCanvas] Received showRuler:', showRuler);
 
   // Side effect for logging when ruler should render
   if (showRuler) {
-    console.log('[PageCanvas] Rendering Ruler component');
+    logger.debug('PageCanvas', '[PageCanvas] Rendering Ruler component');
   }
 
   return (

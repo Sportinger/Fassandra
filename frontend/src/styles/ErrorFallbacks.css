@@ -1,0 +1,154 @@
+.error-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  min-height: 200px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.error-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.error-fallback h3 {
+  color: #343a40;
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+}
+
+.error-fallback p {
+  color: #6c757d;
+  margin-bottom: 1.5rem;
+  max-width: 400px;
+  line-height: 1.5;
+}
+
+.error-detail {
+  font-size: 0.875rem;
+  color: #dc3545;
+  background-color: #f8d7da;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+}
+
+.error-details-inline {
+  background-color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  text-align: left;
+  max-width: 400px;
+}
+
+.error-details-inline summary {
+  cursor: pointer;
+  color: #495057;
+  font-weight: 500;
+}
+
+.error-details-inline p {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+.network-error {
+  background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%);
+}
+
+.chunk-error {
+  background: linear-gradient(135deg, #fff8f0 0%, #ffe8d6 100%);
+}
+
+.permission-error {
+  background: linear-gradient(135deg, #f0f0ff 0%, #e0e0ff 100%);
+}
+
+.data-error {
+  background: linear-gradient(135deg, #f0fff4 0%, #d6ffe0 100%);
+}
+
+.route-error {
+  background: linear-gradient(135deg, #fffaf0 0%, #fff0d6 100%);
+}
+
+.async-error {
+  background: linear-gradient(135deg, #f5f0ff 0%, #e8d6ff 100%);
+}
+
+.minimal-error {
+  min-height: auto;
+  padding: 1rem;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.minimal-error p {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.error-reset-button-minimal {
+  padding: 0.25rem 1rem;
+  font-size: 0.875rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.error-reset-button-minimal:hover {
+  background-color: #0056b3;
+}
+
+@media (max-width: 768px) {
+  .error-fallback {
+    padding: 1.5rem;
+    min-height: 150px;
+  }
+  
+  .error-icon {
+    font-size: 2.5rem;
+  }
+  
+  .error-fallback h3 {
+    font-size: 1.1rem;
+  }
+  
+  .error-fallback p {
+    font-size: 0.9rem;
+  }
+  
+  .error-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .error-reset-button,
+  .error-home-button {
+    width: 100%;
+  }
+}

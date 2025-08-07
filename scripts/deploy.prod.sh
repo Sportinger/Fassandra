@@ -64,7 +64,7 @@ rsync -az --delete \
     --exclude '*.swp' \
     --exclude '.env' \
     --exclude 'uploads/' \
-    ../backend/ $USER@$SERVER:$APP_DIR/backend/
+    ./backend/ $USER@$SERVER:$APP_DIR/backend/
 
 # SYNC FRONTEND FILES
 rsync -az --delete \
@@ -75,7 +75,7 @@ rsync -az --delete \
     --exclude '.env' \
     --exclude 'android/' \
     --exclude 'ios/' \
-    ../frontend/ $USER@$SERVER:$APP_DIR/frontend/
+    ./frontend/ $USER@$SERVER:$APP_DIR/frontend/
 
 # SYNC CONFIG FILES
 rsync -az \

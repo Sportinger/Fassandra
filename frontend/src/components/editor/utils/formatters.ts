@@ -1,5 +1,6 @@
 import * as Y from 'yjs';
 
+import logger from '../../../services/LoggingService';
 // TODO: Define a more robust user color mapping if needed
 const userColors = [
   '#6eeb83', // Green
@@ -51,7 +52,7 @@ export const formatContentElement = (blockType: string, contentJsonString: strin
         return actualText; // Return the raw string, e.g., "Hallo Welt"
       } else {
         // This case should not be hit if backend sends correctly JSON-string-encoded content for paragraphs
-        console.warn(`[Editor Format] Expected string content for paragraph after parsing, but got ${typeof actualText}:`, actualText);
+        logger.warn('formatters', `[Editor Format] Expected string content for paragraph after parsing, but got ${typeof actualText}: ${actualText}`);
         return String(actualText || ''); // Fallback to converting whatever was parsed
       }
     }
@@ -79,16 +80,16 @@ export const formatContentElement = (blockType: string, contentJsonString: strin
       case 'unknown':
       default:
         // This default handles truly unknown types.
-        console.warn(`[Editor Format] Encountered unknown blockType '${blockType}' or unhandled structure. Content:`, element);
+        logger.warn('formatters', `[Editor Format] Encountered unknown blockType '${blockType}' or unhandled structure. Content:`, element);
         formatted = `(${blockType}: ${JSON.stringify(element).substring(0, 100)}...)`; // Increased substring for more context
         break;
     }
     return formatted;
   } catch (e) {
-    console.error(`[Editor Format] Failed to parse or format block content for type '${blockType}':`, contentJsonString, e);
+    logger.error('formatters', `[Editor Format] Failed to parse or format block content for type '${blockType}': ${contentJsonString}`, e);
     // If JSON.parse fails for a paragraph, it might be that contentJsonString is already the raw text (e.g., from older data or a different source).
     if (blockType === 'paragraph') {
-        console.warn(`[Editor Format] Failed to parse paragraph content as JSON, attempting to use as raw text:`, contentJsonString);
+        logger.warn('formatters', `[Editor Format] Failed to parse paragraph content as JSON, attempting to use as raw text: ${contentJsonString}`);
         return contentJsonString; // Use the string directly as a fallback
     }
     return `(${blockType}: Error parsing content - see console)`;

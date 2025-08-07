@@ -1,10 +1,11 @@
+import { logDebugInfo } from '../utils/debug';
+import { getCSRFToken } from '../utils/csrf';
+
+import logger from '../services/LoggingService';
 /**
  * Generic API Service
  * Eliminates boilerplate code and provides type-safe API calls
  */
-
-import { logDebugInfo } from '../utils/debug';
-import { getCSRFToken } from '../utils/csrf';
 
 /**
  * API Error class for handling HTTP errors
@@ -60,7 +61,7 @@ export class ApiService {
             // Never use empty string for Capacitor - must have a real backend URL
             this.baseUrl = baseUrl || (cleanEnvUrl !== '' ? cleanEnvUrl : 'https://mylayer.org');
             
-            console.log('[ApiService] 📱 Capacitor app detected - using backend:', this.baseUrl);
+            logger.debug('ApiService', '[ApiService] 📱 Capacitor app detected - using backend:', this.baseUrl);
         } else {
             // In browser, use relative URLs (empty string) or configured URL
             const envBaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) ||
@@ -72,11 +73,11 @@ export class ApiService {
             
             this.baseUrl = baseUrl || (cleanEnvUrl !== '' ? cleanEnvUrl : '');
             
-            console.log('[ApiService] 🌐 Browser context - base URL:', JSON.stringify(this.baseUrl));
+            logger.debug('ApiService', '[ApiService] 🌐 Browser context - base URL:', JSON.stringify(this.baseUrl));
         }
         
         // Debug logging
-        console.log('[ApiService] Base URL set to:', JSON.stringify(this.baseUrl));
+        logger.debug('ApiService', '[ApiService] Base URL set to:', JSON.stringify(this.baseUrl));
     }
 
     /**
@@ -118,7 +119,7 @@ export class ApiService {
                 const csrfToken = await getCSRFToken();
                 headers['X-CSRF-Token'] = csrfToken;
             } catch (error) {
-                console.warn('Failed to get CSRF token:', error);
+                logger.warn('ApiService', 'Failed to get CSRF token:', error);
                 // Continue without CSRF token if it fails
             }
         }
@@ -160,7 +161,7 @@ export class ApiService {
                 try {
                     errorBody = await response.text();
                 } catch (e) {
-                    console.warn('Failed to read error response body:', e);
+                    logger.warn('ApiService', 'Failed to read error response body:', e);
                 }
                 
                 throw new ApiError(

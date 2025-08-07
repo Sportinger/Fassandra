@@ -1,9 +1,3 @@
-/**
- * Enhanced Toolbar Component
- * Full-featured floating toolbar with context-aware buttons
- * Matches the original FloatingToolbar functionality
- */
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FontSizeDropdown } from '../../FontSizeDropdown';
 import { CueDropdown } from '../../CueDropdown';
@@ -13,9 +7,15 @@ import { SpeakerDropdown } from '../../SpeakerDropdown';
 import type { ToolbarProps, ToolbarContext } from '../../types/index';
 import { CueType } from '../../../../types/cue';
 
-// Import the responsive styles
+import logger from '../../../../services/LoggingService';
 import '../../styles/toolbar.css';
+/**
+ * Enhanced Toolbar Component
+ * Full-featured floating toolbar with context-aware buttons
+ * Matches the original FloatingToolbar functionality
+ */
 
+// Import the responsive styles
 interface ToolbarButton {
   id: string;
   icon: string;
@@ -83,7 +83,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         const currentVisualHeight = window.visualViewport.height;
         const heightDifference = initialVisualViewportHeight - currentVisualHeight;
         
-        console.log('[🎭 Mobile Keyboard] Visual Viewport detection:', {
+        logger.debug('Toolbar', '[🎭 Mobile Keyboard] Visual Viewport detection:', {
           initial: initialVisualViewportHeight,
           current: currentVisualHeight,
           difference: heightDifference,
@@ -112,14 +112,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         // 🎭 ENHANCED: Smarter keyboard height calculation
         const calculatedHeight = keyboardVisible ? Math.max(heightDifference, isLandscape ? 180 : 200) : 0;
         
-        console.log(`[🎭 Mobile Keyboard] ${keyboardVisible ? 'OPEN' : 'CLOSED'}: height difference ${heightDifference}px, threshold ${threshold}px (${deviceType} ${isLandscape ? 'landscape' : 'portrait'})`);
+        logger.debug('Toolbar', `[🎭 Mobile Keyboard] ${keyboardVisible ? 'OPEN' : 'CLOSED'}: height difference ${heightDifference}px, threshold ${threshold}px (${deviceType} ${isLandscape ? 'landscape' : 'portrait'})`);
         setKeyboardHeight(calculatedHeight);
       } else {
         // Fallback: detect via window.innerHeight changes
         const currentHeight = window.innerHeight;
         const heightDifference = initialViewportHeight - currentHeight;
         
-        console.log('[🎭 Mobile Keyboard] Window height detection:', {
+        logger.debug('Toolbar', '[🎭 Mobile Keyboard] Window height detection:', {
           initial: initialViewportHeight,
           current: currentHeight,
           difference: heightDifference,
@@ -142,7 +142,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         const keyboardVisible = heightDifference > threshold;
         const calculatedHeight = keyboardVisible ? Math.max(heightDifference, isLandscape ? 180 : 200) : 0;
         
-        console.log(`[🎭 Mobile Keyboard] ${keyboardVisible ? 'OPEN' : 'CLOSED'}: height difference ${heightDifference}px, threshold ${threshold}px (${deviceType} ${isLandscape ? 'landscape' : 'portrait'})`);
+        logger.debug('Toolbar', `[🎭 Mobile Keyboard] ${keyboardVisible ? 'OPEN' : 'CLOSED'}: height difference ${heightDifference}px, threshold ${threshold}px (${deviceType} ${isLandscape ? 'landscape' : 'portrait'})`);
         setKeyboardHeight(calculatedHeight);
       }
     };
@@ -332,7 +332,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       icon: '≡',
       title: 'Stacked Layout (Text Below Speaker)',
       action: () => {
-        console.log('Setting layout to default');
+        logger.debug('Toolbar', 'Setting layout to default');
         if (editAllSpeakers && currentSpeakerName) {
           // Update all dialogue blocks with the current speaker name
           const { state, view } = editor!;
@@ -363,7 +363,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         } else {
           // Single dialogue block update
           const result = editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'default' }).run();
-          console.log('Update result:', result);
+          logger.debug('Toolbar', 'Update result:', result);
         }
       },
       isActive: editor?.isActive('dialogueBlock', { layout: 'default' }),
@@ -375,7 +375,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       icon: '⇥',
       title: 'Side-by-Side Layout (Text Right of Speaker)',
       action: () => {
-        console.log('Setting layout to side-by-side');
+        logger.debug('Toolbar', 'Setting layout to side-by-side');
         if (editAllSpeakers && currentSpeakerName) {
           // Update all dialogue blocks with the current speaker name
           const { state, view } = editor!;
@@ -406,7 +406,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         } else {
           // Single dialogue block update
           const result = editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'side-by-side' }).run();
-          console.log('Update result:', result);
+          logger.debug('Toolbar', 'Update result:', result);
         }
       },
       isActive: editor?.isActive('dialogueBlock', { layout: 'side-by-side' }),
@@ -418,7 +418,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       icon: editAllSpeakers ? '👥' : '👤',
       title: editAllSpeakers ? 'Edit All Speakers (ON)' : 'Edit Single Speaker (OFF)',
       action: () => {
-        console.log('Toggling edit all speakers mode');
+        logger.debug('Toolbar', 'Toggling edit all speakers mode');
         if (onToggleEditAllSpeakers) {
           onToggleEditAllSpeakers();
         }
@@ -432,7 +432,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       icon: '⸺',
       title: 'Toggle Strike-through',
       action: () => {
-        console.log('Toggling strike-through');
+        logger.debug('Toolbar', 'Toggling strike-through');
         editor?.chain().focus().toggleDialogueStrikeThrough().run();
       },
       isActive: (() => {
@@ -465,7 +465,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       icon: '↩',
       title: 'Exit Dialogue Block (Create Normal Text)',
       action: () => {
-        console.log('Exiting dialogue block');
+        logger.debug('Toolbar', 'Exiting dialogue block');
         editor?.chain().focus().exitDialogueBlock().run();
       },
       contexts: ['dialogue-layout', 'speaker-select'],
@@ -478,7 +478,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       icon: '💬',
       title: 'Insert Dialogue Block',
       action: () => {
-        console.log('Inserting dialogue block');
+        logger.debug('Toolbar', 'Inserting dialogue block');
         editor?.chain().focus().insertDialogueBlock().run();
       },
       contexts: ['empty-page', 'default'], // 🔧 FIX: Add to default context so users can always insert dialogue
@@ -489,7 +489,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       icon: '⎘',
       title: 'Split Page',
       action: () => {
-        console.log('Split page');
+        logger.debug('Toolbar', 'Split page');
         // Insert a page break or new page
         editor?.chain().focus().insertContent('<hr>').run();
       },
@@ -596,7 +596,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       icon: '🗑️',
       title: 'Delete Cue',
       action: () => {
-        console.log('Deleting cue block');
+        logger.debug('Toolbar', 'Deleting cue block');
         editor?.chain().focus().deleteNode('cueBlock').run();
       },
       contexts: ['cue-select'],
@@ -607,7 +607,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       icon: '↩',
       title: 'Exit Cue Block',
       action: () => {
-        console.log('Exiting cue block');
+        logger.debug('Toolbar', 'Exiting cue block');
         // Move cursor to after the cue block and insert a new paragraph
         const { state } = editor!;
         const { selection } = state;
@@ -659,7 +659,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       const mobileButtonHeight = 44; // Touch-optimized
       const mobilePadding = 16; // 8px top + 8px bottom (--space-sm * 2)
       const finalHeight = mobileButtonHeight + mobilePadding;
-      console.log('[Mobile Toolbar] Height calculation:', {
+      logger.debug('Toolbar', '[Mobile Toolbar] Height calculation:', {
         windowWidth,
         isMobile,
         visibleCount,
@@ -681,7 +681,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       const separatorHeight = separatorCount * (1 + gap); // 1px height + gap
       
       const finalHeight = (visibleCount * buttonHeight) + ((visibleCount - 1) * gap) + separatorHeight + padding;
-      console.log('[Desktop Toolbar] Height calculation:', {
+      logger.debug('Toolbar', '[Desktop Toolbar] Height calculation:', {
         windowWidth,
         isMobile,
         visibleCount,
@@ -735,7 +735,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   // Only log on mobile or when keyboard state changes
   if (isMobile || keyboardActive) {
-  console.log('[Mobile Toolbar] Render styling:', {
+  logger.debug('Toolbar', '[Mobile Toolbar] Render styling:', {
     isMobile,
     keyboardHeight,
     keyboardActive,

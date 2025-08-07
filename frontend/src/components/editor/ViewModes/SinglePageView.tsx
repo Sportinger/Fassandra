@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Ruler } from '../Ruler';
 import '../styles/responsive.css';
 
+import logger from '../../../services/LoggingService';
 interface SinglePageViewProps {
   children: React.ReactNode;
   showRuler: boolean;
@@ -29,7 +30,7 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
   const handleDarkAreaClick = useCallback((e: React.MouseEvent) => {
     // Only trigger if clicking on the background container, not on the page
     if (e.target === e.currentTarget) {
-      console.log('🖱️ Dark area clicked in single page view, showing context menu');
+      logger.debug('SinglePageView', '🖱️ Dark area clicked in single page view, showing context menu');
       setContextMenu({
         x: e.clientX,
         y: e.clientY,
@@ -40,7 +41,7 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
 
   // Handle context menu actions
   const handleContextMenuAction = useCallback((action: string) => {
-    console.log('📋 Single page context menu action:', action);
+    logger.debug('SinglePageView', '📋 Single page context menu action:', action);
     
     switch (action) {
       case 'toggle-ruler':
@@ -50,7 +51,7 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
         onToggleViewMode?.();
         break;
       default:
-        console.log('Unknown action:', action);
+        logger.debug('SinglePageView', 'Unknown action:', action);
     }
     
     setContextMenu({ x: 0, y: 0, visible: false });

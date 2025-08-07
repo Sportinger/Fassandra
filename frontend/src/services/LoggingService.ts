@@ -120,20 +120,59 @@ class LoggingService {
     // For now, we'll just store critical errors
     try {
       const errors = JSON.parse(localStorage.getItem('app_errors') || '[]');
-      errors.push({
+      const errorEntry = {
         timestamp: entry.timestamp.toISOString(),
         category: entry.category,
         message: entry.message,
-        data: entry.data
-      });
+        data: entry.data,
+        userAgent: navigator.userAgent,
+        url: window.location.href,
+        sessionId: this.getSessionId()
+      };
+      
+      errors.push(errorEntry);
+      
       // Keep only last 50 errors
       if (errors.length > 50) {
         errors.splice(0, errors.length - 50);
       }
       localStorage.setItem('app_errors', JSON.stringify(errors));
+      
+      // Also send to remote monitoring if configured
+      this.sendToRemoteMonitoring(errorEntry);
     } catch (e) {
       // Fail silently if localStorage is not available
     }
+  }
+  
+  /**
+   * Send errors to remote monitoring service
+   */
+  private async sendToRemoteMonitoring(errorEntry: any): Promise<void> {
+    const monitoringEndpoint = import.meta.env.VITE_MONITORING_ENDPOINT;
+    if (!monitoringEndpoint) return;
+    
+    try {
+      await fetch(monitoringEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(errorEntry)
+      });
+    } catch (e) {
+      // Fail silently - we don't want monitoring failures to affect the app
+    }
+  }
+  
+  /**
+   * Get or create a session ID for error tracking
+   */
+  private getSessionId(): string {
+    let sessionId = sessionStorage.getItem('log_session_id');
+    if (!sessionId) {
+      sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      sessionStorage.setItem('log_session_id', sessionId);
+    }
+    return sessionId;
   }
 
   // Public logging methods
@@ -179,6 +218,124 @@ class LoggingService {
    */
   getLogLevel(): LogLevel {
     return this.logLevel;
+  }
+  
+  /**
+   * Log an error boundary error with full context
+   */
+  logErrorBoundary(
+    boundaryName: string, 
+    error: Error, 
+    errorInfo: { componentStack: string },
+    additionalContext?: any
+  ): void {
+    this.error('ErrorBoundary', `Error in ${boundaryName}`, {
+      error: {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      },
+      errorInfo: {
+        componentStack: errorInfo.componentStack
+      },
+      boundary: boundaryName,
+      ...additionalContext
+    });
+  }
+  
+  /**
+   * Log a network error with request details
+   */
+  logNetworkError(
+    url: string,
+    method: string,
+    error: Error,
+    statusCode?: number,
+    responseText?: string
+  ): void {
+    this.error('Network', `${method} ${url} failed`, {
+      url,
+      method,
+      statusCode,
+      error: error.message,
+      responseText: responseText?.substring(0, 500), // Limit response text
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  /**
+   * Log performance metrics
+   */
+  logPerformance(category: string, metric: string, value: number, unit: string = 'ms'): void {
+    this.info('Performance', `${category} - ${metric}`, {
+      metric,
+      value,
+      unit,
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  /**
+   * Create a timer for performance measurement
+   */
+  startTimer(label: string): () => void {
+    const startTime = performance.now();
+    return () => {
+      const duration = performance.now() - startTime;
+      this.logPerformance('Timer', label, duration);
+      return duration;
+    };
+  }
+  
+  /**
+   * Log user actions for analytics
+   */
+  logUserAction(action: string, details?: any): void {
+    this.info('UserAction', action, {
+      ...details,
+      timestamp: new Date().toISOString(),
+      sessionId: this.getSessionId()
+    });
+  }
+  
+  /**
+   * Get error statistics
+   */
+  getErrorStats(): { total: number; byCategory: Record<string, number> } {
+    const errors = this.logBuffer.filter(entry => entry.level === LogLevel.ERROR);
+    const byCategory: Record<string, number> = {};
+    
+    errors.forEach(error => {
+      byCategory[error.category] = (byCategory[error.category] || 0) + 1;
+    });
+    
+    return {
+      total: errors.length,
+      byCategory
+    };
+  }
+  
+  /**
+   * Export logs for debugging
+   */
+  exportLogs(): string {
+    return JSON.stringify(this.logBuffer, null, 2);
+  }
+  
+  /**
+   * Download logs as a file
+   */
+  downloadLogs(): void {
+    const logs = this.exportLogs();
+    const blob = new Blob([logs], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `app-logs-${new Date().toISOString()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 }
 

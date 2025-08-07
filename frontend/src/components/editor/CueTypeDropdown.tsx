@@ -3,6 +3,7 @@ import { Editor as EditorInstance } from '@tiptap/react';
 import { CueType, CUE_TYPE_LABELS, CUE_TYPE_ICONS } from '../../types/cue';
 import './styles/toolbar.css';
 
+import logger from '../../services/LoggingService';
 interface CueTypeDropdownProps {
   editor: EditorInstance | null;
   isVisible: boolean;
@@ -25,7 +26,7 @@ export const CueTypeDropdown: React.FC<CueTypeDropdownProps> = ({
   const handleCueTypeChange = (newType: CueType) => {
     if (!editor) return;
 
-    console.log(`[CueType] Changing cue type to ${newType}`);
+    logger.debug('CueTypeDropdown', `[CueType] Changing cue type to ${newType}`);
     
     // Get the current selected cue block
     const { state } = editor;

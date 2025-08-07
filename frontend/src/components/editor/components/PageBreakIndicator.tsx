@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { Editor } from '@tiptap/react';
 
+import logger from '../../../services/LoggingService';
 interface PageBreakIndicatorProps {
   editor: Editor | null;
   pageNumber: number;
@@ -78,7 +79,7 @@ const calculateOptimalPageBreakPosition = (
   // Position the page break between these blocks
   const optimalPosition = (lastPreviousBlock.bottom + firstCurrentBlock.top) / 2;
   
-  console.log(`📄 Page ${pageNumber} break positioned at ${optimalPosition}px (between blocks ${lastPreviousBlock.blockId} and ${firstCurrentBlock.blockId})`);
+  logger.debug('PageBreakIndicator', `📄 Page ${pageNumber} break positioned at ${optimalPosition}px (between blocks ${lastPreviousBlock.blockId} and ${firstCurrentBlock.blockId})`);
   return optimalPosition;
 };
 
@@ -164,7 +165,7 @@ export const PageBreakIndicator: React.FC<PageBreakIndicatorProps> = ({
 
     const handleMouseUp = () => {
       setIsDragging(false);
-      console.log(`📄 Page ${pageNumber} break moved to ${optimalPosition}px`);
+      logger.debug('PageBreakIndicator', `📄 Page ${pageNumber} break moved to ${optimalPosition}px`);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -184,7 +185,7 @@ export const PageBreakIndicator: React.FC<PageBreakIndicatorProps> = ({
     setIsDragging(true);
     e.preventDefault();
     
-    console.log(`📄 Started dragging page ${pageNumber} break`);
+    logger.debug('PageBreakIndicator', `📄 Started dragging page ${pageNumber} break`);
   };
 
   if (!isVisible) return null;

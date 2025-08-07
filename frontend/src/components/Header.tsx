@@ -4,6 +4,7 @@ import { useAuth } from '../AuthContext';
 import { regenerateAllThumbnails } from '../api';
 import { ScriptLayout, CreateScriptLayoutRequest } from '../types';
 
+import logger from '../services/LoggingService';
 interface HeaderProps {
   currentView?: 'scripts' | 'editor';
   scriptTitle?: string;
@@ -184,7 +185,7 @@ export const Header: React.FC<HeaderProps> = ({
     
     try {
       const generatedCount = await regenerateAllThumbnails(token);
-      console.log(`Generated ${generatedCount} thumbnails`);
+      logger.debug('Header', `Generated ${generatedCount} thumbnails`);
       
       // Call the callback to refresh the script list if provided
       onThumbnailsRefreshed?.();
@@ -192,7 +193,7 @@ export const Header: React.FC<HeaderProps> = ({
       // Show success feedback
       alert(`Successfully refreshed ${generatedCount} thumbnails!`);
     } catch (error: any) {
-      console.error('Failed to refresh thumbnails:', error);
+      logger.error('Header', 'Failed to refresh thumbnails:', error);
       alert(`Failed to refresh thumbnails: ${error.message || 'Unknown error'}`);
     } finally {
       setIsRefreshing(false);

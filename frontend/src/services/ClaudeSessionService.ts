@@ -1,3 +1,5 @@
+import logger from '../services/LoggingService';
+
 export interface SessionStatus {
   id: string;
   status: string;
@@ -52,20 +54,20 @@ export class ClaudeSessionService {
     // Pass token as query parameter for WebSocket authentication
     const wsUrl = `${protocol}//${host}/api/s/session/${this.sessionId}/ws?token=${encodeURIComponent(this.token)}`;
 
-    console.log('[ClaudeSession] Connecting to WebSocket:', wsUrl);
+    logger.debug('ClaudeSessionService', '[ClaudeSession] Connecting to WebSocket:', wsUrl);
 
     // WebSocket authentication happens through the token query parameter
     // since WebSocket doesn't support custom headers
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
-      console.log('[ClaudeSession] WebSocket connected');
+      logger.debug('ClaudeSessionService', '[ClaudeSession] WebSocket connected');
     };
 
     this.ws.onmessage = (event) => {
       try {
         const update: SessionUpdate = JSON.parse(event.data);
-        console.log('[ClaudeSession] Received update:', update);
+        logger.debug('ClaudeSessionService', '[ClaudeSession] Received update:', update);
 
         this.onUpdate(update);
 
@@ -77,17 +79,17 @@ export class ClaudeSessionService {
           this.disconnect();
         }
       } catch (error) {
-        console.error('[ClaudeSession] Failed to parse WebSocket message:', error);
+        logger.error('ClaudeSessionService', '[ClaudeSession] Failed to parse WebSocket message:', error);
       }
     };
 
     this.ws.onerror = (error) => {
-      console.error('[ClaudeSession] WebSocket error:', error);
+      logger.error('ClaudeSessionService', '[ClaudeSession] WebSocket error:', error);
       this.onError('WebSocket connection error');
     };
 
     this.ws.onclose = () => {
-      console.log('[ClaudeSession] WebSocket disconnected');
+      logger.debug('ClaudeSessionService', '[ClaudeSession] WebSocket disconnected');
     };
   }
 
@@ -111,9 +113,9 @@ export class ClaudeSessionService {
         throw new Error(`Failed to cancel session: ${response.statusText}`);
       }
 
-      console.log('[ClaudeSession] Session cancelled successfully');
+      logger.debug('ClaudeSessionService', '[ClaudeSession] Session cancelled successfully');
     } catch (error) {
-      console.error('[ClaudeSession] Failed to cancel session:', error);
+      logger.error('ClaudeSessionService', '[ClaudeSession] Failed to cancel session:', error);
       throw error;
     }
   }

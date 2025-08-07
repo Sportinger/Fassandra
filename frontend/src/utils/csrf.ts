@@ -1,3 +1,5 @@
+import logger from '../services/LoggingService';
+
 /**
  * CSRF Token Management
  * Handles fetching and caching CSRF tokens for secure requests
@@ -24,7 +26,7 @@ export async function fetchCSRFToken(): Promise<string> {
         csrfToken = data.token;
         return csrfToken;
     } catch (error) {
-        console.error('Error fetching CSRF token:', error);
+        logger.error('csrf', 'Error fetching CSRF token:', error);
         throw error;
     }
 }

@@ -6,6 +6,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { Node as ProseMirrorNode } from '@tiptap/pm/model';
 
+import logger from '../../../services/LoggingService';
 // Helper function to get word boundaries at a position
 function getWordAtPosition(doc: ProseMirrorNode, pos: number): { from: number; to: number; text: string } | null {
   try {
@@ -13,7 +14,7 @@ function getWordAtPosition(doc: ProseMirrorNode, pos: number): { from: number; t
     const parent = $pos.parent;
     
     if (!parent.isText && !parent.isTextblock) {
-      console.log('Not in a text block');
+      logger.debug('CueBlock', 'Not in a text block');
       return null;
     }
     
@@ -26,7 +27,7 @@ function getWordAtPosition(doc: ProseMirrorNode, pos: number): { from: number; t
     const text = parent.textContent;
     const parentOffset = $pos.parentOffset;
     
-    console.log('Text content:', text, 'Offset:', parentOffset);
+    logger.debug('CueBlock', `${text} Offset: ${parentOffset}`);
     
     // Find word boundaries
     let start = parentOffset;
@@ -44,7 +45,7 @@ function getWordAtPosition(doc: ProseMirrorNode, pos: number): { from: number; t
     
     // If we didn't find a word, return null
     if (start === end) {
-      console.log('No word found at position');
+      logger.debug('CueBlock', 'No word found at position');
       return null;
     }
     
@@ -56,10 +57,10 @@ function getWordAtPosition(doc: ProseMirrorNode, pos: number): { from: number; t
       text: text.substring(start, end),
     };
     
-    console.log('Found word:', wordData);
+    logger.debug('CueBlock', 'Found word:', wordData);
     return wordData;
   } catch (error) {
-    console.error('Error in getWordAtPosition:', error);
+    logger.error('CueBlock', 'Error in getWordAtPosition:', error);
     return null;
   }
 }
@@ -198,7 +199,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
               }
               
               if (connectionDragArea) {
-                console.log('Drag started from connection drag area');
+                logger.debug('CueBlock', 'Drag started from connection drag area');
                 
                 const cueBlock = connectionDragArea.closest('.cue-block');
                 if (!cueBlock) return false;
@@ -220,7 +221,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
                   isConnectionDrag: true, // Mark this as a connection drag
                 };
                 
-                console.log('Starting connection drag with cue data:', cueData);
+                logger.debug('CueBlock', 'Starting connection drag with cue data:', cueData);
                 
                 // Store in global variable to work around browser limitations
                 currentDragData = cueData;
@@ -283,7 +284,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
                 }
               }
               
-              console.log('Dragover with connection drag active');
+              logger.debug('CueBlock', 'Dragover with connection drag active');
               
               // For connection drags, we need to handle this event
               event.preventDefault();
@@ -292,7 +293,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
               // Find word under cursor
               const pos = view.posAtCoords({ left: event.clientX, top: event.clientY });
               if (!pos) {
-                console.log('No position found at coordinates');
+                logger.debug('CueBlock', 'No position found at coordinates');
                 return false;
               }
               
@@ -358,7 +359,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
                   const markType = state.schema.marks.cueConnection;
                   
                   if (!markType) {
-                    console.error('CueConnection mark type not found in schema');
+                    logger.error('CueBlock', 'Error:', 'CueConnection mark type not found in schema');
                     return false;
                   }
                   
@@ -384,14 +385,14 @@ export const CueBlock = Node.create<CueBlockOptions>({
                   
                   view.dispatch(tr);
                   
-                  console.log('Applied cue connection:', cueData, 'to word:', word.text);
-                  console.log('Mark attrs:', mark.attrs);
+                  logger.debug('CueBlock', `${cueData} to word: ${word.text}`);
+                  logger.debug('CueBlock', 'Mark attrs:', mark.attrs);
                   
                   // Clear global drag data after successful drop
                   currentDragData = null;
                 }
               } catch (error) {
-                console.error('Error applying cue connection:', error);
+                logger.error('CueBlock', 'Error applying cue connection:', error);
                 return false;
               }
               
@@ -447,7 +448,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
           // Get cue type from data attribute
           const cueType = cueBlock.getAttribute('data-cue-type') || 'light';
           
-          console.log('Extracting cue data:', {
+          logger.debug('CueBlock', 'Extracting cue data:', {
             dataAttribute: cueBlock.getAttribute('data-cue-type'),
             cueType,
             cueNumber
@@ -461,7 +462,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
           };
           
           currentDragData = cueData;
-          console.log('Native drag start:', cueData);
+          logger.debug('CueBlock', 'Native drag start:', cueData);
           
           e.dataTransfer!.effectAllowed = 'copy';
           e.dataTransfer!.setData('text/plain', 'cue-connection');

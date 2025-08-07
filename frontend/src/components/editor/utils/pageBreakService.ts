@@ -1,6 +1,7 @@
-// 🔧 NEW: Page Break Service - Accurately positions page breaks based on database and DOM data
 import type { Editor } from '@tiptap/react';
 
+import logger from '../../../services/LoggingService';
+// 🔧 NEW: Page Break Service - Accurately positions page breaks based on database and DOM data
 export interface BlockData {
   block_id: string;
   page_number: number;
@@ -40,7 +41,7 @@ export class PageBreakService {
    */
   setBlocksData(blocks: BlockData[]) {
     this.blocksData = blocks.sort((a, b) => a.page_number - b.page_number);
-    console.log(`📊 PageBreakService: Updated with ${blocks.length} blocks across ${this.getPageCount()} pages`);
+    logger.debug('pageBreakService', `📊 PageBreakService: Updated with ${blocks.length} blocks across ${this.getPageCount()} pages`);
   }
 
   /**
@@ -140,7 +141,7 @@ export class PageBreakService {
     const positions: PageBreakPosition[] = [];
 
     if (pageNumbers.length <= 1) {
-      console.log('📄 PageBreakService: Only one page, no breaks needed');
+      logger.debug('pageBreakService', '📄 PageBreakService: Only one page, no breaks needed');
       return [];
     }
 
@@ -148,7 +149,7 @@ export class PageBreakService {
     const domElements = this.findBlockElements();
     const hasDomData = domElements.length > 0;
 
-    console.log(`📄 PageBreakService: Calculating breaks for pages ${pageNumbers.join(', ')} (DOM elements: ${domElements.length})`);
+    logger.debug('pageBreakService', `📄 PageBreakService: Calculating breaks for pages ${pageNumbers.join(', ')} (DOM elements: ${domElements.length})`);
 
     for (let i = 1; i < pageNumbers.length; i++) {
       const currentPageNum = pageNumbers[i];
@@ -174,16 +175,16 @@ export class PageBreakService {
           blockAfter = firstCurrent.blockId;
           isAccurate = true;
 
-          console.log(`📍 Page ${currentPageNum} break: ${position}px (between ${blockBefore} and ${blockAfter})`);
+          logger.debug('pageBreakService', `📍 Page ${currentPageNum} break: ${position}px (between ${blockBefore} and ${blockAfter})`);
         } else {
           // Fallback to estimated position
           position = this.estimatePageBreakPosition(currentPageNum, previousPageNum);
-          console.log(`📍 Page ${currentPageNum} break: ${position}px (estimated - missing DOM elements)`);
+          logger.debug('pageBreakService', `📍 Page ${currentPageNum} break: ${position}px (estimated - missing DOM elements)`);
         }
       } else {
         // Fallback to database-based estimation
         position = this.estimatePageBreakPosition(currentPageNum, previousPageNum);
-        console.log(`📍 Page ${currentPageNum} break: ${position}px (estimated - no DOM data)`);
+        logger.debug('pageBreakService', `📍 Page ${currentPageNum} break: ${position}px (estimated - no DOM data)`);
       }
 
       positions.push({
@@ -249,7 +250,7 @@ export class PageBreakService {
         position: newPosition,
         isAccurate: false // Manual positioning
       };
-      console.log(`📍 Updated page ${pageNumber} break position to ${newPosition}px (manual)`);
+      logger.debug('pageBreakService', `📍 Updated page ${pageNumber} break position to ${newPosition}px (manual)`);
     }
   }
 
@@ -258,12 +259,12 @@ export class PageBreakService {
    */
   recalculatePositions(): void {
     if (this.blocksData.length === 0) {
-      console.log('📄 PageBreakService: No blocks data available for recalculation');
+      logger.debug('pageBreakService', '📄 PageBreakService: No blocks data available for recalculation');
       return;
     }
 
     const newPositions = this.calculatePageBreakPositions();
-    console.log(`📄 PageBreakService: Recalculated ${newPositions.length} page break positions`);
+    logger.debug('pageBreakService', `📄 PageBreakService: Recalculated ${newPositions.length} page break positions`);
   }
 
   /**

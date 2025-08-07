@@ -1,5 +1,6 @@
 import { PlaceholderScript } from '../types';
 
+import logger from '../services/LoggingService';
 export interface UploadState {
   uploads: Map<string, PlaceholderScript>;
   sessionIds: Map<string, string>; // Maps upload ID to session ID
@@ -50,7 +51,7 @@ class UploadStateManager {
         this.saveState();
       }
     } catch (error) {
-      console.error('[UploadStateManager] Failed to load state:', error);
+      logger.error('UploadStateManager', '[UploadStateManager] Failed to load state:', error);
     }
   }
 
@@ -62,7 +63,7 @@ class UploadStateManager {
       };
       localStorage.setItem(this.storageKey, JSON.stringify(serializable));
     } catch (error) {
-      console.error('[UploadStateManager] Failed to save state:', error);
+      logger.error('UploadStateManager', '[UploadStateManager] Failed to save state:', error);
     }
   }
 

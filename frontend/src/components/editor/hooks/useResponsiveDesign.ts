@@ -1,10 +1,11 @@
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import type { ResponsiveConfig, DimensionConfig, Breakpoint, UseResponsiveDesignReturn } from '../types/index';
+
+import logger from '../../../services/LoggingService';
 /**
  * useResponsiveDesign Hook
  * Manages responsive behavior and device detection for the editor
  */
-
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { ResponsiveConfig, DimensionConfig, Breakpoint, UseResponsiveDesignReturn } from '../types/index';
 
 // Breakpoint definitions
 const BREAKPOINTS = {
@@ -190,7 +191,7 @@ export const useResponsiveDesign = (): UseResponsiveDesignReturn => {
   // Debug logging in development
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('[ResponsiveDesign] Config updated:', {
+      logger.debug('useResponsiveDesign', '[ResponsiveDesign] Config updated:', {
         breakpoint: config.breakpoint,
         viewport: config.viewport,
         dimensions,

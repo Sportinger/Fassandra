@@ -4,6 +4,7 @@ import { register } from '../api';
 import styles from './Header.module.css';
 import authStyles from './Auth.module.css';
 
+import logger from '../services/LoggingService';
 /**
  * Registration form component for new users.
  *
@@ -48,7 +49,7 @@ export const Register: React.FC = () => {
       
     } catch (err: any) {
       setError(err.message || 'Registration failed');
-      console.error(err);
+      logger.error('Register', 'Error:', err);
     }
   };
 
