@@ -6,7 +6,7 @@ A modern web-based theater script editor with real-time collaboration, AI integr
 
 - 📝 **Advanced Script Editing** - TipTap-based editor with speaker names, dialogue, cues, and scene blocks
 - 👥 **Real-time Collaboration** - Multiple users can edit scripts simultaneously with Yjs
-- 🤖 **AI Integration** - Claude-powered session monitoring and assistance
+- 🤖 **AI-Powered PDF Parsing** - Claude CLI parses uploaded PDF scripts into structured database format
 - 📱 **Mobile Support** - Android app built with Capacitor
 - 📄 **PDF Import** - Upload and parse theater scripts from PDFs
 - 🎨 **Multi-view Modes** - Single page and multi-page views
@@ -39,6 +39,30 @@ A modern web-based theater script editor with real-time collaboration, AI integr
 - PostgreSQL 15+
 - Docker & Docker Compose
 
+### Configuration Files
+
+#### Environment Files
+- `.env.dev` - Development environment variables
+- `.env.prod` - Production environment variables
+- `env.example` - Template for environment configuration
+- `env.production` - Production-specific settings
+
+#### Docker Configurations
+- `docker-compose.dev.yml` - Development environment setup
+- `docker-compose.prod.yml` - Production deployment
+- `backend/Dockerfile.dev` - Backend development container
+- `backend/Dockerfile.prod` - Backend production build
+- `frontend/Dockerfile.dev` - Frontend development container
+- `frontend/Dockerfile.prod` - Frontend production build
+
+#### Vite Configurations
+- `frontend/vite.config.dev.ts` - Development-specific settings
+- `frontend/vite.config.prod.ts` - Production build settings
+
+#### Server Configuration
+- `Caddyfile` - Production Caddy server configuration
+- `frontend/Caddyfile` - Frontend-specific Caddy config
+
 ### Development Setup
 
 1. **Clone the repository**
@@ -55,7 +79,7 @@ cp env.example .env.dev
 
 3. **Start development environment with Docker**
 ```bash
-docker-compose up -d
+docker-compose -f docker-compose.dev.yml up -d
 ```
 
 This will start:
@@ -73,7 +97,13 @@ npm run dev
 
 ### Production Deployment
 
-1. **Build Docker images**
+1. **Set up production environment**
+```bash
+cp env.example .env.prod
+# Configure production settings
+```
+
+2. **Build Docker images**
 ```bash
 # Build backend
 docker build -f backend/Dockerfile.prod -t mylayer-backend:latest ./backend
@@ -82,18 +112,21 @@ docker build -f backend/Dockerfile.prod -t mylayer-backend:latest ./backend
 docker build -f frontend/Dockerfile.prod -t mylayer-frontend:latest ./frontend
 ```
 
-2. **Deploy with Docker Compose**
+3. **Deploy with Docker Compose**
 ```bash
-docker-compose -f docker-compose.production.yml up -d
+docker-compose -f docker-compose.prod.yml up -d
 ```
 
-3. **Quick deployment scripts**
+4. **Quick deployment scripts**
 ```bash
-# Development
+# Development deployment
 ./scripts/deploy.dev.sh
 
-# Production
+# Production deployment
 ./scripts/deploy.prod.sh
+
+# Production with database reset
+./scripts/deploy.prod.reset.sh
 ```
 
 ## Mobile App
@@ -149,7 +182,8 @@ pessoa/
 │   └── Dockerfile.* # Docker configurations
 ├── scripts/         # Deployment scripts
 ├── tests/          # E2E tests
-└── docker-compose.yml
+├── docker-compose.dev.yml
+└── docker-compose.prod.yml
 ```
 
 ## API Endpoints

@@ -9,7 +9,7 @@ set -o pipefail
 # CONFIGURATION - LOCAL DEV SETTINGS
 APP_NAME="pessoa-dev"
 DOMAIN="192.168.2.111"  # Use actual IP for dev
-API_PORT="3000"  # Backend port (matches docker-compose.yml)
+API_PORT="3000"  # Backend port (matches docker-compose.dev.yml)
 FRONTEND_PORT="8080"  # Frontend port (Vite dev server)
 COLLAB_PORT="8090"
 
@@ -36,14 +36,14 @@ echo "✅ Docker is running"
 
 # CLEAN EXISTING CONTAINERS (DEV ONLY)
 echo "🧹 Cleaning existing dev containers..."
-docker compose --env-file .env.dev -f docker-compose.yml down 2>/dev/null || true
+docker compose --env-file .env.dev -f docker-compose.dev.yml down 2>/dev/null || true
 docker stop $(docker ps -aq --filter "name=${APP_NAME}") 2>/dev/null || true
 docker rm $(docker ps -aq --filter "name=${APP_NAME}") 2>/dev/null || true
 echo "✅ Cleaned existing containers"
 
 # BUILD PHASE (using docker-compose to build)
 echo "🔨 Building containers with docker-compose..."
-if ! DOCKER_BUILDKIT=1 docker compose --env-file .env.dev -f docker-compose.yml build $BUILD_OPTS; then
+if ! DOCKER_BUILDKIT=1 docker compose --env-file .env.dev -f docker-compose.dev.yml build $BUILD_OPTS; then
     echo "❌ Build FAILED"
     exit 1
 fi
@@ -51,19 +51,12 @@ echo "✅ All containers built successfully"
 
 # CHECK REQUIRED FILES FOR DEV
 echo "📋 Checking required files..."
-COMPOSE_FILE="docker-compose.yml"
+COMPOSE_FILE="docker-compose.dev.yml"
 ENV_FILE=".env.dev"
 
 if [ ! -f "$COMPOSE_FILE" ]; then
-    echo "⚠️  No docker-compose.yml found, looking for alternatives..."
-    if [ -f "docker-compose.dev.yml" ]; then
-        COMPOSE_FILE="docker-compose.dev.yml"
-    elif [ -f "docker-compose.development.yml" ]; then
-        COMPOSE_FILE="docker-compose.development.yml"
-    else
-        echo "❌ No suitable docker-compose file found for development"
-        exit 1
-    fi
+    echo "❌ No docker-compose.dev.yml found"
+    exit 1
 fi
 echo "✅ Using compose file: $COMPOSE_FILE"
 
