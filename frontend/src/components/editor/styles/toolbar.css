@@ -243,7 +243,8 @@
 
 /* ===== DROPDOWN MENU ===== */
 
-.dropdownMenu {
+.dropdownMenu,
+.cue-dropdown-menu {
   position: absolute;
   top: 0;
   left: calc(100% + var(--space-sm));
@@ -255,7 +256,8 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   
-  z-index: var(--z-index-dropdown);
+  /* Ensure dropdowns appear above surrounding UI */
+  z-index: var(--z-index-popover);
   max-height: 300px;
   overflow-y: auto;
   
@@ -283,7 +285,8 @@
   background: var(--color-background-secondary, #f9fafb);
 }
 
-.dropdownItem {
+.dropdownItem,
+.cue-dropdown-item {
   display: block;
   width: 100%;
   padding: var(--space-sm) var(--space-md);
@@ -300,7 +303,8 @@
   text-overflow: ellipsis;
 }
 
-.dropdownItem:hover {
+.dropdownItem:hover,
+.cue-dropdown-item:hover {
   background: var(--color-background-hover, #f3f4f6);
   color: var(--color-accent, #3b82f6);
 }
@@ -468,14 +472,21 @@
   }
   
   /* Dropdown adjustments for mobile */
-  .dropdownMenu {
+  .dropdownMenu,
+  .cue-dropdown-menu {
     position: fixed;
+    /* Place above the toolbar */
     bottom: calc(44px + var(--space-lg) + var(--space-lg));
+    top: auto;
     left: 50%;
+    right: auto; /* Clear any left-opening desktop rule */
     transform: translateX(-50%);
     width: calc(100vw - var(--space-lg) * 2);
     max-width: 400px;
-    
+    max-height: 60vh; /* Keep entire menu on-screen */
+    overflow-y: auto;
+    z-index: 1200; /* Above the toolbar (which is 1000) */
+
     /* Reduced mobile dropdown shadow */
     box-shadow: var(--shadow-lg);
   }

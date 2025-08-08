@@ -115,6 +115,27 @@ export function getErrorMessage(error: unknown): string {
   if (typeof error === 'string') {
     return error;
   }
+  // Try to parse standard API error shape { error: string, details?: string[] }
+  try {
+    const anyErr = error as any;
+    if (anyErr && typeof anyErr === 'object') {
+      // ApiService throws ApiError with body string; try to parse it
+      const bodyText: string | undefined = anyErr.body || anyErr.responseText;
+      if (typeof bodyText === 'string' && bodyText.trim().length > 0) {
+        const parsed = JSON.parse(bodyText);
+        if (parsed && typeof parsed === 'object') {
+          if (Array.isArray(parsed.details) && parsed.details.length > 0) {
+            return parsed.details.join('\n');
+          }
+          if (typeof parsed.error === 'string' && parsed.error.length > 0) {
+            return parsed.error;
+          }
+        }
+      }
+    }
+  } catch (_) {
+    // ignore parse errors and fall back
+  }
   return 'An unknown error occurred';
 }
 

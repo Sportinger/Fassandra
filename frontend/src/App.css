@@ -24,7 +24,10 @@
   }
   
   .appContent {
-    padding: 0 !important;
+    /* Ensure content is not hidden under fixed header */
+    padding-top: 60px !important; /* matches Header height */
+    padding-left: 0 !important;
+    padding-right: 0 !important;
     margin: 0 !important;
     width: 100% !important;
     max-width: 100% !important;

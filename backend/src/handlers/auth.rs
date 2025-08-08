@@ -80,7 +80,23 @@ pub async fn register(
         .bind(&password_hash)
         .bind(default_role) // Bind default role
         .fetch_one(pool.as_ref()) // Use pool.as_ref() when state is Arc<PgPool>
-        .await?;
+        .await
+        .map_err(|e| {
+            // Map unique constraint violations to user-friendly conflicts
+            if let sqlx::Error::Database(db_err) = &e {
+                if db_err.code().as_deref() == Some("23505") {
+                    let msg = db_err.message().to_lowercase();
+                    if msg.contains("email") {
+                        return AppError::Conflict("Email already exists".to_string());
+                    }
+                    if msg.contains("username") {
+                        return AppError::Conflict("Username already exists".to_string());
+                    }
+                    return AppError::Conflict("User already exists".to_string());
+                }
+            }
+            AppError::Db(e)
+        })?;
 
     // Pass all required fields to generate_token
     let token = generate_token(user.id, &user.email, &user.username, &user.role)?;
