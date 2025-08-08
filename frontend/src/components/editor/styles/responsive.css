@@ -17,16 +17,18 @@ html, body {
   overflow-x: hidden;
   width: 100%;
   max-width: 100%;
+  /* Allow vertical scroll; do not hide overflow on Y */
+  overflow-y: auto;
 }
 
 /* ===== EDITOR CONTAINER ===== */
 
 .editorContainer {
   width: 100%;
-  height: 100vh;
+  min-height: 100vh; /* allow page to extend and scroll */
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible; /* allow scrolling to top/bottom */
   background: var(--color-background-secondary, #f8fafc);
 }
 

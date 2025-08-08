@@ -1,0 +1,101 @@
+"filename", "language", "MS SQL", "Rust", "Ignore", "Markdown", "JSON", "JSON with Comments", "Python", "comment", "blank", "total"
+"/home/admins/projects/pessoa/backend/.claude/settings.json", "JSON with Comments", 0, 0, 0, 0, 0, 7, 0, 0, 1, 8
+"/home/admins/projects/pessoa/backend/.claude/settings.local.json", "JSON", 0, 0, 0, 0, 8, 0, 0, 0, 0, 8
+"/home/admins/projects/pessoa/backend/.dockerignore", "Ignore", 0, 0, 3, 0, 0, 0, 0, 2, 0, 5
+"/home/admins/projects/pessoa/backend/check_blocks_schema.sql", "MS SQL", 4, 0, 0, 0, 0, 0, 0, 0, 0, 4
+"/home/admins/projects/pessoa/backend/check_schema.sql", "MS SQL", 4, 0, 0, 0, 0, 0, 0, 0, 0, 4
+"/home/admins/projects/pessoa/backend/list_users.sql", "MS SQL", 1, 0, 0, 0, 0, 0, 0, 0, 0, 1
+"/home/admins/projects/pessoa/backend/migrations/0001_create_tables.sql", "MS SQL", 34, 0, 0, 0, 0, 0, 0, 6, 5, 45
+"/home/admins/projects/pessoa/backend/migrations/20250101000001_add_username_role_to_users.sql", "MS SQL", 2, 0, 0, 0, 0, 0, 0, 7, 3, 12
+"/home/admins/projects/pessoa/backend/migrations/20250117000000_add_script_sharing.sql", "MS SQL", 13, 0, 0, 0, 0, 0, 0, 3, 2, 18
+"/home/admins/projects/pessoa/backend/migrations/20250118000000_add_thumbnail_to_scripts.sql", "MS SQL", 2, 0, 0, 0, 0, 0, 0, 2, 1, 5
+"/home/admins/projects/pessoa/backend/migrations/20250128000000_create_script_layouts_table.sql", "MS SQL", 46, 0, 0, 0, 0, 0, 0, 3, 2, 51
+"/home/admins/projects/pessoa/backend/migrations/20250131000000_add_page_number_to_blocks.sql", "MS SQL", 7, 0, 0, 0, 0, 0, 0, 5, 3, 15
+"/home/admins/projects/pessoa/backend/migrations/20250503174857_make_blocks_script_id_not_null.sql", "MS SQL", 2, 0, 0, 0, 0, 0, 0, 3, 3, 8
+"/home/admins/projects/pessoa/backend/migrations/20250506002947_add_dev_user.sql", "MS SQL", 8, 0, 0, 0, 0, 0, 0, 2, 1, 11
+"/home/admins/projects/pessoa/backend/migrations/20250507000000_create_yjs_document_updates_table.sql", "MS SQL", 8, 0, 0, 0, 0, 0, 0, 1, 1, 10
+"/home/admins/projects/pessoa/backend/migrations/20250507000001_create_script_snapshots_meta_table.sql", "MS SQL", 5, 0, 0, 0, 0, 0, 0, 1, 0, 6
+"/home/admins/projects/pessoa/backend/migrations/20250514160000_add_block_order_to_blocks.sql", "MS SQL", 2, 0, 0, 0, 0, 0, 0, 8, 0, 10
+"/home/admins/projects/pessoa/backend/migrations/20250514160500_add_metadata_to_blocks.sql", "MS SQL", 2, 0, 0, 0, 0, 0, 0, 1, 0, 3
+"/home/admins/projects/pessoa/backend/migrations/20250514161500_add_user_id_to_yjs_document_updates.sql", "MS SQL", 12, 0, 0, 0, 0, 0, 0, 6, 2, 20
+"/home/admins/projects/pessoa/backend/migrations/20250710000000_add_content_snapshot_to_script_snapshots_meta.sql", "MS SQL", 7, 0, 0, 0, 0, 0, 0, 4, 3, 14
+"/home/admins/projects/pessoa/backend/migrations/20250715000000_add_scene_fields_to_blocks.sql", "MS SQL", 7, 0, 0, 0, 0, 0, 0, 6, 4, 17
+"/home/admins/projects/pessoa/backend/security_verification.py", "Python", 0, 0, 0, 0, 0, 0, 318, 24, 88, 430
+"/home/admins/projects/pessoa/backend/src/analysis/errors.rs", "Rust", 0, 8, 0, 0, 0, 0, 0, 1, 1, 10
+"/home/admins/projects/pessoa/backend/src/analysis/mod.rs", "Rust", 0, 2, 0, 0, 0, 0, 0, 5, 1, 8
+"/home/admins/projects/pessoa/backend/src/analysis/structs.rs", "Rust", 0, 446, 0, 0, 0, 0, 0, 31, 37, 514
+"/home/admins/projects/pessoa/backend/src/application/mod.rs", "Rust", 0, 8, 0, 0, 0, 0, 0, 4, 2, 14
+"/home/admins/projects/pessoa/backend/src/application/page_break_application_service.rs", "Rust", 0, 237, 0, 0, 0, 0, 0, 45, 43, 325
+"/home/admins/projects/pessoa/backend/src/application/script_application_service.rs", "Rust", 0, 415, 0, 0, 0, 0, 0, 53, 65, 533
+"/home/admins/projects/pessoa/backend/src/application/script_sharing_application_service.rs", "Rust", 0, 206, 0, 0, 0, 0, 0, 30, 34, 270
+"/home/admins/projects/pessoa/backend/src/application/thumbnail_application_service.rs", "Rust", 0, 126, 0, 0, 0, 0, 0, 24, 26, 176
+"/home/admins/projects/pessoa/backend/src/auth/cookies.rs", "Rust", 0, 88, 0, 0, 0, 0, 0, 16, 21, 125
+"/home/admins/projects/pessoa/backend/src/auth/core.rs", "Rust", 0, 341, 0, 0, 0, 0, 0, 152, 65, 558
+"/home/admins/projects/pessoa/backend/src/auth/helpers.rs", "Rust", 0, 42, 0, 0, 0, 0, 0, 3, 5, 50
+"/home/admins/projects/pessoa/backend/src/auth/mod.rs", "Rust", 0, 19, 0, 0, 0, 0, 0, 16, 5, 40
+"/home/admins/projects/pessoa/backend/src/auth/websocket_auth.rs", "Rust", 0, 34, 0, 0, 0, 0, 0, 4, 8, 46
+"/home/admins/projects/pessoa/backend/src/bin/json_to_db.rs", "Rust", 0, 114, 0, 0, 0, 0, 0, 11, 11, 136
+"/home/admins/projects/pessoa/backend/src/bin/test_claude_session.rs", "Rust", 0, 79, 0, 0, 0, 0, 0, 8, 15, 102
+"/home/admins/projects/pessoa/backend/src/bin/test_json_to_db.rs", "Rust", 0, 65, 0, 0, 0, 0, 0, 6, 11, 82
+"/home/admins/projects/pessoa/backend/src/bin/test_yjs_memory.rs", "Rust", 0, 58, 0, 0, 0, 0, 0, 5, 12, 75
+"/home/admins/projects/pessoa/backend/src/core/lib.rs", "Rust", 0, 37, 0, 0, 0, 0, 0, 12, 8, 57
+"/home/admins/projects/pessoa/backend/src/core/mod.rs", "Rust", 0, 6, 0, 0, 0, 0, 0, 15, 2, 23
+"/home/admins/projects/pessoa/backend/src/core/server.rs", "Rust", 0, 213, 0, 0, 0, 0, 0, 29, 33, 275
+"/home/admins/projects/pessoa/backend/src/core/service_manager.rs", "Rust", 0, 246, 0, 0, 0, 0, 0, 50, 47, 343
+"/home/admins/projects/pessoa/backend/src/domain/collaboration_service.rs", "Rust", 0, 17, 0, 0, 0, 0, 0, 11, 6, 34
+"/home/admins/projects/pessoa/backend/src/domain/content_service.rs", "Rust", 0, 13, 0, 0, 0, 0, 0, 9, 5, 27
+"/home/admins/projects/pessoa/backend/src/domain/mod.rs", "Rust", 0, 9, 0, 0, 0, 0, 0, 5, 2, 16
+"/home/admins/projects/pessoa/backend/src/domain/script_service.rs", "Rust", 0, 287, 0, 0, 0, 0, 0, 63, 75, 425
+"/home/admins/projects/pessoa/backend/src/domain/snapshot/content_extractor_service.rs", "Rust", 0, 457, 0, 0, 0, 0, 0, 31, 57, 545
+"/home/admins/projects/pessoa/backend/src/domain/snapshot/html_parser_service.rs", "Rust", 0, 198, 0, 0, 0, 0, 0, 29, 41, 268
+"/home/admins/projects/pessoa/backend/src/domain/snapshot/mod.rs", "Rust", 0, 8, 0, 0, 0, 0, 0, 4, 2, 14
+"/home/admins/projects/pessoa/backend/src/domain/snapshot/snapshot_coordinator_service.rs", "Rust", 0, 280, 0, 0, 0, 0, 0, 23, 55, 358
+"/home/admins/projects/pessoa/backend/src/domain/snapshot/yjs_processor_service.rs", "Rust", 0, 319, 0, 0, 0, 0, 0, 49, 53, 421
+"/home/admins/projects/pessoa/backend/src/domain/snapshot_service.rs", "Rust", 0, 17, 0, 0, 0, 0, 0, 11, 6, 34
+"/home/admins/projects/pessoa/backend/src/error/helpers.rs", "Rust", 0, 176, 0, 0, 0, 0, 0, 106, 26, 308
+"/home/admins/projects/pessoa/backend/src/error/mod.rs", "Rust", 0, 11, 0, 0, 0, 0, 0, 16, 3, 30
+"/home/admins/projects/pessoa/backend/src/error/types.rs", "Rust", 0, 246, 0, 0, 0, 0, 0, 47, 24, 317
+"/home/admins/projects/pessoa/backend/src/external/mod.rs", "Rust", 0, 0, 0, 0, 0, 0, 0, 12, 1, 13
+"/home/admins/projects/pessoa/backend/src/handlers/auth.rs", "Rust", 0, 196, 0, 0, 0, 0, 0, 57, 34, 287
+"/home/admins/projects/pessoa/backend/src/handlers/claude_session_handler.rs", "Rust", 0, 85, 0, 0, 0, 0, 0, 0, 12, 97
+"/home/admins/projects/pessoa/backend/src/handlers/claude_websocket.rs", "Rust", 0, 133, 0, 0, 0, 0, 0, 12, 12, 157
+"/home/admins/projects/pessoa/backend/src/handlers/mod.rs", "Rust", 0, 6, 0, 0, 0, 0, 0, 4, 1, 11
+"/home/admins/projects/pessoa/backend/src/handlers/page_break_handlers.rs", "Rust", 0, 183, 0, 0, 0, 0, 0, 43, 27, 253
+"/home/admins/projects/pessoa/backend/src/handlers/script.rs", "Rust", 0, 184, 0, 0, 0, 0, 0, 41, 34, 259
+"/home/admins/projects/pessoa/backend/src/handlers/script_upload_handler.rs", "Rust", 0, 136, 0, 0, 0, 0, 0, 25, 31, 192
+"/home/admins/projects/pessoa/backend/src/infrastructure/config.rs", "Rust", 0, 85, 0, 0, 0, 0, 0, 16, 5, 106
+"/home/admins/projects/pessoa/backend/src/infrastructure/middleware.rs", "Rust", 0, 61, 0, 0, 0, 0, 0, 9, 10, 80
+"/home/admins/projects/pessoa/backend/src/infrastructure/mod.rs", "Rust", 0, 4, 0, 0, 0, 0, 0, 16, 2, 22
+"/home/admins/projects/pessoa/backend/src/lib.rs", "Rust", 0, 15, 0, 0, 0, 0, 0, 16, 3, 34
+"/home/admins/projects/pessoa/backend/src/main.rs", "Rust", 0, 78, 0, 0, 0, 0, 0, 48, 21, 147
+"/home/admins/projects/pessoa/backend/src/models/block.rs", "Rust", 0, 17, 0, 0, 0, 0, 0, 14, 1, 32
+"/home/admins/projects/pessoa/backend/src/models/edit.rs", "Rust", 0, 12, 0, 0, 0, 0, 0, 9, 1, 22
+"/home/admins/projects/pessoa/backend/src/models/mod.rs", "Rust", 0, 8, 0, 0, 0, 0, 0, 4, 0, 12
+"/home/admins/projects/pessoa/backend/src/models/script.rs", "Rust", 0, 14, 0, 0, 0, 0, 0, 10, 1, 25
+"/home/admins/projects/pessoa/backend/src/models/script_layout.rs", "Rust", 0, 31, 0, 0, 0, 0, 0, 16, 3, 50
+"/home/admins/projects/pessoa/backend/src/models/script_share.rs", "Rust", 0, 37, 0, 0, 0, 0, 0, 14, 5, 56
+"/home/admins/projects/pessoa/backend/src/models/snapshot_meta.rs", "Rust", 0, 10, 0, 0, 0, 0, 0, 0, 1, 11
+"/home/admins/projects/pessoa/backend/src/models/user.rs", "Rust", 0, 13, 0, 0, 0, 0, 0, 9, 1, 23
+"/home/admins/projects/pessoa/backend/src/models/yjs_update.rs", "Rust", 0, 12, 0, 0, 0, 0, 0, 0, 1, 13
+"/home/admins/projects/pessoa/backend/src/networking/mod.rs", "Rust", 0, 5, 0, 0, 0, 0, 0, 16, 2, 23
+"/home/admins/projects/pessoa/backend/src/networking/websocket.rs", "Rust", 0, 363, 0, 0, 0, 0, 0, 84, 63, 510
+"/home/admins/projects/pessoa/backend/src/repositories/block_repository.rs", "Rust", 0, 81, 0, 0, 0, 0, 0, 9, 15, 105
+"/home/admins/projects/pessoa/backend/src/repositories/mod.rs", "Rust", 0, 10, 0, 0, 0, 0, 0, 5, 2, 17
+"/home/admins/projects/pessoa/backend/src/repositories/script_repository.rs", "Rust", 0, 169, 0, 0, 0, 0, 0, 13, 35, 217
+"/home/admins/projects/pessoa/backend/src/repositories/snapshot_repository.rs", "Rust", 0, 197, 0, 0, 0, 0, 0, 17, 39, 253
+"/home/admins/projects/pessoa/backend/src/repositories/user_repository.rs", "Rust", 0, 151, 0, 0, 0, 0, 0, 12, 31, 194
+"/home/admins/projects/pessoa/backend/src/repositories/yjs_update_repository.rs", "Rust", 0, 213, 0, 0, 0, 0, 0, 14, 39, 266
+"/home/admins/projects/pessoa/backend/src/services/async_db_writer.rs", "Rust", 0, 64, 0, 0, 0, 0, 0, 9, 7, 80
+"/home/admins/projects/pessoa/backend/src/services/claude_session_monitor.rs", "Rust", 0, 59, 0, 0, 0, 0, 0, 1, 11, 71
+"/home/admins/projects/pessoa/backend/src/services/claude_session_service.rs", "Rust", 0, 339, 0, 0, 0, 0, 0, 32, 49, 420
+"/home/admins/projects/pessoa/backend/src/services/json_to_db_service.rs", "Rust", 0, 321, 0, 0, 0, 0, 0, 31, 36, 388
+"/home/admins/projects/pessoa/backend/src/services/mod.rs", "Rust", 0, 12, 0, 0, 0, 0, 0, 17, 2, 31
+"/home/admins/projects/pessoa/backend/src/services/persistence_event.rs", "Rust", 0, 9, 0, 0, 0, 0, 0, 1, 1, 11
+"/home/admins/projects/pessoa/backend/src/services/prompt.md", "Markdown", 0, 0, 0, 214, 0, 0, 0, 0, 34, 248
+"/home/admins/projects/pessoa/backend/src/services/snapshotting_service_v2.rs", "Rust", 0, 71, 0, 0, 0, 0, 0, 5, 17, 93
+"/home/admins/projects/pessoa/backend/src/services/thumbnail.rs", "Rust", 0, 204, 0, 0, 0, 0, 0, 21, 25, 250
+"/home/admins/projects/pessoa/backend/src/utils/mod.rs", "Rust", 0, 1, 0, 0, 0, 0, 0, 7, 2, 10
+"/home/admins/projects/pessoa/backend/src/utils/test_yjs.rs", "Rust", 0, 3, 0, 0, 0, 0, 0, 3, 1, 7
+"/home/admins/projects/pessoa/backend/test_multipage.json", "JSON", 0, 0, 0, 0, 109, 0, 0, 0, 0, 109
+"/home/admins/projects/pessoa/backend/verify_insert.sql", "MS SQL", 10, 0, 0, 0, 0, 0, 0, 2, 1, 13
+"Total", "-", 176, 8420, 3, 214, 117, 7, 318, 1682, 1545, 12482

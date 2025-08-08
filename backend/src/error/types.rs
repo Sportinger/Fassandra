@@ -144,6 +144,8 @@ fn sanitize_error_message(message: &str, error_type: &str) -> String {
         "Invalid email format",
         "Invalid token format", 
         "Invalid credentials",
+        "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)",
+        "Password must be at least 8 characters long",
         "Access denied",
         "Resource not found",
         "Email already exists",
