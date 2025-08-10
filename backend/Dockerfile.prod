@@ -202,21 +202,23 @@ COPY --chown=appuser:appuser execute_sql.sh /app/execute_sql.sh
 COPY --chown=appuser:appuser json_to_db.sh /app/json_to_db.sh
 COPY --chown=appuser:appuser init-claude.sh /app/init-claude.sh
 COPY --chown=appuser:appuser docker-entrypoint.sh /app/docker-entrypoint.sh
+COPY --chown=appuser:appuser claude-wrapper.sh /app/claude-wrapper.sh
+COPY --chown=appuser:appuser claude-session-wrapper.sh /app/claude-session-wrapper.sh
+COPY --chown=appuser:appuser monitor-claude-session.sh /app/monitor-claude-session.sh
 COPY --chown=appuser:appuser src/services/prompt.md /app/src/services/prompt.md
 
 # Make scripts executable
-RUN chmod +x /app/execute_sql.sh /app/json_to_db.sh /app/init-claude.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/execute_sql.sh /app/json_to_db.sh /app/init-claude.sh /app/docker-entrypoint.sh /app/claude-wrapper.sh /app/claude-session-wrapper.sh /app/monitor-claude-session.sh
+
+# Setup Claude Code settings with bypass permissions
+COPY --chown=appuser:appuser claude-settings.json /root/.config/claude-code/settings.json
+COPY --chown=appuser:appuser claude-settings.json /home/appuser/.config/claude-code/settings.json
+RUN mkdir -p /root/.config/claude-code /home/appuser/.config/claude-code && \
+    chmod 755 /root/.config/claude-code /home/appuser/.config/claude-code && \
+    chown -R appuser:appuser /home/appuser/.config/claude-code
 
 # Create uploads directory
 RUN mkdir -p /app/uploads/scripts && chown -R appuser:appuser /app/uploads
-
-# Copy Claude settings to appuser's home if exists
-# Use a conditional approach to avoid build failure if file doesn't exist
-RUN if [ -f .claude/settings.json ]; then \
-      mkdir -p /home/appuser/.claude && \
-      cp .claude/settings.json /home/appuser/.claude/settings.json && \
-      chown appuser:appuser /home/appuser/.claude/settings.json; \
-    fi
 
 # Ensure all /app contents are owned by appuser
 RUN chown -R appuser:appuser /app

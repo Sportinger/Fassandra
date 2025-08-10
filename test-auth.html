@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Test</title>
+</head>
+<body>
+    <h1>Authentication Test</h1>
+    
+    <div>
+        <h2>Register</h2>
+        <input type="email" id="reg-email" placeholder="Email" value="test@example.com">
+        <input type="text" id="reg-username" placeholder="Username" value="testuser">
+        <input type="password" id="reg-password" placeholder="Password" value="TestPass123@">
+        <button onclick="testRegister()">Register</button>
+        <div id="reg-result"></div>
+    </div>
+    
+    <hr>
+    
+    <div>
+        <h2>Login</h2>
+        <input type="email" id="login-email" placeholder="Email" value="test@example.com">
+        <input type="password" id="login-password" placeholder="Password" value="TestPass123@">
+        <button onclick="testLogin()">Login</button>
+        <div id="login-result"></div>
+    </div>
+    
+    <hr>
+    
+    <div>
+        <h2>Test Protected Endpoint</h2>
+        <button onclick="testProtected()">Get User Info</button>
+        <div id="protected-result"></div>
+    </div>
+
+    <script>
+        const baseUrl = 'http://localhost:8080';
+        
+        async function testRegister() {
+            const email = document.getElementById('reg-email').value;
+            const username = document.getElementById('reg-username').value;
+            const password = document.getElementById('reg-password').value;
+            
+            try {
+                const response = await fetch(`${baseUrl}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, username, password })
+                });
+                
+                const data = await response.json();
+                document.getElementById('reg-result').innerHTML = 
+                    `<pre>Status: ${response.status}\n${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                document.getElementById('reg-result').innerHTML = 
+                    `<pre>Error: ${error.message}</pre>`;
+            }
+        }
+        
+        async function testLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                const response = await fetch(`${baseUrl}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                document.getElementById('login-result').innerHTML = 
+                    `<pre>Status: ${response.status}\n${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                document.getElementById('login-result').innerHTML = 
+                    `<pre>Error: ${error.message}</pre>`;
+            }
+        }
+        
+        async function testProtected() {
+            try {
+                const response = await fetch(`${baseUrl}/api/me`, {
+                    method: 'GET',
+                    credentials: 'include',
+                });
+                
+                if (response.status === 401) {
+                    document.getElementById('protected-result').innerHTML = 
+                        `<pre>Status: 401 - Not authenticated</pre>`;
+                } else {
+                    const data = await response.json();
+                    document.getElementById('protected-result').innerHTML = 
+                        `<pre>Status: ${response.status}\n${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                document.getElementById('protected-result').innerHTML = 
+                    `<pre>Error: ${error.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>

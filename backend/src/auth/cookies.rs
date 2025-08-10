@@ -11,12 +11,17 @@ const AUTH_COOKIE_NAME: &str = "auth_token";
 const CSRF_COOKIE_NAME: &str = "csrf_token";
 const COOKIE_MAX_AGE_DAYS: i64 = 7;
 
-/// Check if we're in production mode
-/// In production, cookies must be secure (HTTPS only)
-/// In development, cookies can be non-secure (for proxied HTTP)
-fn is_production() -> bool {
-    std::env::var("PRODUCTION").is_ok() || 
-    std::env::var("RUST_ENV").unwrap_or_default() == "production"
+/// Check if we're in production mode or using HTTPS
+/// Cookies should be secure when using HTTPS (even in dev)
+fn should_use_secure_cookies() -> bool {
+    // Check if we're in production
+    if std::env::var("PRODUCTION").is_ok() || 
+       std::env::var("RUST_ENV").unwrap_or_default() == "production" {
+        return true;
+    }
+    
+    // Check if HTTPS is enabled in dev (for proper cookie handling)
+    std::env::var("USE_HTTPS").unwrap_or_default() == "true"
 }
 
 
@@ -35,7 +40,7 @@ pub fn set_auth_cookie(cookies: &Cookies, token: &str) -> Result<()> {
         .max_age(time::Duration::days(COOKIE_MAX_AGE_DAYS))
         .same_site(SameSite::Lax)
         .http_only(true)
-        .secure(is_production()) // Secure in production, non-secure in dev (for proxy)
+        .secure(should_use_secure_cookies()) // Secure when using HTTPS
         .build();
     
     cookies.add(cookie);
@@ -49,7 +54,7 @@ pub fn remove_auth_cookie(cookies: &Cookies) {
         .max_age(time::Duration::seconds(0))
         .same_site(SameSite::Lax)
         .http_only(true)
-        .secure(is_production()) // Match the setting used when creating the cookie
+        .secure(should_use_secure_cookies()) // Match the setting used when creating the cookie
         .build();
     
     cookies.add(cookie);
@@ -70,9 +75,9 @@ pub fn set_csrf_cookie(cookies: &Cookies, token: &str) {
     let cookie = Cookie::build((CSRF_COOKIE_NAME, token.to_string()))
         .path("/")
         .max_age(time::Duration::days(COOKIE_MAX_AGE_DAYS))
-        .same_site(if is_production() { SameSite::Strict } else { SameSite::Lax })
+        .same_site(if should_use_secure_cookies() { SameSite::Strict } else { SameSite::Lax })
         .http_only(false) // CSRF token needs to be readable by JavaScript
-        .secure(is_production()) // Secure in production, non-secure in dev
+        .secure(should_use_secure_cookies()) // Secure when using HTTPS
         .build();
     
     cookies.add(cookie);

@@ -210,54 +210,105 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       updateUploadStatus({ 
         uploadStatus: 'uploading' as UploadStatus, 
         uploadProgress: 5,
-        uploadStage: 'Validating file...'
+        uploadSubStage: 'Validating file...'
       });
 
-      // Create Claude session with proper tracking
-      const sessionService = new ClaudeSessionService(token, placeholder.fileData);
-      sessionManager.track(placeholder.id, sessionService);
-      
-      updateUploadStatus({ 
+      // Step 1: Upload PDF to backend to start Claude session
+      const formData = new FormData();
+      formData.append('file', placeholder.fileData);
+
+      // For mobile (JWT token), include Authorization header; for web, rely on cookies
+      const headers: Record<string, string> = {};
+      if (token && token !== 'authenticated') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      updateUploadStatus({
+        uploadProgress: 10,
+        uploadSubStage: 'Uploading PDF...'
+      });
+
+      const uploadResp = await fetch('/api/s/upload-pdf', {
+        method: 'POST',
+        body: formData,
+        headers,
+        credentials: 'include'
+      });
+      if (!uploadResp.ok) {
+        const txt = await uploadResp.text();
+        throw new Error(`Upload failed: ${uploadResp.status} ${uploadResp.statusText} ${txt}`);
+      }
+      const { session_id } = await uploadResp.json() as { session_id: string };
+
+      updateUploadStatus({
         uploadProgress: 20,
-        uploadStage: 'Processing with Claude...'
+        uploadSubStage: 'Processing with Claude...'
       });
 
-      // Process with Claude
-      const parsedScript = await sessionService.processScript((progress, stage) => {
-        updateUploadStatus({ 
-          uploadProgress: 20 + (progress * 0.6), // 20-80%
-          uploadStage: stage
-        });
-      });
+      // Step 2: Ensure we have a real JWT token for WebSocket auth
+      let wsToken = token;
+      if (!wsToken || wsToken === 'authenticated') {
+        try {
+          const wsTokResp = await fetch('/api/ws-token', { credentials: 'include' });
+          if (wsTokResp.ok) {
+            const data = await wsTokResp.json() as { token: string };
+            wsToken = data.token;
+          }
+        } catch (e) {
+          logger.warn('ScriptList', 'Failed to retrieve WS token from cookie endpoint:', e);
+        }
+      }
 
-      updateUploadStatus({ 
-        uploadStatus: 'processing' as UploadStatus,
-        uploadProgress: 85,
-        uploadStage: 'Creating script in database...'
-      });
+      if (!wsToken || wsToken === 'authenticated') {
+        throw new Error('Unable to obtain authentication token for processing session');
+      }
 
-      // Create script in backend
-      const scriptId = await createScriptFromParsed(parsedScript);
+      // Step 3: Connect WebSocket to receive progress and completion
+      const sessionService = new ClaudeSessionService(
+        session_id,
+        wsToken,
+        (update) => {
+          // Progress updates
+          if (typeof update.progress === 'number') {
+            const prog = Math.min(95, Math.max(20, Math.round(update.progress)));
+            updateUploadStatus({ uploadProgress: prog });
+          }
+          if (update.status) {
+            updateUploadStatus({ uploadSubStage: update.status });
+          }
+        },
+        (scriptId) => {
+          // Completed: backend has created the script
+          updateUploadStatus({
+            uploadStatus: 'completed' as UploadStatus,
+            uploadProgress: 100,
+            uploadSubStage: 'Upload complete!'
+          });
+          setTimeout(() => {
+            refreshScripts();
+            removeUpload(placeholder.id);
+            sessionManager.dispose(placeholder.id);
+          }, 1000);
+        },
+        (errMsg) => {
+          updateUploadStatus({
+            uploadStatus: 'error' as UploadStatus,
+            uploadError: errMsg || 'Processing failed',
+            uploadSubStage: 'Upload failed'
+          });
+          sessionManager.dispose(placeholder.id);
+        }
+      );
 
-      updateUploadStatus({ 
-        uploadStatus: 'completed' as UploadStatus,
-        uploadProgress: 100,
-        uploadStage: 'Upload complete!'
-      });
-
-      // Refresh scripts list after successful upload
-      setTimeout(() => {
-        refreshScripts();
-        removeUpload(placeholder.id);
-        sessionManager.dispose(placeholder.id); // Clean up session
-      }, 1500);
+      sessionManager.track(placeholder.id, sessionService);
+      sessionService.connect();
 
     } catch (error: any) {
       logger.error('ScriptList', 'Upload failed:', error);
       updateUploadStatus({ 
         uploadStatus: 'error' as UploadStatus,
         uploadError: error.message || 'Upload failed',
-        uploadStage: 'Upload failed'
+        uploadSubStage: 'Upload failed'
       });
       sessionManager.dispose(placeholder.id); // Clean up session on error
     }
@@ -270,7 +321,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         <div className={styles.uploadProgress}>
           {placeholder.uploadStatus === 'uploading' && (
             <>
-              <div className={styles.uploadStage}>{placeholder.uploadStage}</div>
+              <div className={styles.uploadStage}>{placeholder.uploadSubStage}</div>
               <div className={styles.progressBar}>
                 <div 
                   className={styles.progressFill} 
@@ -322,7 +373,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         
         {/* Add New Script Creator */}
         <ScriptCreator
-          onCreate={scriptActions.handleCreateScript}
+          onCreate={async (name: string) => { await scriptActions.handleCreateScript(name); }}
           onUploadClick={onUploadClick}
         />
       </div>

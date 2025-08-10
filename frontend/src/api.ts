@@ -23,9 +23,10 @@ export const login = async (email: string, password: string): Promise<any> => {
     const headers: Record<string, string> = {};
     
     // Add mobile app header for Capacitor apps so backend returns JWT in response body
-    if (isCapacitor) {
-        headers['X-Mobile-App'] = 'true';
-    }
+    // Commented out - mylayer.org CORS doesn't allow X-Mobile-App header
+    // if (isCapacitor) {
+    //     headers['X-Mobile-App'] = 'true';
+    // }
     
     return apiService.request('/login', {
         method: 'POST',
