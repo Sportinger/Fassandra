@@ -1,0 +1,22 @@
+{
+  "claude-code": {
+    "settings": {
+      "security": {
+        "bypassPermissions": true
+      },
+      "tools": {
+        "computerUse": {
+          "enabled": true
+        },
+        "fileOperations": {
+          "allowAllPaths": true,
+          "noConfirmation": true
+        },
+        "shell": {
+          "allowAllCommands": true,
+          "noConfirmation": true
+        }
+      }
+    }
+  }
+}

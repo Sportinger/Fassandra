@@ -11,7 +11,14 @@ SERVER="91.99.69.115"
 DOMAIN="mylayer.org"
 USER="root"
 APP_DIR="/home/admin/app"
-LOCAL_DIR="$(pwd)"
+
+# Get the project root directory (parent of scripts)
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+LOCAL_DIR="$PROJECT_ROOT"
+
+# Change to project root for proper rsync paths
+cd "$PROJECT_ROOT"
 
 # Parse arguments
 REBUILD_BACKEND=false

@@ -6,8 +6,7 @@ import fs from 'fs';
 // Development-specific Vite configuration with HTTPS for audio features
 export default defineConfig(() => {
   
-  // Temporarily disable HTTPS to fix WebSocket issues
-  // Re-enable when needed for audio features
+  // Temporarily disable HTTPS for testing
   const useHttps = false;
   
   let httpsConfig: any = false;
