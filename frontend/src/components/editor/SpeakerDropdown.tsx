@@ -7,12 +7,14 @@ interface SpeakerDropdownProps {
   editor: EditorInstance | null;
   speakerNames: Set<string>;
   isVisible: boolean;
+  onSpeakerChange?: (newSpeaker: string, oldSpeaker: string) => boolean;
 }
 
 export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
   editor,
   speakerNames,
-  isVisible
+  isVisible,
+  onSpeakerChange
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentSpeaker, setCurrentSpeaker] = useState('Speaker');
@@ -58,26 +60,55 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
     
     try {
       const { selection } = editor.state;
-      const { $from, $to } = selection;
+      const { $from } = selection;
       
-      // Find the speaker node and replace its content
-      for (let depth = $from.depth; depth > 0; depth--) {
+      // Find the dialogue block first, then the speaker within it
+      let speakerPos = null;
+      let speakerNode = null;
+      
+      // Walk up to find the dialogue block
+      for (let depth = $from.depth; depth >= 0; depth--) {
         const node = $from.node(depth);
-        if (node.type.name === 'speaker') {
-          const speakerStart = $from.start(depth);
-          const speakerEnd = $from.end(depth);
+        if (node.type.name === 'dialogueBlock') {
+          // Found dialogue block, now find the speaker node within it
+          const blockStart = depth === 0 ? 0 : $from.start(depth);
           
-          // Replace the speaker content
-          editor.chain()
-            .focus()
-            .setTextSelection({ from: speakerStart, to: speakerEnd })
-            .insertContent(speakerName)
-            .run();
-          
-          setCurrentSpeaker(speakerName);
-          setIsOpen(false);
-          return;
+          node.forEach((child, offset) => {
+            if (child.type.name === 'speaker') {
+              speakerPos = blockStart + offset + 1; // +1 to get inside the node
+              speakerNode = child;
+            }
+          });
+          break;
+        } else if (node.type.name === 'speaker') {
+          // Directly in a speaker node
+          speakerPos = $from.start(depth);
+          speakerNode = node;
+          break;
         }
+      }
+      
+      if (speakerPos !== null && speakerNode) {
+        // Calculate the exact position to replace text
+        const from = speakerPos;
+        const to = from + speakerNode.content.size;
+        
+        // Replace the speaker content
+        editor.chain()
+          .focus()
+          .setTextSelection({ from, to })
+          .insertContent(speakerName)
+          .run();
+        
+        setCurrentSpeaker(speakerName);
+        setIsOpen(false);
+        
+        // Notify parent component about speaker change
+        if (onSpeakerChange) {
+          onSpeakerChange(speakerName, currentSpeaker);
+        }
+      } else {
+        logger.warn('SpeakerDropdown', 'Could not find speaker node to update');
       }
     } catch (error) {
       logger.error('SpeakerDropdown', 'Failed to set speaker:', error);
@@ -131,7 +162,7 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
       </button>
       
       {isOpen && (
-        <div className="dropdownMenu dropdownMenuLeft">
+        <div className="dropdownMenu dropdownMenuRight">
           <div className="dropdownHeader">
             Select Speaker:
           </div>
