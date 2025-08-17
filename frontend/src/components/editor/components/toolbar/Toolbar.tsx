@@ -589,16 +589,28 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     const isMobile = windowWidth <= 767;
     
     if (isMobile) {
-      // Mobile: horizontal layout - height is just button height + padding
-      const mobileButtonHeight = 44; // Touch-optimized
-      const mobilePadding = 16; // 8px top + 8px bottom (--space-sm * 2)
-      const finalHeight = mobileButtonHeight + mobilePadding;
+      // Mobile: flexible layout with wrapping - calculate based on button count
+      const mobileButtonHeight = 48; // Touch-optimized (increased from 44)
+      const mobileButtonWidth = 48;
+      const gap = 6; // Gap between buttons
+      const padding = 16; // Total vertical padding
+      
+      // Calculate how many buttons fit per row (approximate)
+      const maxWidth = Math.min(windowWidth - 32, 300); // Max toolbar width
+      const buttonsPerRow = Math.floor((maxWidth + gap) / (mobileButtonWidth + gap));
+      const rows = Math.ceil(visibleCount / buttonsPerRow);
+      
+      // Height = (button height * rows) + (gap * (rows - 1)) + padding
+      const finalHeight = (mobileButtonHeight * rows) + (gap * Math.max(0, rows - 1)) + padding;
+      
       logger.debug('Toolbar', '[Mobile Toolbar] Height calculation:', {
         windowWidth,
         isMobile,
         visibleCount,
+        buttonsPerRow,
+        rows,
         mobileButtonHeight,
-        mobilePadding,
+        padding,
         finalHeight
       });
       return finalHeight;
@@ -651,16 +663,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   // Calculate dynamic bottom position for mobile keyboard adjustment
   const isMobile = windowWidth <= 767;
   const keyboardActive = isMobile && keyboardHeight > 0;
-  const calculatedBottom = keyboardActive ? keyboardHeight + 80 : 24; // 80px above keyboard for full visibility
+  const calculatedBottom = keyboardActive ? keyboardHeight : 0; // Position directly above keyboard or at bottom
   
   const dynamicStyle = isMobile ? {
-    height: `${toolbarHeight}px`,
-    /* No transitions */
-    /* transition: 'height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), bottom 0.3s ease-out', */
+    // Let height be auto-determined by CSS flexbox wrapping
+    // height: 'auto', // Remove fixed height for mobile
     '--calculated-bottom': `${calculatedBottom}px`,
     bottom: keyboardActive 
       ? `${calculatedBottom}px` // Above keyboard
-      : `var(--space-lg)` // Default position
+      : '0' // Stick to bottom when no keyboard
   } : {
     minHeight: `${toolbarHeight}px`,
     /* No transitions */
