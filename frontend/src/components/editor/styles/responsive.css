@@ -371,6 +371,24 @@ html, body {
     /* Minimal padding for edge-to-edge feel */
     padding: var(--space-md);
   }
+
+  /* Mobile centered layout fix */
+  .ProseMirror [data-type="dialogue-block"][data-layout="centered"] {
+    gap: var(--space-xs);  /* Smaller gap on mobile */
+  }
+
+  .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="speaker"] {
+    width: auto;  /* Only as wide as content */
+    max-width: fit-content;  /* Fit to content */
+    padding: 0 var(--space-xs);
+    font-size: 1em;  /* Ensure readable size */
+  }
+  
+  .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="dialogue-text"] {
+    max-width: 90%;  /* Wider on mobile */
+    padding: 0 var(--space-xs);
+    font-size: 0.95em;  /* Slightly smaller for mobile */
+  }
   
   .single-page-view, .multi-page-view {
     /* Remove toolbar padding on mobile */
@@ -478,10 +496,11 @@ html, body {
   }
   
   .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="speaker"] {
-    margin: 0 auto;
+    margin: 0;
     text-align: left;  /* Left align speaker text */
-    display: block;
-    max-width: 60%;
+    display: inline-block;  /* Only as wide as content */
+    width: auto;  /* Don't stretch */
+    max-width: fit-content;  /* Fit to content */
   }
   
   .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="dialogue-text"] {
