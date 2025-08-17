@@ -119,12 +119,8 @@ export const CueTypeDropdown: React.FC<CueTypeDropdownProps> = ({
           isOpen ? 'active' : ''
         ].filter(Boolean).join(' ')}
         onClick={() => setIsOpen(!isOpen)}
-        title="Cue Type"
       >
-        <span className="icon">{CUE_TYPE_ICONS[currentCueType]}</span>
-        <span className="label">
-          {CUE_TYPE_LABELS[currentCueType]}
-        </span>
+        <span className="label">{CUE_TYPE_ICONS[currentCueType]}</span>
         <span className={[
           'arrow',
           isOpen ? 'open' : ''
@@ -137,11 +133,7 @@ export const CueTypeDropdown: React.FC<CueTypeDropdownProps> = ({
         <div className={[
           'dropdownMenu',
           `position-${dropdownPosition}`
-        ].filter(Boolean).join(' ')}>
-          <div className="dropdownHeader">
-            Change Cue Type
-          </div>
-          <div className="dropdownList">
+        ].filter(Boolean).join(' ')} style={{ background: '#1a1a1a' }}>
             {cueTypes.map((type) => (
               <button
                 key={type}
@@ -156,7 +148,6 @@ export const CueTypeDropdown: React.FC<CueTypeDropdownProps> = ({
                 {CUE_TYPE_LABELS[type]}
               </button>
             ))}
-          </div>
         </div>
       )}
     </div>

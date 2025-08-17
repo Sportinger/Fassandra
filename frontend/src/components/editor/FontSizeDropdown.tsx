@@ -181,7 +181,6 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
           isOpen ? 'active' : ''
         ].filter(Boolean).join(' ')}
         onClick={() => setIsOpen(!isOpen)}
-        title="Font Size"
       >
         <span className="label">
           {currentSize}
@@ -198,7 +197,7 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
         <div className={[
           'dropdownMenu',
           `position-${dropdownPosition}`
-        ].filter(Boolean).join(' ')}>
+        ].filter(Boolean).join(' ')} style={{ background: '#1a1a1a' }}>
           <div className="dropdownList">
             {FONT_SIZES.map((size) => (
               <button
