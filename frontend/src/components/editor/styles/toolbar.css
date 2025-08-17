@@ -362,7 +362,18 @@
   left: auto;
 }
 
-/* Ensure the dropdown container allows overflow to the left */
+/* Right-opening dropdown menu for speaker selection */
+.dropdownMenuRight {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  margin-left: var(--space-xs);
+  right: auto;
+  min-width: 200px;
+  z-index: 10000;
+}
+
+/* Ensure the dropdown container allows overflow */
 .floatingToolbar .dropdownContainer {
   overflow: visible;
 }
