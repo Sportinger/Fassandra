@@ -7,6 +7,7 @@ import { apiService } from './services/ApiService';
 import { Script, ScriptWithBlocks, Edit, ScriptShare, ScriptShareWithUser, ShareScriptRequest, ScriptLayout, CreateScriptLayoutRequest, UpdateScriptLayoutRequest } from './types';
 import { apiCache, CACHE_CONFIG, invalidateScriptCaches } from './utils/apiCache';
 import { createDebouncedAPI, createThrottledAPI } from './utils/rateLimit';
+import { scriptEventBus } from './services/ScriptEventBus';
 
 // Set up the API service token (this would be called from AuthContext)
 export const setApiToken = (token: string | null) => {
@@ -92,10 +93,13 @@ export const deleteScript = async (scriptId: string): Promise<void> => {
 // --- Blocks --- //
 
 export const createBlock = async (scriptId: string, blockType: string, content: string): Promise<string> => {
-    return apiService.post(`/api/scripts/${scriptId}/blocks`, 
+    const result = await apiService.post(`/api/scripts/${scriptId}/blocks`, 
         { block_type: blockType, content }, 
         { scriptId, blockType, content }
     );
+    // Emit event to update preview
+    scriptEventBus.emit(scriptId);
+    return result;
 };
 
 export const updateBlock = async (blockId: string, content: string): Promise<void> => {
@@ -103,10 +107,13 @@ export const updateBlock = async (blockId: string, content: string): Promise<voi
 };
 
 export const saveContentToServer = async (scriptId: string, htmlContent: string): Promise<void> => {
-    return apiService.patch(`/api/scripts/${scriptId}/content`, 
+    const result = await apiService.patch(`/api/scripts/${scriptId}/content`, 
         { content: htmlContent }, 
         { scriptId, htmlContent }
     );
+    // Emit event to update preview
+    scriptEventBus.emit(scriptId);
+    return result;
 };
 
 export const getBlockHistory = async (blockId: string): Promise<Edit[]> => {
@@ -171,7 +178,10 @@ export const deleteScriptLayout = async (scriptId: string, layoutId: string): Pr
 // --- Content Snapshots --- //
 
 export const storeContentSnapshot = async (scriptId: string, content: string, format: string = 'html'): Promise<void> => {
-    return apiService.post(`/api/scripts/${scriptId}/snapshot`, { content, format }, { scriptId, content });
+    const result = await apiService.post(`/api/scripts/${scriptId}/snapshot`, { content, format }, { scriptId, content });
+    // Emit event to update preview
+    scriptEventBus.emit(scriptId);
+    return result;
 };
 
 export const getContentSnapshot = async (scriptId: string): Promise<{script_id: string, content: string, format: string, created_at: string | null}> => {

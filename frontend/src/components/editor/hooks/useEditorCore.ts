@@ -32,6 +32,7 @@ import { CueConnectionMark } from '../extensions/CueConnectionMark';
 import { FontSize } from '../FontSizeExtension';
 import { getScriptWithBlocks, getContentSnapshot, storeContentSnapshot } from '../../../api';
 import { convertBlocksToTiptapContent, extractSpeakerNames } from '../utils/contentConverters';
+import { scriptEventBus } from '../../../services/ScriptEventBus';
 import { isYDocEmpty } from '../utils/formatters';
 import { yjsDocumentManager } from '../../../services/yjsDocumentManager';
 import type { 
@@ -434,6 +435,8 @@ export const useEditorCore = ({
           setContentSnapshot(currentContent);
           setLastSyncTime(now);
           debugLog('[Real-time Sync] ✅ Content sync successful');
+          // Emit event to update preview
+          scriptEventBus.emit(stableScriptId);
         } catch (error) {
           logger.error('useEditorCore', '[Real-time Sync] ❌ Content sync failed:', error);
         }
