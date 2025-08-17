@@ -51,7 +51,7 @@ export const CueDropdown: React.FC<CueDropdownProps> = ({
       </button>
 
       {isOpen && (
-        <div className="dropdownMenu">
+        <div className="dropdownMenu" style={{ background: '#1a1a1a' }}>
           {cueTypes.map(cueType => (
             <button
               key={cueType}
