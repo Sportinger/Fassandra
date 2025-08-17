@@ -105,12 +105,12 @@ export class ApiService {
     private async buildHeaders(options: RequestOptions, path: string): Promise<Record<string, string>> {
         const headers: Record<string, string> = { ...options.headers };
 
-        // Note: Authentication is now handled via httpOnly cookies
-        // Don't send Bearer token for cookie-based auth (token is just a flag)
-        // Only send actual JWT tokens, not placeholder values
+        // Always send Authorization header when we have a JWT token
+        // This supports both sessionStorage-based auth (for multi-tab) and cookie-based auth
         if (this.token && this.token !== 'authenticated' && options.requireAuth !== false) {
             headers['Authorization'] = `Bearer ${this.token}`;
         }
+        // For backward compatibility, cookies are still sent with credentials: 'include'
 
         // Add CSRF token for state-changing requests (but not for auth endpoints)
         const isAuthEndpoint = path === '/login' || path === '/register';

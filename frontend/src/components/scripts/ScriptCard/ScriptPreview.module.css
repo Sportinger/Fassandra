@@ -4,17 +4,55 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 12px;
+  padding: 0;
   font-size: 10px;
   line-height: 1.4;
-  color: var(--text-color, #333);
+  color: #333;
   background: transparent;
 }
 
 .contentPreview {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
+  padding: 12px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  /* Optimize scrolling performance */
+  -webkit-overflow-scrolling: touch;
+  /* Remove will-change to prevent layer creation issues with tilt */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Custom scrollbar styling - always visible but subtle */
+.contentPreview::-webkit-scrollbar {
+  width: 4px;
+}
+
+.contentPreview::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.contentPreview::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+.contentPreview:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Firefox scrollbar */
+.contentPreview {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+}
+
+.contentPreview:hover {
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
 }
 
 .blockWrapper {
@@ -32,14 +70,14 @@
 
 .speaker {
   font-weight: 600;
-  color: var(--primary-color, #2563eb);
+  color: #2563eb;
   text-transform: uppercase;
   font-size: 9px;
   letter-spacing: 0.5px;
 }
 
 .line {
-  color: var(--text-color, #333);
+  color: #333;
   font-size: 10px;
 }
 
@@ -49,7 +87,7 @@
 }
 
 .stageDirection {
-  color: var(--text-secondary, #666);
+  color: #666;
   font-style: italic;
   font-size: 9px;
   margin: 4px 0;
@@ -57,7 +95,7 @@
 }
 
 .readingLabel {
-  color: var(--text-secondary, #666);
+  color: #666;
   font-style: italic;
   font-size: 9px;
 }
@@ -65,10 +103,12 @@
 .paragraph {
   margin: 6px 0;
   text-align: justify;
+  color: #333;
 }
 
 .defaultBlock {
   margin: 4px 0;
+  color: #333;
 }
 
 /* Loading, error, and empty states */
@@ -100,31 +140,6 @@
 
 .errorState {
   color: var(--error-color, #ef4444);
-}
-
-/* Fade out effect for long content */
-.fadeOut {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 40px;
-  background: linear-gradient(
-    to bottom, 
-    transparent 0%, 
-    var(--card-bg, rgba(255, 255, 255, 0.95)) 80%
-  );
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-bottom: 4px;
-}
-
-.moreIndicator {
-  color: var(--text-secondary, #666);
-  font-size: 14px;
-  font-weight: bold;
-  opacity: 0.6;
 }
 
 /* Responsive adjustments */
@@ -170,11 +185,15 @@
     color: var(--text-secondary-dark, #a3a3a3);
   }
   
-  .fadeOut {
-    background: linear-gradient(
-      to bottom, 
-      transparent 0%, 
-      var(--card-bg-dark, rgba(30, 30, 30, 0.95)) 80%
-    );
+  .contentPreview::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  
+  .contentPreview::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .contentPreview::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
   }
 }

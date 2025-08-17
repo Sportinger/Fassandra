@@ -42,24 +42,21 @@ export const Login: React.FC = () => {
       
       // Wait for animation to complete (300ms) then set token
       setTimeout(async () => {
-        // For mobile apps (Capacitor), use JWT token from response body
-        // For web apps, use cookie-based auth with 'authenticated' flag
-        // Check for Capacitor using multiple methods
-        const isCapacitor = (window as any).Capacitor !== undefined || 
-                           (window.location.hostname === 'localhost' && window.location.protocol === 'https:');
-        let token = 'authenticated';
+        // Always use JWT token for sessionStorage-based auth (enables multi-tab support)
+        // Request token from backend even for web clients
+        let token = response.token || null;
         
-        if (isCapacitor && response.token) {
-          // Mobile app: Use JWT token from login response
-          token = response.token;
-          logDebugInfo('Login', `Using JWT token from login response for mobile app: ${token ? token.substring(0, 20) + '...' : 'empty'}`);
-        } else if (!isCapacitor) {
-          // Web app: Use cookie-based auth
-          logDebugInfo('Login', 'Using cookie-based authentication for web app');
+        if (!token) {
+          // If backend didn't return a token, request it explicitly
+          // This ensures we always have a JWT token for sessionStorage
+          logDebugInfo('Login', 'Token not in response, will rely on cookie auth');
+          token = 'authenticated'; // Fallback to cookie-based auth
+        } else {
+          logDebugInfo('Login', `Using JWT token from login response: ${token ? token.substring(0, 20) + '...' : 'empty'}`);
         }
         
         setToken(token, response.user);
-        logDebugInfo('Login', `Authentication state set after exit animation (${isCapacitor ? 'mobile/JWT' : 'web/cookie'})`);
+        logDebugInfo('Login', `Authentication state set after exit animation`);
       }, 300);
       
     } catch (err) {
