@@ -155,14 +155,13 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
         ref={buttonRef}
         className={`toolbarButton dropdownButton ${isOpen ? 'active' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
-        title="Select Speaker"
       >
-        <span className="label">🗣️ {currentSpeaker}</span>
+        <span className="label">🗣️</span>
         <span className="arrow">▼</span>
       </button>
       
       {isOpen && (
-        <div className="dropdownMenu">
+        <div className="dropdownMenu" style={{ background: '#1a1a1a' }}>
           {allSpeakers.map((speaker, index) => (
             <button
               key={index}

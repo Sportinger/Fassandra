@@ -43,10 +43,9 @@ export const CueDropdown: React.FC<CueDropdownProps> = ({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`toolbarButton dropdownButton ${isOpen ? 'open' : ''}`}
-        title="Insert Cue"
         type="button"
       >
-        <span className="label">🎭 Cue</span>
+        <span className="label">🎭</span>
         <span className="arrow">▼</span>
       </button>
 
