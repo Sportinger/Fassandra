@@ -1,0 +1,180 @@
+.previewContainer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--text-color, #333);
+  background: transparent;
+}
+
+.contentPreview {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.blockWrapper {
+  margin-bottom: 8px;
+}
+
+/* Block type specific styles */
+.dialogueBlock,
+.monologueBlock,
+.readingBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.speaker {
+  font-weight: 600;
+  color: var(--primary-color, #2563eb);
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+.line {
+  color: var(--text-color, #333);
+  font-size: 10px;
+}
+
+.lines {
+  margin-top: 2px;
+  padding-left: 12px;
+}
+
+.stageDirection {
+  color: var(--text-secondary, #666);
+  font-style: italic;
+  font-size: 9px;
+  margin: 4px 0;
+  opacity: 0.9;
+}
+
+.readingLabel {
+  color: var(--text-secondary, #666);
+  font-style: italic;
+  font-size: 9px;
+}
+
+.paragraph {
+  margin: 6px 0;
+  text-align: justify;
+}
+
+.defaultBlock {
+  margin: 4px 0;
+}
+
+/* Loading, error, and empty states */
+.loadingState,
+.errorState,
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  color: var(--text-secondary, #666);
+}
+
+.loadingIcon,
+.errorIcon,
+.emptyIcon {
+  font-size: 24px;
+  opacity: 0.6;
+}
+
+.loadingText,
+.errorText,
+.emptyText {
+  font-size: 11px;
+  text-align: center;
+}
+
+.errorState {
+  color: var(--error-color, #ef4444);
+}
+
+/* Fade out effect for long content */
+.fadeOut {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(
+    to bottom, 
+    transparent 0%, 
+    var(--card-bg, rgba(255, 255, 255, 0.95)) 80%
+  );
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 4px;
+}
+
+.moreIndicator {
+  color: var(--text-secondary, #666);
+  font-size: 14px;
+  font-weight: bold;
+  opacity: 0.6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .previewContainer {
+    padding: 10px;
+  }
+  
+  .speaker {
+    font-size: 8px;
+  }
+  
+  .line,
+  .paragraph,
+  .defaultBlock {
+    font-size: 9px;
+  }
+  
+  .stageDirection,
+  .readingLabel {
+    font-size: 8px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .previewContainer {
+    color: var(--text-color-dark, #e5e5e5);
+  }
+  
+  .speaker {
+    color: var(--primary-color-dark, #60a5fa);
+  }
+  
+  .line,
+  .paragraph,
+  .defaultBlock {
+    color: var(--text-color-dark, #e5e5e5);
+  }
+  
+  .stageDirection,
+  .readingLabel {
+    color: var(--text-secondary-dark, #a3a3a3);
+  }
+  
+  .fadeOut {
+    background: linear-gradient(
+      to bottom, 
+      transparent 0%, 
+      var(--card-bg-dark, rgba(30, 30, 30, 0.95)) 80%
+    );
+  }
+}

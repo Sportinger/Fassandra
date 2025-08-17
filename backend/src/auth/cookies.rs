@@ -24,6 +24,23 @@ fn should_use_secure_cookies() -> bool {
     std::env::var("USE_HTTPS").unwrap_or_default() == "true"
 }
 
+/// Get appropriate SameSite setting based on environment
+fn get_same_site_setting() -> SameSite {
+    // In production, use Lax for better security
+    if std::env::var("PRODUCTION").is_ok() || 
+       std::env::var("RUST_ENV").unwrap_or_default() == "production" {
+        return SameSite::Lax;
+    }
+    
+    // In development with HTTP, use Lax
+    if !should_use_secure_cookies() {
+        return SameSite::Lax;
+    }
+    
+    // In development with HTTPS, use None for cross-origin
+    SameSite::None
+}
+
 
 /// CSRF token store - in production, this should be in Redis or database
 pub type CsrfTokenStore = Arc<RwLock<HashMap<String, (Uuid, chrono::DateTime<Utc>)>>>;
@@ -38,7 +55,7 @@ pub fn set_auth_cookie(cookies: &Cookies, token: &str) -> Result<()> {
     let cookie = Cookie::build((AUTH_COOKIE_NAME, token.to_string()))
         .path("/")
         .max_age(time::Duration::days(COOKIE_MAX_AGE_DAYS))
-        .same_site(SameSite::Lax)
+        .same_site(get_same_site_setting())
         .http_only(true)
         .secure(should_use_secure_cookies()) // Secure when using HTTPS
         .build();
@@ -52,7 +69,7 @@ pub fn remove_auth_cookie(cookies: &Cookies) {
     let cookie = Cookie::build((AUTH_COOKIE_NAME, ""))
         .path("/")
         .max_age(time::Duration::seconds(0))
-        .same_site(SameSite::Lax)
+        .same_site(get_same_site_setting())
         .http_only(true)
         .secure(should_use_secure_cookies()) // Match the setting used when creating the cookie
         .build();
@@ -75,7 +92,7 @@ pub fn set_csrf_cookie(cookies: &Cookies, token: &str) {
     let cookie = Cookie::build((CSRF_COOKIE_NAME, token.to_string()))
         .path("/")
         .max_age(time::Duration::days(COOKIE_MAX_AGE_DAYS))
-        .same_site(if should_use_secure_cookies() { SameSite::Strict } else { SameSite::Lax })
+        .same_site(get_same_site_setting())
         .http_only(false) // CSRF token needs to be readable by JavaScript
         .secure(should_use_secure_cookies()) // Secure when using HTTPS
         .build();

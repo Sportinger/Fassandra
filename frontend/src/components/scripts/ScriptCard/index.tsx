@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Script } from '../../../types';
 import { ScriptCardMenu } from './ScriptCardMenu';
+import { ScriptPreview } from './ScriptPreview';
 import { useCssTilt } from '../../../hooks/useCssTilt';
 import styles from './ScriptCard.module.css';
 
@@ -91,8 +92,7 @@ export const ScriptCard: React.FC<ScriptCardProps> = ({
     <div className={styles.cardWrapper}>
       <div 
         ref={tilt.ref}
-        className={`${styles.scriptPage} ${script.thumbnail ? styles.withThumbnail : ''} ${styles.tiltCard}`}
-        style={script.thumbnail ? { backgroundImage: `url(${script.thumbnail})` } : {}}
+        className={`${styles.scriptPage} ${styles.tiltCard}`}
         onClick={handleClick}
         onMouseMove={tilt.onMouseMove}
         onMouseEnter={tilt.onMouseEnter}
@@ -105,18 +105,7 @@ export const ScriptCard: React.FC<ScriptCardProps> = ({
         </div>
         
         <div className={styles.pageBody}>
-          {script.thumbnail ? (
-            <img 
-              src={script.thumbnail} 
-              alt={`Preview of ${script.title}`}
-              className={styles.thumbnailImage}
-            />
-          ) : (
-            <div className={styles.noThumbnail}>
-              <span className={styles.noThumbnailIcon}>📄</span>
-              <span className={styles.noThumbnailText}>Generating preview...</span>
-            </div>
-          )}
+          <ScriptPreview scriptId={script.id} />
         </div>
 
         <div className={styles.pageFooter}>
