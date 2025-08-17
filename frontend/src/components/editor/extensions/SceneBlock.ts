@@ -41,6 +41,7 @@ declare module '@tiptap/core' {
       insertSceneBlock: () => ReturnType;
       updateSceneNumber: (number: string) => ReturnType;
       updateSceneName: (name: string) => ReturnType;
+      renumberAllScenes: () => ReturnType;
     };
   }
 }
@@ -64,39 +65,60 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
       isInitialLoad = false;
     }, 2000); // Give 2 seconds for initial content to load
 
-    // Update scene numbers only when scenes are actually moved/added/deleted
+    // Keep track of scene count to detect additions/deletions
+    let previousSceneCount = 0;
+
+    // Update scene numbers when scenes are added, deleted, or moved
     this.editor.on('update', ({ transaction }) => {
       // Skip auto-numbering during initial content load
       if (isInitialLoad) {
         return;
       }
 
-      // Only update if there was an actual structural change to scene blocks
-      let shouldUpdate = false;
+      // Count current scene blocks
+      let currentSceneCount = 0;
+      this.editor.state.doc.descendants((node) => {
+        if (node.type.name === 'sceneBlock') {
+          currentSceneCount++;
+        }
+      });
+
+      // Check if scene count changed (addition or deletion)
+      const sceneCountChanged = currentSceneCount !== previousSceneCount;
+      
+      // Check for structural changes to scene blocks (including deletions)
+      let sceneStructureChanged = false;
       
       transaction.steps.forEach((step: any) => {
-        if (step.slice) {
-          // Check if this step involves scene blocks
-          const content = step.slice.content;
-          if (content) {
-            content.forEach((node: any) => {
-              if (node.type && node.type.name === 'sceneBlock') {
-                // Only update for actual structural changes, not text edits
-                if (step.constructor.name === 'ReplaceStep' || step.constructor.name === 'ReplaceAroundStep') {
-                  shouldUpdate = true;
-                }
-              }
-            });
-          }
+        const stepType = step.constructor.name;
+        // Check for operations that might affect scenes
+        if (stepType === 'ReplaceStep' || stepType === 'ReplaceAroundStep' || stepType === 'DeleteStep') {
+          sceneStructureChanged = true; // Be more aggressive about detecting changes
+        }
+        
+        // Also check if the transaction has a deletion
+        if (transaction.getMeta('deleteScene')) {
+          sceneStructureChanged = true;
         }
       });
       
-      if (shouldUpdate && transaction.docChanged) {
+      // Update if scenes were added, deleted, or structurally changed
+      if ((sceneCountChanged || sceneStructureChanged) && transaction.docChanged) {
+        previousSceneCount = currentSceneCount;
         setTimeout(() => {
           updateAllSceneNumbers(this.editor);
-        }, 100);
+        }, 50);
       }
     });
+
+    // Set initial scene count
+    setTimeout(() => {
+      this.editor.state.doc.descendants((node) => {
+        if (node.type.name === 'sceneBlock') {
+          previousSceneCount++;
+        }
+      });
+    }, 100);
   },
 
   addAttributes() {
@@ -134,9 +156,10 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
       'div',
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
         'data-type': 'scene-block',
-        class: 'scene-block',
+        class: 'scene-block clickable-scene',
         'data-scene-number': sceneNumber,
         'data-scene-name': sceneName,
+        'data-context': 'scene-select', // Add context for click handling
       }),
       ['span', { class: 'scene-number', contenteditable: 'false' }, sceneNumber],
       ['span', { class: 'scene-separator', contenteditable: 'false' }, ' '],
@@ -146,7 +169,7 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
 
   addCommands() {
     return {
-      insertSceneBlock: () => ({ commands }) => {
+      insertSceneBlock: () => ({ commands, editor }) => {
         // Insert scene with placeholder number, it will be updated automatically
         const result = commands.insertContent({
           type: this.name,
@@ -154,10 +177,10 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
           content: [{ type: 'text', text: 'Szene Name' }],
         });
         
-        // DISABLED: Auto-numbering interferes with scene numbers from database
-        // setTimeout(() => {
-        //   updateAllSceneNumbers(editor);
-        // }, 10);
+        // Enable auto-numbering after insertion
+        setTimeout(() => {
+          updateAllSceneNumbers(editor);
+        }, 10);
         
         return result;
       },
@@ -166,6 +189,10 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
       },
       updateSceneName: (name: string) => ({ commands }) => {
         return commands.updateAttributes(this.name, { sceneName: name });
+      },
+      renumberAllScenes: () => ({ editor }) => {
+        updateAllSceneNumbers(editor);
+        return true;
       },
     };
   },
@@ -189,6 +216,21 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
               .setSelection(TextSelection.near(state.doc.resolve(pos + 1)))
           );
           return true;
+        }
+        return false;
+      },
+      // Handle backspace to properly delete scenes
+      'Backspace': () => {
+        const { state } = this.editor;
+        const { selection } = state;
+        const { $from } = selection;
+        
+        // Check if we're at the start of a scene block
+        if ($from.parent.type.name === 'sceneBlock' && $from.parentOffset === 0) {
+          // Mark transaction for scene deletion
+          const tr = state.tr.setMeta('deleteScene', true);
+          this.editor.view.dispatch(tr);
+          return false; // Let default backspace behavior handle the deletion
         }
         return false;
       },

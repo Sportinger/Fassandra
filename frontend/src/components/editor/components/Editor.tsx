@@ -486,6 +486,7 @@ export const Editor: React.FC<EditorProps> = ({
                 const dialogueTextElement = target.closest('[data-type="dialogue-text"]');
                 const dialogueBlockElement = target.closest('[data-type="dialogue-block"]');
                 const cueBlockElement = target.closest('[data-type="cue-block"]');
+                const sceneBlockElement = target.closest('[data-type="scene-block"]');
                 
                 
                 // Remove any existing selection classes first
@@ -494,6 +495,9 @@ export const Editor: React.FC<EditorProps> = ({
                 });
                 document.querySelectorAll('[data-type="cue-block"].cue-selected').forEach(el => {
                   el.classList.remove('cue-selected');
+                });
+                document.querySelectorAll('[data-type="scene-block"].scene-selected').forEach(el => {
+                  el.classList.remove('scene-selected');
                 });
                 
                 if (speakerElement) {
@@ -549,6 +553,15 @@ export const Editor: React.FC<EditorProps> = ({
                   cueBlockElement.classList.add('cue-selected');
                   
                   showContextMenu(e.clientX, e.clientY, 'cue-select');
+                  e.stopPropagation(); // Prevent default toolbar from showing
+                } else if (sceneBlockElement) {
+                  // Clicked on scene block - show scene-select context
+                  debugLog('[Editor] Clicked on scene block element:', sceneBlockElement);
+                  
+                  // Add selected class to clicked scene block
+                  sceneBlockElement.classList.add('scene-selected');
+                  
+                  showContextMenu(e.clientX, e.clientY, 'scene-select');
                   e.stopPropagation(); // Prevent default toolbar from showing
                 } else {
                   // Clicked elsewhere - hide any special context and clear speaker selection
@@ -606,6 +619,7 @@ export const Editor: React.FC<EditorProps> = ({
                 const dialogueTextElement = target.closest('[data-type="dialogue-text"]');
                 const dialogueBlockElement = target.closest('[data-type="dialogue-block"]');
                 const cueBlockElement = target.closest('[data-type="cue-block"]');
+                const sceneBlockElement = target.closest('[data-type="scene-block"]');
                 
                 
                 // Remove any existing selection classes first
@@ -614,6 +628,9 @@ export const Editor: React.FC<EditorProps> = ({
                 });
                 document.querySelectorAll('[data-type="cue-block"].cue-selected').forEach(el => {
                   el.classList.remove('cue-selected');
+                });
+                document.querySelectorAll('[data-type="scene-block"].scene-selected').forEach(el => {
+                  el.classList.remove('scene-selected');
                 });
                 
                 if (speakerElement) {
@@ -669,6 +686,15 @@ export const Editor: React.FC<EditorProps> = ({
                   cueBlockElement.classList.add('cue-selected');
                   
                   showContextMenu(e.clientX, e.clientY, 'cue-select');
+                  e.stopPropagation(); // Prevent default toolbar from showing
+                } else if (sceneBlockElement) {
+                  // Clicked on scene block - show scene-select context
+                  debugLog('[Editor] Clicked on scene block element:', sceneBlockElement);
+                  
+                  // Add selected class to clicked scene block
+                  sceneBlockElement.classList.add('scene-selected');
+                  
+                  showContextMenu(e.clientX, e.clientY, 'scene-select');
                   e.stopPropagation(); // Prevent default toolbar from showing
                 } else {
                   // Clicked elsewhere - hide any special context and clear speaker selection

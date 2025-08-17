@@ -330,6 +330,13 @@ html, body {
   outline-offset: 2px;
 }
 
+/* Highlight when scene-select mode is active */
+.ProseMirror [data-type="scene-block"].scene-selected {
+  background-color: rgba(21, 128, 61, 0.1); /* Dark green selection */
+  outline: 2px solid rgba(21, 128, 61, 0.5); /* Dark green outline */
+  outline-offset: 2px;
+}
+
 .ProseMirror [data-type="dialogue-text"] {
   font-size: var(--font-size-base);
   line-height: var(--line-height-normal);

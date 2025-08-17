@@ -204,6 +204,11 @@
   border-left: 3px solid #10b981;
 }
 
+.floatingToolbar.context-scene-select {
+  border-left: 3px solid #15803d; /* Dark green for scenes */
+  background: rgba(21, 128, 61, 0.05); /* Subtle green tint */
+}
+
 /* ===== DROPDOWN COMPONENTS ===== */
 
 .dropdownContainer {
