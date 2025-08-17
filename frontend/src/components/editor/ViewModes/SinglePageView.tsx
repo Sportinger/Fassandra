@@ -11,6 +11,7 @@ interface SinglePageViewProps {
   onToggleViewMode?: () => void;
   rehearsalMode?: boolean;
   rehearsalLinePosition?: number;
+  onOutsideClick?: () => void;
 }
 
 export const SinglePageView: React.FC<SinglePageViewProps> = ({ 
@@ -20,7 +21,8 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
   onToggleRuler,
   onToggleViewMode,
   rehearsalMode = false,
-  rehearsalLinePosition = 0
+  rehearsalLinePosition = 0,
+  onOutsideClick
 }) => {
   const [contextMenu, setContextMenu] = useState<{x: number; y: number; visible: boolean}>({
     x: 0, y: 0, visible: false
@@ -30,14 +32,17 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
   const handleDarkAreaClick = useCallback((e: React.MouseEvent) => {
     // Only trigger if clicking on the background container, not on the page
     if (e.target === e.currentTarget) {
-      logger.debug('SinglePageView', '🖱️ Dark area clicked in single page view, showing context menu');
+      logger.debug('SinglePageView', '🖱️ Dark area clicked in single page view, resetting toolbar and showing context menu');
+      // FIRST: Reset toolbar to default context when clicking outside page
+      onOutsideClick?.();
+      // THEN: Show context menu
       setContextMenu({
         x: e.clientX,
         y: e.clientY,
         visible: true
       });
     }
-  }, []);
+  }, [onOutsideClick]);
 
   // Handle context menu actions
   const handleContextMenuAction = useCallback((action: string) => {

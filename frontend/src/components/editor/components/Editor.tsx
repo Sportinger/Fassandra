@@ -470,6 +470,7 @@ export const Editor: React.FC<EditorProps> = ({
           onToggleViewMode={() => setViewMode('multiple-pages')}
           rehearsalMode={rehearsalMode}
           rehearsalLinePosition={rehearsalLinePosition}
+          onOutsideClick={hideContextMenu}
         >
           {editor ? (
             <div 
