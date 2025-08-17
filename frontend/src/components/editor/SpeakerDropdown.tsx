@@ -162,11 +162,7 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
       </button>
       
       {isOpen && (
-        <div className="dropdownMenu dropdownMenuRight">
-          <div className="dropdownHeader">
-            Select Speaker:
-          </div>
-          
+        <div className="dropdownMenu">
           {allSpeakers.map((speaker, index) => (
             <button
               key={index}
