@@ -4,6 +4,7 @@ import { CueDropdown } from '../../CueDropdown';
 import { CueTypeDropdown } from '../../CueTypeDropdown';
 import { SearchBox } from '../../SearchBox';
 import { SpeakerDropdown } from '../../SpeakerDropdown';
+import { SpeakerColorPicker } from '../../SpeakerColorPicker';
 import type { ToolbarProps, ToolbarContext } from '../../types/index';
 import { CueType } from '../../../../types/cue';
 
@@ -461,6 +462,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       isSpecial: true
     },
     {
+      id: 'speaker-color-picker',
+      icon: '🎨',
+      title: 'Speaker Color',
+      action: () => {}, // No action needed, handled by color picker
+      contexts: ['speaker-select'],
+      order: 6,
+      isSpecial: true
+    },
+    {
       id: 'exit-dialogue',
       icon: '↩',
       title: 'Exit Dialogue Block (Create Normal Text)',
@@ -469,7 +479,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         editor?.chain().focus().exitDialogueBlock().run();
       },
       contexts: ['dialogue-layout', 'speaker-select'],
-      order: 6,
+      order: 7,
     },
 
     // Page interaction buttons (empty-page context)
@@ -782,6 +792,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 editor={editor}
                 isVisible={isVisible}
                 speakerNames={speakerNames}
+              />
+            ) : button.isSpecial && button.id === 'speaker-color-picker' ? (
+              <SpeakerColorPicker
+                editor={editor}
+                isVisible={isVisible}
               />
             ) : (
               <button

@@ -255,7 +255,6 @@ html, body {
 
 .ProseMirror [data-type="speaker"] {
   font-weight: bold;
-  color: var(--color-accent, #3b82f6);
   font-size: var(--font-size-base);
   line-height: var(--line-height-tight);
   margin-bottom: 0.3em;  /* Add spacing after speaker name */
@@ -272,14 +271,15 @@ html, body {
   transition: background-color 0.15s ease;
 }
 
+
 .ProseMirror [data-type="speaker"]:hover {
-  background-color: rgba(59, 130, 246, 0.1);
+  background-color: rgba(128, 128, 128, 0.1); /* Neutral gray hover */
 }
 
 /* Highlight when speaker-select mode is active */
 .ProseMirror [data-type="speaker"].speaker-selected {
-  background-color: rgba(59, 130, 246, 0.2);
-  outline: 2px solid var(--color-accent, #3b82f6);
+  background-color: rgba(128, 128, 128, 0.2); /* Neutral gray selection */
+  outline: 2px solid rgba(128, 128, 128, 0.5); /* Neutral gray outline */
   outline-offset: 2px;
 }
 
