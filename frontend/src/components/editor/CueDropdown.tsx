@@ -38,37 +38,29 @@ export const CueDropdown: React.FC<CueDropdownProps> = ({
   return (
     <div 
       ref={dropdownRef}
-      className="cue-dropdown-container"
-      style={{
-        transitionDelay: isVisible ? transitionDelay : `${parseInt(transitionDelay) * 0.5}ms`
-      }}
+      className="dropdownContainer"
     >
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={[
-          'toolbarButton',
-          'morphingButton',
-          isVisible ? 'visible' : 'hidden',
-          isOpen ? 'active' : ''
-        ].filter(Boolean).join(' ')}
+        className={`toolbarButton dropdownButton ${isOpen ? 'open' : ''}`}
         title="Insert Cue"
         type="button"
       >
-        <span className="icon">🎭</span>
-        <span className="dropdown-arrow">▼</span>
+        <span className="label">🎭 Cue</span>
+        <span className="arrow">▼</span>
       </button>
 
       {isOpen && (
-        <div className="cue-dropdown-menu">
+        <div className="dropdownMenu">
           {cueTypes.map(cueType => (
             <button
               key={cueType}
               onClick={() => handleCueSelect(cueType)}
-              className="cue-dropdown-item"
+              className="dropdownItem"
               type="button"
             >
-              <span className="cue-dropdown-icon">{CUE_TYPE_ICONS[cueType]}</span>
-              <span className="cue-dropdown-label">{CUE_TYPE_LABELS[cueType]}</span>
+              <span style={{ marginRight: '8px' }}>{CUE_TYPE_ICONS[cueType]}</span>
+              <span>{CUE_TYPE_LABELS[cueType]}</span>
             </button>
           ))}
         </div>
