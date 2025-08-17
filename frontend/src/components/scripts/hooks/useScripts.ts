@@ -33,11 +33,20 @@ export const useScripts = (token: string | null, tokenReady: boolean): UseScript
       const scriptsWithoutThumbnails = data.filter(s => !s.thumbnail);
       if (scriptsWithoutThumbnails.length > 0) {
         generateAllThumbnails()
-          .then(updatedScripts => {
-            setScripts(prev => {
-              const updatedMap = new Map(updatedScripts.map(s => [s.id, s]));
-              return prev.map(script => updatedMap.get(script.id) || script);
-            });
+          .then(count => {
+            // generateAllThumbnails returns a count, not scripts
+            // After generating thumbnails, fetch scripts again to get updated thumbnails
+            if (count > 0) {
+              getScripts(true) // Force refresh to get new thumbnails
+                .then(updatedScripts => {
+                  if (Array.isArray(updatedScripts)) {
+                    setScripts(updatedScripts);
+                  }
+                })
+                .catch(err => {
+                  logger.error('useScripts', 'Failed to fetch updated scripts:', err);
+                });
+            }
           })
           .catch(err => {
             logger.error('useScripts', 'Failed to generate thumbnails:', err);
