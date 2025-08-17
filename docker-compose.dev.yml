@@ -56,6 +56,7 @@ services:
       - target_cache:/app/target
       # Persist Claude Code configuration (dev runs as root)
       - claude_config:/root/.claude
+      - claude_code_config:/root/.config
       # Persist Gemini CLI configuration
       - gemini_config:/root/.gemini
       # Persist uploaded files - bind mount for easy access
@@ -130,6 +131,8 @@ volumes:
   # Claude Code configuration volume
   claude_config:
     name: ${CONTAINER_PREFIX:-dev_}claude_config
+  claude_code_config:
+    name: ${CONTAINER_PREFIX:-dev_}claude_code_config
   claude_config_json:
     name: ${CONTAINER_PREFIX:-dev_}claude_config_json
   # Gemini CLI configuration volume
