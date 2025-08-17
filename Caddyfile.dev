@@ -1,0 +1,130 @@
+# Caddy development configuration for Pessoa
+# Serves both frontend and backend on the same port to avoid CORS/cookie issues
+
+:8080 {
+    # Handle API endpoints - proxy to backend
+    handle /api/* {
+        reverse_proxy localhost:3000 {
+            # Preserve headers for authentication
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Handle authentication endpoints
+    handle /login {
+        reverse_proxy localhost:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle /register {
+        reverse_proxy localhost:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle /logout {
+        reverse_proxy localhost:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle /health {
+        reverse_proxy localhost:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Vite WebSocket for HMR
+    handle /@vite/* {
+        reverse_proxy localhost:8081
+    }
+
+    # Handle all other requests - proxy to frontend (Vite)
+    handle {
+        reverse_proxy localhost:8081 {
+            # Support WebSocket for HMR
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+}
+
+# Alternative configuration for listening on local IP
+192.168.2.141:8080 {
+    # Same configuration as above
+    handle /api/* {
+        reverse_proxy localhost:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle /login {
+        reverse_proxy localhost:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle /register {
+        reverse_proxy localhost:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle /logout {
+        reverse_proxy localhost:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle /health {
+        reverse_proxy localhost:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle /@vite/* {
+        reverse_proxy localhost:8081
+    }
+
+    handle {
+        reverse_proxy localhost:8081 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+}

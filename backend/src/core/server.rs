@@ -78,13 +78,18 @@ fn create_cors_layer() -> Result<CorsLayer> {
     
     // Use a closure to dynamically check and return the matching origin
     let cors = CorsLayer::new()
-        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE, Method::OPTIONS])
         .allow_headers([
             header::AUTHORIZATION,
             header::ACCEPT,
             header::CONTENT_TYPE,
+            header::HeaderName::from_static("x-csrf-token"),
+            header::HeaderName::from_static("x-requested-with"),
         ])
         .allow_credentials(true)
+        .expose_headers([
+            header::HeaderName::from_static("set-cookie"),
+        ])
         .allow_origin(tower_http::cors::AllowOrigin::predicate(move |origin: &HeaderValue, _request_parts: &axum::http::request::Parts| {
             // Convert the origin header to string
             if let Ok(origin_str) = origin.to_str() {
