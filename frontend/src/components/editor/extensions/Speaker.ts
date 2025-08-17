@@ -7,7 +7,8 @@ export const Speaker = Node.create({
   content: 'text*',
   group: 'block',
   defining: true,
-  atom: true, // Treat as single unit, not editable
+  marks: 'textStyle', // Allow textStyle marks (which includes color)
+  atom: false, // Allow marks to be applied to content
 
   parseHTML() {
     return [{ tag: 'div[data-type="speaker"]' }];
