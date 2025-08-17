@@ -248,7 +248,7 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  left: calc(100% + var(--space-sm));
+  left: calc(100% + var(--space-md));  /* Increased spacing from toolbar */
   min-width: 200px;
   max-width: 300px;
   
@@ -265,7 +265,7 @@
   
   /* No animation */
   opacity: 1;
-  padding: 8px;
+  padding: 0;  /* No padding - buttons fill entire width */
 }
 
 .dropdownMenu.position-left {
@@ -297,12 +297,14 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  width: 100%;  /* Full width of container */
   min-width: 140px;
   height: var(--toolbar-button-size);
   padding: 0 12px;
+  margin: 0;  /* No margin */
   background: transparent;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: 0;  /* No border radius for full-width look */
   color: var(--color-text-secondary, #6b7280);
   font-size: calc(var(--toolbar-button-size) * 0.3);
   font-weight: 600;
