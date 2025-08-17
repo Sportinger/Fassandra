@@ -469,6 +469,26 @@ html, body {
   .ProseMirror [data-type="dialogue-block"][data-layout="side-by-side"] [data-type="dialogue-text"] {
     flex: 1;
   }
+
+  /* Centered dialogue layout */
+  .ProseMirror [data-type="dialogue-block"][data-layout="centered"] {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+  
+  .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="speaker"] {
+    margin: 0 auto;
+    text-align: left;  /* Left align speaker text */
+    display: block;
+    max-width: 60%;
+  }
+  
+  .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="dialogue-text"] {
+    text-align: left;  /* Left align dialogue text */
+    max-width: 60%;
+    margin: 0 auto;
+  }
 }
 
 /* ===== ANIMATIONS ===== */

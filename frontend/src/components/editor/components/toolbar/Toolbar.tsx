@@ -5,6 +5,7 @@ import { CueTypeDropdown } from '../../CueTypeDropdown';
 import { SearchBox } from '../../SearchBox';
 import { SpeakerDropdown } from '../../SpeakerDropdown';
 import { SpeakerColorPicker } from '../../SpeakerColorPicker';
+import { DialogueLayoutDropdown } from '../../DialogueLayoutDropdown';
 import type { ToolbarProps, ToolbarContext } from '../../types/index';
 import { CueType } from '../../../../types/cue';
 
@@ -327,92 +328,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       order: 8
     },
 
-    // Dialogue block layout switchers
+    // Dialogue layout dropdown
     {
-      id: 'layout-default',
+      id: 'dialogue-layout-dropdown',
       icon: '≡',
-      title: 'Stacked Layout (Text Below Speaker)',
-      action: () => {
-        logger.debug('Toolbar', 'Setting layout to default');
-        if (editAllSpeakers && currentSpeakerName) {
-          // Update all dialogue blocks with the current speaker name
-          const { state, view } = editor!;
-          const { tr } = state;
-          let hasChanges = false;
-          
-          state.doc.descendants((node, pos) => {
-            if (node.type.name === 'dialogueBlock') {
-              // Check if this dialogue block contains the current speaker
-              let containsSpeaker = false;
-              node.descendants((childNode) => {
-                if (childNode.type.name === 'speaker' && childNode.textContent.trim() === currentSpeakerName) {
-                  containsSpeaker = true;
-                  return false; // Stop searching
-                }
-              });
-              
-              if (containsSpeaker && node.attrs.layout !== 'default') {
-                tr.setNodeMarkup(pos, undefined, { ...node.attrs, layout: 'default' });
-                hasChanges = true;
-              }
-            }
-          });
-          
-          if (hasChanges) {
-            view.dispatch(tr);
-          }
-        } else {
-          // Single dialogue block update
-          const result = editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'default' }).run();
-          logger.debug('Toolbar', 'Update result:', result);
-        }
-      },
-      isActive: editor?.isActive('dialogueBlock', { layout: 'default' }),
+      title: 'Dialogue Layout',
+      action: () => {}, // Handled by dropdown
       contexts: ['dialogue-layout', 'speaker-select'],
       order: 1,
-    },
-    {
-      id: 'layout-side-by-side',
-      icon: '⇥',
-      title: 'Side-by-Side Layout (Text Right of Speaker)',
-      action: () => {
-        logger.debug('Toolbar', 'Setting layout to side-by-side');
-        if (editAllSpeakers && currentSpeakerName) {
-          // Update all dialogue blocks with the current speaker name
-          const { state, view } = editor!;
-          const { tr } = state;
-          let hasChanges = false;
-          
-          state.doc.descendants((node, pos) => {
-            if (node.type.name === 'dialogueBlock') {
-              // Check if this dialogue block contains the current speaker
-              let containsSpeaker = false;
-              node.descendants((childNode) => {
-                if (childNode.type.name === 'speaker' && childNode.textContent.trim() === currentSpeakerName) {
-                  containsSpeaker = true;
-                  return false; // Stop searching
-                }
-              });
-              
-              if (containsSpeaker && node.attrs.layout !== 'side-by-side') {
-                tr.setNodeMarkup(pos, undefined, { ...node.attrs, layout: 'side-by-side' });
-                hasChanges = true;
-              }
-            }
-          });
-          
-          if (hasChanges) {
-            view.dispatch(tr);
-          }
-        } else {
-          // Single dialogue block update
-          const result = editor?.chain().focus().updateAttributes('dialogueBlock', { layout: 'side-by-side' }).run();
-          logger.debug('Toolbar', 'Update result:', result);
-        }
-      },
-      isActive: editor?.isActive('dialogueBlock', { layout: 'side-by-side' }),
-      contexts: ['dialogue-layout', 'speaker-select'],
-      order: 2,
+      isSpecial: true
     },
     {
       id: 'edit-all-toggle',
@@ -426,7 +350,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       },
       isActive: editAllSpeakers,
       contexts: ['speaker-select'],
-      order: 3,
+      order: 2,
     },
     {
       id: 'strike-through',
@@ -450,7 +374,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         return false;
       })(),
       contexts: ['dialogue-layout', 'speaker-select'],
-      order: 4,
+      order: 3,
     },
     {
       id: 'speaker-dropdown',
@@ -458,7 +382,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Select Speaker',
       action: () => {}, // No action needed, handled by dropdown
       contexts: ['dialogue-layout', 'speaker-select'],
-      order: 5,
+      order: 4,
       isSpecial: true
     },
     {
@@ -467,7 +391,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Speaker Color',
       action: () => {}, // No action needed, handled by color picker
       contexts: ['speaker-select'],
-      order: 6,
+      order: 5,
       isSpecial: true
     },
     {
@@ -479,7 +403,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         editor?.chain().focus().exitDialogueBlock().run();
       },
       contexts: ['dialogue-layout', 'speaker-select'],
-      order: 7,
+      order: 6,
     },
 
     // Page interaction buttons (empty-page context)
@@ -797,6 +721,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <SpeakerColorPicker
                 editor={editor}
                 isVisible={isVisible}
+              />
+            ) : button.isSpecial && button.id === 'dialogue-layout-dropdown' ? (
+              <DialogueLayoutDropdown
+                editor={editor}
+                isVisible={isVisible}
+                editAllSpeakers={editAllSpeakers}
+                currentSpeakerName={currentSpeakerName}
               />
             ) : (
               <button
