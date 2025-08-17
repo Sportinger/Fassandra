@@ -236,6 +236,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     
     // Priority order:
     // 1. Explicit click contexts take precedence
+    if (clickContext === 'scene-select') return 'scene-select';
     if (clickContext === 'speaker-select') return 'speaker-select';
     if (clickContext === 'dialogue-layout') return 'dialogue-layout';
     if (clickContext === 'empty-page') return 'empty-page';
@@ -405,6 +406,18 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       isSpecial: true
     },
     {
+      id: 'clear-speaker',
+      icon: '🗑️',
+      title: 'Clear Speaker Name',
+      action: () => {
+        logger.debug('Toolbar', 'Clearing speaker name');
+        // Clear the speaker text
+        editor?.chain().focus().deleteSelection().insertContent('').run();
+      },
+      contexts: ['speaker-select'],
+      order: 7,
+    },
+    {
       id: 'exit-dialogue',
       icon: '↩',
       title: 'Exit Dialogue Block (Create Normal Text)',
@@ -413,7 +426,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         editor?.chain().focus().exitDialogueBlock().run();
       },
       contexts: ['dialogue-layout', 'speaker-select'],
-      order: 7,
+      order: 8,
     },
 
     // Page interaction buttons (empty-page context)
@@ -477,6 +490,38 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       order: 4
     },
     
+    // Scene context buttons (scene-select context)
+    {
+      id: 'delete-scene',
+      icon: '🗑️',
+      title: 'Delete Scene',
+      action: () => {
+        logger.debug('Toolbar', 'Deleting scene block');
+        const { state } = editor;
+        const { selection } = state;
+        const { $from } = selection;
+        
+        // Find the scene block
+        for (let depth = $from.depth; depth >= 0; depth--) {
+          const node = $from.node(depth);
+          if (node && node.type.name === 'sceneBlock') {
+            // Delete the entire scene block
+            const pos = $from.before(depth);
+            const endPos = $from.after(depth);
+            editor?.chain().focus().deleteRange({ from: pos, to: endPos }).run();
+            
+            // Renumber scenes after deletion
+            setTimeout(() => {
+              editor?.commands.renumberAllScenes();
+            }, 50);
+            break;
+          }
+        }
+      },
+      contexts: ['scene-select'],
+      order: 1
+    },
+
     // Cue dropdown (default context)
     {
       id: 'cue-dropdown',
