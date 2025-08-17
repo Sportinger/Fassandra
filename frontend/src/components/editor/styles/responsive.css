@@ -370,6 +370,8 @@ html, body {
     
     /* Minimal padding for edge-to-edge feel */
     padding: var(--space-md);
+    /* Account for full-width bottom toolbar */
+    padding-bottom: calc(var(--space-md) + 90px); /* Extra space for bottom toolbar (min-height 72px + some buffer) */
   }
 
   /* Mobile centered layout fix */
@@ -396,6 +398,8 @@ html, body {
     
     /* Minimal padding for edge-to-edge feel */
     padding: var(--space-md);
+    /* Account for full-width bottom toolbar */
+    padding-bottom: calc(var(--space-md) + 90px); /* Extra space for bottom toolbar */
   }
   
   .singlePageContainer {
