@@ -423,9 +423,9 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
               bottom: '10px',
               right: '20px',
               fontSize: '12px',
-              color: pageIndex === activeEditPage ? '#3b82f6' : '#999',
+              color: pageIndex === activeEditPage ? 'var(--color-accent, #3b82f6)' : 'var(--color-text-secondary, #666)',
               pointerEvents: 'none',
-              backgroundColor: pageIndex === activeEditPage ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255,255,255,0.8)',
+              backgroundColor: pageIndex === activeEditPage ? 'rgba(59, 130, 246, 0.1)' : 'var(--color-background, rgba(255,255,255,0.8))',
               padding: '2px 6px',
               borderRadius: '2px',
               fontWeight: pageIndex === activeEditPage ? '600' : '400',
@@ -445,10 +445,10 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
             position: 'fixed',
             left: `${contextMenu.x}px`,
             top: `${contextMenu.y}px`,
-            background: 'white',
-            border: '1px solid #ccc',
+            background: 'var(--color-background, white)',
+            border: '1px solid var(--color-border, #ccc)',
             borderRadius: '8px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            boxShadow: 'var(--shadow-lg, 0 4px 20px rgba(0,0,0,0.15))',
             zIndex: 10000,
             minWidth: '200px',
             padding: '4px 0',
@@ -464,12 +464,13 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
               alignItems: 'center',
               gap: '8px',
               fontSize: '14px',
-              borderBottom: '1px solid #eee',
+              borderBottom: '1px solid var(--color-border-light, #eee)',
               transition: 'background-color 0.2s ease',
+              color: 'var(--color-text, #213547)',
             }}
             onClick={() => handleContextMenuAction('toggle-ruler')}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-background-secondary, #f5f5f5)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
             📏 {showRuler ? 'Hide Ruler' : 'Show Ruler'}
           </div>
@@ -483,10 +484,11 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
               gap: '8px',
               fontSize: '14px',
               transition: 'background-color 0.2s ease',
+              color: 'var(--color-text, #213547)',
             }}
             onClick={() => handleContextMenuAction('toggle-view')}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-background-secondary, #f5f5f5)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
             📃 Switch to Single Page View
           </div>

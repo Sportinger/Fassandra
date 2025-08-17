@@ -30,6 +30,7 @@ html, body {
   flex-direction: column;
   overflow: visible; /* allow scrolling to top/bottom */
   background: var(--color-background-secondary, #f8fafc);
+  color: var(--color-text, #213547); /* Ensure text color is inherited */
 }
 
 /* ===== VIEW MODE CONTAINERS ===== */
@@ -155,6 +156,17 @@ html, body {
   padding: 0; /* Remove default padding - we control margins manually with ruler */
 }
 
+/* Apply font styles to multi-page view as well */
+.multi-page-view .ProseMirror.font-typewriter,
+.multi-page-view .ProseMirror.font-typewriter * {
+  font-family: "Courier Prime", monospace !important;
+}
+
+.multi-page-view .ProseMirror.font-vintage,
+.multi-page-view .ProseMirror.font-vintage * {
+  font-family: "Special Elite", cursive !important;
+}
+
 /* Click-to-edit hover effect for inactive pages */
 .multi-page-view .dinA4Page:hover .click-to-edit-indicator {
   opacity: 1 !important;
@@ -238,6 +250,41 @@ html, body {
   /* Typography */
   font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
+}
+
+/* ===== FONT STYLE SUPPORT ===== */
+
+/* Global font styles for entire editor */
+.ProseMirror.font-typewriter,
+.ProseMirror.font-typewriter * {
+  font-family: "Courier Prime", monospace !important;
+  letter-spacing: 0.02em;
+}
+
+.ProseMirror.font-vintage,
+.ProseMirror.font-vintage * {
+  font-family: "Special Elite", cursive !important;
+  letter-spacing: 0.03em;
+  line-height: 1.6;
+}
+
+/* Ensure font applies to all text elements */
+.ProseMirror.font-typewriter p,
+.ProseMirror.font-typewriter [data-type="speaker"],
+.ProseMirror.font-typewriter [data-type="dialogue-text"],
+.ProseMirror.font-typewriter h1,
+.ProseMirror.font-typewriter h2,
+.ProseMirror.font-typewriter h3 {
+  font-family: "Courier Prime", monospace !important;
+}
+
+.ProseMirror.font-vintage p,
+.ProseMirror.font-vintage [data-type="speaker"],
+.ProseMirror.font-vintage [data-type="dialogue-text"],
+.ProseMirror.font-vintage h1,
+.ProseMirror.font-vintage h2,
+.ProseMirror.font-vintage h3 {
+  font-family: "Special Elite", cursive !important;
 }
 
 /* ===== DIALOGUE BLOCKS ===== */

@@ -18,6 +18,7 @@ import { Dropcursor } from '@tiptap/extension-dropcursor';
 import { Gapcursor } from '@tiptap/extension-gapcursor';
 import { Color } from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
+// FontFamily will be handled through TextStyle
 import { TextAlign } from '@tiptap/extension-text-align';
 import logger from '../../../services/LoggingService';
 import { useAuth } from '../../../AuthContext';
@@ -30,6 +31,7 @@ import { PageIndicator } from '../extensions/PageIndicator';
 import { TrailingNode } from '../extensions/TrailingNode';
 import { CueConnectionMark } from '../extensions/CueConnectionMark';
 import { FontSize } from '../FontSizeExtension';
+import { FontFamilyExtension } from '../extensions/FontFamilyExtension';
 import { getScriptWithBlocks, getContentSnapshot, storeContentSnapshot } from '../../../api';
 import { convertBlocksToTiptapContent, extractSpeakerNames } from '../utils/contentConverters';
 import { scriptEventBus } from '../../../services/ScriptEventBus';
@@ -333,8 +335,11 @@ export const useEditorCore = ({
               notAfter: ['paragraph'],
             }),
             FontSize,
+            FontFamilyExtension,
             Color,
-            TextStyle,
+            TextStyle.configure({
+              types: ['textStyle'],
+            }),
             TextAlign.configure({
               types: ['heading', 'paragraph'],
             }),
@@ -372,8 +377,11 @@ export const useEditorCore = ({
               notAfter: ['paragraph'],
             }),
             FontSize,
+            FontFamilyExtension,
             Color,
-            TextStyle,
+            TextStyle.configure({
+              types: ['textStyle'],
+            }),
             TextAlign.configure({
               types: ['heading', 'paragraph'],
             }),
