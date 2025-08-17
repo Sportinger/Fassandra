@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FontSizeDropdown } from '../../FontSizeDropdown';
+import { FontStyleDropdown } from '../../FontStyleDropdown';
 import { CueDropdown } from '../../CueDropdown';
 import { CueTypeDropdown } from '../../CueTypeDropdown';
 import { SearchBox } from '../../SearchBox';
@@ -395,6 +396,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       isSpecial: true
     },
     {
+      id: 'font-style',
+      icon: 'Aa',
+      title: 'Font Style',
+      action: () => {}, // No action needed, handled by dropdown
+      contexts: ['speaker-select', 'dialogue-layout'],
+      order: 6,
+      isSpecial: true
+    },
+    {
       id: 'exit-dialogue',
       icon: '↩',
       title: 'Exit Dialogue Block (Create Normal Text)',
@@ -403,7 +413,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         editor?.chain().focus().exitDialogueBlock().run();
       },
       contexts: ['dialogue-layout', 'speaker-select'],
-      order: 6,
+      order: 7,
     },
 
     // Page interaction buttons (empty-page context)
@@ -730,6 +740,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               />
             ) : button.isSpecial && button.id === 'speaker-color-picker' ? (
               <SpeakerColorPicker
+                editor={editor}
+                isVisible={isVisible}
+              />
+            ) : button.isSpecial && button.id === 'font-style' ? (
+              <FontStyleDropdown
                 editor={editor}
                 isVisible={isVisible}
               />
