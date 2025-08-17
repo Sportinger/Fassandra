@@ -56,16 +56,14 @@ async function fetchUserFromAPI(): Promise<User | null> {
  * @returns {React.ReactElement} Provider component with authentication context
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  // Initialize token state - tokens will be managed via httpOnly cookies
-  // We'll keep a simple flag in memory to track authentication state
+  // Initialize token state from sessionStorage for multi-tab support
   const [token, setTokenState] = useState<string | null>(() => {
-    // Check if we have an auth flag in sessionStorage (not the actual token)
-    // This is just to maintain UI state across page refreshes
-    const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
-    logDebugInfo('Auth', `Initial auth state: ${isAuthenticated ? 'AUTHENTICATED' : 'NOT AUTHENTICATED'}`);
+    // Check if we have a JWT token in sessionStorage
+    // This enables different users in different tabs
+    const storedToken = sessionStorage.getItem('jwt_token');
+    logDebugInfo('Auth', `Initial auth state: ${storedToken ? 'AUTHENTICATED' : 'NOT AUTHENTICATED'}`);
     
-    // Return a placeholder token if authenticated (actual token is in httpOnly cookie)
-    return isAuthenticated ? 'authenticated' : null;
+    return storedToken;
   });
   
   const [user, setUserState] = useState<User | null>(null);
@@ -103,13 +101,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setApiToken(newToken);
 
     if (newToken) {
-      // Only store authentication flag, not the actual token
-      sessionStorage.setItem('isAuthenticated', 'true');
-      logDebugInfo('Auth', 'Authentication flag set');
+      // Store the actual JWT token in sessionStorage for multi-tab support
+      // Only store real JWT tokens, not placeholder values
+      if (newToken !== 'authenticated') {
+        sessionStorage.setItem('jwt_token', newToken);
+        logDebugInfo('Auth', 'JWT token stored in sessionStorage');
+      } else {
+        // Fallback: just store authentication flag for cookie-based auth
+        sessionStorage.setItem('isAuthenticated', 'true');
+        logDebugInfo('Auth', 'Authentication flag set (cookie-based)');
+      }
     } else {
-      // Clear authentication flag
+      // Clear authentication data
+      sessionStorage.removeItem('jwt_token');
       sessionStorage.removeItem('isAuthenticated');
-      logDebugInfo('Auth', 'Authentication flag removed');
+      logDebugInfo('Auth', 'Authentication data removed from sessionStorage');
       
       // Clear upload state on logout
       UploadStateManager.clearAll();

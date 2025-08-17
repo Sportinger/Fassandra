@@ -20,10 +20,9 @@ export const ScriptPreview: React.FC<ScriptPreviewProps> = ({ scriptId }) => {
         setError(null);
         const scriptData = await getScriptWithBlocks(scriptId);
         if (scriptData && scriptData.blocks) {
-          // Sort blocks by page_number and take first few for preview
+          // Sort blocks by page_number to show all content
           const sortedBlocks = scriptData.blocks
-            .sort((a, b) => a.page_number - b.page_number)
-            .slice(0, 6); // Show first 6 blocks in preview
+            .sort((a, b) => a.page_number - b.page_number);
           setBlocks(sortedBlocks);
         }
       } catch (err) {
@@ -193,11 +192,6 @@ export const ScriptPreview: React.FC<ScriptPreviewProps> = ({ scriptId }) => {
             {formatBlockContent(block)}
           </div>
         ))}
-        {blocks.length >= 6 && (
-          <div className={styles.fadeOut}>
-            <span className={styles.moreIndicator}>...</span>
-          </div>
-        )}
       </div>
     </div>
   );

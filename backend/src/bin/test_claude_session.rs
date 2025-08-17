@@ -42,6 +42,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         *count += 1;
                         println!("📝 [{}] {}", *count, line);
                     }
+                    SessionUpdate::PageProgress { current_page, total_pages } => {
+                        println!("📄 Page Progress: {}/{}", current_page, total_pages);
+                    }
                     SessionUpdate::Complete { script_id } => {
                         println!("✅ Session Complete! Script ID: {}", script_id);
                     }

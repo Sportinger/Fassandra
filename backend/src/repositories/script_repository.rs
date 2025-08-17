@@ -63,7 +63,15 @@ impl ScriptRepository for PostgresScriptRepository {
     async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<Script>, AppError> {
         let scripts = sqlx::query_as!(
             Script,
-            "SELECT id, title, created_by, created_at, is_public, thumbnail FROM scripts WHERE created_by = $1 ORDER BY created_at DESC",
+            r#"
+            SELECT DISTINCT s.id, s.title, s.created_by, s.created_at, s.is_public, s.thumbnail 
+            FROM scripts s
+            LEFT JOIN script_shares ss ON s.id = ss.script_id
+            WHERE s.created_by = $1                    -- User's own scripts
+               OR s.is_public = true                   -- Public scripts from anyone
+               OR ss.shared_with_user_id = $1          -- Scripts shared with user
+            ORDER BY s.created_at DESC
+            "#,
             user_id
         )
         .fetch_all(self.pool.as_ref())
@@ -178,7 +186,13 @@ pub mod tests {
         
         async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<Script>, AppError> {
             let scripts = self.scripts.lock().unwrap();
-            Ok(scripts.iter().filter(|s| s.created_by == Some(user_id)).cloned().collect())
+            Ok(scripts.iter()
+                .filter(|s| {
+                    s.created_by == Some(user_id) || // User's own scripts
+                    s.is_public                      // Public scripts from anyone
+                })
+                .cloned()
+                .collect())
         }
         
         async fn create(&self, script: &Script) -> Result<(), AppError> {
