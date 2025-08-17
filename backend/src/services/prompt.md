@@ -242,6 +242,18 @@ Always create a scene block at the beginning of each section to establish contex
    ]
    ```
 
+## Progress Reporting
+
+**IMPORTANT**: Report progress after processing each page of the PDF:
+
+1. First, determine the total number of pages in the PDF
+2. After processing each page, output: `[PROGRESS] Page X of Y processed`
+   - Example: `[PROGRESS] Page 1 of 50 processed`
+   - Example: `[PROGRESS] Page 15 of 50 processed`
+3. This helps users track parsing progress in real-time
+4. Report progress BEFORE moving to the next page
+5. At the start, output: `[PROGRESS] Starting PDF parsing - Total pages: Y`
+
 After you finnished: write this phrase:"iam done with my job rom"
 
 

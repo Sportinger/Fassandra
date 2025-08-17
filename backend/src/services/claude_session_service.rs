@@ -163,14 +163,40 @@ impl ClaudeSessionService {
         tracing::info!("Starting Claude Code with PDF path: {}", container_pdf_path);
         tracing::info!("Original PDF path: {}", pdf_path);
         
-        // Run Claude Code directly (we're already inside the container)
-        let mut child = Command::new("/home/appuser/.npm-global/bin/claude")
-            .arg("--print")
-            .arg("--dangerously-skip-permissions")
+        // Check if the PDF file exists
+        if !tokio::fs::metadata(&container_pdf_path).await.is_ok() {
+            tracing::error!("PDF file does not exist at: {}", container_pdf_path);
+            return Err(anyhow!("PDF file not found at: {}", container_pdf_path));
+        }
+        
+        // Use the executor script if it exists, otherwise try direct execution
+        let executor_path = "/app/claude-executor.sh";
+        let use_executor = tokio::fs::metadata(executor_path).await.is_ok();
+        
+        let mut cmd = if use_executor {
+            tracing::info!("Using Claude executor script");
+            Command::new(executor_path)
+        } else {
+            // Fall back to direct execution
+            tracing::info!("Executor script not found, using direct Claude execution");
+            let mut cmd = Command::new("/usr/bin/claude");
+            cmd.arg("--print")
+                .arg("--dangerously-skip-permissions");
+            cmd
+        };
+        
+        tracing::info!("Running with prompt: {}", prompt);
+        
+        // Run Claude Code
+        let mut child = cmd
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
-            .spawn()?;
+            .spawn()
+            .map_err(|e| {
+                tracing::error!("Failed to spawn Claude process: {}", e);
+                anyhow!("Failed to start Claude Code: {}", e)
+            })?;
         
         // Store the process ID
         if let Some(pid) = child.id() {
@@ -181,8 +207,21 @@ impl ClaudeSessionService {
         // Send the prompt
         if let Some(mut stdin) = child.stdin.take() {
             use tokio::io::AsyncWriteExt;
-            stdin.write_all(prompt.as_bytes()).await?;
-            stdin.shutdown().await?;
+            tracing::info!("Sending prompt to Claude stdin");
+            stdin.write_all(prompt.as_bytes()).await
+                .map_err(|e| {
+                    tracing::error!("Failed to write prompt to stdin: {}", e);
+                    anyhow!("Failed to send prompt to Claude: {}", e)
+                })?;
+            stdin.shutdown().await
+                .map_err(|e| {
+                    tracing::error!("Failed to close stdin: {}", e);
+                    anyhow!("Failed to close Claude stdin: {}", e)
+                })?;
+            tracing::info!("Prompt sent successfully");
+        } else {
+            tracing::error!("Failed to get stdin handle");
+            return Err(anyhow!("Failed to get Claude stdin"));
         }
 
         // Read output
@@ -220,14 +259,35 @@ impl ClaudeSessionService {
                         });
                         
                         // Check for progress indicators
-                        if line.contains("Reading PDF file") {
-                            Self::update_progress(&session_info, &update_callback, session_id, 20, SessionStatus::ParsingPdf).await;
+                        if line.contains("[PROGRESS]") {
+                            // Parse page progress: "[PROGRESS] Page X of Y processed"
+                            if let Some(progress_info) = Self::parse_page_progress(&line) {
+                                let (current_page, total_pages) = progress_info;
+                                let progress_percent = ((current_page as f32 / total_pages as f32) * 80.0) as u8;
+                                // Use 80% for parsing completion, leaving 20% for JSON creation and DB insertion
+                                Self::update_progress(&session_info, &update_callback, session_id, 
+                                    progress_percent.min(80), SessionStatus::ParsingPdf).await;
+                                
+                                // Send detailed progress update
+                                update_callback(session_id, SessionUpdate::PageProgress { 
+                                    current_page, 
+                                    total_pages 
+                                });
+                            } else if line.contains("Starting PDF parsing") {
+                                // Extract total pages from: "[PROGRESS] Starting PDF parsing - Total pages: Y"
+                                if let Some(total) = Self::extract_total_pages(&line) {
+                                    tracing::info!("PDF has {} total pages", total);
+                                    Self::update_progress(&session_info, &update_callback, session_id, 10, SessionStatus::ParsingPdf).await;
+                                }
+                            }
+                        } else if line.contains("Reading PDF file") {
+                            Self::update_progress(&session_info, &update_callback, session_id, 15, SessionStatus::ParsingPdf).await;
                         } else if line.contains("Extracting text") || line.contains("Parsing script structure") {
-                            Self::update_progress(&session_info, &update_callback, session_id, 40, SessionStatus::ParsingPdf).await;
+                            Self::update_progress(&session_info, &update_callback, session_id, 20, SessionStatus::ParsingPdf).await;
                         } else if line.contains("Creating JSON") {
-                            Self::update_progress(&session_info, &update_callback, session_id, 60, SessionStatus::CreatingJson).await;
+                            Self::update_progress(&session_info, &update_callback, session_id, 85, SessionStatus::CreatingJson).await;
                         } else if line.contains("json_to_db") || line.contains("Pushing JSON to database") {
-                            Self::update_progress(&session_info, &update_callback, session_id, 80, SessionStatus::InsertingData).await;
+                            Self::update_progress(&session_info, &update_callback, session_id, 90, SessionStatus::InsertingData).await;
                         } else if line.contains("Success: Data inserted into database") {
                             // Try to extract script ID from previous lines
                             for prev_line in all_output.iter().rev().take(10) {
@@ -275,7 +335,12 @@ impl ClaudeSessionService {
                     drop(info);
                     
                     if !found_completion {
-                        return Err(anyhow!("Claude Code process failed or didn't complete properly"));
+                        tracing::error!("Claude process exited with status: {}, found_completion: {}", status, found_completion);
+                        tracing::error!("Last 10 lines of output:");
+                        for line in all_output.iter().rev().take(10) {
+                            tracing::error!("  {}", line);
+                        }
+                        return Err(anyhow!("Claude Code process failed with exit code: {}", status.code().unwrap_or(-1)));
                     }
                 }
             }
@@ -325,6 +390,36 @@ impl ClaudeSessionService {
             }
         }
         
+        None
+    }
+    
+    fn parse_page_progress(line: &str) -> Option<(u32, u32)> {
+        // Parse "[PROGRESS] Page X of Y processed"
+        if let Some(start) = line.find("Page ") {
+            let remaining = &line[start + 5..];
+            let parts: Vec<&str> = remaining.split(" of ").collect();
+            if parts.len() >= 2 {
+                if let Ok(current) = parts[0].parse::<u32>() {
+                    // Extract just the number from "Y processed" or similar
+                    let total_str = parts[1].split_whitespace().next()?;
+                    if let Ok(total) = total_str.parse::<u32>() {
+                        return Some((current, total));
+                    }
+                }
+            }
+        }
+        None
+    }
+    
+    fn extract_total_pages(line: &str) -> Option<u32> {
+        // Extract total from "[PROGRESS] Starting PDF parsing - Total pages: Y"
+        if let Some(start) = line.find("Total pages: ") {
+            let remaining = &line[start + 13..];
+            let total_str = remaining.split_whitespace().next()?;
+            if let Ok(total) = total_str.parse::<u32>() {
+                return Some(total);
+            }
+        }
         None
     }
 
@@ -415,6 +510,7 @@ impl ClaudeSessionService {
 pub enum SessionUpdate {
     Status { status: SessionStatus, progress: u8 },
     Output { line: String },
+    PageProgress { current_page: u32, total_pages: u32 },
     Complete { script_id: Uuid },
     Failed { error: String },
 }

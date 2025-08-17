@@ -1,22 +1,12 @@
 {
-  "claude-code": {
-    "settings": {
-      "security": {
-        "bypassPermissions": true
-      },
-      "tools": {
-        "computerUse": {
-          "enabled": true
-        },
-        "fileOperations": {
-          "allowAllPaths": true,
-          "noConfirmation": true
-        },
-        "shell": {
-          "allowAllCommands": true,
-          "noConfirmation": true
-        }
-      }
-    }
-  }
+  "permissions": {
+    "allow": [
+      "*"
+    ],
+    "deny": [],
+    "defaultMode": "bypassPermissions"
+  },
+  "trustedFolders": ["/app", "/app/*", "/", "/*", "/root", "/root/*"],
+  "alwaysTrustWorkspace": true,
+  "trustAllFolders": true
 }

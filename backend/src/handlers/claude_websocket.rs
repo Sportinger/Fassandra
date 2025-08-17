@@ -112,6 +112,14 @@ async fn handle_claude_session_socket(
                         "line": line
                     })
                 }
+                SessionUpdate::PageProgress { current_page, total_pages } => {
+                    serde_json::json!({
+                        "type": "page_progress",
+                        "current_page": current_page,
+                        "total_pages": total_pages,
+                        "message": format!("Processing page {} of {}", current_page, total_pages)
+                    })
+                }
                 SessionUpdate::Complete { script_id } => {
                     serde_json::json!({
                         "type": "complete",

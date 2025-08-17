@@ -11,7 +11,7 @@ export interface SessionStatus {
 }
 
 export interface SessionUpdate {
-  type: 'initial' | 'status' | 'output' | 'complete' | 'failed';
+  type: 'initial' | 'status' | 'output' | 'page_progress' | 'complete' | 'failed';
   session?: {
     id: string;
     status: string;
@@ -24,6 +24,10 @@ export interface SessionUpdate {
   line?: string;
   script_id?: string;
   error?: string;
+  // Page progress fields
+  current_page?: number;
+  total_pages?: number;
+  message?: string;
 }
 
 export class ClaudeSessionService {

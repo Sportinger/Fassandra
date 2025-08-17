@@ -65,18 +65,26 @@ COPY .sqlx ./.sqlx/
 # Set SQLX to offline mode for development
 ENV SQLX_OFFLINE=true
 
+# Create appuser for running Claude (which can't run as root with --dangerously-skip-permissions)
+RUN useradd -m -s /bin/bash appuser
+
 # Create uploads directory
-RUN mkdir -p uploads/scripts
+RUN mkdir -p uploads/scripts && chown -R appuser:appuser uploads
 
 # Copy entrypoint and other scripts
-COPY docker-entrypoint.sh execute_sql.sh json_to_db.sh init-claude.sh claude-wrapper.sh claude-session-wrapper.sh monitor-claude-session.sh ./
-RUN chmod +x docker-entrypoint.sh execute_sql.sh json_to_db.sh init-claude.sh claude-wrapper.sh claude-session-wrapper.sh monitor-claude-session.sh
+COPY docker-entrypoint.sh execute_sql.sh json_to_db.sh init-claude.sh claude-wrapper.sh claude-session-wrapper.sh monitor-claude-session.sh init-claude-settings.sh claude-executor.sh ./
+RUN chmod +x docker-entrypoint.sh execute_sql.sh json_to_db.sh init-claude.sh claude-wrapper.sh claude-session-wrapper.sh monitor-claude-session.sh init-claude-settings.sh claude-executor.sh
 
-# Setup Claude Code settings with bypass permissions
-RUN mkdir -p /root/.config/claude-code /home/backend/.config/claude-code
+# Setup Claude Code settings with bypass permissions for all users
+RUN mkdir -p /root/.config/claude-code /home/appuser/.config/claude-code /root/.claude /home/appuser/.claude
 COPY claude-settings.json /root/.config/claude-code/settings.json
-COPY claude-settings.json /home/backend/.config/claude-code/settings.json
-RUN chmod 755 /root/.config/claude-code /home/backend/.config/claude-code
+COPY claude-settings.json /home/appuser/.config/claude-code/settings.json
+COPY claude-settings.json /root/.claude/settings.json
+COPY claude-settings.json /home/appuser/.claude/settings.json
+RUN chown -R appuser:appuser /home/appuser/.config /home/appuser/.claude
+RUN chmod 755 /root/.config/claude-code /home/appuser/.config/claude-code /root/.claude /home/appuser/.claude
+# Run the init script to ensure all settings are in place
+RUN /app/init-claude-settings.sh
 
 # The source code will be mounted as a volume in docker-compose.dev.yml
 # This allows for hot reloading without rebuilding the image

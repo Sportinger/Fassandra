@@ -268,13 +268,31 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         session_id,
         wsToken,
         (update) => {
-          // Progress updates
-          if (typeof update.progress === 'number') {
+          // Handle different types of updates
+          if (update.type === 'page_progress' && update.current_page && update.total_pages) {
+            // Calculate progress based on page parsing (20-80% range)
+            const pageProgress = (update.current_page / update.total_pages) * 60 + 20;
+            updateUploadStatus({ 
+              uploadProgress: Math.round(pageProgress),
+              uploadSubStage: update.message || `Processing page ${update.current_page} of ${update.total_pages}`
+            });
+          } else if (typeof update.progress === 'number') {
+            // Regular progress updates
             const prog = Math.min(95, Math.max(20, Math.round(update.progress)));
             updateUploadStatus({ uploadProgress: prog });
           }
+          
           if (update.status) {
-            updateUploadStatus({ uploadSubStage: update.status });
+            // Map status to user-friendly messages
+            let statusMessage = update.status;
+            if (update.status.includes('ParsingPdf')) {
+              statusMessage = 'Parsing PDF content...';
+            } else if (update.status.includes('CreatingJson')) {
+              statusMessage = 'Creating structured data...';
+            } else if (update.status.includes('InsertingData')) {
+              statusMessage = 'Saving to database...';
+            }
+            updateUploadStatus({ uploadSubStage: statusMessage });
           }
         },
         (scriptId) => {
