@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, update_data\n            FROM yjs_document_updates\n            WHERE script_id = $1 AND id > $2\n            ORDER BY created_at ASC, id ASC\n            ",
+  "query": "\n            SELECT id, update_data\n            FROM yjs_recent_updates\n            WHERE script_id = $1 AND id > $2\n            ORDER BY created_at ASC, id ASC\n            ",
   "describe": {
     "columns": [
       {
@@ -25,5 +25,5 @@
       false
     ]
   },
-  "hash": "f9810ca40851de1227865cd79885d3b063cb7bdd36527bbcc96b4f15cf72cf31"
+  "hash": "2083597c35880ba246e999fa09d3015c5807d0d6448507f33eb6381b6f8ca6e0"
 }

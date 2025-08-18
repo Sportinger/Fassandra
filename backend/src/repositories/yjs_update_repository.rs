@@ -58,8 +58,8 @@ impl YjsUpdateRepository for PostgresYjsUpdateRepository {
             YjsUpdate,
             r#"
             SELECT id, script_id, update_data, created_at, user_id
-            FROM yjs_document_updates
-            WHERE script_id = $1 AND id > $2
+            FROM yjs_recent_updates
+            WHERE script_id = $1 AND id > $2 AND is_compacted = false
             ORDER BY created_at ASC, id ASC
             "#,
             script_id,
@@ -77,7 +77,7 @@ impl YjsUpdateRepository for PostgresYjsUpdateRepository {
             YjsUpdate,
             r#"
             SELECT id, script_id, update_data, created_at, user_id
-            FROM yjs_document_updates
+            FROM yjs_recent_updates
             WHERE script_id = $1
             ORDER BY created_at ASC, id ASC
             "#,
@@ -93,7 +93,7 @@ impl YjsUpdateRepository for PostgresYjsUpdateRepository {
     async fn store_update(&self, script_id: Uuid, update_data: Vec<u8>, user_id: Option<Uuid>) -> Result<i64, AppError> {
         let record = sqlx::query!(
             r#"
-            INSERT INTO yjs_document_updates (script_id, update_data, user_id, created_at)
+            INSERT INTO yjs_recent_updates (script_id, update_data, user_id, created_at)
             VALUES ($1, $2, $3, NOW())
             RETURNING id
             "#,
@@ -112,7 +112,7 @@ impl YjsUpdateRepository for PostgresYjsUpdateRepository {
         let record = sqlx::query!(
             r#"
             SELECT id
-            FROM yjs_document_updates
+            FROM yjs_recent_updates
             WHERE script_id = $1
             ORDER BY created_at DESC, id DESC
             LIMIT 1
@@ -129,9 +129,9 @@ impl YjsUpdateRepository for PostgresYjsUpdateRepository {
     async fn cleanup_old_updates(&self, script_id: Uuid, keep_count: i64) -> Result<(), AppError> {
         sqlx::query!(
             r#"
-            DELETE FROM yjs_document_updates
+            DELETE FROM yjs_recent_updates
             WHERE script_id = $1 AND id NOT IN (
-                SELECT id FROM yjs_document_updates
+                SELECT id FROM yjs_recent_updates
                 WHERE script_id = $1
                 ORDER BY created_at DESC, id DESC
                 LIMIT $2
@@ -151,7 +151,7 @@ impl YjsUpdateRepository for PostgresYjsUpdateRepository {
         let record = sqlx::query!(
             r#"
             SELECT COUNT(*) as count
-            FROM yjs_document_updates
+            FROM yjs_recent_updates
             WHERE script_id = $1
             "#,
             script_id

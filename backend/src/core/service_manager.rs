@@ -9,7 +9,7 @@ use anyhow::Result;
 use crate::services::persistence_event::YjsPersistenceEvent;
 use crate::auth::RateLimiter;
 use crate::services::async_db_writer::run_async_db_writer;
-use crate::services::snapshotting_service_v2::run_snapshotting_service;
+use crate::services::yjs_compaction_service::CompactionService;
 use crate::services::claude_session_service::ClaudeSessionService;
 
 /// 🚀 SERVICE MANAGER: Centralized service initialization and lifecycle management
@@ -87,15 +87,15 @@ impl ServiceManager {
         });
         self.service_handles.push(writer_handle);
         
-        // 2. Start snapshotting service
-        let db_pool_snapshot = self.database_pool.clone();
-        let snapshot_handle = tokio::spawn(async move {
-            tracing::info!("🚀 Starting Snapshotting service");
-            let interval = Duration::from_secs(10);
-            run_snapshotting_service(db_pool_snapshot, interval).await;
-            tracing::warn!("⚠️ Snapshotting service stopped");
+        // 2. Start YJS compaction service
+        let db_pool_compaction = self.database_pool.clone();
+        let compaction_handle = tokio::spawn(async move {
+            tracing::info!("🚀 Starting YJS Compaction service");
+            let compaction_service = Arc::new(CompactionService::new(db_pool_compaction));
+            compaction_service.run().await;
+            tracing::warn!("⚠️ YJS Compaction service stopped");
         });
-        self.service_handles.push(snapshot_handle);
+        self.service_handles.push(compaction_handle);
         
         // 3. Start rate limiter cleanup
         let rate_limiter_cleanup = self.rate_limiter.clone();

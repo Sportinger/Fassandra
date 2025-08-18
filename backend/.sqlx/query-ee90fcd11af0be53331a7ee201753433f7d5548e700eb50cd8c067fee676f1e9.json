@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM yjs_recent_updates \n        WHERE is_compacted = true \n        AND created_at < NOW() - ($1 * INTERVAL '1 day')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ee90fcd11af0be53331a7ee201753433f7d5548e700eb50cd8c067fee676f1e9"
+}

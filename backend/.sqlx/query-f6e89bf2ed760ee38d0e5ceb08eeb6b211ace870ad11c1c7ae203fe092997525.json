@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT base_state, state_vector FROM yjs_base_states WHERE script_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "base_state",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 1,
+        "name": "state_vector",
+        "type_info": "Bytea"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "f6e89bf2ed760ee38d0e5ceb08eeb6b211ace870ad11c1c7ae203fe092997525"
+}
