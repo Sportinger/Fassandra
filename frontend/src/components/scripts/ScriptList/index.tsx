@@ -43,7 +43,6 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   
   // Core state
   const [error, setError] = useState<string | null>(null);
-  const [isExiting, setIsExiting] = useState(false);
   
   // Custom hooks
   const { scripts, loading, setScripts, refreshScripts } = useScripts(token, tokenReady);
@@ -93,10 +92,8 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     if (onScriptClickStart) {
       onScriptClickStart(scriptTitle);
     }
-    setIsExiting(true);
-    setTimeout(() => {
-      onSelectScript(scriptId, scriptTitle);
-    }, 800);
+    // Navigate immediately without animation delay
+    onSelectScript(scriptId, scriptTitle);
   };
 
   // Delete handling
@@ -370,7 +367,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
 
   return (
     <div>
-      <div className={`${styles.scriptGrid} ${isExiting ? styles.exiting : ''}`}>
+      <div className={styles.scriptGrid}>
         {/* Regular scripts */}
         {allScripts.map(script => 
           script.uploadStatus ? (
