@@ -156,10 +156,10 @@ export const Header: React.FC<HeaderProps> = ({
 
   // Build target breadcrumb text
   const targetBreadcrumb = currentView === 'scripts' 
-    ? 'PESSOA / Scripts'
+    ? '... / Scripts'
     : scriptTitle 
-      ? `PESSOA / Scripts / ${scriptTitle}`
-      : 'PESSOA / Scripts';
+      ? `... / Scripts / ${scriptTitle}`
+      : '... / Scripts';
 
   const animatedBreadcrumb = useTypewriter(targetBreadcrumb, 400);
   
@@ -214,7 +214,7 @@ export const Header: React.FC<HeaderProps> = ({
 
     parts.forEach((part, index) => {
       if (index > 0) {
-        // Separator after PESSOA is always large.
+        // Separator after ... is always large.
         // Separator before script title is always large.
         const isLarge = (index === 1) || (index === 2 && isEditorView);
         elements.push(
@@ -227,9 +227,9 @@ export const Header: React.FC<HeaderProps> = ({
         );
       }
 
-      if (part === 'PESSOA') {
+      if (part === '...') {
         elements.push(
-          <span key={part} className={`${styles.segment} ${styles.pessoaSegment}`}>PESSOA</span>
+          <span key={part} className={`${styles.segment} ${styles.pessoaSegment}`}>...</span>
         );
       } else if (part === 'Scripts') {
         if (currentView === 'scripts') {
