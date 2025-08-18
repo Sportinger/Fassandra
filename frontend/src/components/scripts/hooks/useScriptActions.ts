@@ -149,7 +149,12 @@ export const useScriptActions = ({
     }
 
     try {
+      console.log('[DEBUG] Toggling public status for script:', scriptId);
+      logger.info('useScriptActions', `Toggling public status for script ${scriptId}`);
       const newPublicStatus = await toggleScriptPublic(scriptId);
+      console.log('[DEBUG] New public status:', newPublicStatus);
+      logger.info('useScriptActions', `Script ${scriptId} public status is now: ${newPublicStatus}`);
+      
       setScripts(prev => prev.map(script => 
         script.id === scriptId 
           ? { ...script, is_public: newPublicStatus }
@@ -160,7 +165,7 @@ export const useScriptActions = ({
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to toggle public status';
       setError(errorMessage);
-      logger.error('useScriptActions', errorMessage, err);
+      logger.error('useScriptActions', `Failed to toggle public status for ${scriptId}: ${errorMessage}`, err);
       return false;
     }
   }, [token, setScripts, setError]);

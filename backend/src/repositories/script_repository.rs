@@ -8,6 +8,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 use crate::models::script::Script;
 use crate::error::AppError;
+use tracing::info;
 
 /// Repository trait for script operations
 #[async_trait]
@@ -77,6 +78,13 @@ impl ScriptRepository for PostgresScriptRepository {
         .fetch_all(self.pool.as_ref())
         .await
         .map_err(|e| AppError::Db(e))?;
+        
+        // Debug logging to see what scripts are returned
+        info!("User {} fetching scripts: found {} total scripts", user_id, scripts.len());
+        let public_count = scripts.iter().filter(|s| s.is_public.unwrap_or(false)).count();
+        let own_count = scripts.iter().filter(|s| s.created_by == Some(user_id)).count();
+        let shared_count = scripts.len() - own_count - public_count;
+        info!("  - Own scripts: {}, Public scripts: {}, Shared scripts: {}", own_count, public_count, shared_count);
         
         Ok(scripts)
     }

@@ -29,7 +29,7 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow: visible; /* allow scrolling to top/bottom */
-  background: var(--color-background-secondary, #f8fafc);
+  background: var(--color-background, #0a0a0a);
   color: var(--color-text, #213547); /* Ensure text color is inherited */
 }
 
@@ -126,7 +126,7 @@ html, body {
   min-height: var(--page-height);
   
   /* Page styling */
-  background: var(--color-background, white);
+  background: #242424;
   box-shadow: var(--shadow-lg);
   border-radius: var(--radius-sm);
   position: relative;

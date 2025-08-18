@@ -228,6 +228,8 @@ impl ScriptSharingApplicationService {
 
     /// Finds a user by username
     async fn find_user_by_username(&self, username: &str) -> Result<User, AppError> {
+        // Note: Using exact match for now due to SQLX offline mode constraints
+        // TODO: Update to case-insensitive after preparing queries
         sqlx::query_as!(
             User,
             "SELECT * FROM users WHERE username = $1",
@@ -235,7 +237,7 @@ impl ScriptSharingApplicationService {
         )
         .fetch_optional(self.pool.as_ref())
         .await?
-        .ok_or_else(|| AppError::NotFound("User not found".into()))
+        .ok_or_else(|| AppError::NotFound(format!("User '{}' not found", username)))
     }
 
     /// Creates or updates a script share
