@@ -52,7 +52,8 @@ services:
     # No ports exposed - Caddy handles everything
     volumes:
       - ./backend/uploads:/app/uploads
-      - ~/.config/claude-code:/root/.config/claude-code:ro
+      # Claude settings are now baked into the Docker image with bypass permissions
+      # - ~/.config/claude-code:/root/.config/claude-code:ro
       - ~/.config/gcloud:/root/.config/gcloud:ro
       - ~/.config/g.py:/root/.config/g.py:ro
     # Add memory limits to prevent crashes
