@@ -186,8 +186,8 @@
 
 .menuContainer {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  bottom: 0.5rem;  /* Changed from top to bottom */
+  right: 1.5rem;  /* Moved more to the left (was 0.5rem) */
   display: inline-block;
 }
 
@@ -196,11 +196,17 @@
   border: none;
   color: var(--color-text-secondary);
   cursor: pointer;
-  padding: 0.25rem;
+  padding: 0.75rem;  /* Doubled the click area (was 0.25rem) */
   font-size: 1.2rem;
   line-height: 1;
   border-radius: 4px;
   transition: color 0.2s, background-color 0.2s;
+  /* Make the click area more visible on hover */
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .burgerButton:hover {
