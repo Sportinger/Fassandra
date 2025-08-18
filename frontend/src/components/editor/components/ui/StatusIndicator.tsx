@@ -12,6 +12,7 @@ interface StatusIndicatorProps {
   className?: string;
   activeUserCount?: number;
   isMobile?: boolean;
+  mode?: 'banner' | 'sphere'; // Add mode option
 }
 
 export const StatusIndicator: React.FC<StatusIndicatorProps> = ({ 
@@ -19,7 +20,8 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
   message, 
   className = '',
   activeUserCount = 0,
-  isMobile = false
+  isMobile = false,
+  mode = 'banner'
 }) => {
   const getStatusColor = (status: ConnectionStatus): string => {
     switch (status) {
@@ -97,6 +99,71 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
   // 🎭 ENHANCED: Pulse animation for active collaboration
   const shouldPulse = status === 'connected' && activeUserCount > 0;
 
+  // Sphere mode - compact indicator for header
+  if (mode === 'sphere') {
+    return (
+      <div 
+        className={`status-sphere ${className}`}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '28px',
+          height: '28px',
+          borderRadius: '50%',
+          backgroundColor: getStatusColor(status),
+          position: 'relative',
+          cursor: 'help',
+          transition: 'all 0.3s ease',
+          boxShadow: status === 'disconnected' || status === 'error' 
+            ? '0 0 12px rgba(239, 68, 68, 0.6)' 
+            : status === 'connecting' || status === 'syncing'
+            ? '0 0 8px rgba(245, 158, 11, 0.5)'
+            : '0 2px 4px rgba(0, 0, 0, 0.1)',
+          animation: status === 'disconnected' || status === 'error' 
+            ? 'pulseError 2s infinite' 
+            : status === 'connecting' || status === 'syncing'
+            ? 'pulseWarning 1.5s infinite'
+            : shouldPulse ? 'pulseCollaboration 3s infinite' : 'none',
+          opacity: status === 'connected' && activeUserCount === 0 ? 0.7 : 1,
+        }}
+        title={getStatusText(status)}
+      >
+        {/* Inner dot for visual interest */}
+        <span style={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          backgroundColor: 'white',
+          opacity: 0.9,
+        }} />
+        
+        {/* Active user count badge */}
+        {status === 'connected' && activeUserCount > 0 && (
+          <span style={{
+            position: 'absolute',
+            top: '-4px',
+            right: '-4px',
+            background: '#10b981',
+            color: 'white',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            borderRadius: '50%',
+            width: '16px',
+            height: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '2px solid white',
+          }}>
+            {activeUserCount}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  // Original banner mode
   return (
     <div 
       className={`status-indicator ${className} ${shouldPulse ? 'pulse-animation' : ''}`}

@@ -28,6 +28,7 @@ interface ToolbarButton {
   contexts: ToolbarContext[];
   order: number;
   isSpecial?: boolean; // For components that need special rendering
+  isMobileOnly?: boolean; // For mobile-only buttons
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({ 
@@ -48,6 +49,48 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [keyboardManuallyShown, setKeyboardManuallyShown] = useState(false);
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
+  
+  // Prevent automatic keyboard on mobile unless manually triggered
+  useEffect(() => {
+    const isMobile = window.innerWidth <= 767;
+    if (!isMobile) return;
+    
+    const preventAutoFocus = (e: FocusEvent) => {
+      // If keyboard is not manually shown and the editor is trying to focus
+      if (!keyboardManuallyShown && editor) {
+        const target = e.target as HTMLElement;
+        // Check if it's the ProseMirror editor
+        if (target.classList.contains('ProseMirror') || target.closest('.ProseMirror')) {
+          e.preventDefault();
+          target.blur();
+        }
+      }
+    };
+    
+    // Hide keyboard when clicking outside editor
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (keyboardManuallyShown) {
+        const target = e.target as HTMLElement;
+        // If click is not on editor or toolbar
+        if (!target.closest('.ProseMirror') && !target.closest('.floatingToolbar')) {
+          setKeyboardManuallyShown(false);
+          hiddenInputRef.current?.blur();
+          editor?.commands.blur();
+        }
+      }
+    };
+    
+    // Add listener to capture phase to intercept before default behavior
+    document.addEventListener('focusin', preventAutoFocus, true);
+    document.addEventListener('click', handleOutsideClick);
+    
+    return () => {
+      document.removeEventListener('focusin', preventAutoFocus, true);
+      document.removeEventListener('click', handleOutsideClick);
+    };
+  }, [keyboardManuallyShown, editor]);
 
   // Handle window resize for responsive toolbar height
   useEffect(() => {
@@ -84,69 +127,35 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       // Use Visual Viewport API if available (modern browsers)
       if (window.visualViewport) {
         const currentVisualHeight = window.visualViewport.height;
-        const heightDifference = initialVisualViewportHeight - currentVisualHeight;
+        const viewportBottom = window.innerHeight - currentVisualHeight;
+        
+        // Direct calculation - keyboard height is the difference
+        const keyboardHeightCalculated = viewportBottom > 50 ? viewportBottom : 0;
         
         logger.debug('Toolbar', '[🎭 Mobile Keyboard] Visual Viewport detection:', {
-          initial: initialVisualViewportHeight,
-          current: currentVisualHeight,
-          difference: heightDifference,
-          isIOS,
-          isSafari,
-          isAndroid,
-          isChromeMobile,
+          windowHeight: window.innerHeight,
+          visualHeight: currentVisualHeight,
+          keyboardHeight: keyboardHeightCalculated,
           deviceType,
           isLandscape,
-          orientation: isLandscape ? 'landscape' : 'portrait'
         });
-
-        // 🎭 THEATER OPTIMIZATION: Enhanced device-specific threshold tuning
-        let threshold = 150; // Default threshold
-        if (isIOS && isSafari) {
-          threshold = isLandscape ? 80 : 100; // Lower threshold for iOS Safari landscape
-        } else if (isIOS && !isSafari) {
-          threshold = isLandscape ? 100 : 120; // iOS Chrome/other browsers
-        } else if (isAndroid && isChromeMobile) {
-          threshold = isLandscape ? 140 : 180; // Android Chrome landscape vs portrait
-        } else if (isAndroid) {
-          threshold = isLandscape ? 120 : 160; // Other Android browsers
-        }
         
-        const keyboardVisible = heightDifference > threshold;
-        // 🎭 ENHANCED: Smarter keyboard height calculation
-        const calculatedHeight = keyboardVisible ? Math.max(heightDifference, isLandscape ? 180 : 200) : 0;
-        
-        logger.debug('Toolbar', `[🎭 Mobile Keyboard] ${keyboardVisible ? 'OPEN' : 'CLOSED'}: height difference ${heightDifference}px, threshold ${threshold}px (${deviceType} ${isLandscape ? 'landscape' : 'portrait'})`);
-        setKeyboardHeight(calculatedHeight);
+        setKeyboardHeight(keyboardHeightCalculated);
       } else {
         // Fallback: detect via window.innerHeight changes
         const currentHeight = window.innerHeight;
         const heightDifference = initialViewportHeight - currentHeight;
         
-        logger.debug('Toolbar', '[🎭 Mobile Keyboard] Window height detection:', {
+        // Simple calculation - if height decreased by more than 100px, keyboard is likely open
+        const keyboardHeightCalculated = heightDifference > 100 ? heightDifference : 0;
+        
+        logger.debug('Toolbar', '[🎭 Mobile Keyboard] Fallback detection:', {
           initial: initialViewportHeight,
           current: currentHeight,
-          difference: heightDifference,
-          isIOS,
-          isSafari,
-          isAndroid,
-          deviceType,
-          isLandscape,
-          orientation: isLandscape ? 'landscape' : 'portrait'
+          keyboardHeight: keyboardHeightCalculated,
         });
-
-        // 🎭 THEATER OPTIMIZATION: Enhanced threshold for orientation
-        let threshold = 150;
-        if (isIOS) {
-          threshold = isLandscape ? 80 : 100; // iOS devices - lower for landscape
-        } else if (isAndroid) {
-          threshold = isLandscape ? 140 : 180; // Android devices - adjust for nav bars
-        }
         
-        const keyboardVisible = heightDifference > threshold;
-        const calculatedHeight = keyboardVisible ? Math.max(heightDifference, isLandscape ? 180 : 200) : 0;
-        
-        logger.debug('Toolbar', `[🎭 Mobile Keyboard] ${keyboardVisible ? 'OPEN' : 'CLOSED'}: height difference ${heightDifference}px, threshold ${threshold}px (${deviceType} ${isLandscape ? 'landscape' : 'portrait'})`);
-        setKeyboardHeight(calculatedHeight);
+        setKeyboardHeight(keyboardHeightCalculated);
       }
     };
 
@@ -490,6 +499,36 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       order: 4
     },
     
+    // Mobile-only keyboard toggle button
+    {
+      id: 'keyboard-toggle',
+      icon: keyboardManuallyShown ? '✓' : '⌨',
+      title: keyboardManuallyShown ? 'Hide Keyboard' : 'Show Keyboard',
+      action: () => {
+        const isMobile = window.innerWidth <= 767;
+        if (!isMobile) return;
+        
+        if (keyboardManuallyShown) {
+          // Hide keyboard
+          hiddenInputRef.current?.blur();
+          setKeyboardManuallyShown(false);
+          editor?.commands.blur();
+        } else {
+          // Show keyboard
+          hiddenInputRef.current?.focus();
+          setKeyboardManuallyShown(true);
+          // Focus the editor after a small delay to ensure keyboard is shown
+          setTimeout(() => {
+            editor?.commands.focus();
+          }, 100);
+        }
+      },
+      isActive: keyboardManuallyShown,
+      contexts: ['default', 'text-formatting', 'dialogue-layout', 'speaker-select', 'cue-select', 'scene-select'],
+      order: 0, // Make it appear first
+      isMobileOnly: true // Add flag to identify mobile-only buttons
+    },
+    
     // Scene context buttons (scene-select context)
     {
       id: 'delete-scene',
@@ -625,14 +664,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       contexts: ['cue-select'],
       order: 3
     },
-      ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, rehearsalMode, onToggleRehearsalMode, currentCueType, editAllSpeakers, currentSpeakerName, onToggleEditAllSpeakers]);
+      ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, rehearsalMode, onToggleRehearsalMode, currentCueType, editAllSpeakers, currentSpeakerName, onToggleEditAllSpeakers, keyboardManuallyShown, hiddenInputRef]);
 
   // Get buttons for current context, sorted by order
   const contextButtons = useMemo(() => {
+    const isMobile = windowWidth <= 767;
     return allButtons
-      .filter(button => button.contexts.includes(currentContext))
+      .filter(button => {
+        // Check if button should be shown in current context
+        const inContext = button.contexts.includes(currentContext);
+        // Filter out mobile-only buttons on desktop
+        const showButton = button.isMobileOnly ? isMobile : true;
+        return inContext && showButton;
+      })
       .sort((a, b) => a.order - b.order);
-  }, [allButtons, currentContext]);
+  }, [allButtons, currentContext, windowWidth]);
 
   // No animation logic needed - buttons are shown immediately based on context
 
@@ -721,12 +767,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const calculatedBottom = keyboardActive ? keyboardHeight : 0; // Position directly above keyboard or at bottom
   
   const dynamicStyle = isMobile ? {
-    // Let height be auto-determined by CSS flexbox wrapping
-    // height: 'auto', // Remove fixed height for mobile
-    '--calculated-bottom': `${calculatedBottom}px`,
-    bottom: keyboardActive 
-      ? `${calculatedBottom}px` // Above keyboard
-      : '0' // Stick to bottom when no keyboard
+    // Mobile: Fixed position with dynamic bottom
+    position: 'fixed' as const,
+    bottom: `${keyboardHeight}px`,
+    left: 0,
+    right: 0,
+    // No transforms or transitions
+    transform: 'none',
+    transition: 'none',
   } : {
     minHeight: `${toolbarHeight}px`,
     /* No transitions */
@@ -823,6 +871,22 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         );
       })}
       
+      {/* Hidden input for manual keyboard control on mobile */}
+      {windowWidth <= 767 && (
+        <input
+          ref={hiddenInputRef}
+          type="text"
+          style={{
+            position: 'absolute',
+            left: '-9999px',
+            width: '1px',
+            height: '1px',
+            opacity: 0,
+            pointerEvents: 'none'
+          }}
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 }; 

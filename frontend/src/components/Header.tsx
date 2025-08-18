@@ -3,6 +3,8 @@ import styles from './Header.module.css';
 import { useAuth } from '../AuthContext';
 import { regenerateAllThumbnails } from '../api';
 import { ScriptLayout, CreateScriptLayoutRequest } from '../types';
+import { StatusIndicator } from './editor/components/ui/StatusIndicator';
+import type { ConnectionStatus } from './editor/types';
 
 import logger from '../services/LoggingService';
 interface HeaderProps {
@@ -11,6 +13,7 @@ interface HeaderProps {
   onNavigateToScripts?: () => void;
   onThumbnailsRefreshed?: () => void;
   activeUserCount?: number;
+  connectionStatus?: ConnectionStatus; // Add connection status
   // Layout management props (only for editor view)
   layouts?: ScriptLayout[];
   currentLayout?: ScriptLayout | null;
@@ -137,6 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigateToScripts,
   onThumbnailsRefreshed,
   activeUserCount = 0,
+  connectionStatus = 'connected',
   layouts = [],
   currentLayout,
   onLayoutChange,
@@ -262,6 +266,15 @@ export const Header: React.FC<HeaderProps> = ({
       <nav className={styles.breadcrumb}>
         {renderBreadcrumb()}
       </nav>
+
+      {/* Connection status sphere - always visible */}
+      <div style={{ marginLeft: 'auto', marginRight: '16px' }}>
+        <StatusIndicator 
+          status={connectionStatus}
+          activeUserCount={activeUserCount}
+          mode="sphere"
+        />
+      </div>
 
       {/* User menu on the right */}
       <div className={styles.menuContainer}>
