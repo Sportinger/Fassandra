@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Script } from '../../../types';
 import { ScriptCardMenu } from './ScriptCardMenu';
 import { ScriptPreview } from './ScriptPreview';
-import { useCssTilt } from '../../../hooks/useCssTilt';
+import { useCssTiltWithAccelerometer } from '../../../hooks/useCssTiltWithAccelerometer';
 import styles from './ScriptCard.module.css';
 
 interface ScriptCardProps {
@@ -29,7 +29,11 @@ export const ScriptCard: React.FC<ScriptCardProps> = ({
   const [renameValue, setRenameValue] = useState(script.title);
   const menuRef = useRef<HTMLDivElement>(null);
   
-  const tilt = useCssTilt();
+  const tilt = useCssTiltWithAccelerometer({
+    maxTilt: 10,
+    sensitivity: 1.2,
+    mobileMultiplier: 0.6
+  });
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -97,6 +101,7 @@ export const ScriptCard: React.FC<ScriptCardProps> = ({
         onMouseMove={tilt.onMouseMove}
         onMouseEnter={tilt.onMouseEnter}
         onMouseLeave={tilt.onMouseLeave}
+        onTouchStart={tilt.onTouchStart}
       >
         
         <div className={styles.badgeContainer}>
