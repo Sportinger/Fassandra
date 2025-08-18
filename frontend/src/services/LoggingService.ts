@@ -39,7 +39,8 @@ class LoggingService {
     if (envLogLevel && LogLevel[envLogLevel as keyof typeof LogLevel] !== undefined) {
       this.logLevel = LogLevel[envLogLevel as keyof typeof LogLevel];
     } else {
-      this.logLevel = this.isDevelopment ? LogLevel.DEBUG : LogLevel.WARN;
+      // Temporarily enable INFO level logging in production to debug issues
+      this.logLevel = this.isDevelopment ? LogLevel.DEBUG : LogLevel.INFO;
     }
   }
 

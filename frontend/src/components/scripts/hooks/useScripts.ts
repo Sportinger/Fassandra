@@ -27,6 +27,19 @@ export const useScripts = (token: string | null, tokenReady: boolean): UseScript
       setLoading(true);
       setError(null);
       const data = await getScripts();
+      
+      // Debug logging to see what scripts are returned
+      console.log('[DEBUG] Fetched scripts from API:', data.length);
+      const publicScripts = data.filter(s => s.is_public);
+      console.log('[DEBUG] Public scripts:', publicScripts.length, 'Total:', data.length);
+      console.log('[DEBUG] Script details:', data.map(s => ({ 
+        title: s.title, 
+        is_public: s.is_public, 
+        created_by: s.created_by?.substring(0, 8) 
+      })));
+      logger.info('useScripts', `Fetched ${data.length} scripts from API`);
+      logger.info('useScripts', `Public: ${publicScripts.length}, Total: ${data.length}`);
+      
       setScripts(data);
       
       // Generate thumbnails in background

@@ -12,15 +12,15 @@
 /* Dark theme (default) */
 :root,
 :root[data-theme="dark"] {
-  --color-background: #242424;
-  --color-background-secondary: #1a1a1a;
+  --color-background: #0a0a0a;
+  --color-background-secondary: #000000;
   --color-text: rgba(255, 255, 255, 0.87);
   --color-text-secondary: #888;
-  --color-border: #444;
+  --color-border: #2a2a2a;
   --color-accent: #646cff;
   --color-accent-hover: #535bf2;
-  --color-button-bg: #1a1a1a;
-  --color-button-bg-hover: #333;
+  --color-button-bg: #000000;
+  --color-button-bg-hover: #1a1a1a;
 }
 
 /* Light theme */

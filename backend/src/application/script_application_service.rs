@@ -336,13 +336,16 @@ impl ScriptApplicationService {
         Ok(())
     }
 
-    /// Lists all scripts for a user
+    /// Lists all scripts for a user (including public scripts and shared scripts)
     pub async fn list_user_scripts(&self, user_id: Uuid) -> Result<Vec<Script>, AppError> {
         let scripts = sqlx::query_as::<_, Script>(
-            "SELECT id, title, created_by, created_at, is_public, thumbnail 
-             FROM scripts 
-             WHERE created_by = $1 
-             ORDER BY created_at DESC"
+            "SELECT DISTINCT s.id, s.title, s.created_by, s.created_at, s.is_public, s.thumbnail 
+             FROM scripts s
+             LEFT JOIN script_shares ss ON s.id = ss.script_id
+             WHERE s.created_by = $1                    -- User's own scripts
+                OR s.is_public = true                   -- Public scripts from anyone
+                OR ss.shared_with_user_id = $1          -- Scripts shared with user
+             ORDER BY s.created_at DESC"
         )
         .bind(user_id)
         .fetch_all(self.pool.as_ref())
