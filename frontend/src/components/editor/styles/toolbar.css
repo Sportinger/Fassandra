@@ -127,6 +127,8 @@
 .toolbarButton .icon {
   pointer-events: none;
   line-height: 1;
+  font-size: 18px;
+  font-weight: 600;
   /* No transition */
   /* transition: transform var(--transition-fast); */
 }
@@ -219,27 +221,29 @@
 .dropdownButton {
   display: flex !important;
   align-items: center;
-  justify-content: space-between;
-  width: auto !important;
+  justify-content: center;
+  width: var(--toolbar-button-size) !important;
+  height: var(--toolbar-button-size) !important;
   min-width: var(--toolbar-button-size);
-  padding: 0 var(--space-sm) !important;
-  gap: var(--space-xs);
+  padding: 0 !important;
+  gap: 2px;
 }
 
 .dropdownButton .label {
-  font-size: var(--font-size-sm);
+  font-size: 18px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 120px;
+  line-height: 1;
 }
 
 .dropdownButton .arrow {
-  font-size: var(--font-size-xs);
+  font-size: 8px;
   /* No transition */
   /* transition: transform var(--transition-fast); */
   opacity: 0.7;
+  margin-left: -2px;
 }
 
 .dropdownButton.open .arrow {
@@ -554,21 +558,28 @@
   }
   
   .dropdownButton {
-    /* Consistent mobile button sizing */
-    width: auto !important;
-    min-width: 48px; /* Match regular button size */
-    max-width: 80px; /* Prevent overly wide dropdowns */
+    /* Match regular button size exactly */
+    width: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
     height: 48px !important;
-    padding: 0 8px !important;
+    padding: 0 !important;
     flex-shrink: 0; /* Prevent shrinking in flex container */
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
   }
   
   .dropdownButton .label {
-    display: none; /* Hide label text on mobile to save space */
+    display: inline-block; /* Show label but with larger font */
+    font-size: 18px !important; /* Same size as regular button icons */
+    font-weight: 600;
+    line-height: 1;
   }
   
   .dropdownButton .arrow {
-    margin-left: 0; /* Remove extra margin when label is hidden */
+    margin-left: 2px; /* Small gap between label and arrow */
+    font-size: 10px;
   }
   
   /* Keyboard toggle button styling */

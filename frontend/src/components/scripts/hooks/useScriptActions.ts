@@ -107,7 +107,17 @@ export const useScriptActions = ({
       setError(null);
       return true;
     } catch (err: any) {
-      const errorMessage = err.message || 'Failed to share script';
+      // Provide better error messages for common cases
+      let errorMessage = 'Failed to share script';
+      if (err.status === 404 || err.message?.includes('not found')) {
+        errorMessage = `User "${username}" not found. Please check the username and try again.`;
+      } else if (err.status === 400 || err.message?.includes('yourself')) {
+        errorMessage = 'Cannot share script with yourself';
+      } else if (err.status === 409 || err.message?.includes('already shared')) {
+        errorMessage = `Script is already shared with ${username}`;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
       setError(errorMessage);
       logger.error('useScriptActions', errorMessage, err);
       return false;
