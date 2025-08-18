@@ -175,14 +175,29 @@ export const useEditorCore = ({
       // 🔧 FIXED: Create WebSocket provider with error handling
       let websocketProvider: WebsocketProvider;
       try {
-        // Clear any existing state before connecting to prevent duplication
-        doc.transact(() => {
-          const xmlFragment = doc.getXmlFragment('xmlFragment');
-          // Only clear if there's existing content and we're reconnecting
-          if (xmlFragment.length > 0 && providerRef.current) {
-            logger.debug('useEditorCore', '[Editor Core] Clearing existing content before reconnection');
+        // Don't clear the document when connecting - YJS will handle sync properly
+        // The server sends the full state and YJS merges it correctly with local state
+        if (providerRef.current) {
+          logger.debug('useEditorCore', '[Editor Core] Reconnecting to existing document');
+        }
+        
+        // Add global error handler for YJS decode errors
+        const originalError = window.onerror;
+        window.onerror = (message, source, lineno, colno, error) => {
+          if (message && message.toString().includes('Unexpected end of array')) {
+            logger.error('useEditorCore', '[Editor] YJS decode error caught:', error);
+            // Prevent the error from crashing the app
+            return true;
           }
-        }, 'clearBeforeReconnect');
+          // Call original handler if exists
+          if (originalError) {
+            return originalError(message, source, lineno, colno, error);
+          }
+          return false;
+        };
+        
+        // Detect Firefox browser
+        const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
         
         websocketProvider = new WebsocketProvider(
           WS_BASE_URL,
@@ -194,10 +209,12 @@ export const useEditorCore = ({
             },
             // Prevent aggressive reconnection that might cause browser refresh
             maxBackoffTime: 30000, // Max 30 seconds between reconnection attempts
-            resyncInterval: 5000, // Resync every 5 seconds when connected
+            resyncInterval: isFirefox ? 10000 : 5000, // Slower resync for Firefox
             // Add WebSocket options to prevent connection issues
             WebSocketPolyfill: WebSocket,
             connect: true,
+            // Firefox-specific: disable binary type check
+            disableBc: isFirefox,
           }
         );
 
@@ -224,6 +241,7 @@ export const useEditorCore = ({
             break;
           case 'disconnected':
             setConnectionStatus('disconnected');
+            // Don't set error for normal disconnection - provider will reconnect
             break;
           default:
             setConnectionStatus('error');
@@ -234,7 +252,31 @@ export const useEditorCore = ({
       websocketProvider.on('connection-error', (error: any) => {
         logger.error('useEditorCore', '[Editor] WebSocket connection error:', error);
         setConnectionStatus('error');
-        setErrorMessage('Failed to connect to collaboration server');
+        setErrorMessage('Connection lost. Retrying...');
+        
+        // Auto-reconnect after a delay
+        setTimeout(() => {
+          if (websocketProvider && !websocketProvider.wsconnected) {
+            debugLog('[Editor] Attempting to reconnect WebSocket...');
+            websocketProvider.connect();
+          }
+        }, 2000);
+      });
+      
+      // Handle sync errors (like "Unexpected end of array")
+      websocketProvider.on('sync-error', (error: any) => {
+        logger.error('useEditorCore', '[Editor] YJS sync error:', error);
+        // Don't crash, just log and try to recover
+        setConnectionStatus('error');
+        setErrorMessage('Sync error. Reconnecting...');
+        
+        // Force reconnection to get clean state
+        setTimeout(() => {
+          if (websocketProvider) {
+            websocketProvider.disconnect();
+            setTimeout(() => websocketProvider.connect(), 500);
+          }
+        }, 1000);
       });
 
       // 🔧 NEW: Track active users from awareness
@@ -472,6 +514,13 @@ export const useEditorCore = ({
   // 🔧 FIXED: Load initial content from latest snapshot instead of outdated blocks
   useEffect(() => {
     if (!editorInstance || !stableScriptId || !stableToken) return;
+    
+    // Skip loading initial content if YJS is handling synchronization
+    // The content will come from YJS sync protocol instead
+    if (provider) {
+      debugLog('[Editor] 🔄 Skipping initial content load - YJS collaboration is active');
+      return;
+    }
 
     const loadInitialContent = async () => {
       try {
@@ -536,7 +585,7 @@ export const useEditorCore = ({
     };
 
     loadInitialContent();
-  }, [editorInstance, stableScriptId, stableToken]);
+  }, [editorInstance, stableScriptId, stableToken, provider]);
 
   // Context menu handlers
   const showContextMenu = useCallback((x: number, y: number, context: ToolbarContext) => {

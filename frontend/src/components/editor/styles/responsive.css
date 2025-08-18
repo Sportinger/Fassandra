@@ -126,9 +126,10 @@ html, body {
   min-height: var(--page-height);
   
   /* Page styling */
-  background: #242424;
+  background: var(--color-page-background, white);
   box-shadow: var(--shadow-lg);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
+  border: 1px solid var(--color-border);
   position: relative;
   
   /* Content padding - restored full padding */
