@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT script_id, COUNT(*) as count\n            FROM yjs_recent_updates\n            WHERE is_compacted = false\n            GROUP BY script_id\n            HAVING COUNT(*) > 5000\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "script_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "58305957800774fb73b6097f72c056b28908fe5e1acd44422b4c8980a82c5332"
+}

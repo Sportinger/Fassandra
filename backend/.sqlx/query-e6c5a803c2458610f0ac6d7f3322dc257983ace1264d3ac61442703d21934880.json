@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO yjs_base_states (script_id, base_state, state_vector, last_compacted_update_id, update_count, document_size)\n            VALUES ($1, $2, $3, $4, $5, $6)\n            ON CONFLICT (script_id) \n            DO UPDATE SET \n                base_state = EXCLUDED.base_state,\n                state_vector = EXCLUDED.state_vector,\n                last_compacted_update_id = EXCLUDED.last_compacted_update_id,\n                update_count = yjs_base_states.update_count + EXCLUDED.update_count,\n                document_size = EXCLUDED.document_size,\n                compacted_at = NOW()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Bytea",
+        "Int8",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e6c5a803c2458610f0ac6d7f3322dc257983ace1264d3ac61442703d21934880"
+}

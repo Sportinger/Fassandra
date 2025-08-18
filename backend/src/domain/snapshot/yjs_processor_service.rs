@@ -91,7 +91,7 @@ impl YjsProcessorService {
             YjsUpdate,
             r#"
             SELECT id, update_data
-            FROM yjs_document_updates
+            FROM yjs_recent_updates
             WHERE script_id = $1 AND id > $2
             ORDER BY created_at ASC, id ASC
             "#,

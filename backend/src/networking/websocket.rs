@@ -392,27 +392,47 @@ async fn handle_socket(
                             }
                             
                             // Analyze the binary structure
-                            let should_persist = if bin.len() >= 2 {
+                            let should_persist = if bin.len() >= 1 {
                                 let msg_type = bin[0];
                                 let msg_subtype = if bin.len() > 1 { Some(bin[1]) } else { None };
                                 tracing::debug!("[WS_CONTENT_TYPE] script: {}, msg_type: {:#04x}, subtype: {:?}", 
                                               script_id, msg_type, msg_subtype.map(|b| format!("{:#04x}", b)));
                                 
-                                // CRITICAL FIX: Filter out sync protocol messages (0x00)
-                                // These are YJS sync negotiation messages that should NEVER be persisted
-                                // They cause 15GB memory allocation when replayed during snapshot processing
-                                if msg_type == 0x00 {
-                                    tracing::warn!(
-                                        "[WS_SYNC_FILTERED] BLOCKING sync protocol message from persistence - script: {}, msg_type: {:#04x}, subtype: {:?}, size: {}, hex: {}",
-                                        script_id, msg_type, msg_subtype.map(|b| format!("{:#04x}", b)), 
-                                        bin.len(), hex::encode(&bin[..bin.len().min(50)])
-                                    );
-                                    false // Don't persist sync messages
-                                } else {
-                                    true // Persist regular updates
+                                // CRITICAL FIX: Only persist actual document updates
+                                // YJS Protocol message types:
+                                // 0x00 = Sync Protocol (NEVER persist - causes memory explosion)
+                                // 0x01 = Awareness (already filtered above)
+                                // 0x02 = Auth (not used)
+                                // Other = Actual document updates
+                                match msg_type {
+                                    0x00 => {
+                                        // Sync protocol messages - used for initial sync negotiation
+                                        tracing::debug!(
+                                            "[WS_SYNC_FILTERED] Skipping sync protocol message - script: {}, subtype: {:?}, size: {}",
+                                            script_id, msg_subtype.map(|b| format!("{:#04x}", b)), bin.len()
+                                        );
+                                        false
+                                    },
+                                    0x01 => {
+                                        // Awareness updates - should have been caught earlier but double-check
+                                        tracing::debug!("[WS_AWARENESS_FILTERED] Skipping awareness update");
+                                        false
+                                    },
+                                    0x02 => {
+                                        // Auth messages - not used in our implementation
+                                        tracing::debug!("[WS_AUTH_FILTERED] Skipping auth message");
+                                        false
+                                    },
+                                    _ => {
+                                        // Actual document updates - these should be persisted
+                                        tracing::debug!("[WS_CONTENT_UPDATE] Persisting document update, type: {:#04x}", msg_type);
+                                        true
+                                    }
                                 }
                             } else {
-                                true // Persist if we can't determine type (shouldn't happen)
+                                // Empty message - don't persist
+                                tracing::debug!("[WS_EMPTY_MESSAGE] Skipping empty message");
+                                false
                             };
                             
                             if should_persist {

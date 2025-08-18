@@ -4,7 +4,7 @@
 //! - Thumbnail generation for script previews
 //! - Asynchronous database operations and batch processing
 //! - Y.js document persistence and event handling
-//! - Snapshotting service for document state management
+//! - YJS compaction service for efficient storage
 //! - Background task processing and coordination
 //! - Claude Code integration for PDF script parsing
 //!
@@ -18,7 +18,7 @@
 pub mod thumbnail;
 pub mod async_db_writer;
 pub mod persistence_event;
-pub mod snapshotting_service_v2;
+pub mod yjs_compaction_service;
 pub mod json_to_db_service;
 pub mod claude_session_service;
 
@@ -26,6 +26,6 @@ pub mod claude_session_service;
 pub use thumbnail::*;
 pub use async_db_writer::*;
 pub use persistence_event::*;
-pub use snapshotting_service_v2::*;
+pub use yjs_compaction_service::*;
 pub use json_to_db_service::*;
 pub use claude_session_service::*;

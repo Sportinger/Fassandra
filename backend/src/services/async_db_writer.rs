@@ -12,13 +12,15 @@ async fn save_yjs_update(pool: &PgPool, event: &YjsPersistenceEvent) -> Result<(
         Box::new(e) as Box<dyn std::error::Error + Send + Sync>
     })?;
     
+    // Use the new table name and add expires_at field
     sqlx::query_as::<_, YjsDocumentUpdate>(
-        "INSERT INTO yjs_document_updates (script_id, user_id, update_data, created_at) VALUES ($1, $2, $3, $4) RETURNING id, script_id, user_id, update_data, created_at"
+        "INSERT INTO yjs_recent_updates (script_id, user_id, update_data, created_at, expires_at, is_compacted) VALUES ($1, $2, $3, $4, $5, false) RETURNING id, script_id, user_id, update_data, created_at"
     )
     .bind(script_id)
     .bind(event.user_id) 
     .bind(&event.update_data)
-    .bind(event.received_at) 
+    .bind(event.received_at)
+    .bind(event.received_at + chrono::Duration::hours(2)) // Expire after 2 hours
     .fetch_one(pool)
     .await
     .map_err(|e| {

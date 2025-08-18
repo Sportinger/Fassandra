@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT DISTINCT r.script_id\n            FROM yjs_recent_updates r\n            LEFT JOIN yjs_base_states b ON r.script_id = b.script_id\n            WHERE r.is_compacted = false\n            GROUP BY r.script_id, b.compacted_at\n            HAVING \n                COUNT(*) > $1  -- Too many updates\n                OR MIN(r.created_at) < NOW() - INTERVAL '30 minutes'  -- Old updates\n                OR b.compacted_at IS NULL  -- Never compacted\n                OR b.compacted_at < NOW() - INTERVAL '30 minutes'  -- Stale base\n            LIMIT 10  -- Process max 10 scripts at a time\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "script_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ca0efa5a06d6e04125c50fbf8519daaab3d72bbc3413200eb486b3202d5997f1"
+}

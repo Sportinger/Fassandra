@@ -205,16 +205,18 @@ async fn get_content_snapshot_wrapper(
 }
 
 /// Wrapper for get_script_with_blocks to use ScriptServices
+/// Now returns YJS state instead of blocks for better performance
 async fn get_script_with_blocks_wrapper(
     State(services): State<crate::handlers::script::ScriptServices>,
     Path(script_id): Path<Uuid>,
     auth_user: AuthUser,
 ) -> Result<Json<serde_json::Value>, crate::error::AppError> {
-    // Use the script service method that includes authorization
-    let result = services.script_service.get_script_with_blocks(script_id, auth_user.user_id).await?;
-    
-    match result {
-        Some((script, blocks)) => {
+    // Try to load with YJS state first (new method)
+    match services.script_service.get_script_with_yjs(script_id, auth_user.user_id).await {
+        Ok(Some((script, yjs_state))) => {
+            // Return YJS state encoded as base64 for transport
+            use base64::Engine as _;
+            let state_base64 = base64::engine::general_purpose::STANDARD.encode(&yjs_state);
             Ok(Json(serde_json::json!({
                 "id": script.id,
                 "title": script.title,
@@ -222,10 +224,32 @@ async fn get_script_with_blocks_wrapper(
                 "created_at": script.created_at,
                 "is_public": script.is_public,
                 "thumbnail": script.thumbnail,
-                "blocks": blocks
+                "yjs_state": state_base64,
+                "format": "yjs"  // Indicate this is YJS format
             })))
         }
-        None => Err(crate::error::AppError::NotFound("Script not found".to_string()))
+        Ok(None) => Err(crate::error::AppError::NotFound("Script not found".to_string())),
+        Err(e) => {
+            // Fallback to blocks for compatibility
+            tracing::warn!("Failed to load YJS state, falling back to blocks: {}", e);
+            let result = services.script_service.get_script_with_blocks(script_id, auth_user.user_id).await?;
+            
+            match result {
+                Some((script, blocks)) => {
+                    Ok(Json(serde_json::json!({
+                        "id": script.id,
+                        "title": script.title,
+                        "created_by": script.created_by,
+                        "created_at": script.created_at,
+                        "is_public": script.is_public,
+                        "thumbnail": script.thumbnail,
+                        "blocks": blocks,
+                        "format": "blocks"  // Indicate this is blocks format
+                    })))
+                }
+                None => Err(crate::error::AppError::NotFound("Script not found".to_string()))
+            }
+        }
     }
 }
 

@@ -439,7 +439,63 @@ impl ScriptApplicationService {
         }
     }
 
-    /// Retrieves a script with all its blocks for authorized users
+    /// Retrieves a script with YJS document state for authorized users
+    pub async fn get_script_with_yjs(
+        &self,
+        script_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<(Script, Vec<u8>)>, AppError> {
+        info!(script_id = %script_id, user_id = %user_id, "Getting script with YJS state");
+
+        // Check access authorization
+        if !self.check_script_access(script_id, user_id).await? {
+            warn!("User {} attempted to access script {} without permission", user_id, script_id);
+            return Err(AppError::Forbidden("Access denied".to_string()));
+        }
+
+        // Get the script metadata
+        let script = sqlx::query_as::<_, Script>(
+            "SELECT id, title, created_by, created_at, is_public, thumbnail FROM scripts WHERE id = $1"
+        )
+        .bind(script_id)
+        .fetch_optional(self.pool.as_ref())
+        .await
+        .map_err(|e| {
+            error!("Failed to fetch script {}: {}", script_id, e);
+            AppError::Internal(anyhow::anyhow!("Failed to fetch script"))
+        })?;
+
+        let script = match script {
+            Some(s) => s,
+            None => {
+                info!(script_id = %script_id, "Script not found");
+                return Ok(None);
+            }
+        };
+
+        // Load the YJS document using the compaction service
+        match crate::services::yjs_compaction_service::load_document(self.pool.as_ref(), script_id).await {
+            Ok(doc) => {
+                // Encode the document state for transmission
+                use yrs::{Transact, ReadTxn};
+                let state = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
+                info!(
+                    script_id = %script_id,
+                    user_id = %user_id,
+                    state_size = state.len(),
+                    "Successfully loaded script with YJS state"
+                );
+                Ok(Some((script, state)))
+            }
+            Err(e) => {
+                error!("Failed to load YJS document for script {}: {}", script_id, e);
+                // Return empty state instead of failing completely
+                Ok(Some((script, Vec::new())))
+            }
+        }
+    }
+
+    /// Retrieves a script with all its blocks for authorized users (DEPRECATED - use get_script_with_yjs)
     pub async fn get_script_with_blocks(
         &self,
         script_id: Uuid,
