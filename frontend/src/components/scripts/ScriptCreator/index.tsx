@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useCssTilt } from '../../../hooks/useCssTilt';
+import { useCssTiltWithAccelerometer } from '../../../hooks/useCssTiltWithAccelerometer';
 import styles from './ScriptCreator.module.css';
 
 interface ScriptCreatorProps {
@@ -13,7 +13,11 @@ export const ScriptCreator: React.FC<ScriptCreatorProps> = ({ onCreate, onUpload
   const [isCreating, setIsCreating] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  const tilt = useCssTilt();
+  const tilt = useCssTiltWithAccelerometer({
+    maxTilt: 10,
+    sensitivity: 1.2,
+    mobileMultiplier: 0.6
+  });
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -68,6 +72,7 @@ export const ScriptCreator: React.FC<ScriptCreatorProps> = ({ onCreate, onUpload
         onMouseMove={tilt.onMouseMove}
         onMouseEnter={tilt.onMouseEnter}
         onMouseLeave={tilt.onMouseLeave}
+        onTouchStart={tilt.onTouchStart}
       >
         {state === 'plus' && (
           <div className={styles.addIcon}>+</div>

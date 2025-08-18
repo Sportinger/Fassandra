@@ -220,4 +220,42 @@
   height: 1px;
   background: var(--color-border);
   margin: 4px 0;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .dropdownMenu {
+    min-width: 250px; /* Ensure enough width for text */
+    white-space: nowrap; /* Prevent text wrapping */
+  }
+  
+  .dropdownMenu button {
+    padding: 1rem 1.5rem; /* More padding for better touch targets */
+    font-size: 1rem; /* Slightly larger text on mobile */
+    white-space: nowrap; /* Prevent text wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Add ellipsis if text is still too long */
+  }
+  
+  .submenuItem {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .submenuTrigger {
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    white-space: nowrap;
+  }
+  
+  .currentLayoutDisplay {
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 } 

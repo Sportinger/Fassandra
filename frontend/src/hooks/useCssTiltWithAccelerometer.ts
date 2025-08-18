@@ -1,10 +1,20 @@
-import { useRef, useCallback, useEffect, MouseEvent as ReactMouseEvent } from 'react';
+import { useRef, useCallback, useEffect, MouseEvent as ReactMouseEvent, useState } from 'react';
 import { useDeviceOrientation } from './useDeviceOrientation';
 
 const isMobileDevice = () => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent) ||
     ('ontouchstart' in window) ||
     (navigator.maxTouchPoints > 0);
+  
+  console.log('Mobile detection:', { 
+    userAgent, 
+    isMobile,
+    hasTouchStart: 'ontouchstart' in window,
+    maxTouchPoints: navigator.maxTouchPoints 
+  });
+  
+  return isMobile;
 };
 
 interface TiltOptions {
@@ -21,10 +31,15 @@ export const useCssTiltWithAccelerometer = (options: TiltOptions = {}) => {
   } = options;
 
   const ref = useRef<HTMLDivElement>(null);
-  const isMobile = isMobileDevice();
-  const { orientation, isSupported, requestPermission } = useDeviceOrientation();
+  const [isMobile] = useState(() => isMobileDevice());
+  const { orientation, isSupported, permissionGranted, requestPermission, debug } = useDeviceOrientation();
   const lastOrientationRef = useRef({ beta: 0, gamma: 0 });
   const smoothedOrientationRef = useRef({ beta: 0, gamma: 0 });
+  const [isActive, setIsActive] = useState(false);
+  const lastMovementTime = useRef(Date.now());
+  const autoCenterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const targetTiltRef = useRef({ x: 0, y: 0 });
+  const currentTiltRef = useRef({ x: 0, y: 0 });
 
   // Mouse handling for desktop
   const handleMouseMove = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
@@ -75,12 +90,43 @@ export const useCssTiltWithAccelerometer = (options: TiltOptions = {}) => {
 
   // Accelerometer handling for mobile
   useEffect(() => {
-    if (!isMobile || !isSupported || !ref.current) return;
+    if (!isMobile || !isSupported) {
+      return;
+    }
 
     const updateTilt = () => {
-      if (!ref.current || orientation.beta === null || orientation.gamma === null) return;
+      if (!ref.current) return;
+      
+      // Check if we have valid orientation data
+      if (orientation.beta === null || orientation.gamma === null) {
+        return;
+      }
 
-      // Smooth the orientation values using exponential moving average
+      if (!isActive) {
+        setIsActive(true);
+      }
+
+      // Detect if there's new movement
+      const movementThreshold = 2;
+      const hasMovement = Math.abs(orientation.beta - lastOrientationRef.current.beta) > movementThreshold ||
+                         Math.abs(orientation.gamma - lastOrientationRef.current.gamma) > movementThreshold;
+      
+      if (hasMovement) {
+        lastMovementTime.current = Date.now();
+        lastOrientationRef.current = { beta: orientation.beta, gamma: orientation.gamma };
+        
+        // Clear any existing auto-center timeout
+        if (autoCenterTimeoutRef.current) {
+          clearTimeout(autoCenterTimeoutRef.current);
+        }
+        
+        // Set new auto-center timeout for 2 seconds
+        autoCenterTimeoutRef.current = setTimeout(() => {
+          targetTiltRef.current = { x: 0, y: 0 };
+        }, 2000);
+      }
+
+      // Smooth the orientation values
       const smoothingFactor = 0.15;
       smoothedOrientationRef.current.beta = 
         smoothedOrientationRef.current.beta * (1 - smoothingFactor) + 
@@ -89,32 +135,34 @@ export const useCssTiltWithAccelerometer = (options: TiltOptions = {}) => {
         smoothedOrientationRef.current.gamma * (1 - smoothingFactor) + 
         orientation.gamma * smoothingFactor;
 
-      // Beta: front-to-back tilt (x-axis rotation)
-      // Range: -180 to 180, but typically -90 to 90 for normal device usage
-      // Neutral position is around 60 degrees when held naturally
-      const neutralBeta = 60;
-      const betaDiff = smoothedOrientationRef.current.beta - neutralBeta;
-      
-      // Gamma: left-to-right tilt (y-axis rotation)
-      // Range: -90 to 90
-      // Neutral position is 0 degrees
+      // Calculate target tilt based on device orientation
+      const neutralBeta = 45;
+      const betaDiff = (smoothedOrientationRef.current.beta - neutralBeta);
       const gammaDiff = smoothedOrientationRef.current.gamma;
 
-      // Calculate tilt with mobile multiplier for subtler effect
-      const tiltX = Math.max(-maxTilt, Math.min(maxTilt, 
-        (betaDiff / 30) * maxTilt * sensitivity * mobileMultiplier));
-      const tiltY = Math.max(-maxTilt, Math.min(maxTilt, 
-        (gammaDiff / 30) * maxTilt * sensitivity * mobileMultiplier));
+      // INVERTED: Tilt opposite to phone movement
+      // Phone tilt up = card tilts down, phone left = card right
+      if (hasMovement) {
+        targetTiltRef.current.x = Math.max(-maxTilt, Math.min(maxTilt, 
+          (betaDiff / 25) * maxTilt * sensitivity * mobileMultiplier)); // NOT inverted for up/down
+        targetTiltRef.current.y = Math.max(-maxTilt, Math.min(maxTilt, 
+          -(gammaDiff / 25) * maxTilt * sensitivity * mobileMultiplier)); // Inverted for left/right
+      }
+
+      // Smooth interpolation to target (for auto-centering effect)
+      const lerpFactor = 0.1;
+      currentTiltRef.current.x += (targetTiltRef.current.x - currentTiltRef.current.x) * lerpFactor;
+      currentTiltRef.current.y += (targetTiltRef.current.y - currentTiltRef.current.y) * lerpFactor;
 
       // Apply the tilt
-      ref.current.style.setProperty('--tilt-x', `${tiltX}deg`);
-      ref.current.style.setProperty('--tilt-y', `${tiltY}deg`);
-      ref.current.style.setProperty('--shadow-x', `${tiltY * -0.3}px`);
-      ref.current.style.setProperty('--shadow-y', `${tiltX * -0.3 + 8}px`);
+      ref.current.style.setProperty('--tilt-x', `${currentTiltRef.current.x}deg`);
+      ref.current.style.setProperty('--tilt-y', `${currentTiltRef.current.y}deg`);
+      ref.current.style.setProperty('--shadow-x', `${currentTiltRef.current.y * -0.3}px`);
+      ref.current.style.setProperty('--shadow-y', `${Math.abs(currentTiltRef.current.x) * 0.3 + 8}px`);
       
-      // Subtler parallax for mobile
-      ref.current.style.setProperty('--parallax-x', `${tiltY * 1.5}px`);
-      ref.current.style.setProperty('--parallax-y', `${tiltX * -1.5}px`);
+      // Subtler parallax for mobile (also inverted)
+      ref.current.style.setProperty('--parallax-x', `${currentTiltRef.current.y * 1.5}px`);
+      ref.current.style.setProperty('--parallax-y', `${currentTiltRef.current.x * -1.5}px`);
       
       // Always keep a subtle hover effect on mobile
       ref.current.style.setProperty('--hover', '0.3');
@@ -127,16 +175,17 @@ export const useCssTiltWithAccelerometer = (options: TiltOptions = {}) => {
       animationFrameId = requestAnimationFrame(animate);
     };
     
-    if (orientation.beta !== null && orientation.gamma !== null) {
-      animate();
-    }
+    animate();
 
     return () => {
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
+      if (autoCenterTimeoutRef.current) {
+        clearTimeout(autoCenterTimeoutRef.current);
+      }
     };
-  }, [isMobile, isSupported, orientation, maxTilt, sensitivity, mobileMultiplier]);
+  }, [isMobile, isSupported, orientation.beta, orientation.gamma, maxTilt, sensitivity, mobileMultiplier, isActive]);
 
   // Handle touch events for mobile to trigger permission request if needed
   const handleTouchStart = useCallback(async () => {
@@ -154,5 +203,13 @@ export const useCssTiltWithAccelerometer = (options: TiltOptions = {}) => {
     onTouchStart: handleTouchStart,
     isMobile,
     isAccelerometerActive: isMobile && isSupported && orientation.beta !== null,
+    debug: {
+      isMobile,
+      isSupported,
+      permissionGranted,
+      hasData: orientation.beta !== null,
+      orientation,
+      message: debug,
+    }
   };
 };

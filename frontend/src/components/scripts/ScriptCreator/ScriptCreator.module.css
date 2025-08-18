@@ -149,3 +149,70 @@
   transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
 }
 
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .cardWrapper {
+    width: calc(100vw - 2rem);
+    max-width: 400px;
+    height: 450px;
+    perspective: 1200px;
+  }
+  
+  .addIcon {
+    font-size: 5rem;
+    font-weight: 200;
+  }
+  
+  .optionButton {
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+  }
+  
+  .nameInput {
+    padding: 1rem;
+    font-size: 1.1rem;
+  }
+  
+  .createButton {
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+  }
+  
+  .optionsContainer {
+    gap: 1.25rem;
+    width: 85%;
+  }
+  
+  .createForm {
+    gap: 1.25rem;
+    width: 85%;
+  }
+}
+
+/* Small mobile screens */
+@media (max-width: 480px) {
+  .cardWrapper {
+    width: calc(100vw - 1.5rem);
+    max-width: 350px;
+    height: 420px;
+  }
+  
+  .addIcon {
+    font-size: 4.5rem;
+  }
+  
+  .optionButton {
+    padding: 0.9rem 1.1rem;
+    font-size: 0.95rem;
+  }
+  
+  .nameInput {
+    padding: 0.9rem;
+    font-size: 1rem;
+  }
+  
+  .createButton {
+    padding: 0.9rem 1.1rem;
+    font-size: 0.95rem;
+  }
+}
