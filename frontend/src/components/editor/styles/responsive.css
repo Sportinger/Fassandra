@@ -330,11 +330,21 @@ html, body {
   outline-offset: 2px;
 }
 
-/* Highlight when scene-select mode is active */
-.ProseMirror [data-type="scene-block"].scene-selected {
-  background-color: rgba(21, 128, 61, 0.1); /* Dark green selection */
-  outline: 2px solid rgba(21, 128, 61, 0.5); /* Dark green outline */
-  outline-offset: 2px;
+/* Highlight when scene-select mode is active - desktop only */
+@media (min-width: 768px) {
+  .ProseMirror [data-type="scene-block"].scene-selected {
+    background-color: rgba(21, 128, 61, 0.1); /* Dark green selection */
+    outline: 2px solid rgba(21, 128, 61, 0.5); /* Dark green outline */
+    outline-offset: 2px;
+  }
+}
+
+/* Mobile: no background overlay for scene selection */
+@media (max-width: 767px) {
+  .ProseMirror [data-type="scene-block"].scene-selected {
+    background-color: transparent;
+    outline: none;
+  }
 }
 
 .ProseMirror [data-type="dialogue-text"] {

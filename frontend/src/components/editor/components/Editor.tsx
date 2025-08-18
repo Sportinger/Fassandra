@@ -447,18 +447,11 @@ export const Editor: React.FC<EditorProps> = ({
         onCreateNewLayout={async () => {}} // TODO: Implement
         onSaveLayout={async () => {}} // TODO: Implement
         activeUserCount={activeUserCount} // Removed demo bot count
+        connectionStatus={connectionStatus} // Pass connection status to header
         // Removed demo mode props - development utility
       />
       
-      {/* 🎭 THEATER ENHANCEMENT: Enhanced collaboration status indicator */}
-      {(connectionStatus !== 'connected' || activeUserCount > 0 || isMobile) && (
-        <StatusIndicator 
-          status={connectionStatus}
-          activeUserCount={activeUserCount}
-          isMobile={isMobile}
-          message={errorMessage || undefined}
-        />
-      )}
+      {/* Status indicator removed - now shown in header as sphere */}
       
       {/* Removed demo mode status indicator - development utility */}
       

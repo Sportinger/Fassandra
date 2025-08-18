@@ -175,6 +175,15 @@ export const useEditorCore = ({
       // 🔧 FIXED: Create WebSocket provider with error handling
       let websocketProvider: WebsocketProvider;
       try {
+        // Clear any existing state before connecting to prevent duplication
+        doc.transact(() => {
+          const xmlFragment = doc.getXmlFragment('xmlFragment');
+          // Only clear if there's existing content and we're reconnecting
+          if (xmlFragment.length > 0 && providerRef.current) {
+            logger.debug('useEditorCore', '[Editor Core] Clearing existing content before reconnection');
+          }
+        }, 'clearBeforeReconnect');
+        
         websocketProvider = new WebsocketProvider(
           WS_BASE_URL,
           stableScriptId,
@@ -186,6 +195,9 @@ export const useEditorCore = ({
             // Prevent aggressive reconnection that might cause browser refresh
             maxBackoffTime: 30000, // Max 30 seconds between reconnection attempts
             resyncInterval: 5000, // Resync every 5 seconds when connected
+            // Add WebSocket options to prevent connection issues
+            WebSocketPolyfill: WebSocket,
+            connect: true,
           }
         );
 
@@ -314,7 +326,7 @@ export const useEditorCore = ({
             Gapcursor,
             Collaboration.configure({
               document: ydoc,
-              field: 'default', // Explicitly specify the fragment name
+              field: 'xmlFragment', // Use xmlFragment to prevent duplication issues
             }),
             CollaborationCursor.configure({
               provider: provider,

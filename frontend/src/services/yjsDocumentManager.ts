@@ -93,26 +93,28 @@ class YjsDocumentManager {
       }
       const doc = new Y.Doc();
       
-      // Generate a stable client ID based on user session to prevent conflicts
-      // This helps ensure consistent state across reconnections
-      const storedClientId = sessionStorage.getItem(`yjs-client-id-${scriptId}`);
-      if (storedClientId) {
-        (doc as any).clientID = parseInt(storedClientId, 10);
-        if (import.meta.env.DEV) {
-          logDebugInfo('YjsDocumentManager', `Restored client ID: ${storedClientId} for script: ${scriptId}`);
-        }
-      } else {
-        const newClientId = doc.clientID.toString();
-        sessionStorage.setItem(`yjs-client-id-${scriptId}`, newClientId);
-        if (import.meta.env.DEV) {
-          logDebugInfo('YjsDocumentManager', `Stored new client ID: ${newClientId} for script: ${scriptId}`);
-        }
+      // Generate a unique client ID for each connection to prevent duplication
+      // Include timestamp to ensure uniqueness even for same user on multiple devices
+      const timestamp = Date.now();
+      const deviceId = navigator.userAgent.substring(0, 20); // Use part of user agent as device identifier
+      const uniqueId = `${scriptId}-${timestamp}-${deviceId}`.split('').reduce((a, b) => {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+      }, 0);
+      
+      // Ensure positive integer
+      const clientId = Math.abs(uniqueId) % 1000000;
+      (doc as any).clientID = clientId;
+      sessionStorage.setItem(`yjs-client-id-${scriptId}`, clientId.toString());
+      
+      if (import.meta.env.DEV) {
+        logDebugInfo('YjsDocumentManager', `Generated new client ID: ${clientId} for script: ${scriptId}`);
       }
       
-      // Initialize default fragment for Tiptap
+      // Initialize xmlFragment for Tiptap to prevent duplication
       doc.transact(() => {
-        doc.getXmlFragment('default');
-      }, 'initializeDefaultFragment');
+        doc.getXmlFragment('xmlFragment');
+      }, 'initializeXmlFragment');
 
       // Add debug logging with error handling
       doc.on('update', (update: Uint8Array, origin: any) => {

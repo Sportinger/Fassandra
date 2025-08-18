@@ -422,12 +422,12 @@
 @media (max-width: 767px) {
   .floatingToolbar {
     /* Full-width bottom bar on mobile */
-    position: fixed;
+    position: fixed !important;
     left: 0;
     right: 0;
-    bottom: 0; /* Stick to bottom of screen */
+    bottom: 0; /* Stick to bottom of viewport, not document */
     top: auto;
-    transform: none; /* Remove centering transform */
+    transform: none !important; /* Remove centering transform */
     
     /* Use flexbox with wrapping for automatic stacking */
     display: flex;
@@ -465,8 +465,20 @@
     /* Use CSS environment variable if supported (iOS Safari) */
     padding-bottom: max(12px, env(safe-area-inset-bottom, 12px)); /* Account for iPhone notch/home indicator */
     
-    /* Adjust bottom position for keyboard */
-    bottom: var(--calculated-bottom, 0);
+    /* Keep toolbar fixed positioning */
+    position: fixed !important;
+    
+    /* Allow dynamic bottom positioning from JavaScript */
+    /* bottom value will be set dynamically via inline styles */
+    
+    /* Disable ALL transforms and transitions for stability */
+    transform: none !important;
+    transition: none !important;
+    will-change: bottom;
+    
+    /* Ensure toolbar doesn't scroll with content */
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
   }
   
   /* Visual feedback when keyboard is active */
@@ -557,6 +569,27 @@
   
   .dropdownButton .arrow {
     margin-left: 0; /* Remove extra margin when label is hidden */
+  }
+  
+  /* Keyboard toggle button styling */
+  .toolbarButton[title*="Keyboard"] {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+  
+  .toolbarButton[title*="Keyboard"].active {
+    background: var(--color-accent, #3b82f6);
+    color: white;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+    }
   }
   
   /* Extra small screens - smaller buttons but maintain full width */
