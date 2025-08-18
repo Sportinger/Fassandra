@@ -27,11 +27,12 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 
 # BUILD PHASE
 echo "🔨 Building backend (this takes 2-5 minutes)..."
+cd /home/admins/projects/pessoa/backend
 if ! DOCKER_BUILDKIT=1 docker build \
     $BUILD_OPTS \
-    -f ../backend/Dockerfile.prod \
+    -f Dockerfile.prod \
     --target runtime \
-    -t mylayer-backend:latest ../backend; then
+    -t mylayer-backend:latest .; then
     echo "❌ Backend build FAILED"
     echo "Check: Does backend/Dockerfile.prod exist?"
     echo "Check: Is Docker running?"
@@ -40,18 +41,20 @@ fi
 echo "✅ Backend built successfully"
 
 echo "🔨 Building frontend..."
+cd /home/admins/projects/pessoa/frontend
 if ! DOCKER_BUILDKIT=1 docker build \
     $BUILD_OPTS \
-    -f ../frontend/Dockerfile.prod \
+    -f Dockerfile.prod \
     --build-arg VITE_API_BASE_URL=https://$DOMAIN \
     --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
-    -t mylayer-frontend:latest ../frontend; then
+    -t mylayer-frontend:latest .; then
     echo "❌ Frontend build FAILED"
     echo "Check: Does frontend/Dockerfile.prod exist?"
     echo "Check: Are the VITE args correct?"
     exit 1
 fi
 echo "✅ Frontend built successfully"
+cd /home/admins/projects/pessoa
 
 # SAVE IMAGES
 echo "📦 Compressing images (this takes a minute)..."
@@ -107,7 +110,7 @@ ssh $USER@$SERVER "mkdir -p $APP_DIR" || {
 
 # CHECK REQUIRED FILES
 echo "📋 Checking required files..."
-for file in ../.env.prod ../docker-compose.prod.yml ../Caddyfile; do
+for file in /home/admins/projects/pessoa/.env.prod /home/admins/projects/pessoa/docker-compose.prod.yml /home/admins/projects/pessoa/Caddyfile; do
     if [ ! -f "$file" ]; then
         echo "❌ Missing required file: $file"
         exit 1
@@ -129,15 +132,15 @@ fi
 echo "✅ Images transferred"
 
 echo "📡 Transferring config files..."
-scp ../.env.prod $USER@$SERVER:$APP_DIR/.env || {
+scp /home/admins/projects/pessoa/.env.prod $USER@$SERVER:$APP_DIR/.env.prod || {
     echo "❌ Failed to transfer .env.prod"
     exit 1
 }
-scp ../docker-compose.prod.yml $USER@$SERVER:$APP_DIR/ || {
+scp /home/admins/projects/pessoa/docker-compose.prod.yml $USER@$SERVER:$APP_DIR/ || {
     echo "❌ Failed to transfer docker-compose.prod.yml"
     exit 1
 }
-scp ../Caddyfile $USER@$SERVER:$APP_DIR/ || {
+scp /home/admins/projects/pessoa/Caddyfile $USER@$SERVER:$APP_DIR/ || {
     echo "❌ Failed to transfer Caddyfile"
     exit 1
 }

@@ -16,7 +16,7 @@ echo "Monitor with: tail -f $PIPE_FILE"
 echo "Or from host: ssh -i ~/.ssh/id_rsa_lexema_de admin@91.99.69.115 'docker exec mylayer_pessoa_backend tail -f $PIPE_FILE'"
 
 # Run Claude and tee output to both stdout and the pipe
-/home/appuser/.npm-global/bin/claude "$@" 2>&1 | tee $PIPE_FILE
+/home/appuser/.npm-global/bin/claude-code "$@" 2>&1 | tee $PIPE_FILE
 
 # Clean up pipe when done
 rm -f $PIPE_FILE
