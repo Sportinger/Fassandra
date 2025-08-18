@@ -492,8 +492,20 @@ impl ScriptApplicationService {
             }
             Err(e) => {
                 error!("Failed to load YJS document for script {}: {}", script_id, e);
-                // Return empty state instead of failing completely
-                Ok(Some((script, Vec::new())))
+                // Create a proper empty YJS document state instead of empty vec
+                use yrs::{Doc, Options, Transact, ReadTxn, WriteTxn};
+                let doc = Doc::with_options(Options::default());
+                // Bootstrap with required fragments
+                {
+                    let mut txn = doc.transact_mut();
+                    for name in ["default", "content", "prosemirror"] {
+                        txn.get_or_insert_xml_fragment(name);
+                        txn.get_or_insert_text(name);
+                    }
+                }
+                let state = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
+                info!("Created fallback empty YJS state for script {} (size: {})", script_id, state.len());
+                Ok(Some((script, state)))
             }
         }
     }
