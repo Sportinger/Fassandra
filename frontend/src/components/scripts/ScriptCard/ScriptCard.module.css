@@ -337,3 +337,74 @@
 :root[data-theme="dark"] .pageBody {
   background: rgba(26, 26, 26, 0.5);
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .cardWrapper {
+    width: calc(100vw - 2rem);
+    max-width: 400px;
+    height: 450px;
+    perspective: 1200px;
+  }
+  
+  .scriptPage {
+    padding: 1.25rem;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  }
+  
+  .scriptPage:hover {
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  }
+  
+  .pageTitle {
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+  
+  .pageDate {
+    font-size: 0.9rem;
+  }
+  
+  .publicBadge,
+  .sharedBadge {
+    font-size: 0.85rem;
+    padding: 0.3rem 0.6rem;
+  }
+  
+  .burgerButton {
+    padding: 1rem;
+    min-width: 3rem;
+    min-height: 3rem;
+    font-size: 1.4rem;
+  }
+  
+  .dropdownMenu {
+    min-width: 150px;
+  }
+  
+  .menuItem {
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+  }
+  
+  .renameInput {
+    font-size: 1.3rem;
+  }
+}
+
+/* Small mobile screens */
+@media (max-width: 480px) {
+  .cardWrapper {
+    width: calc(100vw - 1.5rem);
+    max-width: 350px;
+    height: 420px;
+  }
+  
+  .scriptPage {
+    padding: 1rem;
+  }
+  
+  .pageTitle {
+    font-size: 1.2rem;
+  }
+}

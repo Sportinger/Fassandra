@@ -401,6 +401,11 @@ export const useEditorCore = ({
           content: '',
           editable: true,
           autofocus: false,
+          editorProps: {
+            attributes: {
+              spellcheck: 'false',
+            },
+          },
           onCreate: () => {
             debugLog('[Editor Core] ✅ Collaborative editor created with YJS integration');
           },
@@ -443,6 +448,11 @@ export const useEditorCore = ({
           content: '',
           editable: true,
           autofocus: false,
+          editorProps: {
+            attributes: {
+              spellcheck: 'false',
+            },
+          },
           onCreate: () => {
             debugLog('[Editor Core] 📝 Local editor created (collaboration pending)');
           },
