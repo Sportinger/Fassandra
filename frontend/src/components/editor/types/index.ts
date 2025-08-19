@@ -236,6 +236,7 @@ export interface UseEditorCoreReturn {
   
   // Collaboration
   activeUserCount: number;
+  isYjsSynced: boolean;
 }
 
 export interface UseCollaborationProps {

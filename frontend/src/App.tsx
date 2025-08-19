@@ -10,7 +10,7 @@ import { Editor } from './components/editor'
 import ScriptUploader from './components/ScriptUploader'
 import { PlaceholderScript } from './types'
 import { Header } from './components/Header';
-import { getScriptWithBlocks } from './api';
+import { getScriptWithYjs } from './api';
 import { YjsDocumentProvider } from './contexts/YjsDocumentContext';
 import { logDebugInfo } from './utils/debug';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -61,13 +61,13 @@ function App(): JSX.Element {
   useEffect(() => {
     if (currentView === 'editor' && selectedScriptId && !selectedScriptTitle && token) {
       // Fetch script details to get the title
-      getScriptWithBlocks(selectedScriptId)
-        .then(scriptData => {
-          if (scriptData && scriptData.script && scriptData.script.title) {
-            updateEditorTitle(selectedScriptId, scriptData.script.title);
+      getScriptWithYjs(selectedScriptId)
+        .then((scriptData: any) => {
+          if (scriptData && scriptData.title) {
+            updateEditorTitle(selectedScriptId, scriptData.title);
           }
         })
-        .catch(error => {
+        .catch((error: any) => {
           logger.error('App', '[App] Failed to fetch script title:', error);
           // Set a fallback title if fetch fails
           updateEditorTitle(selectedScriptId, 'Untitled Script');

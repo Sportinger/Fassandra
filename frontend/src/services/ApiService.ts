@@ -88,6 +88,13 @@ export class ApiService {
     }
 
     /**
+     * Get authentication token
+     */
+    getToken(): string | null {
+        return this.token;
+    }
+
+    /**
      * Validate required parameters
      */
     private validateParams(params: Record<string, any>): void {
