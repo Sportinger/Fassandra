@@ -15,15 +15,14 @@ pub use crate::error::*;
 /// Type alias for Result with our custom error type
 pub type Result<T> = std::result::Result<T, AppError>;
 
-/// Utility function to get a script with its blocks - used by thumbnail.rs
-/// This is kept here for backward compatibility during the transition
-pub async fn get_script_with_blocks(
+/// Utility function to get a script - simplified version without blocks
+/// Blocks have been deprecated in favor of YJS documents
+pub async fn get_script(
     pool: &PgPool,
     script_id: Uuid,
-) -> Result<Option<(crate::models::script::Script, Vec<crate::models::block::Block>)>> {
-    info!("🔍 Fetching script with blocks: {}", script_id);
+) -> Result<Option<crate::models::script::Script>> {
+    info!("🔍 Fetching script: {}", script_id);
     
-    // First get the script
     let script = sqlx::query_as!(
         crate::models::script::Script,
         "SELECT id, title, created_by, created_at, is_public, thumbnail FROM scripts WHERE id = $1",
@@ -32,14 +31,7 @@ pub async fn get_script_with_blocks(
     .fetch_optional(pool)
     .await?;
     
-    if let Some(script) = script {
-        // Blocks table deprecated - return empty
-        let blocks = vec![];
-        
-        Ok(Some((script, blocks)))
-    } else {
-        Ok(None)
-    }
+    Ok(script)
 }
 
 /// Health check function

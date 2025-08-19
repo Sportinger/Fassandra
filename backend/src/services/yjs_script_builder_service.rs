@@ -262,29 +262,81 @@ impl YjsScriptBuilderService {
     }
 
     fn apply_chunk_to_document(&self, doc: &mut Doc, chunk: &ScriptChunk) -> Result<()> {
-        // For now, just initialize the basic structure
-        // The actual content will be populated by Claude through the editor's YJS sync
+        use yrs::Text;
+        
         {
             let mut txn = doc.transact_mut();
             
-            // Ensure basic structures exist
-            txn.get_or_insert_xml_fragment("xmlFragment");
+            // Get the default xmlFragment that TipTap expects
+            let xml_fragment = txn.get_or_insert_xml_fragment("default");
+            
+            // Also create other fields for compatibility
             txn.get_or_insert_text("prosemirror");
-            txn.get_or_insert_map("metadata");
+            
+            // Ensure other structures exist
+            let metadata_map = txn.get_or_insert_map("metadata");
             txn.get_or_insert_map("chunkContext");
             
-            // Log what we would process
+            // Store metadata in the map
             if let Some(metadata) = &chunk.metadata {
-                debug!("Would set metadata: title='{}', pages={}", 
-                       metadata.title, metadata.total_pages);
+                // Store as simple values - YJS will handle serialization
+                let _ = metadata_map; // Just ensure it exists for now
+                
+                info!("Processing script metadata: title='{}', pages={}", 
+                     metadata.title, metadata.total_pages);
             }
             
-            debug!("Would process {} content items", chunk.content.len());
+            // Try to create a simple paragraph structure that TipTap can understand
+            // Even though Rust YRS has limited XML support, we can create basic elements
             
-            if let Some(context) = &chunk.context {
-                debug!("Would store context: scene={:?}, speaker={:?}", 
-                       context.last_scene, context.last_speaker);
+            // Create a paragraph element with the content
+            let mut content_str = String::new();
+            
+            // Add metadata
+            if let Some(metadata) = &chunk.metadata {
+                content_str.push_str(&format!("{}\n\n", metadata.title));
+                if let Some(author) = &metadata.author {
+                    content_str.push_str(&format!("By {}\n\n", author));
+                }
+                content_str.push_str("---\n\n");
             }
+            
+            // Add content items
+            for item in &chunk.content {
+                match item.content_type.as_str() {
+                    "scene" => {
+                        content_str.push_str(&format!("[SCENE] {}\n\n", item.content));
+                    },
+                    "stage_direction" => {
+                        content_str.push_str(&format!("({})\n\n", item.content));
+                    },
+                    "dialogue" | "monologue" => {
+                        if let Some(speaker) = &item.speaker {
+                            content_str.push_str(&format!("{}: {}\n\n", speaker, item.content));
+                        } else {
+                            content_str.push_str(&format!("{}\n\n", item.content));
+                        }
+                    },
+                    _ => {
+                        content_str.push_str(&format!("{}\n\n", item.content));
+                    }
+                }
+            }
+            
+            // Try to insert content as a simple paragraph in the xmlFragment
+            // This is a workaround since Rust YRS has limited XML support
+            if !content_str.is_empty() {
+                // Note: The Rust YRS API is limited for creating XML structures
+                // We'll store in prosemirror text field and let frontend handle conversion
+                let prosemirror_text = txn.get_or_insert_text("prosemirror");
+                Text::insert(&prosemirror_text, &mut txn, 0, &content_str);
+                
+                // Ensure xmlFragment exists even if empty
+                let _ = xml_fragment;
+            }
+            
+            info!("Stored {} content items in prosemirror text field ({} chars)", 
+                  chunk.content.len(), content_str.len());
         }
 
         Ok(())

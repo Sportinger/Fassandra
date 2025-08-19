@@ -121,7 +121,7 @@ RUN echo "Attempting to prepare/verify SQLx data (optional refresh)..." && \
 RUN echo "Building main binaries with SQLX_OFFLINE=true..." && \
     cargo build --release --locked --target ${BUILD_TARGET_ARCH} --bin backend && \
     cargo build --release --locked --target ${BUILD_TARGET_ARCH} --bin hash_password && \
-    cargo build --release --locked --target ${BUILD_TARGET_ARCH} --bin json_to_db && \
+    cargo build --release --locked --target ${BUILD_TARGET_ARCH} --bin yjs_to_db && \
     echo "Finished building main binaries."
 
 # --- Runtime Stage ---
@@ -163,7 +163,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 # Copy the built binaries
 COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/backend .
 COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/hash_password ./hash_password
-COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/json_to_db ./json_to_db
+COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/yjs_to_db ./yjs_to_db
 
 # Copy Claude Code settings
 RUN mkdir -p .claude /home/backend/.config/claude-code
@@ -197,9 +197,9 @@ RUN mkdir -p /app && chown -R appuser:appuser /app
 # Copy files and set permissions - ALL IN ONE GO
 COPY --chown=appuser:appuser --from=builder /app/target/x86_64-unknown-linux-gnu/release/backend /app/backend
 COPY --chown=appuser:appuser --from=builder /app/target/x86_64-unknown-linux-gnu/release/hash_password /app/hash_password
-COPY --chown=appuser:appuser --from=builder /app/target/x86_64-unknown-linux-gnu/release/json_to_db /app/json_to_db
+COPY --chown=appuser:appuser --from=builder /app/target/x86_64-unknown-linux-gnu/release/yjs_to_db /app/yjs_to_db
 COPY --chown=appuser:appuser execute_sql.sh /app/execute_sql.sh
-COPY --chown=appuser:appuser json_to_db.sh /app/json_to_db.sh
+COPY --chown=appuser:appuser yjs_to_db.sh /app/yjs_to_db.sh
 COPY --chown=appuser:appuser init-claude.sh /app/init-claude.sh
 COPY --chown=appuser:appuser docker-entrypoint.sh /app/docker-entrypoint.sh
 COPY --chown=appuser:appuser claude-wrapper.sh /app/claude-wrapper.sh
@@ -208,7 +208,7 @@ COPY --chown=appuser:appuser monitor-claude-session.sh /app/monitor-claude-sessi
 COPY --chown=appuser:appuser src/services/prompt.md /app/src/services/prompt.md
 
 # Make scripts executable
-RUN chmod +x /app/execute_sql.sh /app/json_to_db.sh /app/init-claude.sh /app/docker-entrypoint.sh /app/claude-wrapper.sh /app/claude-session-wrapper.sh /app/monitor-claude-session.sh
+RUN chmod +x /app/execute_sql.sh /app/yjs_to_db.sh /app/init-claude.sh /app/docker-entrypoint.sh /app/claude-wrapper.sh /app/claude-session-wrapper.sh /app/monitor-claude-session.sh
 
 # Setup Claude Code settings with bypass permissions in ALL locations
 # First create all necessary directories

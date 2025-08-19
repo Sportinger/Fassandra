@@ -152,23 +152,14 @@ fn format_block_content(block_type: &str, content: &str) -> String {
 pub async fn update_script_thumbnail(pool: &PgPool, script_id: Uuid) -> Result<String, AppError> {
     info!("Generating thumbnail for script: {}", script_id);
     
-    // Fetch script and its blocks content
-    let (script, blocks) = crate::core::lib::get_script_with_blocks(pool, script_id).await?
+    // Fetch script
+    let script = crate::core::lib::get_script(pool, script_id).await?
         .ok_or_else(|| AppError::NotFound("Script not found".to_string()))?;
-    info!("Fetched script '{}' with {} blocks", script.title, blocks.len());
+    info!("Fetched script '{}'", script.title);
     
-    if blocks.is_empty() {
-        info!("⚠️ Script '{}' has no blocks, generating empty thumbnail", script.title);
-    }
-    
-    // Format blocks properly for thumbnail display
-    let formatted_blocks: Vec<String> = blocks
-        .iter()
-        .take(8) // Reduced from 12 to 8 - limit to what fits on page
-        .map(|block| format_block_content(&block.block_type, &block.content))
-        .collect();
-    
-    let content_preview = formatted_blocks.join("\n\n");
+    // For now, generate empty content preview since blocks are deprecated
+    // In the future, this should extract content from YJS documents
+    let content_preview = String::new();
     info!("Content preview length: {} characters", content_preview.len());
     
     // Generate thumbnail

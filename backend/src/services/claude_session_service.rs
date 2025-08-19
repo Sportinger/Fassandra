@@ -150,11 +150,11 @@ impl ClaudeSessionService {
             "/app"
         );
 
-        // Prepare the command
+        // Prepare the command - use YJS format prompt
         let prompt = format!(
             "Parse the PDF at {} using the instructions in /app/src/services/prompt.md\n\
              The username is: {}\n\
-             When complete, the json_to_db.sh script should have successfully inserted the data.",
+             When complete, the yjs_to_db.sh script should have successfully inserted the data.",
             container_pdf_path,
             username
         );
@@ -179,7 +179,14 @@ impl ClaudeSessionService {
         } else {
             // Fall back to direct execution
             tracing::info!("Executor script not found, using direct Claude execution");
-            let mut cmd = Command::new("claude");
+            // Use full path to claude binary to avoid PATH issues
+            let claude_path = if tokio::fs::metadata("/home/appuser/.npm-global/bin/claude").await.is_ok() {
+                "/home/appuser/.npm-global/bin/claude"
+            } else {
+                "claude" // Fallback to PATH lookup
+            };
+            tracing::info!("Using Claude at: {}", claude_path);
+            let mut cmd = Command::new(claude_path);
             cmd.arg("--print")
                 .arg("--dangerously-skip-permissions");
             cmd

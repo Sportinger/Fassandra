@@ -36,6 +36,7 @@ import { extractSpeakerNames } from '../utils/contentConverters';
 import { scriptEventBus } from '../../../services/ScriptEventBus';
 import { isYDocEmpty } from '../utils/formatters';
 import { yjsDocumentManager } from '../../../services/yjsDocumentManager';
+import { useContentMigration } from './useContentMigration';
 import type { 
   UseEditorCoreProps, 
   UseEditorCoreReturn, 
@@ -366,7 +367,7 @@ export const useEditorCore = ({
             Gapcursor,
             Collaboration.configure({
               document: ydoc,
-              field: 'xmlFragment', // Use xmlFragment to prevent duplication issues
+              field: 'default', // Use default field which TipTap expects
             }),
             CollaborationCursor.configure({
               provider: provider,
@@ -486,6 +487,9 @@ export const useEditorCore = ({
   }, [editorInstance]);
 
   // Note: Editor is now created only when collaboration is ready, so no reinitialize needed
+
+  // Use content migration hook to handle content from Rust backend
+  useContentMigration(ydoc, editorInstance);
 
   // YJS handles all synchronization - no need for manual content sync
   // The WebSocket provider automatically syncs all changes

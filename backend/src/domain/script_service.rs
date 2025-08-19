@@ -9,7 +9,6 @@ use crate::error::AppError;
 use crate::models::script::Script;
 use crate::repositories::script_repository::ScriptRepository;
 use crate::repositories::user_repository::UserRepository;
-use crate::repositories::block_repository::BlockRepository;
 
 /// Request for creating a new script
 #[derive(Debug, Clone)]
@@ -56,19 +55,16 @@ impl From<Script> for ScriptResponse {
 pub struct ScriptService {
     script_repo: Arc<dyn ScriptRepository>,
     user_repo: Arc<dyn UserRepository>,
-    block_repo: Arc<dyn BlockRepository>,
 }
 
 impl ScriptService {
     pub fn new(
         script_repo: Arc<dyn ScriptRepository>,
         user_repo: Arc<dyn UserRepository>,
-        block_repo: Arc<dyn BlockRepository>,
     ) -> Self {
         Self {
             script_repo,
             user_repo,
-            block_repo,
         }
     }
     
@@ -277,11 +273,7 @@ impl ScriptService {
         let script = self.script_repo.find_by_id(script_id).await?;
         let _script = script.ok_or_else(|| AppError::NotFound("Script not found".to_string()))?;
 
-        // Check if script has blocks with content
-        let blocks = self.block_repo.find_by_script_id(script_id).await?;
-        if blocks.is_empty() {
-            return Err(AppError::BadRequest("Script must have content to generate thumbnail".to_string()));
-        }
+        // Skip content check - blocks are deprecated, content now in YJS
 
         Ok(())
     }
@@ -320,35 +312,6 @@ pub mod tests {
     use super::*;
     use crate::repositories::script_repository::tests::MockScriptRepository;
     use crate::repositories::user_repository::tests::MockUserRepository;
-    use crate::repositories::block_repository::BlockRepository;
-    
-    // Simple mock for testing - just returns empty results
-    struct MockBlockRepository;
-    
-    impl MockBlockRepository {
-        fn new() -> Self {
-            Self
-        }
-    }
-    
-    #[async_trait::async_trait]
-    impl BlockRepository for MockBlockRepository {
-        async fn find_by_script_id(&self, _script_id: Uuid) -> Result<Vec<crate::models::block::Block>, crate::error::AppError> {
-            Ok(vec![])
-        }
-        
-        async fn create(&self, _block: &crate::models::block::Block) -> Result<(), crate::error::AppError> {
-            Ok(())
-        }
-        
-        async fn update(&self, _block: &crate::models::block::Block) -> Result<(), crate::error::AppError> {
-            Ok(())
-        }
-        
-        async fn delete(&self, _id: Uuid) -> Result<(), crate::error::AppError> {
-            Ok(())
-        }
-    }
     
     use crate::models::user::User;
     use chrono::Utc;
@@ -369,8 +332,7 @@ pub mod tests {
         let user = create_test_user();
         let user_repo = Arc::new(MockUserRepository::with_users(vec![user.clone()]));
         let script_repo = Arc::new(MockScriptRepository::new());
-        let block_repo = Arc::new(MockBlockRepository::new());
-        let service = ScriptService::new(script_repo, user_repo, block_repo);
+        let service = ScriptService::new(script_repo, user_repo);
         
         let request = CreateScriptRequest {
             title: "Test Script".to_string(),
@@ -391,8 +353,7 @@ pub mod tests {
         let user = create_test_user();
         let user_repo = Arc::new(MockUserRepository::with_users(vec![user.clone()]));
         let script_repo = Arc::new(MockScriptRepository::new());
-        let block_repo = Arc::new(MockBlockRepository::new());
-        let service = ScriptService::new(script_repo, user_repo, block_repo);
+        let service = ScriptService::new(script_repo, user_repo);
         
         let request = CreateScriptRequest {
             title: "".to_string(),
@@ -409,8 +370,7 @@ pub mod tests {
     async fn test_create_script_user_not_found() {
         let user_repo = Arc::new(MockUserRepository::new());
         let script_repo = Arc::new(MockScriptRepository::new());
-        let block_repo = Arc::new(MockBlockRepository::new());
-        let service = ScriptService::new(script_repo, user_repo, block_repo);
+        let service = ScriptService::new(script_repo, user_repo);
         
         let request = CreateScriptRequest {
             title: "Test Script".to_string(),

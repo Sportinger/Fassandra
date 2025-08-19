@@ -53,6 +53,10 @@ rustix = "0.38"
 name = "hash_password"
 path = "scripts/hash_password.rs"
 
+[[bin]]
+name = "yjs_to_db"
+path = "src/bin/yjs_to_db.rs"
+
 
 
 [dev-dependencies]
