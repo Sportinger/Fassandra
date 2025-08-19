@@ -179,7 +179,7 @@ impl ClaudeSessionService {
         } else {
             // Fall back to direct execution
             tracing::info!("Executor script not found, using direct Claude execution");
-            let mut cmd = Command::new("claude-code");
+            let mut cmd = Command::new("claude");
             cmd.arg("--print")
                 .arg("--dangerously-skip-permissions");
             cmd
