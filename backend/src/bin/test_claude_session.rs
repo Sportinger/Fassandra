@@ -51,6 +51,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     SessionUpdate::Failed { error } => {
                         println!("❌ Session Failed: {}", error);
                     }
+                    SessionUpdate::ChunkInfo { total_pages, total_chunks } => {
+                        println!("📊 Chunk Info: {} pages, {} chunks", total_pages, total_chunks);
+                    }
+                    SessionUpdate::ChunkProgress { current_chunk, total_chunks, pages_start, pages_end } => {
+                        println!("📦 Chunk Progress: {}/{} chunks, pages {}-{}", current_chunk, total_chunks, pages_start, pages_end);
+                    }
                 }
             });
         }

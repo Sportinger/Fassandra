@@ -33,14 +33,8 @@ pub async fn get_script_with_blocks(
     .await?;
     
     if let Some(script) = script {
-        // Then get all blocks for this script
-        let blocks = sqlx::query_as!(
-            crate::models::block::Block,
-            "SELECT id, script_id, block_type, content, page_number, block_order, scene_number, scene_title, created_at, metadata FROM blocks WHERE script_id = $1 ORDER BY block_order ASC",
-            script_id
-        )
-        .fetch_all(pool)
-        .await?;
+        // Blocks table deprecated - return empty
+        let blocks = vec![];
         
         Ok(Some((script, blocks)))
     } else {

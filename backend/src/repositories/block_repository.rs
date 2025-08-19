@@ -1,6 +1,6 @@
 //! Block repository for database operations.
 //!
-//! Provides clean abstractions for block-related database operations.
+//! NOTE: This functionality is deprecated - we now use YJS for script management
 
 use async_trait::async_trait;
 use sqlx::PgPool;
@@ -26,80 +26,36 @@ pub trait BlockRepository: Send + Sync {
 }
 
 /// PostgreSQL implementation of BlockRepository
+/// NOTE: Deprecated - returns empty results
 pub struct PostgresBlockRepository {
-    pool: Arc<PgPool>,
+    _pool: Arc<PgPool>,
 }
 
 impl PostgresBlockRepository {
     pub fn new(pool: Arc<PgPool>) -> Self {
-        Self { pool }
+        Self { _pool: pool }
     }
 }
 
 #[async_trait]
 impl BlockRepository for PostgresBlockRepository {
-    async fn find_by_script_id(&self, script_id: Uuid) -> Result<Vec<Block>, AppError> {
-        let blocks = sqlx::query_as!(
-            Block,
-            "SELECT id, script_id, block_type, content, block_order, page_number, scene_number, scene_title, created_at, metadata FROM blocks WHERE script_id = $1 ORDER BY block_order ASC",
-            script_id
-        )
-        .fetch_all(self.pool.as_ref())
-        .await
-        .map_err(|e| AppError::Db(e))?;
-        
-        Ok(blocks)
+    async fn find_by_script_id(&self, _script_id: Uuid) -> Result<Vec<Block>, AppError> {
+        // Deprecated - return empty
+        Ok(vec![])
     }
     
-    async fn create(&self, block: &Block) -> Result<(), AppError> {
-        sqlx::query!(
-            "INSERT INTO blocks (id, script_id, block_type, content, block_order, page_number, scene_number, scene_title, created_at, metadata) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-            block.id,
-            block.script_id,
-            block.block_type,
-            block.content,
-            block.block_order,
-            block.page_number,
-            block.scene_number,
-            block.scene_title,
-            block.created_at,
-            block.metadata
-        )
-        .execute(self.pool.as_ref())
-        .await
-        .map_err(|e| AppError::Db(e))?;
-        
+    async fn create(&self, _block: &Block) -> Result<(), AppError> {
+        // Deprecated - no-op
         Ok(())
     }
     
-    async fn update(&self, block: &Block) -> Result<(), AppError> {
-        sqlx::query!(
-            "UPDATE blocks SET block_type = $2, content = $3, block_order = $4, page_number = $5, scene_number = $6, scene_title = $7, metadata = $8 WHERE id = $1",
-            block.id,
-            block.block_type,
-            block.content,
-            block.block_order,
-            block.page_number,
-            block.scene_number,
-            block.scene_title,
-            block.metadata
-        )
-        .execute(self.pool.as_ref())
-        .await
-        .map_err(|e| AppError::Db(e))?;
-        
+    async fn update(&self, _block: &Block) -> Result<(), AppError> {
+        // Deprecated - no-op
         Ok(())
     }
     
-    async fn delete(&self, id: Uuid) -> Result<(), AppError> {
-        sqlx::query!(
-            "DELETE FROM blocks WHERE id = $1",
-            id
-        )
-        .execute(self.pool.as_ref())
-        .await
-        .map_err(|e| AppError::Db(e))?;
-        
+    async fn delete(&self, _id: Uuid) -> Result<(), AppError> {
+        // Deprecated - no-op
         Ok(())
     }
 } 
