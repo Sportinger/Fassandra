@@ -5,7 +5,6 @@
 
 use crate::error::AppError;
 use crate::models::script::Script;
-use crate::models::block::Block;
 use std::sync::Arc;
 use uuid::Uuid;
 use tracing::{error, info, warn};
@@ -15,14 +14,6 @@ use anyhow::Result;
 use crate::analysis::structs::Script as ParsedScript;
 use crate::domain::script_service::ScriptService;
 
-/// Content snapshot data structure
-#[derive(Debug, Serialize)]
-pub struct ContentSnapshot {
-    pub script_id: Uuid,
-    pub content: String,
-    pub format: String,
-    pub created_at: Option<chrono::DateTime<chrono::Utc>>,
-}
 
 /// Application service for script operations
 pub struct ScriptApplicationService {
@@ -340,89 +331,7 @@ impl ScriptApplicationService {
         Ok(scripts)
     }
 
-    /// Stores a content snapshot for a script
-    pub async fn store_content_snapshot(
-        &self,
-        script_id: Uuid,
-        content: String,
-        format: String,
-        user_id: Uuid,
-    ) -> Result<(), AppError> {
-        info!(script_id = %script_id, user_id = %user_id, content_length = content.len(), "Storing content snapshot");
 
-        // Input validation
-        if content.len() > 10_000_000 {  // 10MB limit
-            return Err(AppError::BadRequest("Content too large".to_string()));
-        }
-
-        if !["html", "json"].contains(&format.as_str()) {
-            return Err(AppError::BadRequest("Invalid format, must be 'html' or 'json'".to_string()));
-        }
-
-        // Check access through domain service
-        if !self.check_script_access(script_id, user_id).await? {
-            warn!("User {} attempted to store content for script {} without access", user_id, script_id);
-            return Err(AppError::Forbidden("Access denied".to_string()));
-        }
-
-        sqlx::query(
-            r#"
-            INSERT INTO script_snapshots_meta (script_id, content_snapshot, snapshot_format, created_at, last_snapshot_at)
-            VALUES ($1, $2, $3, NOW(), NOW())
-            ON CONFLICT (script_id) 
-            DO UPDATE SET 
-                content_snapshot = $2,
-                snapshot_format = $3,
-                created_at = NOW(),
-                last_snapshot_at = NOW()
-            "#
-        )
-        .bind(script_id)
-        .bind(content)
-        .bind(format)
-        .execute(self.pool.as_ref())
-        .await
-        .map_err(|e| {
-            error!("Failed to store content snapshot for script {}: {}", script_id, e);
-            AppError::Internal(anyhow::anyhow!("Failed to store content snapshot"))
-        })?;
-
-        info!(script_id = %script_id, user_id = %user_id, "Successfully stored content snapshot");
-        Ok(())
-    }
-
-    /// Retrieves a content snapshot for a script
-    pub async fn get_content_snapshot(
-        &self,
-        script_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<ContentSnapshot, AppError> {
-        // Check access
-        if !self.check_script_access(script_id, user_id).await? {
-            return Err(AppError::Forbidden("Access denied".to_string()));
-        }
-
-        let snapshot_result = sqlx::query_as::<_, (Option<String>, Option<String>, Option<chrono::DateTime<chrono::Utc>>)>(
-            "SELECT content_snapshot, snapshot_format, created_at FROM script_snapshots_meta WHERE script_id = $1"
-        )
-        .bind(script_id)
-        .fetch_optional(self.pool.as_ref())
-        .await
-        .map_err(|e| {
-            error!("Failed to get content snapshot for script {}: {}", script_id, e);
-            AppError::Internal(anyhow::anyhow!("Failed to get content snapshot"))
-        })?;
-
-        match snapshot_result {
-            Some((content_snapshot, snapshot_format, created_at)) => Ok(ContentSnapshot {
-                script_id,
-                content: content_snapshot.unwrap_or_default(),
-                format: snapshot_format.unwrap_or_else(|| "html".to_string()),
-                created_at,
-            }),
-            None => Err(AppError::NotFound("No content snapshot found".to_string())),
-        }
-    }
 
     /// Retrieves a script with YJS document state for authorized users
     pub async fn get_script_with_yjs(
@@ -492,52 +401,6 @@ impl ScriptApplicationService {
         }
     }
 
-    /// Retrieves a script with all its blocks for authorized users (DEPRECATED - use get_script_with_yjs)
-    pub async fn get_script_with_blocks(
-        &self,
-        script_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<Option<(Script, Vec<Block>)>, AppError> {
-        info!(script_id = %script_id, user_id = %user_id, "Getting script with blocks");
-
-        // Check access authorization
-        if !self.check_script_access(script_id, user_id).await? {
-            warn!("User {} attempted to access script {} without permission", user_id, script_id);
-            return Err(AppError::Forbidden("Access denied".to_string()));
-        }
-
-        // Get the script
-        let script = sqlx::query_as::<_, Script>(
-            "SELECT id, title, created_by, created_at, is_public, thumbnail FROM scripts WHERE id = $1"
-        )
-        .bind(script_id)
-        .fetch_optional(self.pool.as_ref())
-        .await
-        .map_err(|e| {
-            error!("Failed to fetch script {}: {}", script_id, e);
-            AppError::Internal(anyhow::anyhow!("Failed to fetch script"))
-        })?;
-
-        let script = match script {
-            Some(s) => s,
-            None => {
-                info!(script_id = %script_id, "Script not found");
-                return Ok(None);
-            }
-        };
-
-        // Blocks table deprecated - return empty
-        let blocks = vec![];
-
-        info!(
-            script_id = %script_id, 
-            user_id = %user_id, 
-            blocks_count = blocks.len(),
-            "Successfully retrieved script with blocks"
-        );
-
-        Ok(Some((script, blocks)))
-    }
 
     /// Checks if a user has access to a script (owns it, it's public, or it's shared)
     async fn check_script_access(&self, script_id: Uuid, user_id: Uuid) -> Result<bool, AppError> {

@@ -15,7 +15,6 @@ use uuid::Uuid;
 use anyhow::{Context, Result};
 
 use crate::networking::websocket;
-use crate::handlers::page_break_handlers::create_page_break_router;
 use crate::handlers::script::{script_routes, claude_session_routes};
 use crate::handlers::auth::{health_with_service_manager, register, login, receive_console_logs, get_current_user, logout, get_csrf_token, get_ws_token};
 use crate::auth::{rate_limit_middleware, AuthUser, create_csrf_store};
@@ -38,12 +37,6 @@ pub struct ScriptUpdate {
     pub title: String,
 }
 
-/// Content snapshot request payload
-#[derive(serde::Deserialize)]
-pub struct ContentSnapshotRequest {
-    pub content: String,
-    pub format: String, // "html" or "json"
-}
 
 /// Maximum request body size (50MB)
 const MAX_REQUEST_BODY_SIZE: usize = 50 * 1024 * 1024;
@@ -181,40 +174,14 @@ async fn delete_script_wrapper(
     Ok(Json(serde_json::json!({"success": true})))
 }
 
-/// Wrapper for store_content_snapshot to use ScriptServices
-async fn store_content_snapshot_wrapper(
-    State(services): State<crate::handlers::script::ScriptServices>,
-    Path(script_id): Path<Uuid>,
-    auth_user: AuthUser,
-    Json(request): Json<ContentSnapshotRequest>,
-) -> Result<Json<serde_json::Value>, crate::error::AppError> {
-    services.script_service.store_content_snapshot(script_id, request.content, request.format, auth_user.user_id).await?;
-    Ok(Json(serde_json::json!({"success": true, "message": "Content snapshot stored successfully"})))
-}
 
-/// Wrapper for get_content_snapshot to use ScriptServices
-async fn get_content_snapshot_wrapper(
-    State(services): State<crate::handlers::script::ScriptServices>,
-    Path(script_id): Path<Uuid>,
-    auth_user: AuthUser,
-) -> Result<Json<serde_json::Value>, crate::error::AppError> {
-    let snapshot = services.script_service.get_content_snapshot(script_id, auth_user.user_id).await?;
-    Ok(Json(serde_json::json!({
-        "script_id": snapshot.script_id,
-        "content": snapshot.content,
-        "format": snapshot.format,
-        "created_at": snapshot.created_at
-    })))
-}
 
-/// Wrapper for get_script_with_blocks to use ScriptServices
-/// Now returns YJS state instead of blocks for better performance
-async fn get_script_with_blocks_wrapper(
+/// Wrapper for getting a script with YJS state
+async fn get_script_with_yjs_wrapper(
     State(services): State<crate::handlers::script::ScriptServices>,
     Path(script_id): Path<Uuid>,
     auth_user: AuthUser,
 ) -> Result<Json<serde_json::Value>, crate::error::AppError> {
-    // Try to load with YJS state first (new method)
     match services.script_service.get_script_with_yjs(script_id, auth_user.user_id).await {
         Ok(Some((script, yjs_state))) => {
             // Return YJS state encoded as base64 for transport
@@ -228,30 +195,13 @@ async fn get_script_with_blocks_wrapper(
                 "is_public": script.is_public,
                 "thumbnail": script.thumbnail,
                 "yjs_state": state_base64,
-                "format": "yjs"  // Indicate this is YJS format
+                "format": "yjs"
             })))
         }
         Ok(None) => Err(crate::error::AppError::NotFound("Script not found".to_string())),
         Err(e) => {
-            // Fallback to blocks for compatibility
-            tracing::warn!("Failed to load YJS state, falling back to blocks: {}", e);
-            let result = services.script_service.get_script_with_blocks(script_id, auth_user.user_id).await?;
-            
-            match result {
-                Some((script, blocks)) => {
-                    Ok(Json(serde_json::json!({
-                        "id": script.id,
-                        "title": script.title,
-                        "created_by": script.created_by,
-                        "created_at": script.created_at,
-                        "is_public": script.is_public,
-                        "thumbnail": script.thumbnail,
-                        "blocks": blocks,
-                        "format": "blocks"  // Indicate this is blocks format
-                    })))
-                }
-                None => Err(crate::error::AppError::NotFound("Script not found".to_string()))
-            }
+            tracing::error!("Failed to load YJS state: {}", e);
+            Err(crate::error::AppError::Internal(anyhow::anyhow!("Failed to load script")))
         }
     }
 }
@@ -265,8 +215,7 @@ fn api_routes_with_services(
     // Routes that use ScriptServices
     let script_crud_routes = Router::new()
         .route("/scripts", get(get_user_scripts_wrapper).post(create_script_wrapper))
-        .route("/scripts/:id", get(get_script_with_blocks_wrapper).patch(update_script_wrapper).delete(delete_script_wrapper))
-        .route("/scripts/:id/snapshot", post(store_content_snapshot_wrapper).get(get_content_snapshot_wrapper))
+        .route("/scripts/:id", get(get_script_with_yjs_wrapper).patch(update_script_wrapper).delete(delete_script_wrapper))
         // New YJS endpoints
         .route("/scripts/:id/yjs", get(get_script_yjs_state))
         .route("/scripts/:id/updates", get(get_script_recent_updates))
@@ -286,7 +235,7 @@ fn api_routes_with_services(
         .route("/ws-token", get(get_ws_token))
         .route("/debug/console-logs", post(receive_console_logs))
         .merge(websocket::ws_routes(persistence_event_tx.clone()))
-        .merge(create_page_break_router());
+;
     
     // Combine all route sets
     Router::new()
