@@ -6,6 +6,5 @@ pub mod user;
 pub mod script;
 pub mod script_layout;
 pub mod script_share;
-pub mod block;
 pub mod edit;
 pub mod yjs_update; 

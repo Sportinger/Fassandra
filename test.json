@@ -1,0 +1,191 @@
+{
+  "mode": "full",
+  "metadata": {
+    "title": "HOMO FABER TEST",
+    "author": "Marcel Kohler (nach Max Frisch)",
+    "total_pages": 8
+  },
+  "content": [
+    {
+      "type": "scene",
+      "content": "PROLOG",
+      "page": 2,
+      "scene_number": "PROLOG"
+    },
+    {
+      "type": "stage_direction",
+      "content": "Der Einlass beginnt. Der Vorhang ist geschlossen. Auf der Vorderbühne läuft ein Unitree Go2 Pro Roboterhund hin und her.",
+      "page": 2
+    },
+    {
+      "type": "stage_direction",
+      "content": "Der Einlass ist beendet.",
+      "page": 2
+    },
+    {
+      "type": "stage_direction",
+      "content": "Faber tritt auf.",
+      "page": 2
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Haben Sie Angst vor dem Tod?",
+      "page": 2
+    },
+    {
+      "type": "stage_direction",
+      "content": "Pause. Er schaut ins Publikum. Vielleicht antwortet ja jemand.",
+      "page": 2
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Und seit welchem Lebensjahr?",
+      "page": 2
+    },
+    {
+      "type": "stage_direction",
+      "content": "Wieder Pause.",
+      "page": 2
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Möchten Sie unsterblich sein?",
+      "page": 2
+    },
+    {
+      "type": "stage_direction",
+      "content": "Wieder eine Pause.",
+      "page": 2
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Wenn Sie einen toten Menschen\nsehen, haben Sie dann den Eindruck,\ndass Sie diesen Menschen gekannt\nhaben?",
+      "page": 2
+    },
+    {
+      "type": "stage_direction",
+      "content": "Vielleicht sehen wir kurz das Bild einer verstorbenen Persönlichkeit, die alle lebendig kennen sollten. Vielleicht reicht aber auch nur die Frage.",
+      "page": 2
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Möchten Sie lieber mit Bewusstsein\nsterben oder überrascht werden von\neinem fallenden Ziegel...",
+      "page": 2
+    },
+    {
+      "type": "stage_direction",
+      "content": "Ein Scheinwerfer fällt herunter.",
+      "page": 2
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "...von einem Herzschlag...",
+      "page": 2
+    },
+    {
+      "type": "stage_direction",
+      "content": "Ein Herzschlag entsteht.",
+      "page": 2
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "...von einer Explosion?",
+      "page": 2
+    },
+    {
+      "type": "stage_direction",
+      "content": "Etwas explodiert. Wir sollten uns ordentlich erschrecken und danach uns nicht mehr ganz so sicher im Kleinen Haus 1 fühlen.",
+      "page": 2
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Wen, der tot ist, möchten Sie\nwiedersehen?",
+      "page": 3
+    },
+    {
+      "type": "stage_direction",
+      "content": "Pause. Das Licht im Zuschauerraum geht langsam aus.",
+      "page": 3
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Wen hingegen nicht?",
+      "page": 3
+    },
+    {
+      "type": "stage_direction",
+      "content": "Pause. Das Licht auf der Bühne geht langsam aus. Im Dunkeln:",
+      "page": 3
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Wieviele Kinder von Ihnen sind\nnicht zur Welt gekommen durch ihren\nWillen?",
+      "page": 3
+    },
+    {
+      "type": "stage_direction",
+      "content": "Pause. Das Licht auf der Bühne geht wieder an.",
+      "page": 3
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Wie alt möchten sie werden?",
+      "page": 3
+    },
+    {
+      "type": "stage_direction",
+      "content": "Faber verwandelt sich auf einmal in einen ganz alten Mann. Das kann dauern.",
+      "page": 3
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "(als alter Mann)\nWenn Sie an Verstorbene denken:\nWünschten Sie, dass der Verstorbene\nzu Ihnen spricht, oder möchten Sie\nlieber dem Verstorbenen noch etwas\nsagen?",
+      "page": 3
+    },
+    {
+      "type": "stage_direction",
+      "content": "Er verwandelt sich wieder zurück.",
+      "page": 3
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Sind Sie sicher, dass Sie die\nErhaltung des Menschengeschlechts,\nwenn Sie und alle Ihre Bekannten\nnicht mehr sind, wirklich\ninteressiert?",
+      "page": 3
+    },
+    {
+      "type": "stage_direction",
+      "content": "Er schaut auf den Roboterhund.",
+      "page": 3
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Warum? Stichworte genügen.",
+      "page": 3
+    },
+    {
+      "type": "stage_direction",
+      "content": "Er wechselt seine Sprechhaltung und antwortet zum ersten Mal in gewisser Weise selbst.",
+      "page": 3
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Unsere Handlungen sind Antworten\nauf sogenannte Informationen,\nbeziehungsweise Impulse, und zwar\nsind es automatische Antworten,\ngrößtenteils unserem Willen\nentzogen. Reflexe, die eine\nMaschine ebensogut erledigen kann\nwie ein Mensch, wenn nicht sogar\nbesser. Wenn Sie erlauben, dann\nverweise ich an dieser Stelle auf\nNorbert Wiener: Cybernetics or\ncontrol and communication in the\nanimal and the Maschine, M.I.T,\n1948.",
+      "page": 4
+    }
+  ]
+}

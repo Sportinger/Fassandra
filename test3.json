@@ -1,0 +1,16 @@
+{
+  "mode": "full",
+  "metadata": {
+    "title": "TEST SCRIPT WITH CONTENT",
+    "author": "Test Author",
+    "total_pages": 1
+  },
+  "content": [
+    {
+      "type": "dialogue",
+      "speaker": "CHARACTER",
+      "content": "This should be visible in the editor now!",
+      "page": 1
+    }
+  ]
+}
