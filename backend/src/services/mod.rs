@@ -19,13 +19,20 @@ pub mod thumbnail;
 pub mod async_db_writer;
 pub mod persistence_event;
 pub mod yjs_compaction_service;
+// pub mod yjs_document_builder; // Complex version with XML manipulation - needs YJS API fixes
+pub mod yjs_document_builder_simple;
+pub mod yjs_script_builder_service;
 pub mod json_to_db_service;
 pub mod claude_session_service;
+pub mod chunked_parsing_orchestrator;
 
 // Re-export key service components
 pub use thumbnail::*;
 pub use async_db_writer::*;
 pub use persistence_event::*;
 pub use yjs_compaction_service::*;
+pub use yjs_document_builder_simple::YjsDocumentBuilder;
+pub use yjs_script_builder_service::*;
 pub use json_to_db_service::*;
 pub use claude_session_service::*;
+pub use chunked_parsing_orchestrator::*;

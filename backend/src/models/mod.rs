@@ -8,5 +8,4 @@ pub mod script_layout;
 pub mod script_share;
 pub mod block;
 pub mod edit;
-pub mod yjs_update;
-pub mod snapshot_meta; 
+pub mod yjs_update; 

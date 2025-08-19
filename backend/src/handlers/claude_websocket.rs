@@ -120,6 +120,25 @@ async fn handle_claude_session_socket(
                         "message": format!("Processing page {} of {}", current_page, total_pages)
                     })
                 }
+                SessionUpdate::ChunkInfo { total_pages, total_chunks } => {
+                    serde_json::json!({
+                        "type": "chunk_info",
+                        "total_pages": total_pages,
+                        "total_chunks": total_chunks,
+                        "message": format!("Script will be processed in {} chunks", total_chunks)
+                    })
+                }
+                SessionUpdate::ChunkProgress { current_chunk, total_chunks, pages_start, pages_end } => {
+                    serde_json::json!({
+                        "type": "chunk_progress",
+                        "current_chunk": current_chunk,
+                        "total_chunks": total_chunks,
+                        "pages_start": pages_start,
+                        "pages_end": pages_end,
+                        "message": format!("Processing chunk {} of {} (pages {}-{})", 
+                                          current_chunk, total_chunks, pages_start, pages_end)
+                    })
+                }
                 SessionUpdate::Complete { script_id } => {
                     serde_json::json!({
                         "type": "complete",

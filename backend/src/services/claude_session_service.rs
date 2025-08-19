@@ -260,25 +260,55 @@ impl ClaudeSessionService {
                         
                         // Check for progress indicators
                         if line.contains("[PROGRESS]") {
-                            // Parse page progress: "[PROGRESS] Page X of Y processed"
-                            if let Some(progress_info) = Self::parse_page_progress(&line) {
-                                let (current_page, total_pages) = progress_info;
-                                let progress_percent = ((current_page as f32 / total_pages as f32) * 80.0) as u8;
-                                // Use 80% for parsing completion, leaving 20% for JSON creation and DB insertion
-                                Self::update_progress(&session_info, &update_callback, session_id, 
-                                    progress_percent.min(80), SessionStatus::ParsingPdf).await;
-                                
-                                // Send detailed progress update
-                                update_callback(session_id, SessionUpdate::PageProgress { 
-                                    current_page, 
-                                    total_pages 
-                                });
+                            // Check for chunked parsing mode
+                            if line.contains("Starting chunked parsing") {
+                                // "[PROGRESS] Starting chunked parsing - Total pages: Y, Chunks: Z"
+                                if let Some((total_pages, total_chunks)) = Self::extract_chunked_info(&line) {
+                                    tracing::info!("Starting chunked parsing: {} pages, {} chunks", total_pages, total_chunks);
+                                    Self::update_progress(&session_info, &update_callback, session_id, 5, SessionStatus::ParsingPdf).await;
+                                    
+                                    // Send chunk info update
+                                    update_callback(session_id, SessionUpdate::ChunkInfo { 
+                                        total_pages,
+                                        total_chunks 
+                                    });
+                                }
+                            } else if line.contains("Page") && line.contains("processed") {
+                                // Parse page progress: "[PROGRESS] Page X of Y processed"
+                                if let Some(progress_info) = Self::parse_page_progress(&line) {
+                                    let (current_page, total_pages) = progress_info;
+                                    let progress_percent = ((current_page as f32 / total_pages as f32) * 80.0) as u8;
+                                    // Use 80% for parsing completion, leaving 20% for JSON creation and DB insertion
+                                    Self::update_progress(&session_info, &update_callback, session_id, 
+                                        progress_percent.min(80), SessionStatus::ParsingPdf).await;
+                                    
+                                    // Send detailed progress update
+                                    update_callback(session_id, SessionUpdate::PageProgress { 
+                                        current_page, 
+                                        total_pages 
+                                    });
+                                }
                             } else if line.contains("Starting PDF parsing") {
                                 // Extract total pages from: "[PROGRESS] Starting PDF parsing - Total pages: Y"
                                 if let Some(total) = Self::extract_total_pages(&line) {
                                     tracing::info!("PDF has {} total pages", total);
                                     Self::update_progress(&session_info, &update_callback, session_id, 10, SessionStatus::ParsingPdf).await;
                                 }
+                            }
+                        } else if line.contains("[CHUNK_COMPLETE]") {
+                            // Handle chunk completion: "[CHUNK_COMPLETE] Chunk X of Z processed (pages A-B)"
+                            if let Some((chunk_num, total_chunks, pages_start, pages_end)) = Self::parse_chunk_complete(&line) {
+                                let chunk_progress = (chunk_num as f32 / total_chunks as f32 * 80.0) as u8;
+                                Self::update_progress(&session_info, &update_callback, session_id, 
+                                    chunk_progress, SessionStatus::ParsingPdf).await;
+                                
+                                // Send chunk progress update
+                                update_callback(session_id, SessionUpdate::ChunkProgress { 
+                                    current_chunk: chunk_num,
+                                    total_chunks,
+                                    pages_start,
+                                    pages_end 
+                                });
                             }
                         } else if line.contains("Reading PDF file") {
                             Self::update_progress(&session_info, &update_callback, session_id, 15, SessionStatus::ParsingPdf).await;
@@ -373,6 +403,60 @@ impl ClaudeSessionService {
         update_callback(session_id, SessionUpdate::Status { status, progress });
     }
 
+    fn extract_chunked_info(line: &str) -> Option<(u32, u32)> {
+        // Parse "[PROGRESS] Starting chunked parsing - Total pages: Y, Chunks: Z"
+        let total_pages = if let Some(start) = line.find("Total pages: ") {
+            let remaining = &line[start + 13..];
+            remaining.split(',').next()?.trim().parse::<u32>().ok()?
+        } else {
+            return None;
+        };
+        
+        let total_chunks = if let Some(start) = line.find("Chunks: ") {
+            let remaining = &line[start + 8..];
+            remaining.split_whitespace().next()?.parse::<u32>().ok()?
+        } else {
+            return None;
+        };
+        
+        Some((total_pages, total_chunks))
+    }
+    
+    fn parse_chunk_complete(line: &str) -> Option<(u32, u32, u32, u32)> {
+        // Parse "[CHUNK_COMPLETE] Chunk X of Z processed (pages A-B)"
+        let chunk_info = if let Some(start) = line.find("Chunk ") {
+            let remaining = &line[start + 6..];
+            let parts: Vec<&str> = remaining.split(" of ").collect();
+            if parts.len() < 2 {
+                return None;
+            }
+            let current = parts[0].parse::<u32>().ok()?;
+            let total_str = parts[1].split(" processed").next()?;
+            let total = total_str.parse::<u32>().ok()?;
+            (current, total)
+        } else {
+            return None;
+        };
+        
+        let pages_info = if let Some(start) = line.find("(pages ") {
+            let remaining = &line[start + 7..];
+            let end_idx = remaining.find(')')?;
+            let page_range = &remaining[..end_idx];
+            let parts: Vec<&str> = page_range.split('-').collect();
+            if parts.len() == 2 {
+                let start_page = parts[0].parse::<u32>().ok()?;
+                let end_page = parts[1].parse::<u32>().ok()?;
+                (start_page, end_page)
+            } else {
+                return None;
+            }
+        } else {
+            return None;
+        };
+        
+        Some((chunk_info.0, chunk_info.1, pages_info.0, pages_info.1))
+    }
+    
     fn extract_script_id(line: &str) -> Option<Uuid> {
         // Try to extract UUID from output lines
         if let Some(start) = line.find("script_id:") {
@@ -511,6 +595,8 @@ pub enum SessionUpdate {
     Status { status: SessionStatus, progress: u8 },
     Output { line: String },
     PageProgress { current_page: u32, total_pages: u32 },
+    ChunkInfo { total_pages: u32, total_chunks: u32 },
+    ChunkProgress { current_chunk: u32, total_chunks: u32, pages_start: u32, pages_end: u32 },
     Complete { script_id: Uuid },
     Failed { error: String },
 }

@@ -1,10 +1,15 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT created_by FROM scripts WHERE id = $1",
+  "query": "SELECT title, created_by FROM scripts WHERE id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
         "name": "created_by",
         "type_info": "Uuid"
       }
@@ -15,8 +20,9 @@
       ]
     },
     "nullable": [
+      false,
       true
     ]
   },
-  "hash": "bc741ef166e44c3210d0e1a6c5ddac67aefadc288bcb7ef45392d729a3060947"
+  "hash": "85c81934240e629bc0e367d619c7b76d0fd0f3bb612448c226a7fc77cbc3d3cf"
 }

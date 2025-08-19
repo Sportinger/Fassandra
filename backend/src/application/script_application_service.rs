@@ -149,27 +149,9 @@ impl ScriptApplicationService {
                     crate::analysis::structs::ContentElement::Unknown => "unknown",
                 };
                 
-                let block_created_at = chrono::Utc::now();
+                // Blocks table deprecated - skip block insertion
                 let block_id = Uuid::new_v4();
-
-                info!(block_id = %block_id, script_id = %new_script_id, block_type = %block_type, page_number, scene_number = ?scene_number, scene_title = ?scene_title, "Inserting block record with clean JSON content and separate metadata");
-                sqlx::query("INSERT INTO blocks (id, script_id, block_type, content, created_at, block_order, page_number, scene_number, scene_title) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)")
-                    .bind(block_id)
-                    .bind(new_script_id)
-                    .bind(block_type)
-                    .bind(clean_content_json.clone())
-                    .bind(block_created_at)
-                    .bind((section_index * 1000 + element_index) as i32) // Set proper block order
-                    .bind(page_number) // Store page number in dedicated column
-                    .bind(scene_number.clone()) // Store scene number in dedicated column (clone to avoid move)
-                    .bind(scene_title.clone()) // Store scene title in dedicated column (clone to avoid move)
-                    .execute(&mut *tx)
-                    .await
-                    .map_err(|e| {
-                        error!(error = %e, block_id = %block_id, script_id = %new_script_id, block_type = %block_type, content = %clean_content_json, "Failed to insert block record");
-                        AppError::Db(e)
-                    })?;
-                info!(block_id = %block_id, script_id = %new_script_id, page_number, scene_number = ?scene_number, scene_title = ?scene_title, "Block record inserted successfully with clean JSON content and separate metadata");
+                info!(block_id = %block_id, script_id = %new_script_id, block_type = %block_type, page_number, scene_number = ?scene_number, scene_title = ?scene_title, "Skipping block insertion (deprecated)");
             }
         }
 
@@ -544,22 +526,8 @@ impl ScriptApplicationService {
             }
         };
 
-        // Get associated blocks ordered by block_order and page_number
-        let blocks = sqlx::query_as::<_, Block>(
-            r#"
-            SELECT id, script_id, block_type, content, created_at, block_order, page_number, scene_number, scene_title, metadata
-            FROM blocks 
-            WHERE script_id = $1 
-            ORDER BY block_order ASC, page_number ASC, created_at ASC
-            "#
-        )
-        .bind(script_id)
-        .fetch_all(self.pool.as_ref())
-        .await
-        .map_err(|e| {
-            error!("Failed to fetch blocks for script {}: {}", script_id, e);
-            AppError::Internal(anyhow::anyhow!("Failed to fetch script blocks"))
-        })?;
+        // Blocks table deprecated - return empty
+        let blocks = vec![];
 
         info!(
             script_id = %script_id, 

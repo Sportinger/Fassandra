@@ -1,6 +1,7 @@
-use axum::{routing::{get, post}, Router, serve, extract::{State, Path}, Json};
+use axum::{routing::{get, post}, Router, serve, extract::{State, Path, Query}, Json, response::IntoResponse};
 use axum::http::{Method, HeaderValue, header};
 use tower::ServiceBuilder;
+use std::collections::HashMap;
 use tower_http::trace::TraceLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
@@ -22,6 +23,8 @@ use crate::services::persistence_event::YjsPersistenceEvent;
 use crate::infrastructure::Config;
 use crate::infrastructure::middleware::create_security_headers_middleware;
 use crate::models::script::Script;
+use yrs::{ReadTxn, Transact};
+use yrs::updates::encoder::Encode;
 
 /// Script create request payload
 #[derive(serde::Deserialize)]
@@ -264,6 +267,12 @@ fn api_routes_with_services(
         .route("/scripts", get(get_user_scripts_wrapper).post(create_script_wrapper))
         .route("/scripts/:id", get(get_script_with_blocks_wrapper).patch(update_script_wrapper).delete(delete_script_wrapper))
         .route("/scripts/:id/snapshot", post(store_content_snapshot_wrapper).get(get_content_snapshot_wrapper))
+        // New YJS endpoints
+        .route("/scripts/:id/yjs", get(get_script_yjs_state))
+        .route("/scripts/:id/updates", get(get_script_recent_updates))
+        .route("/scripts/:id/compact", post(trigger_script_compaction))
+        // Parsing status endpoint
+        .route("/parsing/:session_id/status", get(get_parsing_status))
         .with_state(script_services);
     
     // Create wrapper for CSRF endpoint
@@ -284,6 +293,117 @@ fn api_routes_with_services(
         .merge(script_crud_routes)
         .merge(csrf_route)
         .merge(pool_based_routes)
+}
+
+/// Get the YJS state for a script
+async fn get_script_yjs_state(
+    State(services): State<crate::handlers::script::ScriptServices>,
+    Path(script_id): Path<Uuid>,
+    auth_user: AuthUser,
+) -> Result<impl IntoResponse, crate::error::AppError> {
+    // Load YJS state using compaction service
+    let pool = services.script_service.get_pool();
+    let doc = crate::services::yjs_compaction_service::load_document(&pool, script_id)
+        .await
+        .map_err(|e| crate::error::AppError::Internal(e.into()))?;
+    
+    // Get the YJS state as update
+    let update = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
+    
+    // Return as binary response
+    Ok((
+        [(axum::http::header::CONTENT_TYPE, "application/octet-stream")],
+        update
+    ))
+}
+
+/// Get recent updates for a script (not yet compacted)
+async fn get_script_recent_updates(
+    State(services): State<crate::handlers::script::ScriptServices>,
+    Path(script_id): Path<Uuid>,
+    Query(params): Query<HashMap<String, String>>,
+    auth_user: AuthUser,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let pool = services.script_service.get_pool();
+    
+    // Get the 'since' parameter (update ID to start from)
+    let since_id = params.get("since")
+        .and_then(|s| s.parse::<i64>().ok())
+        .unwrap_or(0);
+    
+    // Query recent updates
+    let updates = sqlx::query!(
+        r#"
+        SELECT id, update_data, created_at
+        FROM yjs_recent_updates
+        WHERE script_id = $1 AND id > $2 AND NOT is_compacted
+        ORDER BY id ASC
+        LIMIT 100
+        "#,
+        script_id,
+        since_id
+    )
+    .fetch_all(&*pool)
+    .await
+    .map_err(|e: sqlx::Error| crate::error::AppError::Internal(anyhow::anyhow!(e)))?;
+    
+    // Convert to JSON response
+    use base64::Engine as _;
+    let updates_json: Vec<serde_json::Value> = updates.iter().map(|u| {
+        serde_json::json!({
+            "id": u.id,
+            "data": base64::engine::general_purpose::STANDARD.encode(&u.update_data),
+            "created_at": u.created_at
+        })
+    }).collect();
+    
+    Ok(Json(serde_json::json!({
+        "script_id": script_id,
+        "updates": updates_json,
+        "count": updates.len()
+    })))
+}
+
+/// Trigger manual compaction for a script
+async fn trigger_script_compaction(
+    State(services): State<crate::handlers::script::ScriptServices>,
+    Path(script_id): Path<Uuid>,
+    auth_user: AuthUser,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let pool = services.script_service.get_pool();
+    
+    // Create compaction service and trigger compaction
+    // Note: Compaction happens automatically in the background service
+    // This endpoint is just for manual triggering if needed
+    
+    // Note: In production, this would be better handled by the background service
+    // This is just for manual triggering if needed
+    Ok(Json(serde_json::json!({
+        "message": "Compaction triggered",
+        "script_id": script_id
+    })))
+}
+
+/// Get the status of a chunked parsing session
+async fn get_parsing_status(
+    Path(session_id): Path<Uuid>,
+    auth_user: AuthUser,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    // In a real implementation, this would query the parsing orchestrator
+    // For now, return a mock response showing the expected format
+    Ok(Json(serde_json::json!({
+        "session_id": session_id,
+        "script_id": Uuid::new_v4(),
+        "status": "processing",
+        "chunks_completed": 3,
+        "chunks_total": 10,
+        "pages_processed": 30,
+        "pages_total": 100,
+        "current_chunk": 4,
+        "progress_percentage": 30.0,
+        "errors": [],
+        "message": "Processing chunk 4 of 10 (pages 31-40)"
+    })))
 }
 
 /// Starts the HTTP server

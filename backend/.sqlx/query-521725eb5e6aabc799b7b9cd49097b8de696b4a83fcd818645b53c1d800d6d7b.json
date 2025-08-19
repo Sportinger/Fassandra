@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO scripts (id, created_by, title, created_at, is_public)\n            VALUES ($1, $2, $3, NOW(), false)\n            ON CONFLICT (id) DO UPDATE SET\n                title = EXCLUDED.title,\n                created_at = NOW()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "521725eb5e6aabc799b7b9cd49097b8de696b4a83fcd818645b53c1d800d6d7b"
+}

@@ -6,7 +6,6 @@
 pub mod script_service;
 pub mod collaboration_service;
 pub mod content_service;
-pub mod snapshot;
 
 // Re-export services for easier importing
 pub use script_service::ScriptService;

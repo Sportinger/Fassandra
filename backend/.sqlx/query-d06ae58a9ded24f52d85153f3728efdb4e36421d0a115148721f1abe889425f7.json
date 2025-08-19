@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO yjs_recent_updates \n                (script_id, user_id, update_data, created_at, expires_at, is_compacted)\n            VALUES ($1, $2, $3, NOW(), NOW() + INTERVAL '2 hours', false)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d06ae58a9ded24f52d85153f3728efdb4e36421d0a115148721f1abe889425f7"
+}

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT update_data \n            FROM yjs_recent_updates \n            WHERE script_id = $1 AND NOT is_compacted\n            ORDER BY id ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "update_data",
+        "type_info": "Bytea"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "fac8fb4134cdb0b8d1187c56dba906ee624830c98c8291169bc88203ac058dd0"
+}

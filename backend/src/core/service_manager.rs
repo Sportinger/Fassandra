@@ -201,7 +201,6 @@ impl ServiceManager {
         let user_repo = std::sync::Arc::new(crate::repositories::user_repository::PostgresUserRepository::new(self.database_pool.clone()));
         let block_repo = std::sync::Arc::new(crate::repositories::block_repository::PostgresBlockRepository::new(self.database_pool.clone()));
         let _yjs_repo = std::sync::Arc::new(crate::repositories::yjs_update_repository::PostgresYjsUpdateRepository::new(self.database_pool.clone()));
-        let _snapshot_repo = std::sync::Arc::new(crate::repositories::snapshot_repository::PostgresSnapshotRepository::new(self.database_pool.clone()));
 
         // Create domain services layer
         let script_domain_service = std::sync::Arc::new(crate::domain::script_service::ScriptService::new(
