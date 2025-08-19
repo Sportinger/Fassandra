@@ -60,50 +60,44 @@ export interface PlaceholderScript extends Script {
   uploadStartTime?: number; // Timestamp when upload started
 }
 
-/**
- * Represents a single block of content within a script.
- * @property {string} id - Unique block identifier (UUID).
- * @property {string} script_id - ID of the script this block belongs to.
- * @property {string} block_type - Type of block (e.g., 'text', 'dialogue').
- * @property {string} content - Content of the block (may be JSON for TipTap).
- * @property {string} created_at - ISO timestamp of block creation.
- * @property {number} page_number - Page number where this block appears (1-based).
- */
-export interface Block {
-  id: string;
-  script_id: string;
-  block_type: string;
-  content: string; // This might be structured JSON for TipTap
-  created_at: string;
-  page_number: number;
-  scene_number?: string | null;
-  scene_title?: string | null;
-}
+// Blocks are deprecated - content is now stored in YJS documents
 
 /**
- * Represents an edit made to a block's content.
- * @property {string} id - Unique edit identifier (UUID).
- * @property {string} block_id - ID of the block that was edited.
+ * Represents an edit in YJS document history.
+ * @property {string} id - Unique edit identifier.
+ * @property {string} script_id - ID of the script that was edited.
  * @property {string|null} user_id - User ID of the editor, or null.
- * @property {string} content - The new content after the edit.
+ * @property {string} update_data - YJS update data.
  * @property {string} created_at - ISO timestamp of the edit.
  */
 export interface Edit {
   id: string;
-  block_id: string;
+  script_id: string;
   user_id: string | null;
-  content: string;
+  update_data: string;
   created_at: string;
 }
 
 /**
- * Represents a script and its associated blocks (API response).
- * @property {Script} script - The script object.
- * @property {Block[]} blocks - Array of blocks belonging to the script.
+ * Represents a script with YJS document state.
+ * @property {string} id - Script ID.
+ * @property {string} title - Script title.
+ * @property {string} created_by - Creator ID.
+ * @property {string} created_at - Creation timestamp.
+ * @property {boolean} is_public - Public visibility.
+ * @property {string} thumbnail - Thumbnail image.
+ * @property {string} yjs_state - Base64-encoded YJS state.
+ * @property {string} format - Document format (always 'yjs').
  */
-export interface ScriptWithBlocks {
-  script: Script;
-  blocks: Block[];
+export interface ScriptWithYjs {
+  id: string;
+  title: string;
+  created_by: string | null;
+  created_at: string;
+  is_public: boolean;
+  thumbnail: string | null;
+  yjs_state: string;
+  format: string;
 }
 
 /**

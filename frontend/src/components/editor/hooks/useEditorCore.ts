@@ -32,8 +32,7 @@ import { TrailingNode } from '../extensions/TrailingNode';
 import { CueConnectionMark } from '../extensions/CueConnectionMark';
 import { FontSize } from '../FontSizeExtension';
 import { FontFamilyExtension } from '../extensions/FontFamilyExtension';
-import { getScriptWithBlocks, getContentSnapshot, storeContentSnapshot } from '../../../api';
-import { convertBlocksToTiptapContent, extractSpeakerNames } from '../utils/contentConverters';
+import { extractSpeakerNames } from '../utils/contentConverters';
 import { scriptEventBus } from '../../../services/ScriptEventBus';
 import { isYDocEmpty } from '../utils/formatters';
 import { yjsDocumentManager } from '../../../services/yjsDocumentManager';
@@ -108,8 +107,7 @@ export const useEditorCore = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
   const [toolbarContext, setToolbarContext] = useState<ToolbarContext>('default');
-  const [contentSnapshot, setContentSnapshot] = useState<string>('');
-  const [lastSyncTime, setLastSyncTime] = useState<number>(0);
+  const [isYjsSynced, setIsYjsSynced] = useState<boolean>(false);
   const [activeUserCount, setActiveUserCount] = useState<number>(0);
   
   // Track provider ref for cleanup
@@ -489,113 +487,32 @@ export const useEditorCore = ({
 
   // Note: Editor is now created only when collaboration is ready, so no reinitialize needed
 
-  // 🔧 FIXED: Content sync with reduced frequency and change detection
+  // YJS handles all synchronization - no need for manual content sync
+  // The WebSocket provider automatically syncs all changes
+
+  // Monitor YJS synchronization status
   useEffect(() => {
-    if (!editorInstance || !stableScriptId || !stableToken) return;
-
-    const syncContent = async () => {
-      let currentContent = editorInstance.getHTML();
-      const now = Date.now();
-      
-      // Clean up cue block UI elements before saving
-      currentContent = cleanCueBlockHTML(currentContent);
-      
-      // Only sync if content changed and enough time has passed
-      if (currentContent !== contentSnapshot && now - lastSyncTime > 500) {
-        try {
-          await storeContentSnapshot(stableScriptId, currentContent);
-          setContentSnapshot(currentContent);
-          setLastSyncTime(now);
-          debugLog('[Real-time Sync] ✅ Content sync successful');
-          // Emit event to update preview
-          scriptEventBus.emit(stableScriptId);
-        } catch (error) {
-          logger.error('useEditorCore', '[Real-time Sync] ❌ Content sync failed:', error);
-        }
-      }
-    };
-
-    // Set up periodic sync
-    const interval = setInterval(syncContent, 500);
+    if (!provider) return;
     
-    return () => clearInterval(interval);
-  }, [editorInstance, stableScriptId, stableToken, contentSnapshot, lastSyncTime]);
-
-  // 🔧 FIXED: Load initial content from latest snapshot instead of outdated blocks
-  useEffect(() => {
-    if (!editorInstance || !stableScriptId || !stableToken) return;
-    
-    // Skip loading initial content if YJS is handling synchronization
-    // The content will come from YJS sync protocol instead
-    if (provider) {
-      debugLog('[Editor] 🔄 Skipping initial content load - YJS collaboration is active');
-      return;
-    }
-
-    const loadInitialContent = async () => {
-      try {
-        debugLog('[Editor] 🎯 Loading latest content snapshot instead of blocks...');
-        
-        // First try to get the latest content snapshot
-        const snapshotData = await getContentSnapshot(stableScriptId);
-        
-        if (snapshotData.content && snapshotData.content.trim()) {
-          debugLog(`[Editor] ✅ Found content snapshot: ${snapshotData.content.length} chars`);
-          editorInstance.commands.setContent(snapshotData.content);
-          // Clean the HTML before storing as snapshot
-          const cleanedContent = cleanCueBlockHTML(editorInstance.getHTML());
-          setContentSnapshot(cleanedContent);
-          
-          // Extract speakers from snapshot content
-          const speakers = extractSpeakerNames(snapshotData.content);
-          setAvailableSpeakers(Array.from(speakers));
-          
-          debugLog('[Editor] ✅ Content loaded from snapshot successfully');
-          return; // Exit early on success
-        } else {
-          debugLog('[Editor] ⚠️ Snapshot exists but is empty, falling back to blocks...');
-        }
-      } catch (error: any) {
-        // 🔧 FIX: Handle 404 errors gracefully and fall back to blocks
-        if (error.status === 404 || error.message?.includes('404')) {
-          debugLog('[Editor] ⚠️ No content snapshot found (404), falling back to blocks...');
-        } else {
-          logger.error('useEditorCore', '[Editor] ❌ Error loading snapshot:', error);
-          debugLog('[Editor] ⚠️ Snapshot error, falling back to blocks...');
-        }
-      }
-
-      // 🔧 FIX: Fallback logic moved outside try-catch to always execute when snapshot fails
-      try {
-        debugLog('[Editor] 📄 Loading content from blocks as fallback...');
-        const scriptData = await getScriptWithBlocks(stableScriptId);
-        
-        if (scriptData.blocks.length > 0) {
-          debugLog(`[Editor] 📄 Found ${scriptData.blocks.length} blocks, converting to content...`);
-          const content = convertBlocksToTiptapContent(scriptData.blocks);
-          debugLog(`[Editor] 📄 Converted blocks to ${content.length} chars of content`);
-          
-          editorInstance.commands.setContent(content);
-          // Clean the HTML before storing as snapshot
-          const cleanedContent = cleanCueBlockHTML(editorInstance.getHTML());
-          setContentSnapshot(cleanedContent);
-          
+    const handleSync = (isSynced: boolean) => {
+      setIsYjsSynced(isSynced);
+      if (isSynced) {
+        debugLog('[Editor] ✅ YJS synchronized with server');
+        // Extract speakers from current editor content
+        const content = editorInstance?.getHTML() || '';
+        if (content) {
           const speakers = extractSpeakerNames(content);
           setAvailableSpeakers(Array.from(speakers));
-          
-          debugLog('[Editor] ✅ Content loaded from blocks fallback successfully');
-        } else {
-          debugLog('[Editor] ⚠️ No blocks found either - script appears to be empty');
-          setErrorMessage('Script appears to be empty');
         }
-      } catch (blockError) {
-        logger.error('useEditorCore', '[Editor] ❌ Failed to load blocks as fallback:', blockError);
-        setErrorMessage('Failed to load script content');
       }
     };
-
-    loadInitialContent();
-  }, [editorInstance, stableScriptId, stableToken, provider]);
+    
+    provider.on('sync', handleSync);
+    
+    return () => {
+      provider.off('sync', handleSync);
+    };
+  }, [provider, editorInstance]);
 
   // Context menu handlers
   const showContextMenu = useCallback((x: number, y: number, context: ToolbarContext) => {
@@ -636,5 +553,6 @@ export const useEditorCore = ({
     showContextMenu,
     hideContextMenu,
     activeUserCount,
+    isYjsSynced,
   };
 }; 

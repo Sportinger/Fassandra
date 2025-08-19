@@ -4,7 +4,7 @@
  */
 
 import { apiService } from './services/ApiService';
-import { Script, ScriptWithBlocks, Edit, ScriptShare, ScriptShareWithUser, ShareScriptRequest, ScriptLayout, CreateScriptLayoutRequest, UpdateScriptLayoutRequest } from './types';
+import { Script, Edit, ScriptShare, ScriptShareWithUser, ShareScriptRequest, ScriptLayout, CreateScriptLayoutRequest, UpdateScriptLayoutRequest } from './types';
 import { apiCache, CACHE_CONFIG, invalidateScriptCaches } from './utils/apiCache';
 import { createDebouncedAPI, createThrottledAPI } from './utils/rateLimit';
 import { scriptEventBus } from './services/ScriptEventBus';
@@ -69,7 +69,16 @@ export const createScript = async (title: string): Promise<Script> => {
     return result;
 };
 
-export const getScriptWithBlocks = async (scriptId: string, forceRefresh = false): Promise<ScriptWithBlocks> => {
+export const getScriptWithYjs = async (scriptId: string, forceRefresh = false): Promise<{
+    id: string;
+    title: string;
+    created_by: string | null;
+    created_at: string;
+    is_public: boolean;
+    thumbnail: string | null;
+    yjs_state: string;
+    format: string;
+}> => {
     return apiCache.cachedFetch(
         `/api/scripts/${scriptId}`,
         () => apiService.get(`/api/scripts/${scriptId}`, { scriptId }),
@@ -90,34 +99,25 @@ export const deleteScript = async (scriptId: string): Promise<void> => {
     invalidateScriptCaches();
 };
 
-// --- Blocks --- //
+// --- YJS Updates --- //
 
-export const createBlock = async (scriptId: string, blockType: string, content: string): Promise<string> => {
-    const result = await apiService.post(`/api/scripts/${scriptId}/blocks`, 
-        { block_type: blockType, content }, 
-        { scriptId, blockType, content }
-    );
-    // Emit event to update preview
-    scriptEventBus.emit(scriptId);
-    return result;
+export const getYjsState = async (scriptId: string): Promise<ArrayBuffer> => {
+    const response = await fetch(`/api/scripts/${scriptId}/yjs`, {
+        headers: {
+            'Authorization': `Bearer ${apiService.getToken()}`,
+        },
+    });
+    if (!response.ok) throw new Error(`Failed to get YJS state: ${response.status}`);
+    return response.arrayBuffer();
 };
 
-export const updateBlock = async (blockId: string, content: string): Promise<void> => {
-    return apiService.patch(`/api/blocks/${blockId}`, { content }, { blockId, content });
-};
-
-export const saveContentToServer = async (scriptId: string, htmlContent: string): Promise<void> => {
-    const result = await apiService.patch(`/api/scripts/${scriptId}/content`, 
-        { content: htmlContent }, 
-        { scriptId, htmlContent }
-    );
-    // Emit event to update preview
-    scriptEventBus.emit(scriptId);
-    return result;
-};
-
-export const getBlockHistory = async (blockId: string): Promise<Edit[]> => {
-    return apiService.get(`/api/blocks/${blockId}/history`, { blockId });
+export const getYjsUpdates = async (scriptId: string, sinceId?: number): Promise<{
+    script_id: string;
+    updates: Array<{ id: number; data: string; created_at: string }>;
+    count: number;
+}> => {
+    const params = sinceId ? `?since=${sinceId}` : '';
+    return apiService.get(`/api/scripts/${scriptId}/updates${params}`, { scriptId });
 };
 
 // --- Script Sharing --- //
@@ -175,46 +175,13 @@ export const deleteScriptLayout = async (scriptId: string, layoutId: string): Pr
     return apiService.delete(`/api/scripts/${scriptId}/layouts/${layoutId}`, { scriptId, layoutId });
 };
 
-// --- Content Snapshots --- //
+// --- YJS Document Operations --- //
 
-export const storeContentSnapshot = async (scriptId: string, content: string, format: string = 'html'): Promise<void> => {
-    const result = await apiService.post(`/api/scripts/${scriptId}/snapshot`, { content, format }, { scriptId, content });
-    // Emit event to update preview
-    scriptEventBus.emit(scriptId);
-    return result;
+export const triggerCompaction = async (scriptId: string): Promise<{ message: string; script_id: string }> => {
+    return apiService.post(`/api/scripts/${scriptId}/compact`, {}, { scriptId });
 };
 
-export const getContentSnapshot = async (scriptId: string): Promise<{script_id: string, content: string, format: string, created_at: string | null}> => {
-    return apiService.get(`/api/scripts/${scriptId}/snapshot`, { scriptId });
-};
-
-// --- Page Breaks --- //
-
-export interface PageBreakInfo {
-    block_id: string;
-    block_type: string;
-    content_preview: string;
-    page_number: number;
-    block_order: number;
-}
-
-export interface PageBreaksResponse {
-    script_id: string;
-    blocks: PageBreakInfo[];
-}
-
-export interface PageBreakUpdate {
-    block_id: string;
-    page_number: number;
-}
-
-export const getPageBreaks = async (scriptId: string): Promise<PageBreaksResponse> => {
-    return apiService.get(`/api/scripts/${scriptId}/page-breaks`, { scriptId });
-};
-
-export const updatePageBreaks = async (scriptId: string, updates: PageBreakUpdate[]): Promise<{ success: boolean; message: string }> => {
-    return apiService.patch(`/api/scripts/${scriptId}/page-breaks`, { updates }, { scriptId });
-};
+// Page breaks are now handled entirely through YJS document structure
 
 // --- Legacy compatibility --- //
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { getScriptWithBlocks, getContentSnapshot } from '../../../api';
-import { Block } from '../../../types';
+import { getScriptWithYjs } from '../../../api';
+import * as Y from 'yjs';
 import styles from './ScriptPreview.module.css';
 import logger from '../../../services/LoggingService';
 import { scriptEventBus } from '../../../services/ScriptEventBus';
@@ -10,7 +10,7 @@ interface ScriptPreviewProps {
 }
 
 export const ScriptPreview: React.FC<ScriptPreviewProps> = ({ scriptId }) => {
-  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [previewContent, setPreviewContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasInitialLoad, setHasInitialLoad] = useState(false);
@@ -22,130 +22,118 @@ export const ScriptPreview: React.FC<ScriptPreviewProps> = ({ scriptId }) => {
         setLoading(true);
       }
       setError(null);
-      const scriptData = await getScriptWithBlocks(scriptId);
-      if (scriptData && scriptData.blocks && scriptData.blocks.length > 0) {
-        // Sort blocks by page_number to show all content
-        const sortedBlocks = scriptData.blocks
-          .sort((a, b) => a.page_number - b.page_number);
-        setBlocks(sortedBlocks);
-      } else {
-        // No blocks yet, try to get content snapshot
-        try {
-          const snapshot = await getContentSnapshot(scriptId);
-          if (snapshot && snapshot.content) {
-            // Parse HTML content and create preview blocks
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(snapshot.content, 'text/html');
-            const previewBlocks: Block[] = [];
-            
-            // Extract dialogue blocks
-            const dialogueElements = doc.querySelectorAll('[data-dialogue-block]');
-            dialogueElements.forEach((el, index) => {
-              const speaker = el.querySelector('[data-speaker]')?.textContent || '';
-              const text = el.querySelector('[data-dialogue-text]')?.textContent || el.textContent || '';
-              if (speaker || text) {
-                previewBlocks.push({
-                  id: `snapshot-dialogue-${index}`,
-                  script_id: scriptId,
-                  block_type: 'dialogue',
-                  content: JSON.stringify({ speaker: speaker || 'Speaker', line: text }),
-                  created_at: snapshot.created_at || new Date().toISOString(),
-                  page_number: 1
-                });
-              }
-            });
-            
-            // If no structured content found, use plain text
-            if (previewBlocks.length === 0) {
-              const textContent = doc.body.textContent || '';
-              if (textContent.trim()) {
-                // Split into lines and create blocks
-                const lines = textContent.split('\n').filter(line => line.trim());
-                lines.slice(0, 10).forEach((line, index) => {
-                  previewBlocks.push({
-                    id: `snapshot-text-${index}`,
-                    script_id: scriptId,
-                    block_type: 'paragraph',
-                    content: line.trim(),
-                    created_at: snapshot.created_at || new Date().toISOString(),
-                    page_number: 1
-                  });
-                });
-              }
-            }
-            
-            setBlocks(previewBlocks);
-          } else {
-            setBlocks([]);
-          }
-        } catch (snapshotErr) {
-          // No snapshot either, keep empty
-          setBlocks([]);
+      
+      const scriptData = await getScriptWithYjs(scriptId);
+      
+      if (scriptData && scriptData.yjs_state) {
+        // Decode the YJS state
+        const stateBuffer = Uint8Array.from(atob(scriptData.yjs_state), c => c.charCodeAt(0));
+        
+        // Create a temporary Y.Doc to extract content
+        const doc = new Y.Doc();
+        Y.applyUpdate(doc, stateBuffer);
+        
+        // Try to get content from different possible YJS structures
+        let content = '';
+        
+        // Try prosemirror fragment first (TipTap uses this)
+        const xmlFragment = doc.getXmlFragment('prosemirror');
+        if (xmlFragment && xmlFragment.length > 0) {
+          // Convert XML to HTML-like preview
+          content = extractContentFromYXml(xmlFragment);
         }
+        
+        // Fallback to default fragment
+        if (!content) {
+          const defaultFragment = doc.getXmlFragment('default');
+          if (defaultFragment && defaultFragment.length > 0) {
+            content = extractContentFromYXml(defaultFragment);
+          }
+        }
+        
+        // Fallback to content text
+        if (!content) {
+          const contentText = doc.getText('content');
+          if (contentText) {
+            content = contentText.toString();
+          }
+        }
+        
+        setPreviewContent(content || 'No content available');
+      } else {
+        setPreviewContent('');
+      }
+      
+      if (!hasInitialLoad) {
+        setHasInitialLoad(true);
       }
     } catch (err) {
       logger.error('ScriptPreview', 'Failed to fetch script content:', err);
-      // For demo purposes, show mock data when API fails
+      setError('Failed to load preview');
+      
+      // For demo purposes, show mock data when API fails in development
       if (process.env.NODE_ENV === 'development') {
-        setBlocks([
-          {
-            id: '1',
-            script_id: scriptId,
-            block_type: 'dialogue',
-            content: '{"speaker":"HAMLET","line":"To be or not to be, that is the question"}',
-            created_at: new Date().toISOString(),
-            page_number: 1
-          },
-          {
-            id: '2',
-            script_id: scriptId,
-            block_type: 'stage_direction',
-            content: '{"description":"Enter OPHELIA"}',
-            created_at: new Date().toISOString(),
-            page_number: 1
-          },
-          {
-            id: '3',
-            script_id: scriptId,
-            block_type: 'dialogue',
-            content: '{"speaker":"OPHELIA","line":"My lord, I have remembrances of yours that I have longed long to re-deliver"}',
-            created_at: new Date().toISOString(),
-            page_number: 1
-          },
-          {
-            id: '4',
-            script_id: scriptId,
-            block_type: 'monologue',
-            content: '{"speaker":"HAMLET","lines":["Whether tis nobler in the mind to suffer","The slings and arrows of outrageous fortune","Or to take arms against a sea of troubles"]}',
-            created_at: new Date().toISOString(),
-            page_number: 1
-          }
-        ]);
-        setError(null);
-      } else {
-        setError('Failed to load preview');
+        setPreviewContent(`
+          <div><strong>HAMLET:</strong> To be or not to be, that is the question</div>
+          <div><em>(Enter OPHELIA)</em></div>
+          <div><strong>OPHELIA:</strong> My lord, I have remembrances of yours that I have longed long to re-deliver</div>
+        `);
       }
     } finally {
       setLoading(false);
-      setHasInitialLoad(true);
     }
   }, [scriptId, hasInitialLoad]);
 
+  // Extract readable content from YJS XML structure
+  const extractContentFromYXml = (xmlElement: Y.XmlFragment | Y.XmlElement): string => {
+    let html = '';
+    
+    xmlElement.forEach((item) => {
+      if (item instanceof Y.XmlElement) {
+        const nodeName = item.nodeName;
+        const attrs = item.getAttributes();
+        
+        // Handle different node types
+        if (nodeName === 'paragraph' || nodeName === 'p') {
+          html += '<div>';
+          html += extractContentFromYXml(item);
+          html += '</div>';
+        } else if (nodeName === 'dialogue-block' || attrs['data-dialogue-block']) {
+          html += '<div class="dialogue">';
+          html += extractContentFromYXml(item);
+          html += '</div>';
+        } else if (nodeName === 'speaker' || attrs['data-speaker']) {
+          html += '<strong>';
+          html += extractContentFromYXml(item);
+          html += ':</strong> ';
+        } else if (nodeName === 'dialogue-text' || attrs['data-dialogue-text']) {
+          html += '<span>';
+          html += extractContentFromYXml(item);
+          html += '</span>';
+        } else if (nodeName === 'cue-block' || attrs['data-cue-block']) {
+          html += '<div class="cue"><em>';
+          html += extractContentFromYXml(item);
+          html += '</em></div>';
+        } else if (nodeName === 'scene-block' || attrs['data-scene-block']) {
+          html += '<div class="scene"><strong>';
+          html += extractContentFromYXml(item);
+          html += '</strong></div>';
+        } else {
+          // Generic element
+          html += extractContentFromYXml(item);
+        }
+      } else if (item instanceof Y.XmlText) {
+        html += item.toString();
+      }
+    });
+    
+    return html;
+  };
+
+  // Initial load on mount
   useEffect(() => {
-    // Initial fetch
     fetchScriptContent(true);
-  }, [scriptId]); // Only re-fetch when scriptId changes
-  
-  useEffect(() => {
-    // Set up periodic refresh for empty scripts
-    if (blocks.length === 0 && hasInitialLoad) {
-      const intervalId = setInterval(() => {
-        fetchScriptContent(false);
-      }, 3000);
-      
-      return () => clearInterval(intervalId);
-    }
-  }, [blocks.length, hasInitialLoad, fetchScriptContent]);
+  }, [scriptId, fetchScriptContent]);
 
   // Subscribe to script updates
   useEffect(() => {
@@ -157,80 +145,35 @@ export const ScriptPreview: React.FC<ScriptPreviewProps> = ({ scriptId }) => {
     return unsubscribe;
   }, [scriptId, fetchScriptContent]);
 
-  const formatBlockContent = (block: Block): React.ReactNode => {
-    try {
-      // Try to parse JSON content if it looks like structured data
-      if (block.content.startsWith('{') || block.content.startsWith('"')) {
-        const json = JSON.parse(block.content);
-        
-        switch (block.block_type) {
-          case 'dialogue':
-            return (
-              <div className={styles.dialogueBlock}>
-                <strong className={styles.speaker}>{json.speaker || 'Speaker'}:</strong>
-                <span className={styles.line}> {json.line || ''}</span>
-              </div>
-            );
-          
-          case 'monologue':
-            const lines = Array.isArray(json.lines) ? json.lines : [json.lines];
-            return (
-              <div className={styles.monologueBlock}>
-                <strong className={styles.speaker}>{json.speaker || 'Speaker'}:</strong>
-                <div className={styles.lines}>
-                  {lines.map((line: string, idx: number) => (
-                    <div key={idx}>{line}</div>
-                  ))}
-                </div>
-              </div>
-            );
-          
-          case 'stage_direction':
-            return (
-              <div className={styles.stageDirection}>
-                <em>({json.description || json.text || block.content})</em>
-              </div>
-            );
-          
-          case 'joint_dialogue':
-            const speakers = Array.isArray(json.speakers) ? json.speakers.join('/') : json.speakers;
-            return (
-              <div className={styles.dialogueBlock}>
-                <strong className={styles.speaker}>{speakers}:</strong>
-                <span className={styles.line}> {json.line || ''}</span>
-              </div>
-            );
-          
-          case 'reading':
-            return (
-              <div className={styles.readingBlock}>
-                <strong className={styles.speaker}>{json.speaker || 'Reader'}:</strong>
-                <em className={styles.readingLabel}> (Reading)</em>
-                <span className={styles.line}> {json.reading_text || ''}</span>
-              </div>
-            );
-          
-          case 'paragraph':
-            const text = typeof json === 'string' ? json : json.text || block.content;
-            return <div className={styles.paragraph}>{text}</div>;
-          
-          default:
-            return <div className={styles.defaultBlock}>{block.content}</div>;
-        }
-      }
-    } catch (e) {
-      // If JSON parsing fails, display as plain text
-      if (block.block_type === 'stage_direction') {
-        return <div className={styles.stageDirection}><em>({block.content})</em></div>;
-      }
-      return <div className={styles.defaultBlock}>{block.content}</div>;
+  const renderPreviewContent = () => {
+    if (!previewContent) {
+      return (
+        <div className={styles.emptyState}>
+          <span className={styles.emptyIcon}>📄</span>
+          <span className={styles.emptyText}>No content yet</span>
+        </div>
+      );
     }
+
+    // Parse and render the HTML content
+    const lines = previewContent.split('\n').filter(line => line.trim());
     
-    // Plain text content
-    if (block.block_type === 'stage_direction') {
-      return <div className={styles.stageDirection}><em>({block.content})</em></div>;
-    }
-    return <div className={styles.defaultBlock}>{block.content}</div>;
+    return (
+      <div className={styles.contentPreview}>
+        {lines.slice(0, 10).map((line, index) => (
+          <div 
+            key={index} 
+            className={styles.blockWrapper}
+            dangerouslySetInnerHTML={{ __html: line }}
+          />
+        ))}
+        {lines.length > 10 && (
+          <div className={styles.moreContent}>
+            ... and {lines.length - 10} more lines
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -255,26 +198,9 @@ export const ScriptPreview: React.FC<ScriptPreviewProps> = ({ scriptId }) => {
     );
   }
 
-  if (blocks.length === 0) {
-    return (
-      <div className={styles.previewContainer}>
-        <div className={styles.emptyState}>
-          <span className={styles.emptyIcon}>📄</span>
-          <span className={styles.emptyText}>No content yet</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.previewContainer}>
-      <div className={styles.contentPreview}>
-        {blocks.map((block) => (
-          <div key={block.id} className={styles.blockWrapper}>
-            {formatBlockContent(block)}
-          </div>
-        ))}
-      </div>
+      {renderPreviewContent()}
     </div>
   );
 };
