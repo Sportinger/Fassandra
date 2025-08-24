@@ -88,9 +88,8 @@ class YjsDocumentManager {
     }
     
     if (!this.documents.has(scriptId)) {
-      if (import.meta.env.DEV) {
-        logDebugInfo('YjsDocumentManager', `Creating new document for script: ${scriptId}`);
-      }
+      logger.info('yjsDocumentManager', `[YJS_DOC_CREATE] Creating new YJS document for script: ${scriptId}`);
+      
       const doc = new Y.Doc();
       
       // Generate a unique client ID for each connection to prevent duplication
@@ -107,31 +106,59 @@ class YjsDocumentManager {
       (doc as any).clientID = clientId;
       sessionStorage.setItem(`yjs-client-id-${scriptId}`, clientId.toString());
       
-      if (import.meta.env.DEV) {
-        logDebugInfo('YjsDocumentManager', `Generated new client ID: ${clientId} for script: ${scriptId}`);
-      }
+      logger.info('yjsDocumentManager', `[YJS_CLIENT_ID] Generated client ID: ${clientId} for script: ${scriptId}`);
       
-      // Initialize xmlFragment for Tiptap to prevent duplication
+      // Initialize default field for Tiptap to prevent duplication
+      logger.info('yjsDocumentManager', `[YJS_INIT_FIELD] Initializing 'default' field for script: ${scriptId}`);
       doc.transact(() => {
-        doc.getXmlFragment('xmlFragment');
-      }, 'initializeXmlFragment');
+        const fragment = doc.getXmlFragment('default'); // Match the field name used in Collaboration.configure
+        logger.info('yjsDocumentManager', `[YJS_FIELD_CREATED] Created XmlFragment 'default', length: ${fragment.length}`);
+      }, 'initializeDefaultField');
 
-      // Add debug logging with error handling
+      // Add comprehensive debug logging
       doc.on('update', (update: Uint8Array, origin: any) => {
         try {
           const state = Y.encodeStateVector(doc);
-          if (import.meta.env.DEV) {
-            logDebugInfo('YjsDocumentManager', `Document ${scriptId} updated: ${JSON.stringify({
-              updateSize: update.length,
-              origin: origin?.constructor?.name || origin || 'unknown',
-              stateVectorSize: state.length,
-              clientID: doc.clientID,
-              updateCounter: (doc.store.clients.get(doc.clientID) as any)?.clock || 0
-            })}`);
+          const defaultField = doc.getXmlFragment('default');
+          
+          // Convert update to hex for better debugging
+          const updateHex = Array.from(update.slice(0, Math.min(50, update.length)))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join(' ');
+          
+          logger.info('yjsDocumentManager', `[YJS_UPDATE] Document ${scriptId} updated:`, {
+            updateSize: update.length,
+            updateFirstBytes: updateHex,
+            origin: origin?.constructor?.name || origin || 'unknown',
+            stateVectorSize: state.length,
+            clientID: doc.clientID,
+            updateCounter: (doc.store.clients.get(doc.clientID) as any)?.clock || 0,
+            defaultFieldLength: defaultField.length,
+            hasContent: defaultField.length > 0
+          });
+          
+          // Log the actual content if it's small enough
+          if (defaultField.length > 0 && defaultField.length < 1000) {
+            const content = defaultField.toString();
+            logger.info('yjsDocumentManager', `[YJS_CONTENT] Default field content preview: ${content.substring(0, 200)}...`);
+          }
+          
+          // CRITICAL: If update size > 4 bytes, it's a real content update
+          if (update.length > 4) {
+            logger.info('yjsDocumentManager', `[YJS_CONTENT_UPDATE] Real content update detected, size: ${update.length}`);
           }
         } catch (error) {
-          logger.error('yjsDocumentManager', `[YjsDocumentManager] Error processing update for ${scriptId}:`, error);
+          logger.error('yjsDocumentManager', `[YJS_UPDATE_ERROR] Error processing update for ${scriptId}:`, error);
         }
+      });
+      
+      // Add subdocument loading event handler
+      doc.on('subdocs', ({ added, removed, loaded }: any) => {
+        logger.info('yjsDocumentManager', `[YJS_SUBDOCS] Subdocument event for ${scriptId}:`, {
+          added: added.size,
+          removed: removed.size,
+          loaded: loaded.size
+        });
       });
 
       this.documents.set(scriptId, doc);

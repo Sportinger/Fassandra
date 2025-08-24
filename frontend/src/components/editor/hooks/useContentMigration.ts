@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import * as Y from 'yjs';
+import logger from '../../../services/LoggingService';
 
 /**
  * Hook to migrate content from prosemirror text field to proper editor format
@@ -9,15 +10,27 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
   useEffect(() => {
     if (!ydoc || !editor) return;
 
+    // DISABLED: Migration logic no longer needed since we standardized on 'default' XML fragment
+    // The backend no longer creates the 'prosemirror' text field
+    logger.info('useContentMigration', '[MIGRATION_DISABLED] Content migration is disabled - using default XML fragment only');
+    return;
+
     // Check if we need to migrate content
     const checkAndMigrate = () => {
       const prosemirrorText = ydoc.getText('prosemirror');
       const defaultFragment = ydoc.getXmlFragment('default');
       
+      logger.info('useContentMigration', '[MIGRATION_CHECK] Checking for content migration:', {
+        hasProsemirrorField: !!prosemirrorText,
+        prosemirrorLength: prosemirrorText?.length || 0,
+        defaultFragmentLength: defaultFragment.length,
+        editorEmpty: editor.isEmpty
+      });
+      
       // If prosemirror has content but default fragment is empty, migrate
       if (prosemirrorText && prosemirrorText.length > 0 && defaultFragment.length === 0) {
         const textContent = prosemirrorText.toString();
-        console.log('[Migration] Found content in prosemirror field:', textContent.substring(0, 100));
+        logger.info('useContentMigration', '[MIGRATION_START] Found content in prosemirror field:', textContent.substring(0, 100));
         
         // Parse the text content and create proper editor content
         const lines = textContent.split('\n').filter(line => line.trim());
@@ -52,9 +65,9 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
         
         // Set the content in the editor
         if (htmlContent) {
-          console.log('[Migration] Setting migrated content:', htmlContent.substring(0, 200));
+          logger.info('useContentMigration', '[MIGRATION_APPLY] Setting migrated content:', htmlContent.substring(0, 200));
           editor.commands.setContent(htmlContent);
-          console.log('[Migration] Content migrated successfully');
+          logger.info('useContentMigration', '[MIGRATION_COMPLETE] Content migrated successfully');
         }
       }
     };

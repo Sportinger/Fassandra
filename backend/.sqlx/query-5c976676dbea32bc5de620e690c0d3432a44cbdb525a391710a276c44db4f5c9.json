@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO yjs_base_states \n                (script_id, base_state, state_vector, compacted_at, last_compacted_update_id, update_count, document_size)\n            VALUES ($1, $2, $3, NOW(), 0, 0, $4)\n            ON CONFLICT (script_id) DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Bytea",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5c976676dbea32bc5de620e690c0d3432a44cbdb525a391710a276c44db4f5c9"
+}

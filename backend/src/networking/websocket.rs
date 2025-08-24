@@ -357,7 +357,7 @@ async fn handle_socket(
                         
                         // Get memory before processing
                         let before_mem = get_process_memory();
-                        tracing::debug!("[WS_MSG_RECEIVED] session: {}, script: {}, size: {}, memory_before: {} MB",
+                        tracing::info!("[WS_MSG_RECEIVED] session: {}, script: {}, size: {}, memory_before: {} MB",
                                        session_id, script_id, bin.len(), before_mem);
                         
                         // Add size validation
@@ -395,40 +395,18 @@ async fn handle_socket(
                             let should_persist = if bin.len() >= 1 {
                                 let msg_type = bin[0];
                                 let msg_subtype = if bin.len() > 1 { Some(bin[1]) } else { None };
-                                tracing::debug!("[WS_CONTENT_TYPE] script: {}, msg_type: {:#04x}, subtype: {:?}", 
+                                tracing::info!("[WS_CONTENT_TYPE] script: {}, msg_type: {:#04x}, subtype: {:?}", 
                                               script_id, msg_type, msg_subtype.map(|b| format!("{:#04x}", b)));
                                 
-                                // CRITICAL FIX: Only persist actual document updates
-                                // YJS Protocol message types:
-                                // 0x00 = Sync Protocol (NEVER persist - causes memory explosion)
-                                // 0x01 = Awareness (already filtered above)
-                                // 0x02 = Auth (not used)
-                                // Other = Actual document updates
-                                match msg_type {
-                                    0x00 => {
-                                        // Sync protocol messages - used for initial sync negotiation
-                                        tracing::debug!(
-                                            "[WS_SYNC_FILTERED] Skipping sync protocol message - script: {}, subtype: {:?}, size: {}",
-                                            script_id, msg_subtype.map(|b| format!("{:#04x}", b)), bin.len()
-                                        );
-                                        false
-                                    },
-                                    0x01 => {
-                                        // Awareness updates - should have been caught earlier but double-check
-                                        tracing::debug!("[WS_AWARENESS_FILTERED] Skipping awareness update");
-                                        false
-                                    },
-                                    0x02 => {
-                                        // Auth messages - not used in our implementation
-                                        tracing::debug!("[WS_AUTH_FILTERED] Skipping auth message");
-                                        false
-                                    },
-                                    _ => {
-                                        // Actual document updates - these should be persisted
-                                        tracing::debug!("[WS_CONTENT_UPDATE] Persisting document update, type: {:#04x}", msg_type);
-                                        true
-                                    }
-                                }
+                                // FIX: Persist all YJS updates except awareness
+                                // The previous logic was too restrictive and filtered out legitimate updates
+                                // YJS updates can have various binary formats, not just type 0x00 subtype 0x02
+                                // Solution: Simply persist everything that isn't an awareness update
+                                tracing::info!(
+                                    "[WS_UPDATE] Persisting YJS update - script: {}, size: {}, type: {:#04x}",
+                                    script_id, bin.len(), msg_type
+                                );
+                                true
                             } else {
                                 // Empty message - don't persist
                                 tracing::debug!("[WS_EMPTY_MESSAGE] Skipping empty message");

@@ -43,5 +43,21 @@
     "jest-junit": "^16.0.0",
     "jsdom": "^26.1.0",
     "vitest": "^3.1.2"
-  }
+  },
+  "main": "playwright-minimal.config.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sportinger/pessoa.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Sportinger/pessoa/issues"
+  },
+  "homepage": "https://github.com/Sportinger/pessoa#readme"
 }

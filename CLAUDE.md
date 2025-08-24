@@ -9,4 +9,8 @@
 
 ## Conversation Handling
 
-- If the user suddenly changes the topic to something seemingly completely different, first ask the user if they are in the right chat to avoid wrong context.
+- If the user suddenly changes the topic to something seemingly completely different, first ask the user if they are in the right chat to avoid wrong context.[byterover-mcp]
+
+# important 
+always use byterover-retrieve-knowledge tool to get the related context before any tasks 
+always use byterover-store-knowledge to store all the critical informations after sucessful tasks

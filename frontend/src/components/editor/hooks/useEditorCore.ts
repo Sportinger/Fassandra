@@ -128,7 +128,7 @@ export const useEditorCore = ({
       return;
     }
 
-    debugLog(`[Editor Core] Initializing for script: ${stableScriptId}, user: ${stableUser.username}`);
+    logger.info('useEditorCore', `[EDITOR_INIT] Initializing for script: ${stableScriptId}, user: ${stableUser.username}`);
 
     // 🔧 FIX: Detect script changes to force new document only when switching scripts
     const isScriptChange = previousScriptIdRef.current !== null && previousScriptIdRef.current !== stableScriptId;
@@ -139,11 +139,19 @@ export const useEditorCore = ({
     const doc = yjsDocumentManager.getDocument(stableScriptId, isScriptChange); // Force new only on script change
     const docInfo = yjsDocumentManager.getDocumentInfo(stableScriptId);
     
-    debugLog(`[Editor Core] Using persistent Y.Doc from manager:`, {
+    logger.info('useEditorCore', `[EDITOR_DOC] Using persistent Y.Doc from manager:`, {
       scriptId: stableScriptId,
       clientID: doc.clientID,
       refCount: docInfo.refCount,
       isNew: docInfo.refCount === 1
+    });
+    
+    // Log initial document state
+    const defaultField = doc.getXmlFragment('default');
+    logger.info('useEditorCore', `[EDITOR_DOC_STATE] Initial document state:`, {
+      defaultFieldExists: !!defaultField,
+      defaultFieldLength: defaultField.length,
+      defaultFieldType: defaultField.constructor.name
     });
     
     setYdoc(doc);
@@ -182,9 +190,15 @@ export const useEditorCore = ({
         
         // Add global error handler for YJS decode errors
         const originalError = window.onerror;
+        const originalUnhandledRejection = window.onunhandledrejection;
+        
         window.onerror = (message, source, lineno, colno, error) => {
           if (message && message.toString().includes('Unexpected end of array')) {
-            logger.error('useEditorCore', '[Editor] YJS decode error caught:', error);
+            logger.error('useEditorCore', '[YJS_DECODE_ERROR] YJS decode error caught:', {
+              message,
+              source,
+              error: error?.toString()
+            });
             // Prevent the error from crashing the app
             return true;
           }
@@ -195,8 +209,25 @@ export const useEditorCore = ({
           return false;
         };
         
+        // Also catch unhandled promise rejections
+        window.onunhandledrejection = (event) => {
+          if (event.reason && event.reason.message && event.reason.message.includes('Unexpected end of array')) {
+            logger.error('useEditorCore', '[YJS_DECODE_ERROR] YJS decode error in promise:', {
+              reason: event.reason.message,
+              stack: event.reason.stack
+            });
+            event.preventDefault();
+            return;
+          }
+          if (originalUnhandledRejection) {
+            return originalUnhandledRejection(event);
+          }
+        };
+        
         // Detect Firefox browser
         const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
+        
+        logger.info('useEditorCore', `[WS_PROVIDER_CREATE] Creating WebSocket provider for script: ${stableScriptId}`);
         
         websocketProvider = new WebsocketProvider(
           WS_BASE_URL,
@@ -208,14 +239,72 @@ export const useEditorCore = ({
             },
             // Prevent aggressive reconnection that might cause browser refresh
             maxBackoffTime: 30000, // Max 30 seconds between reconnection attempts
-            resyncInterval: isFirefox ? 10000 : 5000, // Slower resync for Firefox
+            resyncInterval: 5000, // Standard resync interval
             // Add WebSocket options to prevent connection issues
             WebSocketPolyfill: WebSocket,
             connect: true,
-            // Firefox-specific: disable binary type check
-            disableBc: isFirefox,
+            // Removed disableBc option - it may interfere with proper YJS binary encoding
           }
         );
+        
+        logger.info('useEditorCore', `[WS_PROVIDER_CREATED] WebSocket provider created`, {
+          url: WS_BASE_URL,
+          scriptId: stableScriptId,
+          hasDoc: !!doc,
+          docClientId: doc.clientID
+        });
+        
+        // Add message interceptor for debugging once WebSocket connects
+        const setupMessageInterceptor = () => {
+          if (websocketProvider.ws && websocketProvider.ws.send) {
+            const originalSend = websocketProvider.ws.send.bind(websocketProvider.ws);
+            websocketProvider.ws.send = function(data: any) {
+              if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
+                const bytes = new Uint8Array(data);
+                const hex = Array.from(bytes.slice(0, Math.min(50, bytes.length)))
+                  .map(b => b.toString(16).padStart(2, '0'))
+                  .join(' ');
+                logger.info('useEditorCore', '[WS_SEND] Sending binary message:', {
+                  size: bytes.length,
+                  firstBytes: hex,
+                  msgType: bytes[0],
+                  isAwareness: bytes[0] === 0x04
+                });
+              }
+              return originalSend(data);
+            };
+            logger.info('useEditorCore', '[WS_INTERCEPTOR] Message interceptor installed');
+          }
+        };
+        
+        // Try to set up interceptor immediately and on connection
+        setupMessageInterceptor();
+        websocketProvider.on('status', (event: { status: string }) => {
+          if (event.status === 'connected') {
+            setupMessageInterceptor();
+          }
+        });
+        
+        // Monitor WebSocket connection events
+        websocketProvider.on('synced', (synced: boolean) => {
+          logger.info('useEditorCore', '[WS_SYNCED] WebSocket sync state changed:', { synced });
+          if (synced) {
+            const defaultField = doc.getXmlFragment('default');
+            logger.info('useEditorCore', '[WS_SYNCED_CONTENT] Content after sync:', {
+              defaultFieldLength: defaultField.length,
+              hasContent: defaultField.length > 0
+            });
+            
+            // CRITICAL FIX: Force a sync step after connection is established
+            // This ensures the YJS document state is properly communicated to the server
+            setTimeout(() => {
+              doc.transact(() => {
+                // This transaction will trigger YJS to send its current state
+                logger.info('useEditorCore', '[WS_SYNC_INIT] Forcing initial sync after connection');
+              }, 'syncInit');
+            }, 100);
+          }
+        });
 
         setProvider(websocketProvider);
         providerRef.current = websocketProvider;
@@ -348,6 +437,20 @@ export const useEditorCore = ({
     };
   }, [stableScriptId, stableUser, stableHasToken, stableToken]);
 
+  // Log editor configuration state
+  useEffect(() => {
+    if (ydoc && provider) {
+      const defaultField = ydoc.getXmlFragment('default');
+      logger.info('useEditorCore', '[EDITOR_CONFIG_STATE] Editor configuration ready:', {
+        hasYdoc: !!ydoc,
+        hasProvider: !!provider,
+        defaultFieldLength: defaultField.length,
+        providerConnected: (provider as any).wsconnected,
+        providerSynced: (provider as any).synced
+      });
+    }
+  }, [ydoc, provider]);
+
   // 🔧 FIXED: Editor initialization with proper collaboration recreation
   const editorInstance = useEditor(
     ydoc && provider
@@ -368,6 +471,7 @@ export const useEditorCore = ({
             Collaboration.configure({
               document: ydoc,
               field: 'default', // Use default field which TipTap expects
+              // Remove onUpdate callback - it may interfere with YJS sync
             }),
             CollaborationCursor.configure({
               provider: provider,
@@ -405,8 +509,27 @@ export const useEditorCore = ({
               spellcheck: 'false',
             },
           },
-          onCreate: () => {
-            debugLog('[Editor Core] ✅ Collaborative editor created with YJS integration');
+          onCreate: ({ editor }) => {
+            const defaultField = ydoc.getXmlFragment('default');
+            logger.info('useEditorCore', '[EDITOR_CREATED] Collaborative editor created with YJS integration', {
+              isEmpty: editor.isEmpty,
+              htmlLength: editor.getHTML().length,
+              yjsDefaultFieldLength: defaultField.length,
+              yjsHasContent: defaultField.length > 0
+            });
+            
+            // Log the binding state
+            const collabExtension = editor.extensionManager.extensions.find(ext => ext.name === 'collaboration');
+            if (collabExtension) {
+              logger.info('useEditorCore', '[COLLAB_BINDING] Collaboration extension state:', {
+                extensionFound: true,
+                hasYdoc: !!(collabExtension as any).options?.document,
+                field: (collabExtension as any).options?.field,
+                fragment: (collabExtension as any).options?.fragment?.constructor?.name
+              });
+            } else {
+              logger.error('useEditorCore', '[COLLAB_BINDING] Collaboration extension not found!');
+            }
           },
         }
       : {
@@ -463,7 +586,46 @@ export const useEditorCore = ({
   useEffect(() => {
     if (editorInstance) {
       setEditor(editorInstance);
-      debugLog('[Editor Core] ✅ Collaborative editor instance created successfully');
+      logger.info('useEditorCore', '[EDITOR_INSTANCE] Collaborative editor instance created successfully');
+      
+      // Add transaction listener to track content changes
+      const updateHandler = ({ editor, transaction }: any) => {
+        if (transaction.docChanged && !transaction.getMeta('fromYjs')) {
+          const defaultField = ydoc?.getXmlFragment('default');
+          logger.info('useEditorCore', '[EDITOR_TRANSACTION] Document changed:', {
+            steps: transaction.steps.length,
+            hasSteps: transaction.steps.length > 0,
+            isEmpty: editor.isEmpty,
+            htmlLength: editor.getHTML().length,
+            yjsFieldLength: defaultField?.length
+          });
+          
+          // Check if WebSocket is connected and synced
+          if (provider && (provider as any).wsconnected && (provider as any).synced) {
+            // Get the collaboration extension's binding
+            const collabExtension = editor.extensionManager.extensions.find((ext: any) => ext.name === 'collaboration');
+            if (collabExtension && collabExtension.storage?.binding) {
+              // Force a YJS update by accessing the binding's document
+              const binding = collabExtension.storage.binding;
+              logger.info('useEditorCore', '[YJS_BINDING_SYNC] Forcing sync through binding', {
+                hasBinding: !!binding,
+                bindingType: binding?.constructor?.name
+              });
+              
+              // This will trigger YJS to check for changes and send updates
+              if (ydoc) {
+                ydoc.transact(() => {
+                  // Access the default field to ensure it's marked as changed
+                  const field = ydoc.getXmlFragment('default');
+                  logger.info('useEditorCore', '[YJS_FORCE_UPDATE] Triggered update check, field length:', field.length);
+                }, 'editorChange');
+              }
+            }
+          }
+        }
+      };
+      
+      editorInstance.on('update', updateHandler);
       
       // 🔧 FIXED: Auto-position cursor only once after content loads
       const timer = setTimeout(() => {
@@ -474,17 +636,20 @@ export const useEditorCore = ({
             const endPos = firstWordMatch.index! + firstWordMatch[0].length;
             editorInstance.commands.focus();
             editorInstance.commands.setTextSelection(endPos);
-            debugLog('[Cursor Position] Positioned at end of first word');
+            logger.info('useEditorCore', '[CURSOR_POSITION] Positioned at end of first word');
           }
         } else {
           editorInstance.commands.focus();
-          debugLog('[Cursor Position] Empty script detected, positioning cursor at start');
+          logger.info('useEditorCore', '[CURSOR_POSITION] Empty script detected, positioning cursor at start');
         }
       }, 1000);
 
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        editorInstance.off('update', updateHandler);
+      };
     }
-  }, [editorInstance]);
+  }, [editorInstance, ydoc]);
 
   // Note: Editor is now created only when collaboration is ready, so no reinitialize needed
 
@@ -544,6 +709,35 @@ export const useEditorCore = ({
       });
     }
   }, []);
+
+  // Debug function to manually trigger content sync
+  useEffect(() => {
+    if (typeof window !== 'undefined' && editorInstance && ydoc && provider) {
+      (window as any).debugYjsSync = () => {
+        const defaultField = ydoc.getXmlFragment('default');
+        logger.info('useEditorCore', '[DEBUG_SYNC] Manual sync triggered:', {
+          editorContent: editorInstance.getHTML().substring(0, 200),
+          yjsFieldLength: defaultField.length,
+          providerConnected: (provider as any).wsconnected,
+          providerSynced: (provider as any).synced
+        });
+        
+        // Force a YJS update
+        ydoc.transact(() => {
+          logger.info('useEditorCore', '[DEBUG_SYNC] Forcing YJS transaction');
+        }, 'debugSync');
+        
+        // Also try to manually send a sync step
+        if ((provider as any).ws && (provider as any).ws.readyState === WebSocket.OPEN) {
+          const syncStep1 = new Uint8Array([0, 0]); // YJS sync step 1
+          (provider as any).ws.send(syncStep1);
+          logger.info('useEditorCore', '[DEBUG_SYNC] Sent manual sync step 1');
+        }
+      };
+      
+      logger.info('useEditorCore', '[DEBUG] Added window.debugYjsSync() function for debugging');
+    }
+  }, [editorInstance, ydoc, provider]);
 
   return {
     editor: editorInstance,

@@ -84,6 +84,14 @@ rsync -az --delete \
     --exclude 'ios/' \
     ./frontend/ $USER@$SERVER:$APP_DIR/frontend/
 
+# SYNC YJS-PARSER FILES
+rsync -az --delete \
+    --exclude 'node_modules/' \
+    --exclude '.git/' \
+    --exclude '*.swp' \
+    --exclude '.env' \
+    ./yjs-parser/ $USER@$SERVER:$APP_DIR/yjs-parser/
+
 # SYNC CONFIG FILES
 rsync -az \
     ./.env.prod \
@@ -96,6 +104,15 @@ rsync -az \
 ssh $USER@$SERVER << REMOTE_SCRIPT
 cd $APP_DIR
 set -e
+
+# Install yjs-parser dependencies if needed (using Docker)
+if [ -d "yjs-parser" ]; then
+    echo "  YJS Parser: checking dependencies..."
+    if [ ! -d "yjs-parser/node_modules" ] || [ "yjs-parser/package.json" -nt "yjs-parser/node_modules" ]; then
+        echo "  YJS Parser: installing dependencies using Docker..."
+        docker run --rm -v \$PWD/yjs-parser:/app -w /app node:20-alpine npm install --production >/dev/null 2>&1
+    fi
+fi
 
 # Function to rebuild backend
 rebuild_backend() {
