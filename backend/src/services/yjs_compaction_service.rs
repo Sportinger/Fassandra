@@ -353,6 +353,23 @@ pub async fn load_document(pool: &PgPool, script_id: Uuid) -> Result<Doc> {
     Ok(doc)
 }
 
+/// Compute current state vector bytes for a script's document (base + recent updates)
+pub async fn load_state_vector_bytes(pool: &PgPool, script_id: Uuid) -> Result<Vec<u8>> {
+    let doc = load_document(pool, script_id).await?;
+    let sv = doc.transact().state_vector().encode_v1();
+    Ok(sv)
+}
+
+/// Compute a diff update (as update bytes) against a client-provided state vector
+pub async fn compute_diff_update(pool: &PgPool, script_id: Uuid, client_state_vector_v1: &[u8]) -> Result<Vec<u8>> {
+    use yrs::updates::decoder::Decode;
+    let doc = load_document(pool, script_id).await?;
+    // Decode client SV
+    let client_sv = yrs::StateVector::decode_v1(client_state_vector_v1)?;
+    let diff = doc.transact().encode_state_as_update_v1(&client_sv);
+    Ok(diff)
+}
+
 /// Extract text content from YJS document for preview/search
 pub fn extract_text_content(doc: &Doc) -> String {
     let txn = doc.transact();

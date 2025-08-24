@@ -15,6 +15,7 @@
 //! - Rate limiting and connection timeout protection
 
 pub mod websocket;
+pub mod yjs_protocol;
 
 // Re-export the main networking functions
 pub use websocket::{
