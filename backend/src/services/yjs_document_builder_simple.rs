@@ -24,16 +24,10 @@ impl YjsDocumentBuilder {
         // Initialize the required YJS structures
         {
             let mut txn = doc.transact_mut();
-            // Create the standard fragments that the editor expects
-            txn.get_or_insert_xml_fragment("xmlFragment");
-            txn.get_or_insert_xml_fragment("prosemirror");
-            txn.get_or_insert_xml_fragment("content");
+            // Only create the 'default' XML fragment that Tiptap actually uses
             txn.get_or_insert_xml_fragment("default");
-            txn.get_or_insert_text("prosemirror");
-            txn.get_or_insert_text("content");
-            txn.get_or_insert_text("default");
+            // Keep metadata for future use
             txn.get_or_insert_map("metadata");
-            txn.get_or_insert_map("chunkContext");
         }
         
         Self { doc, script_id }

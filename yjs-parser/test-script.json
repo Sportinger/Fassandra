@@ -1,0 +1,50 @@
+{
+  "mode": "full",
+  "metadata": {
+    "title": "Test Script - Node.js YJS Import",
+    "author": "Test Author",
+    "total_pages": 3
+  },
+  "content": [
+    {
+      "type": "scene",
+      "content": "INT. OFFICE - DAY",
+      "page": 1,
+      "scene_number": "1"
+    },
+    {
+      "type": "stage_direction",
+      "content": "The room is dimly lit. Papers scattered across the desk.",
+      "page": 1
+    },
+    {
+      "type": "dialogue",
+      "speaker": "JOHN",
+      "content": "This new YJS parser should work perfectly with TipTap.",
+      "page": 1
+    },
+    {
+      "type": "dialogue",
+      "speaker": "MARY",
+      "content": "Yes, it uses the exact same libraries as the frontend!",
+      "page": 2
+    },
+    {
+      "type": "stage_direction",
+      "content": "They both smile, knowing the solution is elegant.",
+      "page": 2
+    },
+    {
+      "type": "scene",
+      "content": "EXT. CITY STREET - NIGHT",
+      "page": 3,
+      "scene_number": "2"
+    },
+    {
+      "type": "dialogue",
+      "speaker": "NARRATOR",
+      "content": "And so, the script parsing problem was solved.",
+      "page": 3
+    }
+  ]
+}

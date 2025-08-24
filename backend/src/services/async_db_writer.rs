@@ -63,7 +63,7 @@ pub async fn run_async_db_writer(
         
         match save_yjs_update(&pool, &event).await {
             Ok(_) => {
-                tracing::info!("✅ Successfully saved Yjs update to DB for script_id: {} from user_id: {:?} ({}bytes) - will be processed by snapshotting service", 
+                tracing::info!("✅ Successfully saved Yjs update to DB for script_id: {} from user_id: {:?} ({}bytes) - will be processed by compaction service", 
                     event.script_id, event.user_id, event.update_data.len());
             }
             Err(e) => {
@@ -73,7 +73,7 @@ pub async fn run_async_db_writer(
                 );
                 // 🔒 CRITICAL SECURITY: Never ignore persistence failures
                 // This error indicates potential data loss and should be investigated immediately
-                // TODO: Implement retry logic or dead-letter queue as per YJS_PERSISTENCE_STRATEGY.md
+                // TODO: Implement retry logic or dead-letter queue for failed YJS updates
                 // For now, logging as CRITICAL to ensure monitoring systems catch this
             }
         }

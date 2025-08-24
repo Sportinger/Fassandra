@@ -285,38 +285,57 @@ pub async fn load_document(pool: &PgPool, script_id: Uuid) -> Result<Doc> {
     .fetch_all(pool)
     .await?;
     
-    // 3. Create and bootstrap document
+    // 3. Create document without bootstrapping first
     let doc = Doc::with_options(Options {
-        skip_gc: true,  // Disable GC during reconstruction for performance
+        skip_gc: false,  // Enable GC for proper state management
         ..Default::default()
     });
     
-    // Bootstrap with required fragments
-    {
-        let mut txn = doc.transact_mut();
-        for name in ["default", "content", "prosemirror"] {
-            txn.get_or_insert_xml_fragment(name);
-            txn.get_or_insert_text(name);
-        }
-    }
-    
-    // 4. Apply base if exists
-    if let Some(base) = base {
+    // 4. Apply base if exists FIRST before bootstrapping
+    let has_base_state = if let Some(base) = base {
         if !base.base_state.is_empty() {
+            info!("Found base state for script {} with {} bytes", script_id, base.base_state.len());
             match Update::decode_v1(&base.base_state) {
                 Ok(update) => {
                     doc.transact_mut().apply_update(update);
-                    debug!("Loaded base state ({} bytes)", base.base_state.len());
+                    info!("Successfully loaded base state ({} bytes) for script {}", base.base_state.len(), script_id);
+                    true
                 }
                 Err(e) => {
-                    error!("Failed to decode base state: {}", e);
-                    // Continue with just the recent updates
+                    error!("Failed to decode base state for script {}: {}", script_id, e);
+                    false
                 }
             }
+        } else {
+            info!("Base state exists but is empty for script {}", script_id);
+            false
         }
+    } else {
+        info!("No base state found for script {}", script_id);
+        false
+    };
+    
+    // 5. Bootstrap with required fragments ONLY if no base state was loaded
+    if !has_base_state {
+        info!("Bootstrapping empty document for script {}", script_id);
+        let mut txn = doc.transact_mut();
+        for name in ["default", "content", "prosemirror", "xmlFragment"] {
+            txn.get_or_insert_xml_fragment(name);
+            txn.get_or_insert_text(name);
+        }
+        txn.get_or_insert_map("metadata");
+    } else {
+        // Debug: log what we have after loading base state
+        let txn = doc.transact();
+        info!("After loading base state for {}: has_default={}, has_xmlFragment={}, has_content={}", 
+            script_id,
+            txn.get_xml_fragment("default").is_some(),
+            txn.get_xml_fragment("xmlFragment").is_some(),
+            txn.get_xml_fragment("content").is_some()
+        );
     }
     
-    // 5. Apply recent updates
+    // 6. Apply recent updates
     let mut applied = 0;
     for update in recent_updates {
         match Update::decode_v1(&update.update_data) {

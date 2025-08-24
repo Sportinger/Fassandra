@@ -13,20 +13,25 @@ use sqlx::PgPool;
 use anyhow::Result;
 use crate::analysis::structs::Script as ParsedScript;
 use crate::domain::script_service::ScriptService;
+use yrs::updates::encoder::Encode;
+use yrs::{ReadTxn, WriteTxn};
 
 
 /// Application service for script operations
 pub struct ScriptApplicationService {
     script_service: Arc<ScriptService>,
     pool: Arc<PgPool>,
+    // yjs_base_state_service: Arc<YjsBaseStateService>,
 }
 
 impl ScriptApplicationService {
     /// Creates a new ScriptApplicationService
     pub fn new(script_service: Arc<ScriptService>, pool: Arc<PgPool>) -> Self {
+        // let yjs_base_state_service = Arc::new(YjsBaseStateService::new((*pool).clone()));
         Self {
             script_service,
             pool,
+            // yjs_base_state_service,
         }
     }
 
@@ -101,7 +106,7 @@ impl ScriptApplicationService {
         info!(script_id = %new_script_id, title = %script_title, user_id = %user_id, "Inserting script record");
         sqlx::query("INSERT INTO scripts (id, title, created_by, created_at, is_public) VALUES ($1, $2, $3, $4, $5)")
             .bind(new_script_id)
-            .bind(script_title)
+            .bind(script_title.clone())
             .bind(user_id)
             .bind(created_at)
             .bind(false) // Default to private
@@ -154,6 +159,9 @@ impl ScriptApplicationService {
         })?;
         info!(script_id = %new_script_id, "Transaction committed successfully");
 
+        // Initialize empty YJS base state for the script
+        self.initialize_yjs_base_state(new_script_id).await?;
+        
         Ok(new_script_id)
     }
 
@@ -240,6 +248,10 @@ impl ScriptApplicationService {
         })?;
 
         info!(script_id = %script.id, user_id = %user_id, "Successfully created script");
+        
+        // Initialize empty YJS base state for the new script
+        self.initialize_yjs_base_state(script.id).await?;
+        
         Ok(script)
     }
 
@@ -372,11 +384,20 @@ impl ScriptApplicationService {
             Ok(doc) => {
                 // Encode the document state for transmission
                 use yrs::{Transact, ReadTxn};
+                
+                // Debug: Check what's in the document
+                let txn = doc.transact();
+                let has_content = txn.get_xml_fragment("default").is_some() || 
+                                  txn.get_xml_fragment("xmlFragment").is_some() ||
+                                  txn.get_xml_fragment("content").is_some();
+                drop(txn);
+                
                 let state = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
                 info!(
                     script_id = %script_id,
                     user_id = %user_id,
                     state_size = state.len(),
+                    has_content = has_content,
                     "Successfully loaded script with YJS state"
                 );
                 Ok(Some((script, state)))
@@ -431,5 +452,64 @@ impl ScriptApplicationService {
         })?;
 
         Ok(has_access)
+    }
+
+    /// Initialize an empty YJS base state for a new script
+    async fn initialize_yjs_base_state(&self, script_id: Uuid) -> Result<(), AppError> {
+        use yrs::{Doc, Options, Transact};
+        use yrs::updates::encoder::Encode;
+        
+        info!(script_id = %script_id, "Initializing empty YJS base state");
+        
+        // Create a new YJS document with default options
+        let doc = Doc::with_options(Options::default());
+        
+        // Bootstrap with required fragments for TipTap editor
+        {
+            let mut txn = doc.transact_mut();
+            // Create the standard YJS structures used by the editor
+            let xml_fragment = txn.get_or_insert_xml_fragment("xmlFragment");
+            let default_fragment = txn.get_or_insert_xml_fragment("default");
+            txn.get_or_insert_xml_fragment("content");
+            
+            // Add an initial empty paragraph to make the document valid for TipTap
+            // This is crucial - TipTap expects at least one paragraph element
+            use yrs::{XmlElementPrelim, XmlFragment};
+            let paragraph = XmlElementPrelim::empty("paragraph");
+            default_fragment.push_back(&mut txn, paragraph);
+            
+            // Also ensure prosemirror text exists
+            let prosemirror = txn.get_or_insert_text("prosemirror");
+            
+            // Add metadata
+            txn.get_or_insert_map("metadata");
+        }
+        
+        // Encode the initial state
+        let base_state = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
+        let state_vector = doc.transact().state_vector().encode_v1();
+        
+        // Store in database
+        sqlx::query!(
+            r#"
+            INSERT INTO yjs_base_states 
+                (script_id, base_state, state_vector, compacted_at, last_compacted_update_id, update_count, document_size)
+            VALUES ($1, $2, $3, NOW(), 0, 0, $4)
+            ON CONFLICT (script_id) DO NOTHING
+            "#,
+            script_id,
+            base_state.as_slice(),
+            state_vector.as_slice(),
+            base_state.len() as i32
+        )
+        .execute(self.pool.as_ref())
+        .await
+        .map_err(|e| {
+            error!("Failed to initialize YJS base state for script {}: {}", script_id, e);
+            AppError::Internal(anyhow::anyhow!("Failed to initialize YJS state"))
+        })?;
+        
+        info!(script_id = %script_id, size = base_state.len(), "Successfully initialized YJS base state");
+        Ok(())
     }
 } 

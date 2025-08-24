@@ -22,6 +22,7 @@ pub mod yjs_compaction_service;
 // pub mod yjs_document_builder; // Complex version with XML manipulation - needs YJS API fixes
 pub mod yjs_document_builder_simple;
 pub mod yjs_script_builder_service;
+// pub mod yjs_base_state_service; // Temporarily disabled
 pub mod claude_session_service;
 pub mod chunked_parsing_orchestrator;
 
@@ -32,5 +33,6 @@ pub use persistence_event::*;
 pub use yjs_compaction_service::*;
 pub use yjs_document_builder_simple::YjsDocumentBuilder;
 pub use yjs_script_builder_service::*;
+// pub use yjs_base_state_service::*; // Temporarily disabled  
 pub use claude_session_service::*;
 pub use chunked_parsing_orchestrator::*;

@@ -72,8 +72,8 @@ RUN useradd -m -s /bin/bash appuser
 RUN mkdir -p uploads/scripts && chown -R appuser:appuser uploads
 
 # Copy entrypoint and other scripts
-COPY docker-entrypoint.sh execute_sql.sh json_to_db.sh init-claude.sh claude-wrapper.sh claude-session-wrapper.sh monitor-claude-session.sh init-claude-settings.sh claude-executor.sh ./
-RUN chmod +x docker-entrypoint.sh execute_sql.sh json_to_db.sh init-claude.sh claude-wrapper.sh claude-session-wrapper.sh monitor-claude-session.sh init-claude-settings.sh claude-executor.sh
+COPY docker-entrypoint.sh execute_sql.sh init-claude.sh claude-wrapper.sh claude-session-wrapper.sh monitor-claude-session.sh init-claude-settings.sh claude-executor.sh ./
+RUN chmod +x docker-entrypoint.sh execute_sql.sh init-claude.sh claude-wrapper.sh claude-session-wrapper.sh monitor-claude-session.sh init-claude-settings.sh claude-executor.sh
 
 # Setup Claude Code settings with bypass permissions for all users
 RUN mkdir -p /root/.config/claude-code /home/appuser/.config/claude-code /root/.claude /home/appuser/.claude
