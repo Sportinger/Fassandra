@@ -37,6 +37,7 @@ import { scriptEventBus } from '../../../services/ScriptEventBus';
 import { isYDocEmpty } from '../utils/formatters';
 import { yjsDocumentManager } from '../../../services/yjsDocumentManager';
 import { useContentMigration } from './useContentMigration';
+import { getYjsState, getScriptWithYjs, getYjsUpdates } from '../../../api';
 import type { 
   UseEditorCoreProps, 
   UseEditorCoreReturn, 
@@ -226,7 +227,67 @@ export const useEditorCore = ({
         
         // Detect Firefox browser
         const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
-        
+
+        // Bootstrap Y.Doc from REST state before opening WebSocket
+        let bootstrapped = false;
+        try {
+          // Ensure auth context is ready by pinging /api/me via ApiService base URL
+          try {
+            const baseUrl = (await import('../../../services/ApiService')).apiService.getBaseUrl();
+            await fetch(`${baseUrl}/api/me`, { credentials: 'include' });
+          } catch {}
+
+          const stateBuffer = await getYjsState(stableScriptId);
+          const state = new Uint8Array(stateBuffer);
+          if (state.byteLength > 0) {
+            Y.applyUpdate(doc, state);
+            bootstrapped = true;
+            logger.info('useEditorCore', '[BOOTSTRAP] Applied server Yjs state', { bytes: state.byteLength });
+          } else {
+            logger.info('useEditorCore', '[BOOTSTRAP] Server Yjs state empty');
+          }
+        } catch (e) {
+          logger.warn('useEditorCore', '[BOOTSTRAP] Binary state fetch failed, will fallback:', e);
+        }
+        if (!bootstrapped) {
+          try {
+            const scriptData: any = await getScriptWithYjs(stableScriptId);
+            const b64 = scriptData?.yjs_state as string | undefined;
+            if (b64 && b64.length > 0) {
+              const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+              if (bytes.byteLength > 0) {
+                Y.applyUpdate(doc, bytes);
+                bootstrapped = true;
+                logger.info('useEditorCore', '[BOOTSTRAP] Applied base64 Yjs state from /api/scripts/:id');
+              }
+            }
+          } catch (e) {
+            logger.error('useEditorCore', '[BOOTSTRAP] Fallback base64 state fetch failed:', e);
+          }
+        }
+
+        // Always fetch recent updates and apply on top (covers non-compacted updates)
+        try {
+          const updatesResp = await getYjsUpdates(stableScriptId);
+          if (updatesResp && Array.isArray(updatesResp.updates)) {
+            let applied = 0;
+            for (const u of updatesResp.updates) {
+              if (u?.data) {
+                const bytes = Uint8Array.from(atob(u.data), c => c.charCodeAt(0));
+                if (bytes.byteLength > 0) {
+                  try { Y.applyUpdate(doc, bytes); applied++; } catch {}
+                }
+              }
+            }
+            if (applied > 0) {
+              logger.info('useEditorCore', `[BOOTSTRAP] Applied ${applied} recent updates from /api/scripts/:id/updates`);
+              bootstrapped = true;
+            }
+          }
+        } catch (e) {
+          logger.warn('useEditorCore', '[BOOTSTRAP] Failed to apply recent updates:', e);
+        }
+
         logger.info('useEditorCore', `[WS_PROVIDER_CREATE] Creating WebSocket provider for script: ${stableScriptId}`);
         
         websocketProvider = new WebsocketProvider(

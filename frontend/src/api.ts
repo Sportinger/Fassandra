@@ -102,10 +102,14 @@ export const deleteScript = async (scriptId: string): Promise<void> => {
 // --- YJS Updates --- //
 
 export const getYjsState = async (scriptId: string): Promise<ArrayBuffer> => {
+    const headers: Record<string, string> = {};
+    const token = apiService.getToken();
+    if (token && token !== 'authenticated') {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
     const response = await fetch(`/api/scripts/${scriptId}/yjs`, {
-        headers: {
-            'Authorization': `Bearer ${apiService.getToken()}`,
-        },
+        credentials: 'include',
+        headers,
     });
     if (!response.ok) throw new Error(`Failed to get YJS state: ${response.status}`);
     return response.arrayBuffer();
