@@ -81,6 +81,13 @@ export class ApiService {
     }
 
     /**
+     * Get the resolved base URL ('' for same-origin, or absolute URL)
+     */
+    getBaseUrl(): string {
+        return this.baseUrl;
+    }
+
+    /**
      * Set authentication token
      */
     setToken(token: string | null) {

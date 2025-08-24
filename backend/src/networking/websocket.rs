@@ -43,6 +43,7 @@ use crate::auth::WsAuthUser;
 use crate::services::persistence_event::YjsPersistenceEvent;
 use tokio::sync::mpsc::Sender as TokioMpscSender;
 use yrs::sync::Message as YrsSyncMessage;
+use yrs::sync::SyncMessage as YrsInnerSyncMessage;
 use yrs::updates::decoder::{Decode as YrsDecodeTrait, DecoderV1};
 use yrs::encoding::read::Cursor as YrsIoCursor;
 use anyhow;
@@ -307,25 +308,12 @@ async fn handle_socket(
                     break;
                 }
                 
-                // Send both ping frame AND a heartbeat message
-                // The ping frame checks connection at protocol level
-                // The heartbeat message updates y-websocket's wsLastMessageReceived to prevent 30s timeout
-                
                 // Send ping frame for protocol-level keepalive
                 if socket_tx.send(Message::Ping(vec![])).await.is_err() {
                     tracing::error!("Failed to send ping to client: {}", session_id);
                     break;
                 }
-                
-                // Send empty binary message as heartbeat for y-websocket
-                // This will update wsLastMessageReceived and prevent the 30-second disconnect
-                // Using an empty Yjs update (sync step 2 message) which is harmless
-                let heartbeat = vec![0x00, 0x00]; // Yjs sync step 2 with empty content
-                if socket_tx.send(Message::Binary(heartbeat)).await.is_err() {
-                    tracing::error!("Failed to send heartbeat to client: {}", session_id);
-                    break;
-                }
-                tracing::debug!("Sent ping and heartbeat to session {}", session_id);
+                tracing::debug!("Sent ping to session {}", session_id);
             }
             
             // Process incoming messages
@@ -414,20 +402,46 @@ async fn handle_socket(
                             };
                             
                             if should_persist {
-                                tracing::error!("[WS_PERSIST_START] script: {}, size: {} bytes, session: {}, user: {}", 
-                                              script_id, bin.len(), session_id, user_id);
-                                
-                                if let Err(e) = persistence_event_tx.send(YjsPersistenceEvent {
-                                    script_id: script_id.clone(),
-                                    update_data: bin.clone(),
-                                    user_id: Some(Uuid::parse_str(&user_id).unwrap_or_else(|_| Uuid::nil())),
-                                    received_at: Utc::now(),
-                                }).await {
-                                    tracing::error!("[WS_PERSIST_ERROR] Failed to send persistence event: {}", e);
+                                // Decode sync message and persist only raw Yjs Update payloads
+                                let mut to_persist: Option<Vec<u8>> = None;
+                                if let Ok(sync_msg) = YrsDecodeTrait::decode(&mut DecoderV1::new(YrsIoCursor::new(&bin))) {
+                                    if let YrsSyncMessage::Sync(inner) = sync_msg {
+                                        match inner {
+                                            YrsInnerSyncMessage::Update(update) => {
+                                                let bytes = update; // Already bytes in this yrs version
+                                                tracing::info!("[WS_PERSIST_EXTRACT] Extracted Yjs Update payload ({} bytes) for script {}", bytes.len(), script_id);
+                                                to_persist = Some(bytes);
+                                            }
+                                            YrsInnerSyncMessage::SyncStep2(update) => {
+                                                // Client could send step2 in edge cases; persist update as well
+                                                let bytes = update; // Already bytes in this yrs version
+                                                tracing::info!("[WS_PERSIST_EXTRACT] Extracted SyncStep2 payload ({} bytes) for script {}", bytes.len(), script_id);
+                                                to_persist = Some(bytes);
+                                            }
+                                            _ => {
+                                                tracing::debug!("[WS_PERSIST_SKIP] Non-update sync message, skipping persistence");
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if let Some(update_bytes) = to_persist {
+                                    tracing::info!("[WS_PERSIST_START] script: {}, update_size: {} bytes, session: {}, user: {}", 
+                                                   script_id, update_bytes.len(), session_id, user_id);
+                                    if let Err(e) = persistence_event_tx.send(YjsPersistenceEvent {
+                                        script_id: script_id.clone(),
+                                        update_data: update_bytes,
+                                        user_id: Some(Uuid::parse_str(&user_id).unwrap_or_else(|_| Uuid::nil())),
+                                        received_at: Utc::now(),
+                                    }).await {
+                                        tracing::error!("[WS_PERSIST_ERROR] Failed to send persistence event: {}", e);
+                                    } else {
+                                        let after_mem = get_process_memory();
+                                        tracing::info!("[WS_PERSIST_QUEUED] script: {}, memory_delta: {} MB", 
+                                                       script_id, after_mem - before_mem);
+                                    }
                                 } else {
-                                    let after_mem = get_process_memory();
-                                    tracing::error!("[WS_PERSIST_QUEUED] script: {}, size: {}, memory_delta: {} MB", 
-                                                  script_id, bin.len(), after_mem - before_mem);
+                                    tracing::debug!("[WS_PERSIST_NONE] No update payload extracted; not persisting this frame");
                                 }
                             }
                         } else {
