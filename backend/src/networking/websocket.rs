@@ -44,6 +44,10 @@ use crate::auth::WsAuthUser;
 use crate::services::persistence_event::YjsPersistenceEvent;
 use tokio::sync::mpsc::Sender as TokioMpscSender;
 use yrs::sync::Message as YrsSyncMessage;
+use yrs::sync::Message as SyncEnvelope;
+use yrs::sync::SyncMessage as SyncInnerMessage;
+use yrs::updates::encoder::Encode as YrsEncodeTrait;
+use yrs::StateVector;
 use yrs::sync::SyncMessage as YrsInnerSyncMessage;
 use yrs::updates::decoder::{Decode as YrsDecodeTrait, DecoderV1};
 use yrs::encoding::read::Cursor as YrsIoCursor;
@@ -285,6 +289,23 @@ async fn handle_socket(
     // Update session activity
     session.update_activity().await;
     
+    // If WS sync is enabled, proactively send SyncStep1 with server state vector
+    if std::env::var("YJS_WS_SYNC").unwrap_or_default() == "on" {
+        if let Ok(script_uuid) = Uuid::parse_str(&script_id) {
+            match crate::services::yjs_compaction_service::load_state_vector_bytes(pool.as_ref(), script_uuid).await {
+                Ok(sv_bytes) => {
+                    if let Ok(server_sv) = StateVector::decode_v1(&sv_bytes) {
+                        let msg = SyncEnvelope::Sync(SyncInnerMessage::SyncStep1(server_sv));
+                        let payload = msg.encode_v1();
+                        let _ = socket_tx.send(Message::Binary(payload)).await;
+                        tracing::info!("[WS_SYNC] Sent SyncStep1 to client for script {}", script_id);
+                    }
+                }
+                Err(e) => tracing::error!("[WS_SYNC] Failed to load server state vector: {}", e),
+            }
+        }
+    }
+
     // Process incoming messages and broadcast messages
     loop {
         tokio::select! {
