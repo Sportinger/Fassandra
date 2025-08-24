@@ -23,6 +23,7 @@ use chrono::Utc;
 use dashmap::DashMap;
 use hex;
 use std::process::Command;
+use sqlx::PgPool;
 
 /// Get current process memory usage in MB
 fn get_process_memory() -> f64 {
@@ -241,9 +242,10 @@ pub async fn ws_handler_with_deps(
     // Upgrade the connection to a WebSocket
     // Remove protocol requirement for better Chrome compatibility
     // Chrome sometimes has issues with explicit protocol negotiation
+    let pool_for_ws = pool.clone();
     ws.on_upgrade(move |socket| {
           tracing::info!("WebSocket connection upgraded successfully for script: {}, user: {}", script_id, user_id);
-          handle_socket(socket, script_id, user_id.to_string(), persistence_event_tx)
+          handle_socket(socket, script_id, user_id.to_string(), persistence_event_tx, pool_for_ws)
       })
 }
 
@@ -253,6 +255,7 @@ async fn handle_socket(
     script_id: String,
     user_id: String,
     persistence_event_tx: TokioMpscSender<YjsPersistenceEvent>,
+    pool: Arc<PgPool>,
 ) {
     // Generate a unique session ID
     let session_id = Uuid::new_v4().to_string();
@@ -373,6 +376,34 @@ async fn handle_socket(
                         
                         // Only persist real content updates, not awareness updates (cursor movements)
                         if !is_awareness {
+                            // If WS sync feature is enabled, respond to SyncStep1/2 requests
+                            if std::env::var("YJS_WS_SYNC").unwrap_or_default() == "on" {
+                                if let Ok(sync_msg) = YrsDecodeTrait::decode(&mut DecoderV1::new(YrsIoCursor::new(&bin))) {
+                                    if let YrsSyncMessage::Sync(inner) = sync_msg {
+                                        match inner {
+                                            yrs::sync::SyncMessage::SyncStep1(client_sv) => {
+                                                // Client requests server SV; send it back via a diff update as SyncStep2
+                                                use yrs::updates::encoder::Encode as _;
+                                                let client_sv_bytes = client_sv.encode_v1();
+                                                match crate::services::yjs_compaction_service::compute_diff_update(pool.as_ref(), Uuid::parse_str(&script_id).unwrap_or(Uuid::nil()), client_sv_bytes.as_slice()).await {
+                                                    Ok(diff) => {
+                                                        // Build a SyncStep2 frame: [0x00, encoded(Sync(SyncStep2(diff)))]
+                                                        use yrs::updates::encoder::Encode as _;
+                                                        let msg = yrs::sync::Message::Sync(yrs::sync::SyncMessage::SyncStep2(diff));
+                                                        let payload = msg.encode_v1();
+                                                        let _ = socket_tx.send(Message::Binary(payload)).await;
+                                                        continue; // handled
+                                                    }
+                                                    Err(e) => {
+                                                        tracing::error!("[WS_SYNC] Failed to compute diff: {}", e);
+                                                    }
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                            }
                             // Log full content for small updates that might be problematic
                             if bin.len() <= 100 {
                                 tracing::debug!("[WS_CONTENT_FULL] script: {}, size: {}, full_hex: {}", 
