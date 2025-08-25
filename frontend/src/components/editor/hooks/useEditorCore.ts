@@ -734,6 +734,15 @@ export const useEditorCore = ({
           const speakers = extractSpeakerNames(content);
           setAvailableSpeakers(Array.from(speakers));
         }
+
+        // SAFETY NET: Ensure at least one visible page indicator if none rendered
+        try {
+          const hasAny = document.querySelector('div[data-type="page-indicator"]') !== null;
+          if (!hasAny && editorInstance) {
+            logger.info('useEditorCore', '[PAGE_INDICATOR_FALLBACK] No indicators found in DOM, inserting one at top');
+            editorInstance.chain().focus().insertContent({ type: 'pageIndicator', attrs: { pageNumber: '1' } }).run();
+          }
+        } catch {}
       }
     };
     

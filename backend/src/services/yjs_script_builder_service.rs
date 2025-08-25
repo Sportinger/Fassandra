@@ -283,8 +283,8 @@ impl YjsScriptBuilderService {
                     current_page = page_num;
                     let page_el = XmlElementPrelim::empty("pageIndicator");
                     let page_ref = default_fragment.push_back(&mut txn, page_el);
-                    // ignore result to satisfy lints but still create text node
-                    let _ignored = page_ref.push_back(&mut txn, XmlTextPrelim::new(format!("Page {}", current_page)));
+                    // Set pageNumber attribute for TipTap mapping; do not add child text
+                    page_ref.insert_attribute(&mut txn, "pageNumber", current_page.to_string());
                 }
 
                 match item.content_type.as_str() {

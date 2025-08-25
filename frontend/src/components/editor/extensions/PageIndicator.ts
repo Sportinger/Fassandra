@@ -60,9 +60,9 @@ declare module '@tiptap/core' {
 export const PageIndicator = Node.create<PageIndicatorOptions>({
   name: 'pageIndicator',
   group: 'block',
-  content: '', // No content needed - just page number
+  // Accept any inner text so legacy Yjs states with text children aren't dropped
+  content: 'text*',
   draggable: true,
-  atom: true, // Make it an atomic node
   
   addOptions() {
     return {
@@ -120,6 +120,8 @@ export const PageIndicator = Node.create<PageIndicatorOptions>({
   renderHTML({ HTMLAttributes }) {
     const pageNumber = HTMLAttributes['data-page-number'] || '1';
     
+    // Do not include the '0' content placeholder to keep child text invisible while
+    // allowing the node to validate against the schema (content: 'text*').
     return [
       'div',
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
