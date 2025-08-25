@@ -52,6 +52,7 @@ services:
     # No ports exposed - Caddy handles everything
     volumes:
       - ./backend/uploads:/app/uploads
+      - ./yjs-parser:/app/yjs-parser:ro
       # Claude settings are now baked into the Docker image with bypass permissions
       # - ~/.config/claude-code:/root/.config/claude-code:ro
       - ~/.config/gcloud:/root/.config/gcloud:ro
