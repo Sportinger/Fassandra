@@ -8,7 +8,6 @@ use crate::models::script::Script;
 use std::sync::Arc;
 use uuid::Uuid;
 use tracing::{error, info, warn};
-use serde::Serialize;
 use sqlx::PgPool;
 use anyhow::Result;
 use crate::analysis::structs::Script as ParsedScript;
@@ -151,7 +150,7 @@ impl ScriptApplicationService {
             }
         }
 
-        // Commit transaction
+        // Commit transaction for script metadata
         info!(script_id = %new_script_id, "Committing transaction");
         tx.commit().await.map_err(|e| {
             error!(error = %e, script_id = %new_script_id, "Failed to commit transaction");
@@ -159,8 +158,136 @@ impl ScriptApplicationService {
         })?;
         info!(script_id = %new_script_id, "Transaction committed successfully");
 
-        // Initialize empty YJS base state for the script
-        self.initialize_yjs_base_state(new_script_id).await?;
+        // Build initial YJS document from parsed content into the 'default' fragment (TipTap field)
+        use yrs::{Doc, Options, Transact, XmlElementPrelim, XmlFragment, XmlTextPrelim};
+        let doc = Doc::with_options(Options::default());
+        {
+            let mut txn = doc.transact_mut();
+            let default_fragment = txn.get_or_insert_xml_fragment("default");
+            txn.get_or_insert_text("prosemirror");
+            txn.get_or_insert_map("metadata");
+
+            let mut current_page: i32 = -1;
+            for section in &parsed_script.sections {
+                for element in &section.content {
+                    let page_num = element.get_page_number();
+                    if page_num >= 0 && page_num != current_page {
+                        current_page = page_num;
+                        let page_el = XmlElementPrelim::empty("pageIndicator");
+                        let page_ref = default_fragment.push_back(&mut txn, page_el);
+                        page_ref.push_back(&mut txn, XmlTextPrelim::new(format!("Page {}", current_page)));
+                    }
+
+                    match element {
+                        crate::analysis::structs::ContentElement::Scene(s) => {
+                            let scene_el = XmlElementPrelim::empty("sceneBlock");
+                            let scene_ref = default_fragment.push_back(&mut txn, scene_el);
+                            let title = if !s.scene_title.is_empty() { s.scene_title.clone() } else { s.scene_number.clone() };
+                            if !title.is_empty() {
+                                scene_ref.push_back(&mut txn, XmlTextPrelim::new(title));
+                            }
+                        }
+                        crate::analysis::structs::ContentElement::Dialogue(d) => {
+                            let dlg_ref = default_fragment.push_back(&mut txn, XmlElementPrelim::empty("dialogueBlock"));
+                            let sp_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("speaker"));
+                            if let Some(spk) = &d.speaker { sp_ref.push_back(&mut txn, XmlTextPrelim::new(spk.clone())); }
+                            let dtext_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("dialogueText"));
+                            if let Some(line) = &d.line { 
+                                let p = dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                                p.push_back(&mut txn, XmlTextPrelim::new(line.clone()));
+                            }
+                            if let Some(lines) = &d.lines {
+                                for l in lines {
+                                    let p = dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                                    p.push_back(&mut txn, XmlTextPrelim::new(l.clone()));
+                                }
+                            }
+                        }
+                        crate::analysis::structs::ContentElement::Monologue(m) => {
+                            let dlg_ref = default_fragment.push_back(&mut txn, XmlElementPrelim::empty("dialogueBlock"));
+                            let sp_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("speaker"));
+                            if let Some(spk) = &m.speaker { sp_ref.push_back(&mut txn, XmlTextPrelim::new(spk.clone())); }
+                            let dtext_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("dialogueText"));
+                            if let Some(line) = &m.line { 
+                                let p = dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                                p.push_back(&mut txn, XmlTextPrelim::new(line.clone()));
+                            }
+                            if let Some(lines) = &m.lines {
+                                for l in lines {
+                                    let p = dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                                    p.push_back(&mut txn, XmlTextPrelim::new(l.clone()));
+                                }
+                            }
+                        }
+                        crate::analysis::structs::ContentElement::StageDirection(sd) => {
+                            let mut text = String::new();
+                            if let Some(t) = &sd.description { text = t.clone(); }
+                            if text.is_empty() { if let Some(t) = &sd.line { text = t.clone(); } }
+                            if text.is_empty() { if let Some(t) = &sd.reading_text { text = t.clone(); } }
+                            if !text.is_empty() {
+                                let p = default_fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                                p.push_back(&mut txn, XmlTextPrelim::new(text));
+                            }
+                        }
+                        crate::analysis::structs::ContentElement::Reading(r) => {
+                            let mut text = String::new();
+                            if let Some(t) = &r.reading_text { text = t.clone(); }
+                            if text.is_empty() { if let Some(t) = &r.description { text = t.clone(); } }
+                            if text.is_empty() { if let Some(t) = &r.line { text = t.clone(); } }
+                            if !text.is_empty() {
+                                let p = default_fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                                p.push_back(&mut txn, XmlTextPrelim::new(text));
+                            }
+                        }
+                        crate::analysis::structs::ContentElement::JointDialogue(jd) => {
+                            let dlg_ref = default_fragment.push_back(&mut txn, XmlElementPrelim::empty("dialogueBlock"));
+                            let sp_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("speaker"));
+                            if let Some(spk) = &jd.speaker { sp_ref.push_back(&mut txn, XmlTextPrelim::new(spk.clone())); }
+                            let dtext_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("dialogueText"));
+                            if let Some(line) = &jd.line { 
+                                let p = dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                                p.push_back(&mut txn, XmlTextPrelim::new(line.clone()));
+                            }
+                            if let Some(lines) = &jd.lines {
+                                for l in lines {
+                                    let p = dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                                    p.push_back(&mut txn, XmlTextPrelim::new(l.clone()));
+                                }
+                            }
+                        }
+                        crate::analysis::structs::ContentElement::Unknown => {}
+                    }
+                }
+            }
+        }
+
+        // Persist as initial base state
+        let base_state = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
+        let state_vector = doc.transact().state_vector().encode_v1();
+        sqlx::query(
+            r#"
+            INSERT INTO yjs_base_states 
+                (script_id, base_state, state_vector, compacted_at, last_compacted_update_id, update_count, document_size)
+            VALUES ($1, $2, $3, NOW(), 0, 0, $4)
+            ON CONFLICT (script_id) DO UPDATE SET 
+                base_state = EXCLUDED.base_state,
+                state_vector = EXCLUDED.state_vector,
+                last_compacted_update_id = EXCLUDED.last_compacted_update_id,
+                update_count = EXCLUDED.update_count,
+                document_size = EXCLUDED.document_size,
+                compacted_at = NOW()
+            "#
+        )
+        .bind(new_script_id)
+        .bind(base_state.as_slice())
+        .bind(state_vector.as_slice())
+        .bind(base_state.len() as i32)
+        .execute(self.pool.as_ref())
+        .await
+        .map_err(|e| {
+            error!("Failed to persist initial YJS base state for script {}: {}", new_script_id, e);
+            AppError::Internal(anyhow::anyhow!("Failed to persist initial YJS base state"))
+        })?;
         
         Ok(new_script_id)
     }

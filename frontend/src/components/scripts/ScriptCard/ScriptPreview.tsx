@@ -58,6 +58,14 @@ export const ScriptPreview: React.FC<ScriptPreviewProps> = ({ scriptId }) => {
             content = contentText.toString();
           }
         }
+
+        // Fallback to prosemirror text (backend may store plain text here)
+        if (!content) {
+          const prosemirrorText = doc.getText('prosemirror');
+          if (prosemirrorText) {
+            content = prosemirrorText.toString();
+          }
+        }
         
         setPreviewContent(content || 'No content available');
       } else {

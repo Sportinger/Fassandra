@@ -5,14 +5,13 @@
 //! instead of inserting blocks into the database.
 
 use std::sync::Arc;
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use anyhow::{Result, anyhow};
 use tracing::{info, error, debug};
 use yrs::{Doc, Options, Transact, ReadTxn, WriteTxn, StateVector};
-use yrs::updates::encoder::Encode;
-use chrono::Utc;
+// use yrs::updates::encoder::Encode; // Not needed; we use encode via transact
 
 // Define the structures for chunks (since yjs_document_builder is disabled)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,7 +76,7 @@ impl YjsScriptBuilderService {
 
     /// Process a script chunk and store it as YJS update
     pub async fn build_script_from_json(&self, json_str: &str, script_id: Option<Uuid>, username: &str) -> Result<BuildResult> {
-        let mut errors: Vec<String> = Vec::new();
+        let _errors: Vec<String> = Vec::new();
 
         // Parse JSON according to chunked format
         let chunk: ScriptChunk = match serde_json::from_str(json_str) {
@@ -127,10 +126,10 @@ impl YjsScriptBuilderService {
         }
 
         // Load or create YJS document
-        let mut doc = self.load_or_create_document(script_id).await?;
+        let doc = self.load_or_create_document(script_id).await?;
 
         // Apply chunk content to document
-        self.apply_chunk_to_document(&mut doc, chunk)?;
+        self.apply_chunk_to_document(&doc, chunk)?;
 
         // Get the update
         let update = doc.transact().encode_state_as_update_v1(&StateVector::default());
@@ -165,10 +164,10 @@ impl YjsScriptBuilderService {
 
         // Create new YJS document
         // Create doc with default options
-        let mut doc = Doc::with_options(Options::default());
+        let doc = Doc::with_options(Options::default());
 
         // Apply content to document
-        self.apply_chunk_to_document(&mut doc, chunk)?;
+        self.apply_chunk_to_document(&doc, chunk)?;
 
         // Get the initial state as update
         let update = doc.transact().encode_state_as_update_v1(&StateVector::default());
@@ -217,7 +216,7 @@ impl YjsScriptBuilderService {
         .await?;
 
         // Create doc with default options
-        let mut doc = Doc::with_options(Options::default());
+        let doc = Doc::with_options(Options::default());
 
         // Initialize required YJS structures
         {
@@ -233,7 +232,9 @@ impl YjsScriptBuilderService {
             if !base.base_state.is_empty() {
                 use yrs::updates::decoder::Decode;
                 if let Ok(update) = yrs::Update::decode_v1(&base.base_state) {
-                    doc.transact_mut().apply_update(update);
+                    let mut wtxn = doc.transact_mut();
+                    let _ = wtxn.apply_update(update);
+                    drop(wtxn);
                 }
             }
         }
@@ -254,91 +255,71 @@ impl YjsScriptBuilderService {
         for update_row in updates {
             use yrs::updates::decoder::Decode;
             if let Ok(update) = yrs::Update::decode_v1(&update_row.update_data) {
-                doc.transact_mut().apply_update(update);
+                let mut wtxn = doc.transact_mut();
+                let _ = wtxn.apply_update(update);
+                drop(wtxn);
             }
         }
 
         Ok(doc)
     }
 
-    fn apply_chunk_to_document(&self, doc: &mut Doc, chunk: &ScriptChunk) -> Result<()> {
-        use yrs::Text;
-        
+    fn apply_chunk_to_document(&self, doc: &Doc, chunk: &ScriptChunk) -> Result<()> {
+        use yrs::{XmlElementPrelim, XmlTextPrelim, XmlFragment};
         {
             let mut txn = doc.transact_mut();
-            
-            // Get the default xmlFragment that TipTap expects
-            let xml_fragment = txn.get_or_insert_xml_fragment("default");
-            
-            // Also create other fields for compatibility
+            // TipTap reads from 'default'
+            let default_fragment = txn.get_or_insert_xml_fragment("default");
+            // Ensure auxiliary fields
             txn.get_or_insert_text("prosemirror");
-            
-            // Ensure other structures exist
-            let metadata_map = txn.get_or_insert_map("metadata");
-            txn.get_or_insert_map("chunkContext");
-            
-            // Store metadata in the map
-            if let Some(metadata) = &chunk.metadata {
-                // Store as simple values - YJS will handle serialization
-                let _ = metadata_map; // Just ensure it exists for now
-                
-                info!("Processing script metadata: title='{}', pages={}", 
-                     metadata.title, metadata.total_pages);
-            }
-            
-            // Try to create a simple paragraph structure that TipTap can understand
-            // Even though Rust YRS has limited XML support, we can create basic elements
-            
-            // Create a paragraph element with the content
-            let mut content_str = String::new();
-            
-            // Add metadata
-            if let Some(metadata) = &chunk.metadata {
-                content_str.push_str(&format!("{}\n\n", metadata.title));
-                if let Some(author) = &metadata.author {
-                    content_str.push_str(&format!("By {}\n\n", author));
-                }
-                content_str.push_str("---\n\n");
-            }
-            
-            // Add content items
+            txn.get_or_insert_map("metadata");
+
+            // Insert page indicators when page changes
+            let mut current_page: i32 = -1;
+
             for item in &chunk.content {
+                let page_num = item.page.unwrap_or(-1);
+                if page_num >= 0 && page_num != current_page {
+                    current_page = page_num;
+                    let page_el = XmlElementPrelim::empty("pageIndicator");
+                    let page_ref = default_fragment.push_back(&mut txn, page_el);
+                    // ignore result to satisfy lints but still create text node
+                    let _ignored = page_ref.push_back(&mut txn, XmlTextPrelim::new(format!("Page {}", current_page)));
+                }
+
                 match item.content_type.as_str() {
-                    "scene" => {
-                        content_str.push_str(&format!("[SCENE] {}\n\n", item.content));
-                    },
-                    "stage_direction" => {
-                        content_str.push_str(&format!("({})\n\n", item.content));
-                    },
-                    "dialogue" | "monologue" => {
-                        if let Some(speaker) = &item.speaker {
-                            content_str.push_str(&format!("{}: {}\n\n", speaker, item.content));
-                        } else {
-                            content_str.push_str(&format!("{}\n\n", item.content));
+                    "scene" | "scene_heading" => {
+                        let scene_el = XmlElementPrelim::empty("sceneBlock");
+                        let scene_ref = default_fragment.push_back(&mut txn, scene_el);
+                        if !item.content.is_empty() {
+                            let _ignored = scene_ref.push_back(&mut txn, XmlTextPrelim::new(item.content.clone()));
                         }
-                    },
-                    _ => {
-                        content_str.push_str(&format!("{}\n\n", item.content));
+                    }
+                    "dialogue" | "monologue" => {
+                        let dlg_ref = default_fragment.push_back(&mut txn, XmlElementPrelim::empty("dialogueBlock"));
+                        let sp_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("speaker"));
+                        if let Some(spk) = &item.speaker { let _ignored = sp_ref.push_back(&mut txn, XmlTextPrelim::new(spk.clone())); }
+                        let dtext_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("dialogueText"));
+                        // Split into paragraphs by line breaks
+                        let parts: Vec<&str> = item.content.split('\n').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+                        if parts.is_empty() {
+                            let _ = dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                        } else {
+                            for part in parts {
+                                let p = dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                                let _ignored = p.push_back(&mut txn, XmlTextPrelim::new(part.to_string()));
+                            }
+                        }
+                    }
+                    "stage_direction" | "reading" | _ => {
+                        if !item.content.is_empty() {
+                            let p = default_fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                            let _ignored = p.push_back(&mut txn, XmlTextPrelim::new(item.content.clone()));
+                        }
                     }
                 }
             }
-            
-            // Try to insert content as a simple paragraph in the xmlFragment
-            // This is a workaround since Rust YRS has limited XML support
-            if !content_str.is_empty() {
-                // Note: The Rust YRS API is limited for creating XML structures
-                // We'll store in prosemirror text field and let frontend handle conversion
-                let prosemirror_text = txn.get_or_insert_text("prosemirror");
-                Text::insert(&prosemirror_text, &mut txn, 0, &content_str);
-                
-                // Ensure xmlFragment exists even if empty
-                let _ = xml_fragment;
-            }
-            
-            info!("Stored {} content items in prosemirror text field ({} chars)", 
-                  chunk.content.len(), content_str.len());
         }
-
         Ok(())
     }
 

@@ -1,8 +1,8 @@
-{
+⎿ {                                                                                                  
   "mode": "full",
   "metadata": {
-    "title": "HOMO FABER TEST",
-    "author": "Marcel Kohler (nach Max Frisch)",
+    "title": "HOMO FABER",
+    "author": "nach Max Frisch, Fassung von Marcel Kohler",
     "total_pages": 8
   },
   "content": [
@@ -14,7 +14,8 @@
     },
     {
       "type": "stage_direction",
-      "content": "Der Einlass beginnt. Der Vorhang ist geschlossen. Auf der Vorderbühne läuft ein Unitree Go2 Pro Roboterhund hin und her.",
+      "content": "Der Einlass beginnt. Der Vorhang ist geschlossen. Auf der Vorderbühne läuft ein 
+Unitree Go2 Pro Roboterhund hin und her.",
       "page": 2
     },
     {
@@ -40,7 +41,7 @@
     },
     {
       "type": "dialogue",
-      "speaker": "FABER",
+      "speaker": "FABER (CONT'D)",
       "content": "Und seit welchem Lebensjahr?",
       "page": 2
     },
@@ -51,7 +52,7 @@
     },
     {
       "type": "dialogue",
-      "speaker": "FABER",
+      "speaker": "FABER (CONT'D)",
       "content": "Möchten Sie unsterblich sein?",
       "page": 2
     },
@@ -62,19 +63,22 @@
     },
     {
       "type": "dialogue",
-      "speaker": "FABER",
-      "content": "Wenn Sie einen toten Menschen\nsehen, haben Sie dann den Eindruck,\ndass Sie diesen Menschen gekannt\nhaben?",
+      "speaker": "FABER (CONT'D)",
+      "content": "Wenn Sie einen toten Menschen\nsehen, haben Sie dann den Eindruck,\ndass Sie 
+diesen Menschen gekannt\nhaben?",
       "page": 2
     },
     {
       "type": "stage_direction",
-      "content": "Vielleicht sehen wir kurz das Bild einer verstorbenen Persönlichkeit, die alle lebendig kennen sollten. Vielleicht reicht aber auch nur die Frage.",
+      "content": "Vielleicht sehen wir kurz das Bild einer verstorbenen Persönlichkeit, die alle 
+lebendig kennen sollten. Vielleicht reicht aber auch nur die Frage.",
       "page": 2
     },
     {
       "type": "dialogue",
-      "speaker": "FABER",
-      "content": "Möchten Sie lieber mit Bewusstsein\nsterben oder überrascht werden von\neinem fallenden Ziegel...",
+      "speaker": "FABER (CONT'D)",
+      "content": "Möchten Sie lieber mit Bewusstsein\nsterben oder überrascht werden von\neinem 
+fallenden Ziegel...",
       "page": 2
     },
     {
@@ -84,7 +88,7 @@
     },
     {
       "type": "dialogue",
-      "speaker": "FABER",
+      "speaker": "FABER (CONT'D)",
       "content": "...von einem Herzschlag...",
       "page": 2
     },
@@ -95,18 +99,19 @@
     },
     {
       "type": "dialogue",
-      "speaker": "FABER",
+      "speaker": "FABER (CONT'D)",
       "content": "...von einer Explosion?",
       "page": 2
     },
     {
       "type": "stage_direction",
-      "content": "Etwas explodiert. Wir sollten uns ordentlich erschrecken und danach uns nicht mehr ganz so sicher im Kleinen Haus 1 fühlen.",
+      "content": "Etwas explodiert. Wir sollten uns ordentlich erschrecken und danach uns nicht 
+mehr ganz so sicher im Kleinen Haus 1 fühlen.",
       "page": 2
     },
     {
       "type": "dialogue",
-      "speaker": "FABER",
+      "speaker": "FABER (CONT'D)",
       "content": "Wen, der tot ist, möchten Sie\nwiedersehen?",
       "page": 3
     },
@@ -117,7 +122,7 @@
     },
     {
       "type": "dialogue",
-      "speaker": "FABER",
+      "speaker": "FABER (CONT'D)",
       "content": "Wen hingegen nicht?",
       "page": 3
     },
@@ -128,7 +133,7 @@
     },
     {
       "type": "dialogue",
-      "speaker": "FABER",
+      "speaker": "FABER (CONT'D)",
       "content": "Wieviele Kinder von Ihnen sind\nnicht zur Welt gekommen durch ihren\nWillen?",
       "page": 3
     },
@@ -139,7 +144,7 @@
     },
     {
       "type": "dialogue",
-      "speaker": "FABER",
+      "speaker": "FABER (CONT'D)",
       "content": "Wie alt möchten sie werden?",
       "page": 3
     },
@@ -150,8 +155,9 @@
     },
     {
       "type": "dialogue",
-      "speaker": "FABER",
-      "content": "(als alter Mann)\nWenn Sie an Verstorbene denken:\nWünschten Sie, dass der Verstorbene\nzu Ihnen spricht, oder möchten Sie\nlieber dem Verstorbenen noch etwas\nsagen?",
+      "speaker": "FABER (CONT'D)",
+      "content": "(als alter Mann)\nWenn Sie an Verstorbene denken:\nWünschten Sie, dass der 
+Verstorbene\nzu Ihnen spricht, oder möchten Sie\nlieber dem Verstorbenen noch etwas\nsagen?",
       "page": 3
     },
     {
@@ -161,8 +167,9 @@
     },
     {
       "type": "dialogue",
-      "speaker": "FABER",
-      "content": "Sind Sie sicher, dass Sie die\nErhaltung des Menschengeschlechts,\nwenn Sie und alle Ihre Bekannten\nnicht mehr sind, wirklich\ninteressiert?",
+      "speaker": "FABER (CONT'D)",
+      "content": "Sind Sie sicher, dass Sie die\nErhaltung des Menschengeschlechts,\nwenn Sie und 
+alle Ihre Bekannten\nnicht mehr sind, wirklich\ninteressiert?",
       "page": 3
     },
     {
@@ -172,20 +179,294 @@
     },
     {
       "type": "dialogue",
-      "speaker": "FABER",
+      "speaker": "FABER (CONT'D)",
       "content": "Warum? Stichworte genügen.",
       "page": 3
     },
     {
       "type": "stage_direction",
-      "content": "Er wechselt seine Sprechhaltung und antwortet zum ersten Mal in gewisser Weise selbst.",
+      "content": "Er wechselt seine Sprechhaltung und antwortet zum ersten Mal in gewisser Weise 
+selbst.",
       "page": 3
     },
     {
       "type": "dialogue",
-      "speaker": "FABER",
-      "content": "Unsere Handlungen sind Antworten\nauf sogenannte Informationen,\nbeziehungsweise Impulse, und zwar\nsind es automatische Antworten,\ngrößtenteils unserem Willen\nentzogen. Reflexe, die eine\nMaschine ebensogut erledigen kann\nwie ein Mensch, wenn nicht sogar\nbesser. Wenn Sie erlauben, dann\nverweise ich an dieser Stelle auf\nNorbert Wiener: Cybernetics or\ncontrol and communication in the\nanimal and the Maschine, M.I.T,\n1948.",
+      "speaker": "FABER (CONT'D)",
+      "content": "Unsere Handlungen sind Antworten\nauf sogenannte Informationen,\nbeziehungsweise 
+Impulse, und zwar\nsind es automatische Antworten,\ngrößtenteils unserem Willen\nentzogen. Reflexe,
+ die eine\nMaschine ebensogut erledigen kann\nwie ein Mensch, wenn nicht sogar\nbesser. Wenn Sie 
+erlauben, dann\nverweise ich an dieser Stelle auf\nNorbert Wiener: Cybernetics or\ncontrol and 
+communication in the\nanimal and the Maschine, M.I.T,\n1948.",
       "page": 4
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER (CONT'D)",
+      "content": "78 Jahre her.",
+      "page": 4
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER (CONT'D)",
+      "content": "Natürlich meine ich nicht Roboter,\nwie sie die Illustrierten sich\nausmalen, 
+sondern die\nHöchstgeschwindigkeitsrechenmaschin\ne, auch Elektronen-Hirn genannt,\nweil Steuerung 
+durch Vakuum-\nElektronenröhrchen, eine Maschine,\ndie heute schon jedes Menschenhirn\nübertrifft. 
+In einer Minute 2 000\n000 Additionen und Subtraktionen.\nIn ebensolchem Tempo erledigt sie\neine 
+Infinitesimal-Rechnung,\nLogarithmen erledigt sie schneller\nals wir das Ergebnis ablesen\nkönnen, 
+und eine Aufgabe, die\nbisher das ganze Leben eines\nMathematikers erfordert hätte, wird\nin 
+Stunden gelöst und zuverlässiger\ngelöst, weil sie, die Maschine,\nnichts vergessen kann, weil 
+sie\nalle eintreffenden Informationen\nmehr als ein menschliches Hirn\nerfassen kann, in 
+ihre\nWahrscheinlichkeitsansätze\neinbezieht.",
+      "page": 4
+    },
+    {
+      "type": "stage_direction",
+      "content": "Er interagiert mit dem Hund.",
+      "page": 4
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER (CONT'D)",
+      "content": "Vor allem aber: Die Maschine erlebt\nnichts, sie hat keine Angst und\nkeine 
+Hoffnung, die nur stören,\nkeine Wünsche in bezug auf das\nErgebnis, sie arbeitet nach der\nreinen 
+Logik der\nWahrscheinlichkeit, darum behaupte\nich: Der Roboter erkennt genauer\nals der Mensch, er
+ weiß mehr von\nder Zukunft als wir, denn er\nerrechnet sie, er spekuliert nicht\nund träumt nicht,
+ sondern wird von\nseinen eigenen Ergebnissen\ngesteuert...",
+      "page": 5
+    },
+    {
+      "type": "stage_direction",
+      "content": "Er macht mit dem Hund das Kommando \"feedback\".",
+      "page": 5
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER (CONT'D)",
+      "content": "...und kann sich nicht irren. Der\nRoboter braucht keine Ahnungen...",
+      "page": 5
+    },
+    {
+      "type": "stage_direction",
+      "content": "Er geht ab. Der Roboterhund ist allein.",
+      "page": 5
+    },
+    {
+      "type": "stage_direction",
+      "content": "Musik.",
+      "page": 5
+    },
+    {
+      "type": "stage_direction",
+      "content": "Er beginnt zu tanzen.",
+      "page": 5
+    },
+    {
+      "type": "stage_direction",
+      "content": "Der Vorhang öffnet sich.",
+      "page": 5
+    },
+    {
+      "type": "stage_direction",
+      "content": "Ende des Prologs.",
+      "page": 5
+    },
+    {
+      "type": "scene",
+      "content": "KAPITEL 1: OPERATION",
+      "page": 5,
+      "scene_number": "1"
+    },
+    {
+      "type": "scene",
+      "content": "AUFNAHMERAUM",
+      "page": 5,
+      "scene_number": "1.1"
+    },
+    {
+      "type": "stage_direction",
+      "content": "Ein Mikrofon und ein Aufnahmegerät. Dazu ein Techniker des Grief Tech Startups.",
+      "page": 5
+    },
+    {
+      "type": "dialogue",
+      "speaker": "TECHNIKER",
+      "content": "Bei „Deadbots\" oder „Griefbots\"\nhandelt es sich um KI-Chatbots, die\ndie 
+Sprachmuster und\nPersönlichkeitsmerkmale der\nVerstorbenen anhand der von ihnen\nhinterlassenen 
+digitalen Fußspuren\nsimulieren. Um Sie später zu\nsimulieren, benötigen wir Ihre\nStimme. Ich 
+werde Sie über Ihr\nLeben befragen. Die Erinnerungen\nbewahren wir.",
+      "page": 5
+    },
+    {
+      "type": "dialogue",
+      "speaker": "TECHNIKER (CONT'D)",
+      "content": "Ihre Lieben können dann an Ihren\nGeschichten teilhaben, in dem sie\nmit Ihrem 
+virtuellen Ich sprechen,\nmit Ihrer Postmortem-Präsenz.",
+      "page": 6
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Aha. Wie genau funktioniert das?",
+      "page": 6
+    },
+    {
+      "type": "dialogue",
+      "speaker": "TECHNIKER",
+      "content": "Unser Produkt ist ein Large-\nLanguage-Model, kurz LLM. Es ist\nein großes 
+generatives Sprachmodell\nmit künstlicher Intelligenz. Es\nbasiert auf neuronalen Netzwerken\nmit 
+Transformer-Architektur und ist\nin der Lage, natürliche Sprache zu\nverstehen, zu verarbeiten und 
+zu\ngenerieren.",
+      "page": 6
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Aha.",
+      "page": 6
+    },
+    {
+      "type": "dialogue",
+      "speaker": "TECHNIKER",
+      "content": "Unser Large-Language-Model greift\nauf die gesamte Historie des\nInternets 
+zurück. Archive. Bücher,\ndie gescannt wurde. Das Modell wird\nmit riesigen Textmengen 
+trainiert\nund hat mehrere hundert Milliarden\nParameter. Es moduliert Sprache,\nSyntax, 
+Worthäufigkeit. Es\nsimuliert, wie Menschen sprechen.\nIn unserem Fall, wie Sie sprechen,\nHerr 
+Faber. Es basiert auf\nWahrscheinlichkeit.",
+      "page": 6
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "(vor sich hin)\nDie Maschine erlebt nichts, sie hat\nkeine Angst und keine 
+Hoffnungen,\ndie nur stören, keine Wünsche in\nbezug auf das Ergebnis, sie\narbeitet nach der 
+reinen Logik der\nWahrscheinlichkeit…",
+      "page": 6
+    },
+    {
+      "type": "dialogue",
+      "speaker": "TECHNIKER",
+      "content": "Bitte?",
+      "page": 6
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Nichts.",
+      "page": 6
+    },
+    {
+      "type": "dialogue",
+      "speaker": "TECHNIKER",
+      "content": "Ihre Lieben können Sie als nach\nIhrem Tod zum Beispiel fragen: Wie\nist das 
+Wetter heute bei dir? Also\nbei Ihnen. Unsere Technik scannt\nwie in der gesamten 
+Weltgeschichte\nüber Wetter gesprochen wurde und\nvergleicht es dann damit, wie Sie\nüber das 
+Wetter hier sprechen\nwerden. Ihre Lieben bekommen dann\ndie Antwort, die Sie vielleicht\nsagen 
+würden, wenn\nSie...nunja...noch am Leben wären.",
+      "page": 7
+    },
+    {
+      "type": "stage_direction",
+      "content": "(Pause)",
+      "page": 7
+    },
+    {
+      "type": "dialogue",
+      "speaker": "TECHNIKER",
+      "content": "Mein Beileid, zu Ihrem Schicksal.",
+      "page": 7
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Ich glaube nicht an Fügung und\nSchicksal, als Techniker bin ich\ngewohnt in den 
+Formeln der\nWahrscheinlichkeit zu rechnen.\nWieso Schicksal? Ich bestreite\nnicht: Es war mehr als
+ ein Zufall,\ndass alles so gekommen ist, es war\neine ganze Kette von Zufällen. Aber\nwieso 
+Schicksal? Ich brauche, um\ndas Unwahrscheinliche als\nErfahrungstatsache gelten zu\nlassen, 
+keinerlei Mystik;\nMathematik genügt mir.",
+      "page": 7
+    },
+    {
+      "type": "dialogue",
+      "speaker": "TECHNIKER",
+      "content": "Warten Sie, ich nehme das schon\nauf.",
+      "page": 7
+    },
+    {
+      "type": "stage_direction",
+      "content": "Er stellt das Mikrofon an. Und gibt ihm ein Zeichen, dass er weiter reden kann.",
+      "page": 7
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Mathematisch gesprochen: Das\nWahrscheinliche, dass bei 6 000 000\n000 Würfen mit
+ einem regelmässigen\nSechserwürfel annährend 1 000 000\n000 Einser vorkommen, und 
+das\nUnwahrscheinliche, dass bei 6\nWürfen mit dem selben Würfel einmal\n6 Einser vorkommen, 
+unterscheiden\nsich nicht dem Wesen nach, sondern\nnur der Häufigkeit nach, wobei das\nHäufigere 
+von vornherein als\nglaubwürdiger erscheint.",
+      "page": 7
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER (CONT'D)",
+      "content": "Es ist aber, wenn einmal das\nUnwahrscheinliche eintritt, nichts\nHöheres dabei, 
+keinerlei Wunder\noder Derartiges, wie es der Laie so\ngerne haben möchte. In dem wir 
+vom\nWahrscheinlichen sprechen, ist ja\ndas Unwahrscheinliche immer schon\ninbegriffen und zwar als
+ Grenzfall\ndes Möglichen, und wenn es einmal\neintritt, das Unwahrscheinliche, so\nbesteht für 
+unsereinen keinerlei\nGrund zur Verwunderung, zur\nErschütterung, zur Mystifikation.",
+      "page": 8
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER (CONT'D)",
+      "content": "Ich gebe zu: Ohne die Notlandung in\nTamaulipas wäre alles anders\ngekommen. Es 
+ist nicht auszudenken,\nwie anders alles gekommen wäre ohne\ndiese Notlandung in Tamaulipas.",
+      "page": 8
+    },
+    {
+      "type": "dialogue",
+      "speaker": "TECHNIKER",
+      "content": "Erzählen Sie mir von dieser\nNotlandung.",
+      "page": 8
+    },
+    {
+      "type": "stage_direction",
+      "content": "Faber atmet tief.",
+      "page": 8
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER",
+      "content": "Wir starteten in La Guardia, New\nYork, mit dreistündiger Verspätung\ninfolge von
+ Schneestürmen. Ich\nrichtete mich sofort zum Schlafen,\nes war Nacht.",
+      "page": 8
+    },
+    {
+      "type": "stage_direction",
+      "content": "Das Licht dimmt.",
+      "page": 8
+    },
+    {
+      "type": "dialogue",
+      "speaker": "FABER (CONT'D)",
+      "content": "Ich war todmüde. Schnee vor den\nScheinwerfern, Pulverschnee, Wirbel\nüber der 
+Piste. Ich war froh,\nallein zu sein. Ich habe einen\nStart bei solchem Schneetreiben\nnoch nie 
+erlebt. Sogar das grüne\nBlinklicht an unserer Tagfläche\nverschwand im Nebel, man kam sich\nvor, 
+wie ein Blinder. Was mich\nnervös machte, so dass ich nicht\nsogleich schlief, war der 
+junge\nDeutsche neben mir.",
+      "page": 8
+    },
+    {
+      "type": "stage_direction",
+      "content": "Der Techniker verwandelt sich in den Deutschen.",
+      "page": 8
+    },
+    {
+      "type": "dialogue",
+      "speaker": "DEUTSCHER",
+      "content": "Ich komme aus Düsseldorf. Und so\njung bin ich auch wieder nicht,\nAnfang 
+Dreißig.",
+      "page": 8
     }
   ]
 }
