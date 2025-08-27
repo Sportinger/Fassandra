@@ -53,13 +53,13 @@ export class ApiService {
             // In Capacitor app, always use the configured backend URL
             const envBaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) ||
                 (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) ||
-                'https://mylayer.org'; // Fallback to production URL
+                'https://fassandra.de'; // Fallback to production URL
             
             // Handle quoted empty strings and clean up
             const cleanEnvUrl = envBaseUrl.replace(/^["']|["']$/g, '').trim();
             
             // Never use empty string for Capacitor - must have a real backend URL
-            this.baseUrl = baseUrl || (cleanEnvUrl !== '' ? cleanEnvUrl : 'https://mylayer.org');
+            this.baseUrl = baseUrl || (cleanEnvUrl !== '' ? cleanEnvUrl : 'https://fassandra.de');
             
             logger.debug('ApiService', '[ApiService] 📱 Capacitor app detected - using backend:', this.baseUrl);
         } else {

@@ -1,9 +1,9 @@
-# Caddyfile for mylayer.org production deployment
+# Caddyfile for fassandra.de production deployment
 {
-    email admin@mylayer.org
+    email admin@fassandra.de
 }
 
-mylayer.org www.mylayer.org {
+fassandra.de www.fassandra.de {
     # Backend API - handle API routes first
     handle /api/* {
         reverse_proxy backend:3000 {

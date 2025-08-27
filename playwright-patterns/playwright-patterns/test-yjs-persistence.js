@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 
 async function testYjsPersistence() {
-  console.log('🧪 Testing YJS Persistence on mylayer.org...\n');
+  console.log('🧪 Testing YJS Persistence on fassandra.de...\n');
   
   const browser = await chromium.launch({ 
     headless: true,
@@ -22,8 +22,8 @@ async function testYjsPersistence() {
 
   try {
     // Navigate to login page
-    console.log('1️⃣ Navigating to mylayer.org...');
-    await page.goto('https://mylayer.org/login', { waitUntil: 'networkidle' });
+    console.log('1️⃣ Navigating to fassandra.de...');
+    await page.goto('https://fassandra.de/login', { waitUntil: 'networkidle' });
     
     // Login with test credentials
     console.log('2️⃣ Logging in...');

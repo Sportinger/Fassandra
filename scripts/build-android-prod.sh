@@ -3,7 +3,7 @@
 # Build and deploy Android app with production endpoints
 set -e
 
-echo "🚀 Building Android app with production endpoints (mylayer.org)..."
+echo "🚀 Building Android app with production endpoints (fassandra.de)..."
 
 # Navigate to frontend directory
 cd /home/admins/projects/pessoa/frontend

@@ -8,7 +8,7 @@ set -o pipefail
 
 # CONFIGURATION
 SERVER="91.99.69.115"
-DOMAIN="mylayer.org"
+DOMAIN="fassandra.de"
 USER="root"
 APP_DIR="/home/admin/app"
 

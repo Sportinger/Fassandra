@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     cleartext: false,
-    allowNavigation: ['https://mylayer.org/*', 'https://www.mylayer.org/*', 'wss://mylayer.org/*']
+    allowNavigation: ['https://fassandra.de/*', 'https://www.fassandra.de/*', 'wss://fassandra.de/*']
   }
 };
 
