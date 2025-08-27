@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ViewMode } from './types/index';
+import { LayoutPanelTopIcon } from './icons';
 
 interface ViewModeDropdownProps {
   viewMode: ViewMode;
@@ -14,25 +15,9 @@ const VIEW_MODE_LABELS = {
   'virtual-page': 'Virtual Page View'
 };
 
-// SVG Icon Components
-const SinglePageIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-    <line x1="9" y1="9" x2="15" y2="9"/>
-    <line x1="9" y1="15" x2="15" y2="15"/>
-  </svg>
-);
-
-const MultiPageIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="3" y="3" width="7" height="18" rx="2" ry="2"/>
-    <rect x="14" y="3" width="7" height="18" rx="2" ry="2"/>
-  </svg>
-);
-
 const VIEW_MODE_ICONS = {
-  'single-page': <SinglePageIcon />,
-  'multiple-pages': <MultiPageIcon />,
+  'single-page': <LayoutPanelTopIcon />,
+  'multiple-pages': <LayoutPanelTopIcon />,
   'virtual-page': '📄'
 };
 
@@ -79,7 +64,7 @@ export const ViewModeDropdown: React.FC<ViewModeDropdownProps> = ({
         title={currentLabel}
       >
         <span className="label">
-          {React.isValidElement(currentIcon) ? React.cloneElement(currentIcon, { size: 20 }) : currentIcon}
+          {React.isValidElement(currentIcon) ? React.cloneElement(currentIcon as React.ReactElement<{size?: number}>, { size: 20 }) : currentIcon}
         </span>
       </button>
 
@@ -93,7 +78,7 @@ export const ViewModeDropdown: React.FC<ViewModeDropdownProps> = ({
               type="button"
             >
               <span style={{ marginRight: '8px' }}>
-                {React.isValidElement(VIEW_MODE_ICONS[mode]) ? React.cloneElement(VIEW_MODE_ICONS[mode], { size: 18 }) : VIEW_MODE_ICONS[mode]}
+                {React.isValidElement(VIEW_MODE_ICONS[mode]) ? React.cloneElement(VIEW_MODE_ICONS[mode] as React.ReactElement<{size?: number}>, { size: 18 }) : VIEW_MODE_ICONS[mode]}
               </span>
               <span>{VIEW_MODE_LABELS[mode]}</span>
               {viewMode === mode && <span style={{ marginLeft: 'auto' }}>✓</span>}

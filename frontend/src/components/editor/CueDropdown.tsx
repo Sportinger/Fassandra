@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Editor } from '@tiptap/react';
 import { CueType, CUE_TYPE_LABELS, CUE_TYPE_ICONS } from '../../types/cue';
-import { DramaIcon } from './icons/DramaIcon';
+import { DramaIcon } from './icons';
 
 interface CueDropdownProps {
   editor: Editor;

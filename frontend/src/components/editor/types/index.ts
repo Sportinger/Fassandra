@@ -3,6 +3,7 @@
  * Comprehensive TypeScript types for the collaborative editor system
  */
 
+import React from 'react';
 import { Editor as TipTapEditor } from '@tiptap/react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
@@ -74,7 +75,7 @@ export type ToolbarContext =
 
 export interface ToolbarButton {
   id: string;
-  icon: string;
+  icon: string | React.ReactElement;
   label: string;
   title: string;
   action: () => void;
