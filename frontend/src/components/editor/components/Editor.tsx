@@ -22,6 +22,7 @@ import '../styles/page-indicators.css';
 import '../styles/search.css';
 import '../styles/cue-connections.css';
 import '../styles/rehearsal-line.css';
+import '../styles/print.css';
 /**
  * Main Editor Component
  * Orchestrates all editor sub-systems with responsive design
@@ -357,7 +358,23 @@ export const Editor: React.FC<EditorProps> = ({
         break;
       case 'jump':
         if (localContextMenu.rehearsalClickY !== undefined) {
-          const newPosition = localContextMenu.rehearsalClickY;
+          // Prefer precise mapping via ProseMirror doc position if available
+          let newPosition = localContextMenu.rehearsalClickY;
+          try {
+            if (editor && typeof localContextMenu.rehearsalDocPos === 'number') {
+              const pos = localContextMenu.rehearsalDocPos;
+              // Convert doc position to DOM coordinates to get exact Y in container
+              const view: any = (editor as any).view;
+              const coords = view.coordsAtPos(pos);
+              const containerElement = document.querySelector('.singlePageContainer') as HTMLElement | null;
+              if (coords && containerElement) {
+                const containerRect = containerElement.getBoundingClientRect();
+                const containerScrollTop = containerElement.scrollTop || 0;
+                newPosition = coords.top - containerRect.top + containerScrollTop;
+              }
+              setRehearsalDocPos(pos);
+            }
+          } catch {}
           debugLog('[Jump Action] Setting rehearsal line position to:', newPosition);
           setRehearsalLinePosition(newPosition);
           
@@ -365,6 +382,12 @@ export const Editor: React.FC<EditorProps> = ({
           if (provider && provider.awareness) {
             debugLog('[Jump Action] Syncing position via awareness:', newPosition);
             provider.awareness.setLocalStateField('rehearsalLinePosition', newPosition);
+            // Also broadcast precise doc position if we have it (ephemeral)
+            if (typeof rehearsalDocPos === 'number') {
+              try {
+                (provider.awareness as any).setLocalStateField('rehearsalDocPos', rehearsalDocPos);
+              } catch {}
+            }
           }
           
           // Scroll viewport to center the new line position for precision
@@ -933,6 +956,23 @@ export const Editor: React.FC<EditorProps> = ({
                 });
                 if (sharedPos !== null) {
                   setRehearsalLinePosition(sharedPos);
+                  // If a precise doc pos is advertised, use it to compute Y locally
+                  try {
+                    const adv = Array.from(states.values()).find((s: any) => s && typeof s.rehearsalDocPos === 'number');
+                    if (editor && adv && typeof adv.rehearsalDocPos === 'number') {
+                      const pos = adv.rehearsalDocPos;
+                      const view: any = (editor as any).view;
+                      const coords = view.coordsAtPos(pos);
+                      const containerElement = document.querySelector('.singlePageContainer') as HTMLElement | null;
+                      if (coords && containerElement) {
+                        const containerRect = containerElement.getBoundingClientRect();
+                        const containerScrollTop = containerElement.scrollTop || 0;
+                        const y = coords.top - containerRect.top + containerScrollTop;
+                        setRehearsalLinePosition(y);
+                        setRehearsalDocPos(pos);
+                      }
+                    }
+                  } catch {}
                   // Publish our local state so late joiners see it too
                   awareness.setLocalStateField('rehearsalLinePosition', sharedPos);
                   // Center on that position in single-page view

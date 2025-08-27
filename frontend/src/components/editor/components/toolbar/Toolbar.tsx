@@ -23,7 +23,7 @@ import '../../styles/toolbar.css';
 // Import the responsive styles
 interface ToolbarButton {
   id: string;
-  icon: string;
+  icon: string | React.ReactElement;
   title: string;
   action: () => void;
   isActive?: boolean;
@@ -372,8 +372,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         editor?.chain().focus().toggleDialogueStrikeThrough().run();
       },
       isActive: (() => {
-        const { selection } = editor?.state || {};
-        const { $from } = selection || {};
+        let selection: any = null;
+        try {
+          selection = (editor as any)?.state?.selection || null;
+        } catch {}
+        const $from = selection?.$from;
         if (!$from) return false;
         
         for (let depth = $from.depth; depth >= 0; depth--) {
@@ -477,7 +480,51 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       id: 'print',
       icon: <PrinterIcon />,
       title: 'Print / Export PDF',
-      action: () => window.print(),
+      action: () => {
+        try {
+          const editorHtml: string = (editor && (editor as any).getHTML) ? (editor as any).getHTML() : '';
+          const printWindow = window.open('', '_blank');
+          if (!printWindow) {
+            window.print();
+            return;
+          }
+          const css = `
+            @page { size: A4 portrait; margin: 12mm 15mm; }
+            html, body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { margin: 0; padding: 0; }
+            .print-container { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 12pt; line-height: 1.4; color: #111; }
+            /* Page breaks at our page indicators */
+            .page-indicator { break-before: page; page-break-before: always; }
+            .page-indicator:first-of-type { break-before: auto; page-break-before: auto; }
+            .page-indicator { margin: 0 0 8mm 0; }
+            .page-indicator .page-label { font-weight: 700; font-size: 11pt; }
+            /* Dialogue styling basics */
+            [data-type="dialogue-block"] { margin: 8pt 0 12pt 0; }
+            [data-type="speaker"] { font-weight: 700; margin: 0 0 3pt 0; }
+            [data-type="dialogue-text"] p { margin: 0 0 6pt 0; }
+            /* Centered layout defaults */
+            [data-type="dialogue-block"][data-layout="centered"] [data-type="speaker"] { text-align: center; }
+            [data-type="dialogue-block"][data-layout="centered"] [data-type="dialogue-text"] { text-align: left; max-width: 60%; margin: 0 auto; }
+            /* Side-by-side basic print */
+            [data-type="dialogue-block"][data-layout="side-by-side"] { display: flex; gap: 8pt; align-items: flex-start; }
+            [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="speaker"] { min-width: 25%; text-align: left; }
+            [data-type="dialogue-block"][data-layout="side-by-side"] > [data-type="dialogue-text"] { flex: 1; }
+            /* Avoid splitting dialogue blocks awkwardly */
+            [data-type="dialogue-block"] { page-break-inside: avoid; }
+          `;
+          const doc = printWindow.document;
+          doc.open();
+          doc.write(`<!doctype html><html><head><meta charset="utf-8"/><title>Script</title><style>${css}</style></head><body><div class="print-container">${editorHtml}</div></body></html>`);
+          doc.close();
+          printWindow.focus();
+          setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+          }, 100);
+        } catch {
+          window.print();
+        }
+      },
       contexts: ['default'],
       order: 4
     },
@@ -519,8 +566,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Delete Scene',
       action: () => {
         logger.debug('Toolbar', 'Deleting scene block');
-        const { state } = editor;
-        const { selection } = state;
+        const state: any = (editor as any)?.state;
+        const selection = state?.selection;
         const { $from } = selection;
         
         // Find the scene block
@@ -848,7 +895,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 type="button"
               >
                 <span className="icon">
-                  {React.isValidElement(button.icon) ? button.icon : button.icon}
+                  {typeof button.icon === 'string' ? button.icon : button.icon}
                 </span>
               </button>
             )}

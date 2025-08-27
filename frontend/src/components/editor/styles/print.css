@@ -1,0 +1,90 @@
+/* Print-only stylesheet for Editor */
+
+@media print {
+  /* Paper setup */
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm; /* inner page margins */
+  }
+
+  html, body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide non-content UI */
+  header,
+  nav,
+  .header,
+  .appHeader,
+  .optimizedHeader,
+  .floatingToolbar,
+  .context-menu,
+  .dropdownMenu,
+  .cue-dropdown-menu,
+  .status-indicator,
+  .audio-transcription,
+  .audio-transcription-toggle,
+  .audio-transcription-panel,
+  .rehearsal-line,
+  .pageCanvas,
+  .ToastContainer,
+  .modal,
+  .bottomBar,
+  .mobileToolbar {
+    display: none !important;
+  }
+
+  /* Remove app paddings and shadows for print */
+  .editorContainer,
+  .single-page-view,
+  .multi-page-view,
+  .singlePageContainer,
+  .multiplePagesContainer {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  .dinA4Page,
+  .multiplePage {
+    width: auto !important;
+    min-height: auto !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 0 0 0 !important;
+    background: transparent !important;
+    page-break-after: always;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .multiplePage:last-child,
+  .dinA4Page:last-child {
+    page-break-after: auto;
+  }
+
+  /* Content area */
+  .ProseMirror {
+    outline: none !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Avoid splitting dialogue blocks awkwardly */
+  .ProseMirror [data-type="dialogue-block"] {
+    page-break-inside: avoid;
+  }
+
+  /* Ensure long paragraphs can split across pages */
+  .ProseMirror p {
+    page-break-inside: auto;
+    overflow: visible !important;
+  }
+}
+
+
