@@ -90,13 +90,11 @@ export interface ToolbarProps {
   context: ToolbarContext;
   hasTextSelection: boolean;
   viewMode: ViewMode;
-  showRuler: boolean;
   speakerNames: Set<string>;
   currentSpeakerName?: string | null;
   editAllSpeakers?: boolean;
   onToggleEditAllSpeakers?: () => void;
   onSetViewMode: (mode: ViewMode) => void;
-  onToggleRuler: () => void;
   className?: string;
   rehearsalMode?: boolean;
   onToggleRehearsalMode?: () => void;

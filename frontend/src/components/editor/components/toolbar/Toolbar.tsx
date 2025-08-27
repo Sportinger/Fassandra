@@ -36,13 +36,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   context: clickContext,
   hasTextSelection,
   viewMode,
-  showRuler,
   speakerNames,
   currentSpeakerName,
   editAllSpeakers = false,
   onToggleEditAllSpeakers,
   onSetViewMode,
-  onToggleRuler,
   className = '',
   rehearsalMode = false,
   onToggleRehearsalMode
@@ -481,15 +479,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       contexts: ['default'],
       order: 2
     },
-    {
-      id: 'show-ruler',
-      icon: '📏',
-      title: showRuler ? 'Hide Ruler' : 'Show Ruler',
-      action: onToggleRuler,
-      isActive: showRuler,
-      contexts: ['default'],
-      order: 3
-    },
+
     {
       id: 'print',
       icon: '⎙',
@@ -664,7 +654,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       contexts: ['cue-select'],
       order: 3
     },
-      ], [editor, viewMode, onSetViewMode, showRuler, onToggleRuler, rehearsalMode, onToggleRehearsalMode, currentCueType, editAllSpeakers, currentSpeakerName, onToggleEditAllSpeakers, keyboardManuallyShown, hiddenInputRef]);
+      ], [editor, viewMode, onSetViewMode, rehearsalMode, onToggleRehearsalMode, currentCueType, editAllSpeakers, currentSpeakerName, onToggleEditAllSpeakers, keyboardManuallyShown, hiddenInputRef]);
 
   // Get buttons for current context, sorted by order
   const contextButtons = useMemo(() => {
