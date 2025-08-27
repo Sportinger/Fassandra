@@ -7,6 +7,7 @@ import { SearchBox } from '../../SearchBox';
 import { SpeakerDropdown } from '../../SpeakerDropdown';
 import { SpeakerColorPicker } from '../../SpeakerColorPicker';
 import { DialogueLayoutDropdown } from '../../DialogueLayoutDropdown';
+import { ViewModeDropdown } from '../../ViewModeDropdown';
 import type { ToolbarProps, ToolbarContext } from '../../types/index';
 import { CueType } from '../../../../types/cue';
 
@@ -462,22 +463,24 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     },
 
     {
-      id: 'single-page',
-      icon: '▢',
-      title: 'Single Page View',
-      action: () => onSetViewMode('single-page'),
-      isActive: viewMode === 'single-page',
+      id: 'view-mode-dropdown',
+      icon: viewMode === 'single-page' ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <line x1="9" y1="9" x2="15" y2="9"/>
+          <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="7" height="18" rx="2" ry="2"/>
+          <rect x="14" y="3" width="7" height="18" rx="2" ry="2"/>
+        </svg>
+      ),
+      title: viewMode === 'single-page' ? 'Single Page View' : 'Multiple Pages View',
+      action: () => {}, // Handled by dropdown component
       contexts: ['default'],
-      order: 1
-    },
-    {
-      id: 'multi-page',
-      icon: '▦',
-      title: 'Multiple Pages View',
-      action: () => onSetViewMode('multiple-pages'),
-      isActive: viewMode === 'multiple-pages',
-      contexts: ['default'],
-      order: 2
+      order: 1,
+      isSpecial: true
     },
 
     {
@@ -654,7 +657,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       contexts: ['cue-select'],
       order: 3
     },
-      ], [editor, viewMode, onSetViewMode, rehearsalMode, onToggleRehearsalMode, currentCueType, editAllSpeakers, currentSpeakerName, onToggleEditAllSpeakers, keyboardManuallyShown, hiddenInputRef]);
+      ], [editor, viewMode, onSetViewMode, rehearsalMode, onToggleRehearsalMode, currentCueType, editAllSpeakers, currentSpeakerName, onToggleEditAllSpeakers, keyboardManuallyShown, hiddenInputRef, windowWidth]);
 
   // Get buttons for current context, sorted by order
   const contextButtons = useMemo(() => {
@@ -838,6 +841,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 editAllSpeakers={editAllSpeakers}
                 currentSpeakerName={currentSpeakerName}
               />
+            ) : button.isSpecial && button.id === 'view-mode-dropdown' ? (
+              <ViewModeDropdown
+                viewMode={viewMode}
+                onSetViewMode={onSetViewMode}
+                isVisible={isVisible}
+              />
             ) : (
               <button
                 onClick={button.action}
@@ -848,7 +857,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 title={button.title}
                 type="button"
               >
-                <span className="icon">{button.icon}</span>
+                <span className="icon">
+                  {React.isValidElement(button.icon) ? button.icon : button.icon}
+                </span>
               </button>
             )}
             
