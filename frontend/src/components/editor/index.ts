@@ -4,6 +4,7 @@ export { Editor } from './components/Editor';
 // Sub-components that are still used
 export { FontSizeDropdown } from './FontSizeDropdown';
 export { SpeakerDropdown } from './SpeakerDropdown';
+export { ViewModeDropdown } from './ViewModeDropdown';
 export { Ruler } from './Ruler';
 export { SinglePageView, MultiPageView } from './ViewModes';
 
