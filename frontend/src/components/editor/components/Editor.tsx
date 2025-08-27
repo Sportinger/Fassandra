@@ -68,7 +68,9 @@ export const Editor: React.FC<EditorProps> = ({
   const [audioTranscriptionActive, setAudioTranscriptionActive] = useState(false);
   const [rehearsalMode, setRehearsalMode] = useState(false);
   const [rehearsalLinePosition, setRehearsalLinePosition] = useState<number>(0);
+  const [rehearsalDocPos, setRehearsalDocPos] = useState<number | null>(null);
   const [suppressRehearsalAutoScroll, setSuppressRehearsalAutoScroll] = useState(false);
+  const [shouldCenterOnRehearsalChange, setShouldCenterOnRehearsalChange] = useState(false);
   const [editAllSpeakers, setEditAllSpeakers] = useState(false);
   const [currentSpeakerName, setCurrentSpeakerName] = useState<string | null>(null);
   
@@ -81,6 +83,7 @@ export const Editor: React.FC<EditorProps> = ({
     onSpeakerName: boolean;
     onPageBackground: boolean;
     rehearsalClickY?: number;
+    rehearsalDocPos?: number;
   }>({
     x: 0,
     y: 0,
@@ -119,7 +122,7 @@ export const Editor: React.FC<EditorProps> = ({
             setRehearsalLinePosition(newPosition);
             
             // Scroll to the new position if in rehearsal mode and single-page view
-            if (!suppressRehearsalAutoScroll && rehearsalMode && viewMode === 'single-page' && newPosition > 0) {
+            if (!suppressRehearsalAutoScroll && shouldCenterOnRehearsalChange && rehearsalMode && viewMode === 'single-page' && newPosition > 0) {
               debugLog('[Rehearsal Sync] Scrolling to synced position:', newPosition);
               
               // Find the container element
@@ -148,7 +151,7 @@ export const Editor: React.FC<EditorProps> = ({
     return () => {
       provider.awareness.off('change', handleAwarenessChange);
     };
-  }, [provider, debugLog, rehearsalMode, viewMode, suppressRehearsalAutoScroll]);
+  }, [provider, debugLog, rehearsalMode, viewMode, suppressRehearsalAutoScroll, shouldCenterOnRehearsalChange]);
 
   // Initialize rehearsal line position in awareness when provider is ready
   useEffect(() => {
@@ -162,6 +165,7 @@ export const Editor: React.FC<EditorProps> = ({
     debugLog('[Rehearsal Line State] Position:', rehearsalLinePosition, 'Mode:', rehearsalMode, 'View:', viewMode);
     
     if (suppressRehearsalAutoScroll) return;
+    if (!shouldCenterOnRehearsalChange) return;
     if (!rehearsalMode || viewMode !== 'single-page') return;
 
     // Find the container element
@@ -183,7 +187,7 @@ export const Editor: React.FC<EditorProps> = ({
     });
 
     debugLog('[Rehearsal Scroll] Scrolling to center line at position:', rehearsalLinePosition);
-  }, [rehearsalLinePosition, rehearsalMode, viewMode, suppressRehearsalAutoScroll, debugLog]);
+  }, [rehearsalLinePosition, rehearsalMode, viewMode, suppressRehearsalAutoScroll, shouldCenterOnRehearsalChange, debugLog]);
 
   // Highlight all speakers when editAllSpeakers mode changes
   useEffect(() => {
@@ -296,6 +300,20 @@ export const Editor: React.FC<EditorProps> = ({
         const containerRect = containerElement.getBoundingClientRect();
         const containerScrollTop = containerElement.scrollTop || 0;
         const clickY = e.clientY - containerRect.top + containerScrollTop;
+        // Map the click to a precise ProseMirror document position
+        let docPos: number | undefined;
+        try {
+          if (editor) {
+            const view: any = (editor as any).view;
+            if (view && typeof view.posAtCoords === 'function') {
+              const coords = { left: e.clientX, top: e.clientY } as any;
+              const res = view.posAtCoords(coords);
+              if (res && typeof res.pos === 'number') {
+                docPos = res.pos;
+              }
+            }
+          }
+        } catch {}
         
         debugLog('[Rehearsal Click] Container height:', containerElement.scrollHeight, 'Click Y:', clickY, 'ScrollTop:', containerScrollTop);
         
@@ -308,7 +326,8 @@ export const Editor: React.FC<EditorProps> = ({
           visible: true,
           onSpeakerName: !!speakerElement,
           onPageBackground: !speakerElement,
-          rehearsalClickY: clickY, // Absolute position in document
+          rehearsalClickY: clickY, // Position in container coordinates
+          rehearsalDocPos: docPos,
         });
         return;
       }
@@ -360,6 +379,7 @@ export const Editor: React.FC<EditorProps> = ({
           }, 80);
           // Re-enable auto-scroll after executing jump
           setSuppressRehearsalAutoScroll(false);
+          setShouldCenterOnRehearsalChange(true);
         }
         break;
       default:
@@ -367,8 +387,9 @@ export const Editor: React.FC<EditorProps> = ({
     }
     
     setLocalContextMenu(prev => ({ ...prev, visible: false }));
-    // If menu closed without jumping, re-enable auto scroll
+    // If menu closed without jumping, re-enable auto scroll but don't auto-center
     setSuppressRehearsalAutoScroll(false);
+    setShouldCenterOnRehearsalChange(false);
   }, [editor, debugLog, localContextMenu.rehearsalClickY, provider]);
 
   // Close context menu on click outside
@@ -897,21 +918,41 @@ export const Editor: React.FC<EditorProps> = ({
           setRehearsalMode(newMode);
           logger.debug('Editor', 'Rehearsal mode toggled:', newMode);
           
-          // If turning on rehearsal mode and line position is set, scroll to it
-          if (newMode && rehearsalLinePosition > 0 && viewMode === 'single-page') {
-            setTimeout(() => {
-              const containerElement = document.querySelector('.singlePageContainer');
-              if (containerElement) {
-                const containerRect = containerElement.getBoundingClientRect();
-                const absoluteLinePosition = containerRect.top + window.scrollY + rehearsalLinePosition;
-                const targetScrollPosition = absoluteLinePosition - (window.innerHeight / 2);
-                
-                window.scrollTo({
-                  top: targetScrollPosition,
-                  behavior: 'smooth'
+          // If turning ON rehearsal mode: try to adopt another user's position via Yjs awareness
+          if (newMode) {
+            try {
+              if (provider && (provider as any).awareness) {
+                const awareness: any = (provider as any).awareness;
+                const clientId = awareness.clientID;
+                const states: Map<number, any> = awareness.getStates();
+                let sharedPos: number | null = null;
+                states.forEach((state: any, id: number) => {
+                  if (id !== clientId && state && typeof state.rehearsalLinePosition === 'number' && state.rehearsalLinePosition > 0) {
+                    if (sharedPos === null) sharedPos = state.rehearsalLinePosition;
+                  }
                 });
+                if (sharedPos !== null) {
+                  setRehearsalLinePosition(sharedPos);
+                  // Publish our local state so late joiners see it too
+                  awareness.setLocalStateField('rehearsalLinePosition', sharedPos);
+                  // Center on that position in single-page view
+                  if (viewMode === 'single-page') {
+                    setTimeout(() => {
+                      const containerElement = document.querySelector('.singlePageContainer');
+                      if (containerElement) {
+                        const containerRect = containerElement.getBoundingClientRect();
+                        const absoluteLinePosition = containerRect.top + window.scrollY + sharedPos!;
+                        const targetScrollPosition = Math.max(0, absoluteLinePosition - (window.innerHeight / 2));
+                        window.scrollTo({ top: targetScrollPosition, behavior: 'smooth' });
+                      }
+                    }, 120);
+                  }
+                } else {
+                  // No shared position → start at beginning and publish 0
+                  awareness.setLocalStateField('rehearsalLinePosition', 0);
+                }
               }
-            }, 100); // Small delay to ensure DOM is updated
+            } catch {}
           }
         }}
       />
