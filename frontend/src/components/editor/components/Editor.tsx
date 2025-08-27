@@ -411,34 +411,32 @@ export const Editor: React.FC<EditorProps> = ({
     });
   }, [config, isMobile, debugLog]);
 
-  // Debug: after YJS sync, count page indicator nodes in the DOM
-  useEffect(() => {
-    if (!editor || !isYjsSynced) return;
-    const timer = setTimeout(() => {
-      try {
-        const byDataAttr = document.querySelectorAll('div[data-type="page-indicator"]').length;
-        const byClass = document.querySelectorAll('div.page-indicator').length;
-        logger.info('Editor', '[DEBUG_PAGE_INDICATORS] Counts:', { byDataAttr, byClass });
-        const samples = Array.from(document.querySelectorAll('div[data-type="page-indicator"]'))
-          .slice(0, 3)
-          .map((el: any) => el?.outerHTML?.slice(0, 120));
-        if (samples.length > 0) {
-          logger.info('Editor', '[DEBUG_PAGE_INDICATORS] Samples:', samples);
-        }
-
-        // Also inspect ProseMirror document node types
-        const counts: Record<string, number> = {};
-        editor.state.doc.descendants((node: any) => {
-          const n = node.type?.name || 'unknown';
-          counts[n] = (counts[n] || 0) + 1;
-        });
-        logger.info('Editor', '[DEBUG_PM_NODES] Node counts:', counts);
-      } catch (e) {
-        logger.warn('Editor', '[DEBUG_PAGE_INDICATORS] Failed to inspect DOM:', e);
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [editor, isYjsSynced]);
+  // Debug logs disabled after verification
+  // useEffect(() => {
+  //   if (!editor || !isYjsSynced) return;
+  //   const timer = setTimeout(() => {
+  //     try {
+  //       const byDataAttr = document.querySelectorAll('div[data-type="page-indicator"]').length;
+  //       const byClass = document.querySelectorAll('div.page-indicator').length;
+  //       logger.info('Editor', '[DEBUG_PAGE_INDICATORS] Counts:', { byDataAttr, byClass });
+  //       const samples = Array.from(document.querySelectorAll('div[data-type="page-indicator"]'))
+  //         .slice(0, 3)
+  //         .map((el: any) => el?.outerHTML?.slice(0, 120));
+  //       if (samples.length > 0) {
+  //         logger.info('Editor', '[DEBUG_PAGE_INDICATORS] Samples:', samples);
+  //       }
+  //       const counts: Record<string, number> = {};
+  //       editor.state.doc.descendants((node: any) => {
+  //         const n = node.type?.name || 'unknown';
+  //         counts[n] = (counts[n] || 0) + 1;
+  //       });
+  //       logger.info('Editor', '[DEBUG_PM_NODES] Node counts:', counts);
+  //     } catch (e) {
+  //       logger.warn('Editor', '[DEBUG_PAGE_INDICATORS] Failed to inspect DOM:', e);
+  //     }
+  //   }, 400);
+  //   return () => clearTimeout(timer);
+  // }, [editor, isYjsSynced]);
 
   // 🔧 CRITICAL FIX: EARLY RETURNS MOVED AFTER ALL HOOKS
   // Early return if no auth
