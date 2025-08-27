@@ -295,7 +295,7 @@ export const Editor: React.FC<EditorProps> = ({
         const containerScrollTop = containerElement.scrollTop || 0;
         const clickY = e.clientY - containerRect.top + containerScrollTop;
         
-        debugLog('[Rehearsal Click] Container height:', containerElement.scrollHeight, 'Click Y:', clickY, 'ScrollTop:', scrollTop);
+        debugLog('[Rehearsal Click] Container height:', containerElement.scrollHeight, 'Click Y:', clickY, 'ScrollTop:', containerScrollTop);
         
         // Store the position for later use
         setLocalContextMenu({
