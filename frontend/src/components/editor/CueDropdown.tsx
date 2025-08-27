@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Editor } from '@tiptap/react';
 import { CueType, CUE_TYPE_LABELS, CUE_TYPE_ICONS } from '../../types/cue';
+import { DramaIcon } from './icons/DramaIcon';
 
 interface CueDropdownProps {
   editor: Editor;
@@ -45,8 +46,9 @@ export const CueDropdown: React.FC<CueDropdownProps> = ({
         className={`toolbarButton dropdownButton ${isOpen ? 'open' : ''}`}
         type="button"
       >
-        <span className="label">🎭</span>
-        <span className="arrow">▼</span>
+        <span className="label">
+          <DramaIcon size={20} />
+        </span>
       </button>
 
       {isOpen && (

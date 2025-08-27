@@ -9,6 +9,7 @@ import { LoadingSpinner } from './ui/LoadingSpinner';
 import { StatusIndicator } from './ui/StatusIndicator';
 import { SinglePageView, MultiPageView } from '../ViewModes';
 import { AudioTranscription } from './AudioTranscription';
+import { MessageSquareQuoteIcon } from '../icons/MessageSquareQuoteIcon';
 import type { EditorProps, ViewMode } from '../types';
 
 import logger from '../../../services/LoggingService';
@@ -795,7 +796,7 @@ export const Editor: React.FC<EditorProps> = ({
                 }}
                 onClick={() => handleContextMenuAction('insert-dialogue')}
               >
-                💬 Insert Dialogue Block
+                <MessageSquareQuoteIcon size={14} /> Insert Dialogue Block
               </div>
               <div 
                 className="context-menu-item"

@@ -79,9 +79,8 @@ export const ViewModeDropdown: React.FC<ViewModeDropdownProps> = ({
         title={currentLabel}
       >
         <span className="label">
-          {React.isValidElement(currentIcon) ? currentIcon : currentIcon}
+          {React.isValidElement(currentIcon) ? React.cloneElement(currentIcon, { size: 20 }) : currentIcon}
         </span>
-        <span className="arrow">▼</span>
       </button>
 
       {isOpen && (
@@ -94,7 +93,7 @@ export const ViewModeDropdown: React.FC<ViewModeDropdownProps> = ({
               type="button"
             >
               <span style={{ marginRight: '8px' }}>
-                {React.isValidElement(VIEW_MODE_ICONS[mode]) ? VIEW_MODE_ICONS[mode] : VIEW_MODE_ICONS[mode]}
+                {React.isValidElement(VIEW_MODE_ICONS[mode]) ? React.cloneElement(VIEW_MODE_ICONS[mode], { size: 18 }) : VIEW_MODE_ICONS[mode]}
               </span>
               <span>{VIEW_MODE_LABELS[mode]}</span>
               {viewMode === mode && <span style={{ marginLeft: 'auto' }}>✓</span>}
