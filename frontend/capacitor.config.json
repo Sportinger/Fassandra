@@ -5,6 +5,6 @@
   "server": {
     "androidScheme": "https",
     "cleartext": false,
-    "allowNavigation": ["https://mylayer.org/*", "https://www.mylayer.org/*", "https://91.99.69.115/*"]
+    "allowNavigation": ["https://fassandra.de/*", "https://www.fassandra.de/*", "https://91.99.69.115/*"]
   }
 }

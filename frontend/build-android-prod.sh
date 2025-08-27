@@ -1,13 +1,13 @@
 #!/bin/bash
 
-echo "🚀 Building Pessoa Android APK for Production (mylayer.org)..."
+echo "🚀 Building Pessoa Android APK for Production (fassandra.de)..."
 
 # Ensure production environment is set correctly
 cat > .env.production << EOF
 # Production environment for Android APK
-# Points to mylayer.org backend
-VITE_API_BASE_URL=https://mylayer.org
-VITE_WS_BASE_URL=wss://mylayer.org/api/collab
+# Points to fassandra.de backend
+VITE_API_BASE_URL=https://fassandra.de
+VITE_WS_BASE_URL=wss://fassandra.de/api/collab
 EOF
 
 # Update Capacitor config for production
@@ -19,7 +19,7 @@ cat > capacitor.config.json << EOF
   "server": {
     "androidScheme": "https",
     "cleartext": false,
-    "allowNavigation": ["https://mylayer.org/*", "https://91.99.69.115/*"]
+    "allowNavigation": ["https://fassandra.de/*", "https://91.99.69.115/*"]
   }
 }
 EOF
@@ -51,7 +51,7 @@ if [ $? -eq 0 ]; then
         echo "   OR"
         echo "2. Copy the APK to your phone and install manually"
         echo ""
-        echo "🔗 Your app will connect to: https://mylayer.org"
+        echo "🔗 Your app will connect to: https://fassandra.de"
     else
         echo "❌ APK build completed but file not found"
     fi
