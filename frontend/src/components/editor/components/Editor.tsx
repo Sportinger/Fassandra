@@ -292,8 +292,8 @@ export const Editor: React.FC<EditorProps> = ({
       const containerElement = target.closest('.singlePageContainer') || target.closest('.multiplePagesContainer');
       if (containerElement) {
         const containerRect = containerElement.getBoundingClientRect();
-        const scrollTop = containerElement.scrollTop || window.scrollY;
-        const clickY = e.clientY - containerRect.top + scrollTop;
+        const containerScrollTop = containerElement.scrollTop || 0;
+        const clickY = e.clientY - containerRect.top + containerScrollTop;
         
         debugLog('[Rehearsal Click] Container height:', containerElement.scrollHeight, 'Click Y:', clickY, 'ScrollTop:', scrollTop);
         
@@ -343,16 +343,16 @@ export const Editor: React.FC<EditorProps> = ({
             provider.awareness.setLocalStateField('rehearsalLinePosition', newPosition);
           }
           
-          // Verify the line is visible
+          // Scroll viewport to center the new line position for precision
           setTimeout(() => {
-            const lineElement = document.querySelector('.rehearsal-line');
-            if (lineElement) {
-              const computedStyle = window.getComputedStyle(lineElement);
-              debugLog('[Jump Action] Line element found, display:', computedStyle.display, 'top:', computedStyle.top);
-            } else {
-              debugLog('[Jump Action] WARNING: Line element not found!');
+            const containerElement = document.querySelector('.singlePageContainer') as HTMLElement | null;
+            if (containerElement) {
+              const containerRect = containerElement.getBoundingClientRect();
+              const absoluteLinePosition = containerRect.top + window.scrollY + newPosition;
+              const targetScrollPosition = Math.max(0, absoluteLinePosition - (window.innerHeight / 2));
+              window.scrollTo({ top: targetScrollPosition, behavior: 'smooth' });
             }
-          }, 100);
+          }, 80);
         }
         break;
       default:

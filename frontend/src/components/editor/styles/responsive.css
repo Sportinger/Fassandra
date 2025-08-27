@@ -306,15 +306,21 @@ html, body {
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="speaker"] {
+  margin: 0 auto;                /* center the speaker box */
+  text-align: center !important; /* center the name text */
+  display: block;                /* make it a block to allow width */
+  width: 60%;                    /* match dialogue text width */
+  max-width: 60%;
+}
+
+/* Ensure legacy wrapped content aligns right as well */
+.ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="speaker"] p {
+  text-align: center !important; /* ensure wrapped content is centered */
   margin: 0;
-  text-align: center;
-  display: inline-block;
-  width: auto;
-  max-width: fit-content;
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="dialogue-text"] {
-  text-align: center;
+  text-align: left !important;
   max-width: 60%;
   margin: 0 auto;
 }
@@ -463,13 +469,16 @@ html, body {
   }
 
   .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="speaker"] {
-    width: auto;  /* Only as wide as content */
-    max-width: fit-content;  /* Fit to content */
+    width: 90%;  /* Match wider mobile text width */
+    max-width: 90%;
+    margin: 0 auto;  /* keep box centered */
+    text-align: center !important; /* center on mobile too */
     padding: 0 var(--space-xs);
     font-size: 1em;  /* Ensure readable size */
   }
   
   .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="dialogue-text"] {
+    text-align: left !important;
     max-width: 90%;  /* Wider on mobile */
     padding: 0 var(--space-xs);
     font-size: 0.95em;  /* Slightly smaller for mobile */
