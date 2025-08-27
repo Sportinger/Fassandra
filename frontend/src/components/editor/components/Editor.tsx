@@ -9,7 +9,7 @@ import { LoadingSpinner } from './ui/LoadingSpinner';
 import { StatusIndicator } from './ui/StatusIndicator';
 import { SinglePageView, MultiPageView } from '../ViewModes';
 import { AudioTranscription } from './AudioTranscription';
-import { MessageSquareQuoteIcon } from '../icons/MessageSquareQuoteIcon';
+import { MessageSquareQuoteIcon } from '../icons';
 import type { EditorProps, ViewMode } from '../types';
 
 import logger from '../../../services/LoggingService';
@@ -845,13 +845,11 @@ export const Editor: React.FC<EditorProps> = ({
         context={toolbarContext}
         hasTextSelection={editor?.state.selection.empty === false}
         viewMode={viewMode}
-        showRuler={showRuler}
         speakerNames={new Set(availableSpeakers)}
         currentSpeakerName={currentSpeakerName}
         editAllSpeakers={editAllSpeakers}
         onToggleEditAllSpeakers={() => setEditAllSpeakers(!editAllSpeakers)}
         onSetViewMode={setViewMode}
-        onToggleRuler={() => setShowRuler(!showRuler)}
         rehearsalMode={rehearsalMode}
         onToggleRehearsalMode={() => {
           const newMode = !rehearsalMode;

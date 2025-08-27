@@ -133,6 +133,26 @@
   /* transition: transform var(--transition-fast); */
 }
 
+/* SVG icon specific styling */
+.toolbarButton .icon svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+/* Ensure SearchBox button is always visible and properly sized */
+.morphingButton {
+  min-width: var(--toolbar-button-size);
+  min-height: var(--toolbar-button-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.morphingButton .icon {
+  flex-shrink: 0;
+}
+
 .toolbarButton:hover .icon {
   /* No scale animation */
   /* transform: scale(1.1); */

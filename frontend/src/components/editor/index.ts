@@ -5,11 +5,8 @@ export { Editor } from './components/Editor';
 export { FontSizeDropdown } from './FontSizeDropdown';
 export { SpeakerDropdown } from './SpeakerDropdown';
 export { ViewModeDropdown } from './ViewModeDropdown';
-export { MessageSquareQuoteIcon } from './icons/MessageSquareQuoteIcon';
-export { DramaIcon } from './icons/DramaIcon';
-export { SearchIcon } from './icons/SearchIcon';
-export { ClapperboardIcon } from './icons/ClapperboardIcon';
-export { GoalIcon } from './icons/GoalIcon';
+export * from './icons';
+export { PrinterIcon, LayoutPanelTopIcon } from './icons';
 export { Ruler } from './Ruler';
 export { SinglePageView, MultiPageView } from './ViewModes';
 

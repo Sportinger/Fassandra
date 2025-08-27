@@ -7,7 +7,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Editor } from '@tiptap/react';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
-import { SearchIcon } from './icons/SearchIcon';
+import { SearchIcon } from './icons';
 
 interface SearchBoxProps {
   editor: Editor | null;
