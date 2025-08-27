@@ -69,12 +69,12 @@ const calculateDimensions = (config: ResponsiveConfig): DimensionConfig => {
       break;
       
     case 'tablet':
-      // Tablet: Scaled down DIN A4
-      pageWidth = 'clamp(400px, 80vw, 600px)';
-      pageHeight = `calc(var(--page-width) * ${ratio})`;
-      contentPaddingX = 'clamp(20px, 3vw, 40px)';
-      contentPaddingY = 'clamp(24px, 4vh, 60px)';
-      baseFontSize = 'clamp(15px, 2vw, 17px)';
+      // Tablet: keep full DIN A4 like desktop; only switch layout at mobile
+      pageWidth = '21cm';
+      pageHeight = '29.7cm';
+      contentPaddingX = '1.5cm';
+      contentPaddingY = '2cm';
+      baseFontSize = '16px';
       lineHeight = '1.5';
       break;
       
@@ -142,7 +142,8 @@ export const useResponsiveDesign = (): UseResponsiveDesignReturn => {
   // Calculate responsive configuration
   const config = useMemo((): ResponsiveConfig => {
     const breakpoint = getBreakpoint(viewport.width);
-    const isMobile = detectMobile() || breakpoint === 'mobile';
+    // Width-driven mobile detection to keep DIN A4 width until viewport is too small
+    const isMobile = breakpoint === 'mobile';
     const isTablet = breakpoint === 'tablet' && !isMobile;
     const isDesktop = breakpoint === 'desktop' || breakpoint === 'wide';
     

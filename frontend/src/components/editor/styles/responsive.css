@@ -48,8 +48,7 @@ html, body {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   
-  /* Adjust for toolbar on desktop */
-  padding-left: calc(var(--content-padding-x) + var(--toolbar-width) + var(--space-lg));
+  /* Adjust for toolbar on desktop (moved under desktop media query) */
 }
 
 .multi-page-view {
@@ -65,8 +64,7 @@ html, body {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   
-  /* Adjust for toolbar on desktop */
-  padding-left: calc(var(--content-padding-x) + var(--toolbar-width) + var(--space-lg));
+  /* Adjust for toolbar on desktop (moved under desktop media query) */
 }
 
 .singlePageContainer {
@@ -114,8 +112,7 @@ html, body {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   
-  /* Adjust for toolbar on desktop */
-  padding-left: calc(var(--content-padding-x) + var(--toolbar-width) + var(--space-lg));
+  /* Adjust for toolbar on desktop (moved under desktop media query) */
 }
 
 /* ===== DIN A4 PAGE ===== */
@@ -301,6 +298,27 @@ html, body {
   overflow-wrap: break-word;
 }
 
+/* Centered dialogue layout - default for non-mobile */
+.ProseMirror [data-type="dialogue-block"][data-layout="centered"] {
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="speaker"] {
+  margin: 0;
+  text-align: center;
+  display: inline-block;
+  width: auto;
+  max-width: fit-content;
+}
+
+.ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="dialogue-text"] {
+  text-align: center;
+  max-width: 60%;
+  margin: 0 auto;
+}
+
 .ProseMirror [data-type="speaker"] {
   font-weight: bold;
   font-size: var(--font-size-base);
@@ -468,9 +486,9 @@ html, body {
   }
   
   .singlePageContainer {
-    /* Same mobile handling as multi-page */
+    /* Keep DIN A4 width even on mobile container; child page will scale */
     width: 100%;
-    max-width: none;
+    max-width: var(--page-width);
   }
   
   .multiplePagesContainer {
@@ -482,16 +500,14 @@ html, body {
   }
   
   .dinA4Page {
-    /* Full width on mobile but maintain proportional content */
-    width: 100%;
-    min-height: var(--page-height); /* Keep normal page height, not 100vh */
-    
-    /* Remove page-like styling for mobile */
-    box-shadow: none;
+    /* Maintain DIN A4 width; allow horizontal center without stretching */
+    width: var(--page-width);
+    min-height: var(--page-height);
+    margin: 0 auto;
+    /* Keep page styling */
+    box-shadow: var(--shadow-lg);
     border-radius: 0;
-    
-    /* Adjust padding for mobile - increased for better readability */
-    padding: var(--space-xl) var(--space-lg);
+    padding: var(--content-padding-y) var(--content-padding-x);
   }
   
   /* Override for multi-page view - keep full page styling even on mobile */
@@ -523,17 +539,7 @@ html, body {
 
 /* ===== TABLET RESPONSIVE ADJUSTMENTS ===== */
 
-@media (min-width: 768px) and (max-width: 1023px) {
-  .pageCanvas {
-    /* Balanced padding for tablet */
-    padding-left: calc(var(--content-padding-x) + var(--toolbar-width) + var(--space-md));
-  }
-  
-  .dinA4Page {
-    /* Tablet-optimized page size */
-    margin: var(--space-xl) auto;
-  }
-}
+/* No tablet-specific layout; desktop vs mobile only */
 
 /* ===== DESKTOP STYLES ===== */
 
@@ -541,6 +547,13 @@ html, body {
   .dinA4Page {
     /* Full DIN A4 experience on desktop */
     margin: var(--space-2xl) auto;
+  }
+
+  /* Adjust for toolbar on desktop */
+  .single-page-view,
+  .multi-page-view,
+  .pageCanvas {
+    padding-left: calc(var(--content-padding-x) + var(--toolbar-width) + var(--space-lg));
   }
   
   /* Side-by-side dialogue layout on desktop */
@@ -557,26 +570,6 @@ html, body {
     flex: 1;
   }
 
-  /* Centered dialogue layout */
-  .ProseMirror [data-type="dialogue-block"][data-layout="centered"] {
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-sm);
-  }
-  
-  .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="speaker"] {
-    margin: 0;
-    text-align: left;  /* Left align speaker text */
-    display: inline-block;  /* Only as wide as content */
-    width: auto;  /* Don't stretch */
-    max-width: fit-content;  /* Fit to content */
-  }
-  
-  .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="dialogue-text"] {
-    text-align: left;  /* Left align dialogue text */
-    max-width: 60%;
-    margin: 0 auto;
-  }
 }
 
 /* ===== ANIMATIONS ===== */
