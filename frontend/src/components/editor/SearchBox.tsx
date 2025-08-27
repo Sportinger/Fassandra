@@ -7,6 +7,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Editor } from '@tiptap/react';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { SearchIcon } from './icons/SearchIcon';
 
 interface SearchBoxProps {
   editor: Editor | null;
@@ -288,7 +289,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
         title="Search in document (Ctrl/Cmd + F)"
         type="button"
       >
-        <span className="icon">🔍</span>
+        <SearchIcon />
       </button>
       
       {isOpen && (

@@ -8,6 +8,10 @@ import { SpeakerDropdown } from '../../SpeakerDropdown';
 import { SpeakerColorPicker } from '../../SpeakerColorPicker';
 import { DialogueLayoutDropdown } from '../../DialogueLayoutDropdown';
 import { ViewModeDropdown } from '../../ViewModeDropdown';
+import { MessageSquareQuoteIcon } from '../../icons/MessageSquareQuoteIcon';
+import { SearchIcon } from '../../icons/SearchIcon';
+import { ClapperboardIcon } from '../../icons/ClapperboardIcon';
+import { GoalIcon } from '../../icons/GoalIcon';
 import type { ToolbarProps, ToolbarContext } from '../../types/index';
 import { CueType } from '../../../../types/cue';
 
@@ -440,7 +444,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     // Page interaction buttons (empty-page context)
     {
       id: 'insert-dialogue',
-      icon: '💬',
+      icon: <MessageSquareQuoteIcon />,
       title: 'Insert Dialogue Block',
       action: () => {
         logger.debug('Toolbar', 'Inserting dialogue block');
@@ -568,7 +572,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     // Add Scene button (default context)
     {
       id: 'add-scene',
-      icon: '🎬',
+      icon: <ClapperboardIcon />,
       title: 'Add Scene',
       action: () => editor?.commands.insertSceneBlock(),
       contexts: ['default'],
@@ -579,7 +583,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     // Rehearsal Mode Toggle (default context)
     {
       id: 'rehearsal-mode',
-      icon: '🎯',
+      icon: <GoalIcon />,
       title: rehearsalMode ? 'Exit Rehearsal Mode' : 'Enter Rehearsal Mode',
       action: () => {
         if (onToggleRehearsalMode) {
@@ -594,7 +598,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     // Search box (default context)
     {
       id: 'search-box',
-      icon: '🔍',
+      icon: <SearchIcon />,
       title: 'Search',
       action: () => {}, // Handled by SearchBox component
       contexts: ['default'],
