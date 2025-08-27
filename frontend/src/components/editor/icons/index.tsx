@@ -2,7 +2,7 @@ import React from 'react';
 
 // Search Icon SVG
 export const SearchIcon: React.FC<{ size?: number; className?: string }> = ({
-  size = 20,
+  size = 24,
   className = ''
 }) => {
   try {
@@ -12,8 +12,10 @@ export const SearchIcon: React.FC<{ size?: number; className?: string }> = ({
         height={size}
         viewBox="0 0 24 24"
         fill="none"
-        stroke="#333"
+        stroke="currentColor"
         strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
         style={{
           display: 'block',
           backgroundColor: 'transparent'

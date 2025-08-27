@@ -289,7 +289,9 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
         title="Search in document (Ctrl/Cmd + F)"
         type="button"
       >
-        <SearchIcon />
+        <span className="icon">
+          <SearchIcon className="lucide lucide-search-icon" />
+        </span>
       </button>
       
       {isOpen && (

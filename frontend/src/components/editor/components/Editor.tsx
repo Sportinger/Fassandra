@@ -492,7 +492,22 @@ export const Editor: React.FC<EditorProps> = ({
           onToggleViewMode={() => setViewMode('multiple-pages')}
           rehearsalMode={rehearsalMode}
           rehearsalLinePosition={rehearsalLinePosition}
-          onOutsideClick={hideContextMenu}
+          onOutsideClick={() => {
+            try {
+              if (editor) {
+                const { state } = editor;
+                const { selection } = state;
+                if (selection && !selection.empty) {
+                  const pos = selection.head;
+                  editor.chain().setTextSelection(pos).run();
+                }
+                editor.commands.blur();
+              }
+            } catch {}
+            hideContextMenu();
+            setEditAllSpeakers(false);
+            setCurrentSpeakerName(null);
+          }}
         >
           {editor ? (
             <div 
@@ -626,6 +641,22 @@ export const Editor: React.FC<EditorProps> = ({
           onToggleViewMode={() => setViewMode('single-page')}
           rehearsalMode={rehearsalMode}
           rehearsalLinePosition={rehearsalLinePosition}
+          onOutsideClick={() => {
+            try {
+              if (editor) {
+                const { state } = editor;
+                const { selection } = state;
+                if (selection && !selection.empty) {
+                  const pos = selection.head;
+                  editor.chain().setTextSelection(pos).run();
+                }
+                editor.commands.blur();
+              }
+            } catch {}
+            hideContextMenu();
+            setEditAllSpeakers(false);
+            setCurrentSpeakerName(null);
+          }}
         >
           {editor ? (
             <div 
