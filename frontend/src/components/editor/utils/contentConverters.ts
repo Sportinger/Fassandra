@@ -248,7 +248,13 @@ export const extractSpeakerNames = (html: string): Set<string> => {
   speakerElements.forEach(element => {
     const speakerName = element.textContent?.trim();
     if (speakerName && speakerName.length > 0) {
-      extractedNames.add(speakerName);
+      // Split joint names like "A/B" or "A / B" into separate entries
+      const parts = speakerName.split(/[\/|]/).map(s => s.trim()).filter(Boolean);
+      if (parts.length > 1) {
+        parts.forEach(p => extractedNames.add(p));
+      } else {
+        extractedNames.add(speakerName);
+      }
     }
   });
   
@@ -259,7 +265,13 @@ export const extractSpeakerNames = (html: string): Set<string> => {
     // Match speaker name patterns: "NAME:" at the beginning of a line
     const match = text.match(/^([A-Z][A-Z\s&.-]+):/);
     if (match) {
-      extractedNames.add(match[1].trim());
+      const raw = match[1].trim();
+      const parts = raw.split(/[\/|]/).map(s => s.trim()).filter(Boolean);
+      if (parts.length > 1) {
+        parts.forEach(p => extractedNames.add(p));
+      } else {
+        extractedNames.add(raw);
+      }
     }
   });
   

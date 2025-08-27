@@ -683,6 +683,17 @@ export const useEditorCore = ({
               }
             }
           }
+
+          // Update available speakers whenever content changes
+          try {
+            const html = editor.getHTML();
+            if (html && html.length > 0) {
+              const speakers = extractSpeakerNames(html);
+              setAvailableSpeakers(Array.from(speakers));
+            } else {
+              setAvailableSpeakers([]);
+            }
+          } catch {}
         }
       };
       

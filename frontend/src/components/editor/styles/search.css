@@ -25,10 +25,9 @@
   min-width: 280px;
   max-width: 350px;
   
-  /* Animation */
-  opacity: 0;
-  transform: translateX(-10px) scale(0.95);
-  animation: dropdownEnter var(--transition-fast) forwards;
+  /* No animation: show immediately */
+  opacity: 1;
+  transform: none;
 }
 
 /* ===== SEARCH INPUT CONTAINER ===== */

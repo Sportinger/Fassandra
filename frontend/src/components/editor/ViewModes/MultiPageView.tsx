@@ -249,13 +249,15 @@ export const MultiPageView: React.FC<MultiPageViewProps> = ({
     // Only trigger if clicking on the background container, not on pages
     if (e.target === e.currentTarget) {
       logger.debug('MultiPageView', '🖱️ Dark area clicked, showing context menu');
+      // Inform parent so it can clear selection and reset context
+      onOutsideClick?.();
       setContextMenu({
         x: e.clientX,
         y: e.clientY,
         visible: true
       });
     }
-  }, []);
+  }, [onOutsideClick]);
 
   // Handle context menu actions
   const handleContextMenuAction = useCallback((action: string) => {
