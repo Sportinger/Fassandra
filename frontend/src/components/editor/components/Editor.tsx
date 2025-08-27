@@ -68,6 +68,7 @@ export const Editor: React.FC<EditorProps> = ({
   const [audioTranscriptionActive, setAudioTranscriptionActive] = useState(false);
   const [rehearsalMode, setRehearsalMode] = useState(false);
   const [rehearsalLinePosition, setRehearsalLinePosition] = useState<number>(0);
+  const [suppressRehearsalAutoScroll, setSuppressRehearsalAutoScroll] = useState(false);
   const [editAllSpeakers, setEditAllSpeakers] = useState(false);
   const [currentSpeakerName, setCurrentSpeakerName] = useState<string | null>(null);
   
@@ -118,7 +119,7 @@ export const Editor: React.FC<EditorProps> = ({
             setRehearsalLinePosition(newPosition);
             
             // Scroll to the new position if in rehearsal mode and single-page view
-            if (rehearsalMode && viewMode === 'single-page' && newPosition > 0) {
+            if (!suppressRehearsalAutoScroll && rehearsalMode && viewMode === 'single-page' && newPosition > 0) {
               debugLog('[Rehearsal Sync] Scrolling to synced position:', newPosition);
               
               // Find the container element
@@ -147,7 +148,7 @@ export const Editor: React.FC<EditorProps> = ({
     return () => {
       provider.awareness.off('change', handleAwarenessChange);
     };
-  }, [provider, debugLog, rehearsalMode, viewMode]);
+  }, [provider, debugLog, rehearsalMode, viewMode, suppressRehearsalAutoScroll]);
 
   // Initialize rehearsal line position in awareness when provider is ready
   useEffect(() => {
@@ -160,6 +161,7 @@ export const Editor: React.FC<EditorProps> = ({
   useEffect(() => {
     debugLog('[Rehearsal Line State] Position:', rehearsalLinePosition, 'Mode:', rehearsalMode, 'View:', viewMode);
     
+    if (suppressRehearsalAutoScroll) return;
     if (!rehearsalMode || viewMode !== 'single-page') return;
 
     // Find the container element
@@ -181,7 +183,7 @@ export const Editor: React.FC<EditorProps> = ({
     });
 
     debugLog('[Rehearsal Scroll] Scrolling to center line at position:', rehearsalLinePosition);
-  }, [rehearsalLinePosition, rehearsalMode, viewMode, debugLog]);
+  }, [rehearsalLinePosition, rehearsalMode, viewMode, suppressRehearsalAutoScroll, debugLog]);
 
   // Highlight all speakers when editAllSpeakers mode changes
   useEffect(() => {
@@ -297,6 +299,8 @@ export const Editor: React.FC<EditorProps> = ({
         
         debugLog('[Rehearsal Click] Container height:', containerElement.scrollHeight, 'Click Y:', clickY, 'ScrollTop:', containerScrollTop);
         
+        // Suppress auto-scroll until user chooses an action
+        setSuppressRehearsalAutoScroll(true);
         // Store the position for later use
         setLocalContextMenu({
           x: e.clientX,
@@ -310,6 +314,7 @@ export const Editor: React.FC<EditorProps> = ({
       }
     }
     
+    setSuppressRehearsalAutoScroll(true);
     setLocalContextMenu({
       x: e.clientX,
       y: e.clientY,
@@ -353,6 +358,8 @@ export const Editor: React.FC<EditorProps> = ({
               window.scrollTo({ top: targetScrollPosition, behavior: 'smooth' });
             }
           }, 80);
+          // Re-enable auto-scroll after executing jump
+          setSuppressRehearsalAutoScroll(false);
         }
         break;
       default:
@@ -360,6 +367,8 @@ export const Editor: React.FC<EditorProps> = ({
     }
     
     setLocalContextMenu(prev => ({ ...prev, visible: false }));
+    // If menu closed without jumping, re-enable auto scroll
+    setSuppressRehearsalAutoScroll(false);
   }, [editor, debugLog, localContextMenu.rehearsalClickY, provider]);
 
   // Close context menu on click outside
@@ -367,6 +376,7 @@ export const Editor: React.FC<EditorProps> = ({
     const handleClickOutside = () => {
       if (localContextMenu.visible) {
         setLocalContextMenu(prev => ({ ...prev, visible: false }));
+        setSuppressRehearsalAutoScroll(false);
       }
     };
     
