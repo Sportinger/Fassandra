@@ -35,7 +35,7 @@ import './App.css'
  * @returns {JSX.Element} The rendered application
  */
 function App(): JSX.Element {
-  const { token } = useAuth()
+  const { token, language = 'de' } = useAuth()
   const {
     currentView,
     selectedScriptId,
@@ -137,12 +137,16 @@ function App(): JSX.Element {
         {showLogin ? (
           <>
             <Login />
-            <button onClick={() => setShowLogin(false)}>Go to Register</button>
+            <button onClick={() => setShowLogin(false)}>
+              {language === 'de' ? 'Zur Registrierung' : 'Go to Register'}
+            </button>
           </>
         ) : (
           <>
             <Register />
-            <button onClick={() => setShowLogin(true)}>Go to Login</button>
+            <button onClick={() => setShowLogin(true)}>
+              {language === 'de' ? 'Zum Login' : 'Go to Login'}
+            </button>
           </>
         )}
       </RouteErrorBoundary>

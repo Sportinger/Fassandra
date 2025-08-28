@@ -116,6 +116,8 @@ export interface AuthState {
   theme: 'light' | 'dark';
   setTheme: (theme: 'light' | 'dark') => void;
   tokenReady: boolean;
+  language?: 'de' | 'en';
+  setLanguage?: (lang: 'de' | 'en') => void;
 }
 
 /**

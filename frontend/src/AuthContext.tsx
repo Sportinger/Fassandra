@@ -14,6 +14,8 @@ const defaultAuthState: AuthState = {
   theme: 'dark',
   setTheme: () => {},
   tokenReady: false,
+  language: 'de',
+  setLanguage: () => {},
 };
 
 /**
@@ -74,6 +76,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return storedTheme || 'dark';
   });
 
+  // Language state with localStorage persistence (default German)
+  const [language, setLanguageState] = useState<'de' | 'en'>(() => {
+    const stored = localStorage.getItem('lang') as 'de' | 'en' | null;
+    return stored || 'de';
+  });
+
   // Track when token is ready in ApiService
   // Initialize as true if we have a token from storage
   const [tokenReady, setTokenReady] = useState(!!token);
@@ -131,10 +139,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     document.documentElement.setAttribute('data-theme', newTheme);
   }, []);
 
+  // Language setter
+  const setLanguage = useCallback((lang: 'de' | 'en') => {
+    setLanguageState(lang);
+    localStorage.setItem('lang', lang);
+    try { document.documentElement.setAttribute('lang', lang); } catch {}
+  }, []);
+
   // Apply theme on mount and when theme changes
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Apply language attribute on mount/change
+  useEffect(() => {
+    try { document.documentElement.setAttribute('lang', language); } catch {}
+  }, [language]);
 
   // Set token in ApiService whenever token changes and fetch user if needed
   useEffect(() => {
@@ -154,7 +174,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [token]); // Run whenever token changes
 
   // Provide token, user, and setToken function
-  const authValue = React.useMemo(() => ({ token, user, setToken, theme, setTheme, tokenReady }), [token, user, setToken, theme, setTheme, tokenReady]);
+  const authValue = React.useMemo(() => ({ token, user, setToken, theme, setTheme, tokenReady, language, setLanguage }), [token, user, setToken, theme, setTheme, tokenReady, language, setLanguage]);
 
   return (
     <AuthContext.Provider value={authValue}>

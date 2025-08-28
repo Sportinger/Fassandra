@@ -149,7 +149,7 @@ export const Header: React.FC<HeaderProps> = ({
   isDemoMode = false,
   onToggleDemoMode
 }) => {
-  const { user, setToken, theme, setTheme, token } = useAuth();
+  const { user, setToken, theme, setTheme, token, language = 'de', setLanguage } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showLayoutSubmenu, setShowLayoutSubmenu] = useState(false);
@@ -358,13 +358,16 @@ export const Header: React.FC<HeaderProps> = ({
             
             {/* Regular Menu Options */}
             <button onClick={handleRefreshThumbnails} disabled={isRefreshing}>
-              {isRefreshing ? '🔄 Refreshing...' : '🖼️ Refresh'}
+              {isRefreshing ? (language === 'de' ? '🔄 Aktualisiere…' : '🔄 Refreshing...') : (language === 'de' ? '🖼️ Aktualisieren' : '🖼️ Refresh')}
             </button>
             <button onClick={handleThemeToggle}>
-              {theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}
+              {theme === 'dark' ? (language === 'de' ? '☀️ Helles Thema' : '☀️ Light Mode') : (language === 'de' ? '🌙 Dunkles Thema' : '🌙 Dark Mode')}
+            </button>
+            <button onClick={() => setLanguage && setLanguage(language === 'de' ? 'en' : 'de')}>
+              {language === 'de' ? '🌐 Sprache: Deutsch' : '🌐 Language: English'}
             </button>
             <button onClick={() => alert('Details clicked!')}>Details</button>
-            <button onClick={handleLogout}>Logout</button>
+            <button onClick={handleLogout}>{language === 'de' ? 'Abmelden' : 'Logout'}</button>
           </div>
         )}
       </div>
