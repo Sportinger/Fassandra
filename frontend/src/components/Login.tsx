@@ -5,6 +5,7 @@ import { logDebugInfo } from '../utils/debug';
 import authStyles from './Auth.module.css';
 import { getErrorMessage } from '../types/common';
 import logger from '../services/LoggingService';
+import { useUIState } from '../hooks/useUIState';
 /**
  * Login form component for user authentication.
  *
@@ -18,7 +19,10 @@ export const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isExiting, setIsExiting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
   const { setToken, theme, setTheme, language = 'de', setLanguage } = useAuth();
+  const { setShowLogin } = useUIState();
 
   /**
    * Handles form submission for login.
@@ -53,6 +57,16 @@ export const Login: React.FC = () => {
           logDebugInfo('Login', `Using JWT token from login response: ${token ? token.substring(0, 20) + '...' : 'empty'}`);
         }
         
+        // Optionally remember session using localStorage (UI only; token still lives in sessionStorage by design).
+        // We keep this flag if we later want to change persistence strategy.
+        try {
+          if (remember) {
+            window.localStorage.setItem('rememberMe', '1');
+          } else {
+            window.localStorage.removeItem('rememberMe');
+          }
+        } catch {}
+
         setToken(token, response.user);
         logDebugInfo('Login', `Authentication state set after exit animation`);
       }, 300);
@@ -74,25 +88,28 @@ export const Login: React.FC = () => {
       <div className={authStyles.loginLayout}>
         <section className={authStyles.brandPane} aria-label={language === 'de' ? 'Markenbereich' : 'Brand area'}>
           <div className={authStyles.brandInner}>
-            <div className={authStyles.brandLogo} aria-hidden>◎</div>
-            <h1 className={authStyles.brandTitle}>PESSOA</h1>
+            <div className={authStyles.brandLogo} aria-hidden />
+            <h1 className={authStyles.brandTitle}>Fassandra</h1>
             <p className={authStyles.brandTagline}>
-              {language === 'de' ? 'Schreiben. Strukturieren. Zusammenarbeiten.' : 'Write. Organize. Collaborate.'}
+              {language === 'de' ? 'Texte & Cues. Gemeinsam.' : 'Texts & cues. Together.'}
             </p>
-            <div className={authStyles.brandActions}>
-              <button type="button" onClick={handleThemeToggle} className={authStyles.brandActionBtn}>
-                {theme === 'dark' ? (language === 'de' ? 'Helles Thema' : 'Light Mode') : (language === 'de' ? 'Dunkles Thema' : 'Dark Mode')}
-              </button>
-              <button type="button" onClick={() => setLanguage && setLanguage(language === 'de' ? 'en' : 'de')} className={authStyles.brandActionBtn}>
-                {language === 'de' ? 'Sprache: Deutsch' : 'Language: English'}
-              </button>
-            </div>
+            {/* Brand actions intentionally omitted to match mockup */}
           </div>
         </section>
 
         <section className={`${authStyles.formPane} ${isExiting ? authStyles.exiting : ''}`} aria-label={language === 'de' ? 'Anmeldung' : 'Authentication'}>
           <div className={authStyles.authForm}>
+            <div className={authStyles.chipRow} aria-hidden>
+              <span className={`${authStyles.chip} ${authStyles.chipLight}`}>{language === 'de' ? 'LICHT' : 'LIGHT'}</span>
+              <span className={`${authStyles.chip} ${authStyles.chipSound}`}>{language === 'de' ? 'TON' : 'SOUND'}</span>
+              <span className={`${authStyles.chip} ${authStyles.chipVideo}`}>{language === 'de' ? 'VIDEO' : 'VIDEO'}</span>
+            </div>
             <h2 className={authStyles.authTitle}>{language === 'de' ? 'Anmelden' : 'Login'}</h2>
+            <p className={authStyles.authSubtitle}>
+              {language === 'de'
+                ? 'Arbeite mit deinem Ensemble an Szenen, Notizen und Cues.'
+                : 'Work with your ensemble on scenes, notes and cues.'}
+            </p>
             {error && <div className={authStyles.errorMessage}>{error}</div>}
             <form onSubmit={handleSubmit}>
               <div className={authStyles.formGroup}>
@@ -109,18 +126,54 @@ export const Login: React.FC = () => {
               </div>
               <div className={authStyles.formGroup}>
                 <label htmlFor="login-password" className={authStyles.formLabel}>{language === 'de' ? 'Passwort' : 'Password'}</label>
-                <input
-                  id="login-password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={authStyles.formInput}
-                  placeholder={language === 'de' ? 'Passwort eingeben' : 'Enter your password'}
-                  required
-                />
+                <div className={authStyles.inputWithAction}>
+                  <input
+                    id="login-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={authStyles.formInput}
+                    placeholder={language === 'de' ? 'Passwort eingeben' : 'Enter your password'}
+                    required
+                  />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? (language === 'de' ? 'Passwort ausblenden' : 'Hide password') : (language === 'de' ? 'Passwort anzeigen' : 'Show password')}
+                    className={authStyles.inputAction}
+                    onClick={() => setShowPassword(v => !v)}
+                  >
+                    {showPassword ? '🙈' : '👁️'}
+                  </button>
+                </div>
               </div>
-              <button type="submit" className={authStyles.submitButton}>{language === 'de' ? 'Anmelden' : 'Login'}</button>
+
+              <div className={authStyles.formRowHelpers}>
+                <label className={authStyles.checkboxLabel}>
+                  <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+                  <span>{language === 'de' ? 'Angemeldet bleiben' : 'Stay signed in'}</span>
+                </label>
+                <button type="button" className={authStyles.linkMuted} onClick={() => alert(language === 'de' ? 'Funktion noch nicht verfügbar' : 'Not implemented yet')}>
+                  {language === 'de' ? 'Passwort vergessen?' : 'Forgot password?'}
+                </button>
+              </div>
+              <button type="submit" className={authStyles.submitButton}>{language === 'de' ? 'Weiter' : 'Continue'}</button>
+
+              <div className={authStyles.divider} role="separator">
+                <span>{language === 'de' ? 'oder' : 'or'}</span>
+              </div>
+
+              <div className={authStyles.oauthRow}>
+                <button type="button" className={authStyles.oauthBtn} disabled>Google</button>
+                <button type="button" className={authStyles.oauthBtn} disabled>GitHub</button>
+              </div>
             </form>
+
+            <div className={authStyles.footerNote}>
+              {language === 'de' ? 'Neu bei Fassandra? ' : 'New to Fassandra? '}
+              <button type="button" className={authStyles.link} onClick={() => setShowLogin(false)}>
+                {language === 'de' ? 'Jetzt registrieren' : 'Create an account'}
+              </button>
+            </div>
           </div>
         </section>
       </div>

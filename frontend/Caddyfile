@@ -2,10 +2,25 @@
     root * /srv
     file_server
     try_files {path} /index.html
-    
+
     # Enable gzip compression
     encode gzip
-    
+
+    # Cache strategy: no-store for HTML/SPA shell; long cache for hashed assets
+    @static {
+        path *.js *.css *.png *.jpg *.jpeg *.svg *.gif *.webp *.ico *.woff2 *.woff *.ttf
+    }
+    header @static {
+        Cache-Control "public, max-age=31536000, immutable"
+    }
+
+    @html {
+        not path *.js *.css *.png *.jpg *.jpeg *.svg *.gif *.webp *.ico *.woff2 *.woff *.ttf
+    }
+    header @html {
+        Cache-Control "no-store"
+    }
+
     # Security headers
     header {
         X-Frame-Options "SAMEORIGIN"
