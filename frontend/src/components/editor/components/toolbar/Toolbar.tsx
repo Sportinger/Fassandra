@@ -52,24 +52,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const [keyboardManuallyShown, setKeyboardManuallyShown] = useState(false);
   const hiddenInputRef = useRef<HTMLInputElement>(null);
   
-  // Prevent automatic keyboard on mobile unless manually triggered
+  // Hide keyboard when clicking outside editor, but keep editor interactive
   useEffect(() => {
     const isMobile = window.innerWidth <= 767;
     if (!isMobile) return;
-    
-    const preventAutoFocus = (e: FocusEvent) => {
-      // If keyboard is not manually shown and the editor is trying to focus
-      if (!keyboardManuallyShown && editor) {
-        const target = e.target as HTMLElement;
-        // Check if it's the ProseMirror editor
-        if (target.classList.contains('ProseMirror') || target.closest('.ProseMirror')) {
-          e.preventDefault();
-          target.blur();
-        }
-      }
-    };
-    
-    // Hide keyboard when clicking outside editor
+
     const handleOutsideClick = (e: MouseEvent) => {
       if (keyboardManuallyShown) {
         const target = e.target as HTMLElement;
@@ -77,20 +64,36 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         if (!target.closest('.ProseMirror') && !target.closest('.floatingToolbar')) {
           setKeyboardManuallyShown(false);
           hiddenInputRef.current?.blur();
-          editor?.commands.blur();
+          // Do not blur the editor here; allow cursor/selection
         }
       }
     };
-    
-    // Add listener to capture phase to intercept before default behavior
-    document.addEventListener('focusin', preventAutoFocus, true);
+
     document.addEventListener('click', handleOutsideClick);
-    
     return () => {
-      document.removeEventListener('focusin', preventAutoFocus, true);
       document.removeEventListener('click', handleOutsideClick);
     };
-  }, [keyboardManuallyShown, editor]);
+  }, [keyboardManuallyShown]);
+
+  // Suppress virtual keyboard without blocking cursor/selection by hinting inputmode
+  useEffect(() => {
+    try {
+      const isMobile = window.innerWidth <= 767;
+      const pmEl: HTMLElement | null = document.querySelector('.ProseMirror');
+      if (!pmEl) return;
+      if (isMobile && !keyboardManuallyShown) {
+        pmEl.setAttribute('inputmode', 'none');
+        pmEl.setAttribute('autocomplete', 'off');
+        pmEl.setAttribute('autocorrect', 'off');
+        pmEl.setAttribute('autocapitalize', 'off');
+      } else {
+        pmEl.removeAttribute('inputmode');
+        pmEl.removeAttribute('autocomplete');
+        pmEl.removeAttribute('autocorrect');
+        pmEl.removeAttribute('autocapitalize');
+      }
+    } catch {}
+  }, [keyboardManuallyShown, windowWidth]);
 
   // Handle window resize for responsive toolbar height
   useEffect(() => {
@@ -282,13 +285,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const currentCueType = getCurrentCueType();
 
   // Define all possible buttons with their contexts and actions
+  const focusIfNeeded = () => {
+    if (keyboardManuallyShown) {
+      editor?.commands.focus();
+    }
+  };
+
   const allButtons = useMemo((): ToolbarButton[] => [
     // Text formatting buttons (text-formatting context)
     {
       id: 'bold',
       icon: 'B',
       title: 'Bold',
-      action: () => editor?.chain().focus().toggleBold().run(),
+      action: () => { focusIfNeeded(); editor?.chain().toggleBold().run(); },
       isActive: editor?.isActive('bold'),
       contexts: ['text-formatting'],
       order: 1
@@ -297,7 +306,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       id: 'italic',
       icon: 'I',
       title: 'Italic', 
-      action: () => editor?.chain().focus().toggleItalic().run(),
+      action: () => { focusIfNeeded(); editor?.chain().toggleItalic().run(); },
       isActive: editor?.isActive('italic'),
       contexts: ['text-formatting'],
       order: 2
@@ -315,7 +324,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       id: 'align-left',
       icon: '⊢',
       title: 'Align Left',
-      action: () => editor?.chain().focus().setTextAlign('left').run(),
+      action: () => { focusIfNeeded(); editor?.chain().setTextAlign('left').run(); },
       isActive: editor?.isActive({ textAlign: 'left' }),
       contexts: ['text-formatting'],
       order: 6
@@ -324,7 +333,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       id: 'align-center',
       icon: '‖',
       title: 'Align Center',
-      action: () => editor?.chain().focus().setTextAlign('center').run(),
+      action: () => { focusIfNeeded(); editor?.chain().setTextAlign('center').run(); },
       isActive: editor?.isActive({ textAlign: 'center' }),
       contexts: ['text-formatting'],
       order: 7
@@ -333,7 +342,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       id: 'align-right',
       icon: '⊣',
       title: 'Align Right',
-      action: () => editor?.chain().focus().setTextAlign('right').run(),
+      action: () => { focusIfNeeded(); editor?.chain().setTextAlign('right').run(); },
       isActive: editor?.isActive({ textAlign: 'right' }),
       contexts: ['text-formatting'],
       order: 8
@@ -369,7 +378,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Toggle Strike-through',
       action: () => {
         logger.debug('Toolbar', 'Toggling strike-through');
-        editor?.chain().focus().toggleDialogueStrikeThrough().run();
+        focusIfNeeded();
+        editor?.chain().toggleDialogueStrikeThrough().run();
       },
       isActive: (() => {
         let selection: any = null;
@@ -424,7 +434,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       action: () => {
         logger.debug('Toolbar', 'Clearing speaker name');
         // Clear the speaker text
-        editor?.chain().focus().deleteSelection().insertContent('').run();
+        focusIfNeeded();
+        editor?.chain().deleteSelection().insertContent('').run();
       },
       contexts: ['speaker-select'],
       order: 7,
@@ -435,7 +446,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Exit Dialogue Block (Create Normal Text)',
       action: () => {
         logger.debug('Toolbar', 'Exiting dialogue block');
-        editor?.chain().focus().exitDialogueBlock().run();
+        focusIfNeeded();
+        editor?.chain().exitDialogueBlock().run();
       },
       contexts: ['dialogue-layout', 'speaker-select'],
       order: 8,
@@ -448,7 +460,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Insert Dialogue Block',
       action: () => {
         logger.debug('Toolbar', 'Inserting dialogue block');
-        editor?.chain().focus().insertDialogueBlock().run();
+        focusIfNeeded();
+        editor?.chain().insertDialogueBlock().run();
       },
       contexts: ['empty-page', 'default'], // 🔧 FIX: Add to default context so users can always insert dialogue
       order: 1
@@ -460,7 +473,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       action: () => {
         logger.debug('Toolbar', 'Split page');
         // Insert a page break or new page
-        editor?.chain().focus().insertContent('<hr>').run();
+        focusIfNeeded();
+        editor?.chain().insertContent('<hr>').run();
       },
       contexts: ['empty-page'],
       order: 2
@@ -542,7 +556,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           // Hide keyboard
           hiddenInputRef.current?.blur();
           setKeyboardManuallyShown(false);
-          editor?.commands.blur();
         } else {
           // Show keyboard
           hiddenInputRef.current?.focus();
@@ -577,7 +590,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             // Delete the entire scene block
             const pos = $from.before(depth);
             const endPos = $from.after(depth);
-            editor?.chain().focus().deleteRange({ from: pos, to: endPos }).run();
+        focusIfNeeded();
+        editor?.chain().deleteRange({ from: pos, to: endPos }).run();
             
             // Renumber scenes after deletion
             setTimeout(() => {
@@ -607,7 +621,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       id: 'add-scene',
       icon: <ClapperboardIcon />,
       title: 'Add Scene',
-      action: () => editor?.commands.insertSceneBlock(),
+      action: () => { focusIfNeeded(); editor?.commands.insertSceneBlock(); },
       contexts: ['default'],
       order: 11
     },
@@ -655,7 +669,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       title: 'Delete Cue',
       action: () => {
         logger.debug('Toolbar', 'Deleting cue block');
-        editor?.chain().focus().deleteNode('cueBlock').run();
+        focusIfNeeded();
+        editor?.chain().deleteNode('cueBlock').run();
       },
       contexts: ['cue-select'],
       order: 2
@@ -684,12 +699,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         
         if (cueBlockPos >= 0 && cueBlockNode) {
           const endPos = cueBlockPos + (cueBlockNode as any).nodeSize;
+          focusIfNeeded();
           editor?.chain()
-            .focus()
             .setTextSelection(endPos)
             .insertContent({ type: 'paragraph' })
             .run();
-        }
+      }
       },
       contexts: ['cue-select'],
       order: 3

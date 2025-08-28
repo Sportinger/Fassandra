@@ -106,7 +106,8 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
     logger.debug('FontSizeDropdown', `[FontSize] Applying ${size}px to selection`);
     
     // Use our custom FontSize extension command
-    editor.chain().focus().setFontSize(`${size}px`).run();
+    // Avoid forcing focus to prevent mobile keyboard popup
+    editor.chain().setFontSize(`${size}px`).run();
     
     // Debug: Check the HTML output
     setTimeout(() => {

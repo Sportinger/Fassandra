@@ -143,6 +143,82 @@
   text-align: center;
 }
 
+/* Password requirements popover */
+.relativeGroup {
+  position: relative;
+}
+
+.passwordPopover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: auto;
+  z-index: 10;
+  background: #1a1a1a;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.3);
+  padding: 10px 12px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.passwordPopoverHeader {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--color-text-secondary);
+}
+
+.passwordList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+.passwordList li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.passwordList li .mark {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.passwordList li.ok .mark {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981; /* green checkmark */
+  border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+.passwordList li.bad .mark {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.passwordList li .text {
+  opacity: 0.95;
+}
+
+@media (max-width: 480px) {
+  .passwordPopover {
+    max-width: none;
+  }
+}
+
 /* Dark theme specific adjustments */
 :root[data-theme="dark"] .formInput {
   background-color: rgba(255, 255, 255, 0.05);

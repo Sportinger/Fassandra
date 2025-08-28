@@ -106,7 +106,29 @@ export function isAppError(error: unknown): error is AppError {
  * Safe error message extraction
  */
 export function getErrorMessage(error: unknown): string {
+  // Prefer parsing ApiError payloads to show backend-provided details
   if (isError(error)) {
+    try {
+      const anyErr = error as any;
+      if (anyErr && (anyErr.name === 'ApiError' || typeof anyErr.body === 'string')) {
+        const bodyText: string | undefined = anyErr.body;
+        if (bodyText && bodyText.trim().length > 0) {
+          try {
+            const parsed = JSON.parse(bodyText);
+            if (parsed && typeof parsed === 'object') {
+              if (Array.isArray(parsed.details) && parsed.details.length > 0) {
+                return parsed.details.join('\n');
+              }
+              if (typeof parsed.error === 'string' && parsed.error.length > 0) {
+                return parsed.error;
+              }
+            }
+          } catch (_) {
+            // fall through to default message
+          }
+        }
+      }
+    } catch (_) {}
     return error.message;
   }
   if (isAppError(error)) {
