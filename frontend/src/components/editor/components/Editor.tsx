@@ -3,11 +3,10 @@ import { useAuth } from '../../../AuthContext';
 import { Header } from '../../Header';
 import { useResponsiveDesign } from '../hooks/useResponsiveDesign';
 import { useEditorCore } from '../hooks/useEditorCore';
-import { PageCanvas } from './page/PageCanvas';
 import { Toolbar } from './toolbar/Toolbar';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { StatusIndicator } from './ui/StatusIndicator';
-import { SinglePageView, MultiPageView } from '../ViewModes';
+import { SinglePageView } from '../ViewModes';
 import { AudioTranscription } from './AudioTranscription';
 import { MessageSquareQuoteIcon } from '../icons';
 import type { EditorProps, ViewMode } from '../types';
@@ -18,7 +17,7 @@ import '../styles/responsive.css';
 import '../styles/toolbar.css';
 import '../styles/cue-blocks.css';
 import '../styles/scene-blocks.css';
-import '../styles/page-indicators.css';
+// Removed page-indicator styles (page breaks deprecated)
 import '../styles/search.css';
 import '../styles/cue-connections.css';
 import '../styles/rehearsal-line.css';
@@ -538,12 +537,12 @@ export const Editor: React.FC<EditorProps> = ({
       
       {/* Removed demo mode status indicator - development utility */}
       
-      {/* Main editor content with ViewMode support */}
-      {viewMode === 'single-page' ? (
+      {/* Main editor content (multipage removed; always single page) */}
+      {
         <SinglePageView 
-          showRuler={showRuler}
+          showRuler={false}
           onToggleRuler={() => setShowRuler(!showRuler)}
-          onToggleViewMode={() => setViewMode('multiple-pages')}
+          onToggleViewMode={() => setViewMode(viewMode === 'single-page' ? 'multiple-pages' : 'single-page')}
           rehearsalMode={rehearsalMode}
           rehearsalLinePosition={rehearsalLinePosition}
           onOutsideClick={() => {
@@ -688,156 +687,7 @@ export const Editor: React.FC<EditorProps> = ({
             </div>
           )}
         </SinglePageView>
-      ) : (
-        <MultiPageView 
-          showRuler={showRuler}
-          onToggleRuler={() => setShowRuler(!showRuler)}
-          onToggleViewMode={() => setViewMode('single-page')}
-          rehearsalMode={rehearsalMode}
-          rehearsalLinePosition={rehearsalLinePosition}
-          onOutsideClick={() => {
-            try {
-              if (editor) {
-                const { state } = editor;
-                const { selection } = state;
-                if (selection && !selection.empty) {
-                  const pos = selection.head;
-                  editor.chain().setTextSelection(pos).run();
-                }
-                editor.commands.blur();
-              }
-            } catch {}
-            hideContextMenu();
-            setEditAllSpeakers(false);
-            setCurrentSpeakerName(null);
-          }}
-        >
-          {editor ? (
-            <div 
-              className="editor-content"
-              onContextMenu={handleContextMenu}
-              onClick={(e) => {
-                // Close context menu on click
-                setLocalContextMenu(prev => ({ ...prev, visible: false }));
-                
-                // Handle editor click for context detection
-                const target = e.target as HTMLElement;
-                const speakerElement = target.closest('[data-type="speaker"]');
-                const dialogueTextElement = target.closest('[data-type="dialogue-text"]');
-                const dialogueBlockElement = target.closest('[data-type="dialogue-block"]');
-                const cueBlockElement = target.closest('[data-type="cue-block"]');
-                const sceneBlockElement = target.closest('[data-type="scene-block"]');
-                
-                
-                // Remove any existing selection classes first
-                document.querySelectorAll('[data-type="speaker"].speaker-selected').forEach(el => {
-                  el.classList.remove('speaker-selected');
-                });
-                document.querySelectorAll('[data-type="cue-block"].cue-selected').forEach(el => {
-                  el.classList.remove('cue-selected');
-                });
-                document.querySelectorAll('[data-type="scene-block"].scene-selected').forEach(el => {
-                  el.classList.remove('scene-selected');
-                });
-                
-                if (speakerElement) {
-                  // Clicked on speaker - show speaker-select context
-                  debugLog('[Editor] Clicked on speaker element:', speakerElement);
-                  
-                  const speakerName = speakerElement.textContent?.trim() || '';
-                  setCurrentSpeakerName(speakerName);
-                  
-                  // Add selected class to clicked speaker
-                  speakerElement.classList.add('speaker-selected');
-                  
-                  // If editAllSpeakers is true, highlight all speakers with the same name
-                  if (editAllSpeakers) {
-                    document.querySelectorAll('[data-type="speaker"]').forEach(el => {
-                      if (el.textContent?.trim() === speakerName) {
-                        el.classList.add('speaker-selected');
-                      }
-                    });
-                  }
-                  
-                  showContextMenu(e.clientX, e.clientY, 'speaker-select');
-                  e.stopPropagation(); // Prevent default toolbar from showing
-                } else if (dialogueTextElement && dialogueBlockElement) {
-                  // Clicked inside dialogue text - also show speaker-select context
-                  debugLog('[Editor] Clicked on dialogue text element:', dialogueTextElement);
-                  
-                  // Find and highlight the speaker element within the same dialogue block
-                  const speakerInBlock = dialogueBlockElement.querySelector('[data-type="speaker"]');
-                  if (speakerInBlock) {
-                    const speakerName = speakerInBlock.textContent?.trim() || '';
-                    setCurrentSpeakerName(speakerName);
-                    
-                    speakerInBlock.classList.add('speaker-selected');
-                    
-                    // If editAllSpeakers is true, highlight all speakers with the same name
-                    if (editAllSpeakers) {
-                      document.querySelectorAll('[data-type="speaker"]').forEach(el => {
-                        if (el.textContent?.trim() === speakerName) {
-                          el.classList.add('speaker-selected');
-                        }
-                      });
-                    }
-                  }
-                  
-                  showContextMenu(e.clientX, e.clientY, 'speaker-select');
-                  e.stopPropagation(); // Prevent default toolbar from showing
-                } else if (cueBlockElement) {
-                  // Clicked on cue block - show cue-select context
-                  debugLog('[Editor] Clicked on cue block element:', cueBlockElement);
-                  
-                  // Add selected class to clicked cue block
-                  cueBlockElement.classList.add('cue-selected');
-                  
-                  showContextMenu(e.clientX, e.clientY, 'cue-select');
-                  e.stopPropagation(); // Prevent default toolbar from showing
-                } else if (sceneBlockElement) {
-                  // Clicked on scene block - show scene-select context
-                  debugLog('[Editor] Clicked on scene block element:', sceneBlockElement);
-                  
-                  // Add selected class to clicked scene block
-                  sceneBlockElement.classList.add('scene-selected');
-                  
-                  showContextMenu(e.clientX, e.clientY, 'scene-select');
-                  e.stopPropagation(); // Prevent default toolbar from showing
-                } else {
-                  // Clicked elsewhere - hide any special context and clear speaker selection
-                  // This allows the toolbar to show text-formatting when text is selected
-                  hideContextMenu();
-                  setEditAllSpeakers(false);
-                  setCurrentSpeakerName(null);
-                }
-}}
-            >
-              {/* This is where the TipTap editor content will render */}
-              <div ref={(node) => {
-                if (node && editor && !node.contains(editor.options.element)) {
-                  node.appendChild(editor.options.element);
-                }
-              }} />
-            </div>
-          ) : (
-            <div className="editor-loading">
-              <LoadingSpinner size="lg" />
-              <div>
-                <p>Initializing collaborative editor...</p>
-                {ydoc && provider ? (
-                  <p style={{ fontSize: '14px', opacity: 0.7 }}>
-                    ✅ Collaboration ready - Creating editor...
-                  </p>
-                ) : (
-                  <p style={{ fontSize: '14px', opacity: 0.7 }}>
-                    🔄 Status: {connectionStatus} - Setting up real-time sync...
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-        </MultiPageView>
-      )}
+      }
       
       {/* Context Menu */}
       {localContextMenu.visible && (

@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Ruler } from '../Ruler';
 import '../styles/responsive.css';
 
 import logger from '../../../services/LoggingService';
@@ -78,7 +77,6 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
 
   return (
     <div className={`single-page-view ${className}`} onClick={handleDarkAreaClick}>
-      {showRuler && <Ruler />}
       <div className="singlePageContainer" style={{ position: 'relative' }}>
         <div className="dinA4Page">
           {children}
