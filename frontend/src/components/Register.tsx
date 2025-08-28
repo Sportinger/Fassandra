@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { register } from '../api';
 import styles from './Header.module.css';
 import authStyles from './Auth.module.css';
 import { getErrorMessage } from '../types/common';
 import logger from '../services/LoggingService';
+import { PasswordRequirements, passwordIsValid } from './PasswordRequirements';
 /**
  * Registration form component for new users.
  *
@@ -18,6 +19,8 @@ export const Register: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [showPasswordHelp, setShowPasswordHelp] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const { setToken, theme, setTheme } = useAuth();
@@ -34,6 +37,12 @@ export const Register: React.FC = () => {
       setError('Username is required.');
       return;
     }
+    // Client-side password validation to provide immediate guidance
+    if (!passwordIsValid(password)) {
+      setShowPasswordHelp(true);
+      setError('Please meet the password requirements.');
+      return;
+    }
     try {
       const response = await register(email, username, password);
       
@@ -48,7 +57,12 @@ export const Register: React.FC = () => {
       }, 300);
       
     } catch (err) {
-      setError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setError(msg);
+      // If backend indicates password policy issues, show the helper
+      if (/password must/i.test(msg)) {
+        setShowPasswordHelp(true);
+      }
       logger.error('Register', 'Error:', err);
     }
   };
@@ -113,17 +127,37 @@ export const Register: React.FC = () => {
                 autoComplete="username"
               />
             </div>
-            <div className={authStyles.formGroup}>
+            <div className={`${authStyles.formGroup} ${authStyles.relativeGroup}`}>
               <label htmlFor="register-password" className={authStyles.formLabel}>Password</label>
               <input
                 id="register-password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPassword(val);
+                  // Show helper while focused if not valid
+                  setShowPasswordHelp(passwordFocused && val.length > 0 && !passwordIsValid(val));
+                }}
+                onFocus={() => {
+                  setPasswordFocused(true);
+                  setShowPasswordHelp(password.length > 0 && !passwordIsValid(password));
+                }}
+                onBlur={() => {
+                  setPasswordFocused(false);
+                  // Keep popup visible only if there is an error message suggesting requirements
+                  if (!/password must/i.test(error || '')) {
+                    setShowPasswordHelp(false);
+                  }
+                }}
                 className={authStyles.formInput}
                 placeholder="Create a password"
                 required
                 autoComplete="new-password"
+              />
+              <PasswordRequirements
+                password={password}
+                visible={showPasswordHelp}
               />
             </div>
             <button type="submit" className={authStyles.submitButton}>Register</button>
