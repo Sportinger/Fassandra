@@ -1,10 +1,10 @@
 {
-  "appId": "com.romankuskowski.theatereditor",
-  "appName": "Theater Editor",
+  "appId": "com.pessoa.app",
+  "appName": "Pessoa",
   "webDir": "dist",
   "server": {
     "androidScheme": "https",
     "cleartext": false,
-    "allowNavigation": ["https://fassandra.de/*", "https://www.fassandra.de/*", "https://91.99.69.115/*"]
+    "allowNavigation": ["https://fassandra.de/*", "https://91.99.69.115/*"]
   }
 }
