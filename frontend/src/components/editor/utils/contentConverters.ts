@@ -12,7 +12,7 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
     return '<p></p>'; // Default empty paragraph
   }
 
-  let currentPageNumber = 0;
+  // Page indicators removed; ignore page numbers
   const convertedContent = blocks.map((block, index) => {
     logger.debug('contentConverters', `[Content Converter] Processing block ${index}:`, { 
       blockType: block.block_type, 
@@ -22,16 +22,6 @@ export const convertBlocksToTiptapContent = (blocks: any[]) => {
     });
 
     let result = '';
-    
-    // Check if we need to insert a page indicator
-    if (block.page_number && block.page_number !== currentPageNumber) {
-      currentPageNumber = block.page_number;
-      // Insert page indicator before this content
-      result += `<div data-type="page-indicator" data-page-number="${currentPageNumber}" class="page-indicator">
-        <span class="page-label" contenteditable="false">SEITE ${currentPageNumber}</span>
-      </div>`;
-      logger.debug('contentConverters', `[Content Converter] Inserting page indicator for page ${currentPageNumber}`);
-    }
     
     const blockType = block.block_type;
     const contentJsonString = block.content;

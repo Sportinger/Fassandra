@@ -7,8 +7,7 @@ export { SpeakerDropdown } from './SpeakerDropdown';
 export { ViewModeDropdown } from './ViewModeDropdown';
 export * from './icons';
 export { PrinterIcon, LayoutPanelTopIcon } from './icons';
-export { Ruler } from './Ruler';
-export { SinglePageView, MultiPageView } from './ViewModes';
+export { SinglePageView } from './ViewModes';
 
 // New architecture components
 export { Toolbar } from './components/toolbar/Toolbar';

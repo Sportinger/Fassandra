@@ -148,10 +148,36 @@ html, body {
 }
 
 /* Multi-page view: fix each page to exact DIN A4 height */
-.multi-page-view .dinA4Page {
-  height: var(--page-height); /* Fixed height, not min-height */
-  overflow: hidden; /* Hide content that doesn't fit */
-  padding: 0; /* Remove default padding - we control margins manually with ruler */
+.multi-page-view .dinA4Page { padding: 0; }
+
+/* Virtual multipage: continuous editor with visual frames */
+.multi-page-view .virtualPaged {
+  background: transparent;
+  box-shadow: none;
+}
+
+.pageFramesLayer .pageSurface {
+  position: absolute;
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: var(--color-page-background, #fff);
+  box-shadow: var(--shadow-lg);
+}
+
+.pageFramesLayer .pageGuide {
+  position: absolute;
+  left: 0; right: 0;
+  height: 0;
+  border-top: 1px dashed rgba(255,255,255,0.25);
+}
+.pageFramesLayer .pageGuide.header { border-top-color: rgba(59,130,246,0.4); }
+.pageFramesLayer .pageGuide.footer { border-top-color: rgba(239,68,68,0.4); }
+
+.pageFramesLayer .pageNumber {
+  position: absolute;
+  bottom: 10px;
+  right: 20px;
+  font-size: 12px;
+  color: var(--color-text-secondary, #666);
 }
 
 /* Apply font styles to multi-page view as well */
