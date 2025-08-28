@@ -23,7 +23,7 @@ export const Register: React.FC = () => {
   const [showPasswordHelp, setShowPasswordHelp] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
-  const { setToken, theme, setTheme } = useAuth();
+  const { setToken, theme, setTheme, language = 'de', setLanguage } = useAuth();
 
   /**
    * Handles form submission for registration.
@@ -34,13 +34,13 @@ export const Register: React.FC = () => {
     e.preventDefault();
     setError(null);
     if (!username) {
-      setError('Username is required.');
+      setError(language === 'de' ? 'Benutzername ist erforderlich.' : 'Username is required.');
       return;
     }
     // Client-side password validation to provide immediate guidance
     if (!passwordIsValid(password)) {
       setShowPasswordHelp(true);
-      setError('Please meet the password requirements.');
+      setError(language === 'de' ? 'Bitte erfüllen Sie die Passwort-Anforderungen.' : 'Please meet the password requirements.');
       return;
     }
     try {
@@ -88,7 +88,10 @@ export const Register: React.FC = () => {
           {isMenuOpen && (
             <div className={styles.dropdownMenu} onMouseLeave={() => setIsMenuOpen(false)}>
               <button onClick={handleThemeToggle}>
-                {theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}
+                {theme === 'dark' ? (language === 'de' ? '☀️ Helles Thema' : '☀️ Light Mode') : (language === 'de' ? '🌙 Dunkles Thema' : '🌙 Dark Mode')}
+              </button>
+              <button onClick={() => setLanguage && setLanguage(language === 'de' ? 'en' : 'de')}>
+                {language === 'de' ? '🌐 Sprache: Deutsch' : '🌐 Language: English'}
               </button>
             </div>
           )}
@@ -98,37 +101,37 @@ export const Register: React.FC = () => {
       {/* Registration form with top margin to account for fixed header */}
       <div className={`${authStyles.authContainer} ${isExiting ? authStyles.exiting : ''}`} style={{ marginTop: '80px' }}>
         <div className={authStyles.authForm}>
-          <h2 className={authStyles.authTitle}>Register</h2>
+          <h2 className={authStyles.authTitle}>{language === 'de' ? 'Registrieren' : 'Register'}</h2>
           {error && <div className={authStyles.errorMessage}>{error}</div>}
           <form onSubmit={handleSubmit}>
             <div className={authStyles.formGroup}>
-              <label htmlFor="register-email" className={authStyles.formLabel}>Email</label>
+              <label htmlFor="register-email" className={authStyles.formLabel}>{language === 'de' ? 'E-Mail' : 'Email'}</label>
               <input
                 id="register-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={authStyles.formInput}
-                placeholder="Enter your email"
+                placeholder={language === 'de' ? 'E-Mail eingeben' : 'Enter your email'}
                 required
                 autoComplete="email"
               />
             </div>
             <div className={authStyles.formGroup}>
-              <label htmlFor="register-username" className={authStyles.formLabel}>Username</label>
+              <label htmlFor="register-username" className={authStyles.formLabel}>{language === 'de' ? 'Benutzername' : 'Username'}</label>
               <input
                 id="register-username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className={authStyles.formInput}
-                placeholder="Choose a username"
+                placeholder={language === 'de' ? 'Benutzernamen wählen' : 'Choose a username'}
                 required
                 autoComplete="username"
               />
             </div>
             <div className={`${authStyles.formGroup} ${authStyles.relativeGroup}`}>
-              <label htmlFor="register-password" className={authStyles.formLabel}>Password</label>
+              <label htmlFor="register-password" className={authStyles.formLabel}>{language === 'de' ? 'Passwort' : 'Password'}</label>
               <input
                 id="register-password"
                 type="password"
@@ -151,7 +154,7 @@ export const Register: React.FC = () => {
                   }
                 }}
                 className={authStyles.formInput}
-                placeholder="Create a password"
+                placeholder={language === 'de' ? 'Passwort erstellen' : 'Create a password'}
                 required
                 autoComplete="new-password"
               />
@@ -160,7 +163,7 @@ export const Register: React.FC = () => {
                 visible={showPasswordHelp}
               />
             </div>
-            <button type="submit" className={authStyles.submitButton}>Register</button>
+            <button type="submit" className={authStyles.submitButton}>{language === 'de' ? 'Registrieren' : 'Register'}</button>
           </form>
         </div>
       </div>
