@@ -316,7 +316,7 @@ html, body {
 /* Ensure legacy wrapped content aligns right as well */
 .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="speaker"] p {
   text-align: center !important; /* ensure wrapped content is centered */
-^  margin: 0;
+  margin: 0;
 }
 
 .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="dialogue-text"] {

@@ -87,6 +87,8 @@
   background: transparent;
   cursor: pointer;
   border-radius: var(--radius-md);
+  /* Ensure global button padding doesn't shrink icon area */
+  padding: 0;
   
   /* Typography */
   font-size: calc(var(--toolbar-button-size) * 0.4);
@@ -526,6 +528,8 @@
     height: 48px;
     min-width: 48px;
     min-height: 48px;
+    /* Explicitly remove default button padding on mobile */
+    padding: 0;
     /* Remove extra margins that cause spacing issues */
     margin: 0;
     flex: 0 0 auto; /* Don't grow or shrink, maintain size */
