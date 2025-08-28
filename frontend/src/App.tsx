@@ -135,12 +135,7 @@ function App(): JSX.Element {
     viewComponent = (
       <RouteErrorBoundary routeName="Authentication">
         {showLogin ? (
-          <>
-            <Login />
-            <button onClick={() => setShowLogin(false)}>
-              {language === 'de' ? 'Zur Registrierung' : 'Go to Register'}
-            </button>
-          </>
+          <Login />
         ) : (
           <>
             <Register />
@@ -213,7 +208,7 @@ function App(): JSX.Element {
             </ErrorBoundary>
           )}
 
-          <main className="appContent">
+          <main className={token ? 'appContent' : 'appContent appContentFull appContentNoHeader'}>
             {viewComponent}
             
             {token && isUploaderOpen && (

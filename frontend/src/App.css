@@ -13,6 +13,16 @@
   box-sizing: border-box;
 }
 
+/* Full-bleed variant (e.g., for auth screens) */
+.appContentFull {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.appContentNoHeader {
+  padding-top: 0 !important;
+}
+
 /* === MOBILE FULL-WIDTH OVERRIDE === */
 @media (max-width: 768px) {
   #root {
