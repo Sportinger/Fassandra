@@ -57,8 +57,22 @@ import type {
 // All traffic (HTTP + WebSocket) goes through frontend SSL termination
 // Frontend proxy (vite.config.ts) forwards to backend with ws: true enabled
 // Use environment variable if available (for production), otherwise construct from window location (for dev)
-const WS_BASE_URL = typeof window !== 'undefined' 
-  ? (import.meta.env.VITE_WS_BASE_URL || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`)
+const WS_BASE_URL = typeof window !== 'undefined'
+  ? (() => {
+      const sameOrigin = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/collab`;
+      const envVal = (import.meta as any).env?.VITE_WS_BASE_URL as string | undefined;
+      if (!envVal) return sameOrigin;
+      try {
+        const envUrl = new URL(envVal);
+        // If env host differs from current, prefer same-origin to satisfy CSP/connect-src 'self'
+        if (envUrl.host !== window.location.host) {
+          return sameOrigin;
+        }
+        return `${envUrl.protocol}//${envUrl.host}${envUrl.pathname.replace(/\/$/, '')}`;
+      } catch {
+        return sameOrigin;
+      }
+    })()
   : '/api/collab';
 
 // 🔧 FIXED: Reduce console spam - only log important events

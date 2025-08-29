@@ -63,16 +63,36 @@ export class ApiService {
             
             logger.debug('ApiService', '[ApiService] 📱 Capacitor app detected - using backend:', this.baseUrl);
         } else {
-            // In browser, use relative URLs (empty string) or configured URL
-            const envBaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) ||
+            // In browser, strongly prefer same-origin to avoid CSP and cookie issues
+            const envBaseUrlRaw = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) ||
                 (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) ||
                 '';
-            
-            // Handle quoted empty strings and clean up
-            const cleanEnvUrl = envBaseUrl.replace(/^["']|["']$/g, '').trim();
-            
-            this.baseUrl = baseUrl || (cleanEnvUrl !== '' ? cleanEnvUrl : '');
-            
+
+            const cleanEnvUrl = envBaseUrlRaw.replace(/^["']|["']$/g, '').trim();
+
+            let resolvedBase = '';
+            if (cleanEnvUrl) {
+                try {
+                    const envUrl = new URL(cleanEnvUrl);
+                    const currentOrigin = window.location.origin;
+                    if (envUrl.origin !== currentOrigin) {
+                        // Mismatch: use same-origin to keep connect-src 'self' and cookies working across apex/www
+                        logger.warn('ApiService', '[ApiService] Env base URL differs from current origin; using same-origin', {
+                            envOrigin: envUrl.origin,
+                            currentOrigin,
+                        });
+                        resolvedBase = '';
+                    } else {
+                        resolvedBase = envUrl.origin;
+                    }
+                } catch {
+                    // If env value is not a valid URL, ignore it
+                    resolvedBase = '';
+                }
+            }
+
+            this.baseUrl = baseUrl || resolvedBase;
+
             logger.debug('ApiService', '[ApiService] 🌐 Browser context - base URL:', JSON.stringify(this.baseUrl));
         }
         

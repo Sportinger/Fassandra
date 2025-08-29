@@ -41,6 +41,24 @@ fn get_same_site_setting() -> SameSite {
     SameSite::None
 }
 
+/// Optional cookie domain for sharing across subdomains in production
+/// If `COOKIE_DOMAIN` is set (e.g., ".fassandra.de"), cookies will include this domain
+fn get_cookie_domain() -> Option<String> {
+    // Only apply a custom domain in production contexts
+    let is_prod = std::env::var("PRODUCTION").is_ok()
+        || std::env::var("RUST_ENV").unwrap_or_default() == "production";
+
+    if !is_prod {
+        return None;
+    }
+
+    // Expect a value like ".fassandra.de" to cover apex + subdomains
+    match std::env::var("COOKIE_DOMAIN") {
+        Ok(v) if !v.trim().is_empty() => Some(v.trim().to_string()),
+        _ => None,
+    }
+}
+
 
 /// CSRF token store - in production, this should be in Redis or database
 pub type CsrfTokenStore = Arc<RwLock<HashMap<String, (Uuid, chrono::DateTime<Utc>)>>>;
@@ -52,13 +70,18 @@ pub fn create_csrf_store() -> CsrfTokenStore {
 
 /// Sets an authentication cookie with the JWT token
 pub fn set_auth_cookie(cookies: &Cookies, token: &str) -> Result<()> {
-    let cookie = Cookie::build((AUTH_COOKIE_NAME, token.to_string()))
+    let mut builder = Cookie::build((AUTH_COOKIE_NAME, token.to_string()))
         .path("/")
         .max_age(time::Duration::days(COOKIE_MAX_AGE_DAYS))
         .same_site(get_same_site_setting())
         .http_only(true)
-        .secure(should_use_secure_cookies()) // Secure when using HTTPS
-        .build();
+        .secure(should_use_secure_cookies()); // Secure when using HTTPS
+
+    if let Some(domain) = get_cookie_domain() {
+        builder = builder.domain(domain);
+    }
+
+    let cookie = builder.build();
     
     cookies.add(cookie);
     Ok(())
@@ -66,13 +89,18 @@ pub fn set_auth_cookie(cookies: &Cookies, token: &str) -> Result<()> {
 
 /// Removes the authentication cookie
 pub fn remove_auth_cookie(cookies: &Cookies) {
-    let cookie = Cookie::build((AUTH_COOKIE_NAME, ""))
+    let mut builder = Cookie::build((AUTH_COOKIE_NAME, ""))
         .path("/")
         .max_age(time::Duration::seconds(0))
         .same_site(get_same_site_setting())
         .http_only(true)
-        .secure(should_use_secure_cookies()) // Match the setting used when creating the cookie
-        .build();
+        .secure(should_use_secure_cookies()); // Match the setting used when creating the cookie
+
+    if let Some(domain) = get_cookie_domain() {
+        builder = builder.domain(domain);
+    }
+
+    let cookie = builder.build();
     
     cookies.add(cookie);
 }
@@ -89,13 +117,18 @@ pub fn generate_csrf_token() -> String {
 
 /// Sets a CSRF token cookie
 pub fn set_csrf_cookie(cookies: &Cookies, token: &str) {
-    let cookie = Cookie::build((CSRF_COOKIE_NAME, token.to_string()))
+    let mut builder = Cookie::build((CSRF_COOKIE_NAME, token.to_string()))
         .path("/")
         .max_age(time::Duration::days(COOKIE_MAX_AGE_DAYS))
         .same_site(get_same_site_setting())
         .http_only(false) // CSRF token needs to be readable by JavaScript
-        .secure(should_use_secure_cookies()) // Secure when using HTTPS
-        .build();
+        .secure(should_use_secure_cookies()); // Secure when using HTTPS
+
+    if let Some(domain) = get_cookie_domain() {
+        builder = builder.domain(domain);
+    }
+
+    let cookie = builder.build();
     
     cookies.add(cookie);
 }

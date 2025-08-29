@@ -125,6 +125,43 @@
   border-radius: 3px;
 }
 
+/* Tilt effect using CSS variables with scale (match ScriptCard) */
+.tiltCard {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  --shadow-x: 0px;
+  --shadow-y: 8px;
+  --hover: 0;
+  --parallax-x: 0px;
+  --parallax-y: 0px;
+
+  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) scale(calc(1 + var(--hover) * 0.03)) !important;
+  box-shadow: var(--shadow-x) var(--shadow-y) 20px rgba(0, 0, 0, 0.15) !important;
+  transform-style: preserve-3d;
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+/* Subtle parallax on placeholder text and progress */
+.tiltCard .uploadTitle {
+  transform: translate3d(
+    calc(var(--parallax-x) * 0.5),
+    calc(var(--parallax-y) * 0.5),
+    15px
+  ) scale(calc(1 + var(--hover) * 0.02));
+  transition: transform 0.15s ease-out;
+}
+
+.tiltCard .uploadStage,
+.tiltCard .progressBar,
+.tiltCard .progressText {
+  transform: translate3d(
+    calc(var(--parallax-x) * 0.35),
+    calc(var(--parallax-y) * 0.35),
+    10px
+  ) scale(calc(1 + var(--hover) * 0.01));
+  transition: transform 0.15s ease-out;
+}
+
 .uploadTitle {
   font-size: 1.1rem;
   font-weight: 600;

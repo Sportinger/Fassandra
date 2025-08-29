@@ -79,6 +79,8 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
     <div className={`single-page-view ${className}`} onClick={handleDarkAreaClick}>
       <div className="singlePageContainer" style={{ position: 'relative' }}>
         <div className="dinA4Page">
+          {/* Simple page indicator badge for single page view */}
+          <div className="page-number-indicator" aria-label="Page number">Page 1</div>
           {children}
         </div>
         

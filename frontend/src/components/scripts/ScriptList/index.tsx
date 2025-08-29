@@ -18,6 +18,7 @@ import { DeleteConfirmModal } from '../modals/DeleteConfirmModal';
 import { ScriptCard } from '../ScriptCard';
 import { ScriptCreator } from '../ScriptCreator';
 import { sessionManager } from '../services/SessionManager';
+import { useCssTiltWithAccelerometer } from '../../../hooks/useCssTiltWithAccelerometer';
 import logger from '../../../services/LoggingService';
 import styles from './ScriptList.module.css';
 
@@ -329,29 +330,39 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     }
   };
 
-  const renderUploadPlaceholder = (placeholder: Script) => {
+  const UploadPlaceholderCard: React.FC<{ placeholder: Script }> = ({ placeholder }) => {
+    const tilt = useCssTiltWithAccelerometer({ maxTilt: 10, sensitivity: 1.2, mobileMultiplier: 0.6 });
     return (
-      <div key={placeholder.id} className={styles.uploadPlaceholder}>
-        <div className={styles.uploadTitle}>{placeholder.title}</div>
-        <div className={styles.uploadProgress}>
-          {placeholder.uploadStatus === 'uploading' && (
-            <>
-              <div className={styles.uploadStage}>{placeholder.uploadSubStage}</div>
-              <div className={styles.progressBar}>
-                <div 
-                  className={styles.progressFill} 
-                  style={{ width: `${placeholder.uploadProgress || 0}%` }}
-                />
-              </div>
-              <div className={styles.progressText}>{Math.round(placeholder.uploadProgress || 0)}%</div>
-            </>
-          )}
-          {placeholder.uploadStatus === 'processing' && (
-            <div className={styles.processingText}>Processing...</div>
-          )}
-          {placeholder.uploadStatus === 'error' && (
-            <div className={styles.errorText}>{placeholder.uploadError}</div>
-          )}
+      <div key={placeholder.id} style={{ perspective: '1000px' }}>
+        <div
+          ref={tilt.ref}
+          className={`${styles.uploadPlaceholder} ${styles.tiltCard}`}
+          onMouseMove={tilt.onMouseMove}
+          onMouseEnter={tilt.onMouseEnter}
+          onMouseLeave={tilt.onMouseLeave}
+          onTouchStart={tilt.onTouchStart}
+        >
+          <div className={styles.uploadTitle}>{placeholder.title}</div>
+          <div className={styles.uploadProgress}>
+            {placeholder.uploadStatus === 'uploading' && (
+              <>
+                <div className={styles.uploadStage}>{placeholder.uploadSubStage}</div>
+                <div className={styles.progressBar}>
+                  <div
+                    className={styles.progressFill}
+                    style={{ width: `${placeholder.uploadProgress || 0}%` }}
+                  />
+                </div>
+                <div className={styles.progressText}>{Math.round(placeholder.uploadProgress || 0)}%</div>
+              </>
+            )}
+            {placeholder.uploadStatus === 'processing' && (
+              <div className={styles.processingText}>Processing...</div>
+            )}
+            {placeholder.uploadStatus === 'error' && (
+              <div className={styles.errorText}>{placeholder.uploadError}</div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -371,7 +382,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         {/* Regular scripts */}
         {allScripts.map(script => 
           script.uploadStatus ? (
-            renderUploadPlaceholder(script)
+            <UploadPlaceholderCard key={script.id} placeholder={script} />
           ) : (
             <ScriptCard
               key={script.id}

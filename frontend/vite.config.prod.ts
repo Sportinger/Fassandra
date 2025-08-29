@@ -35,7 +35,29 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [react(), VitePWA({ registerType: 'autoUpdate' })],
+    plugins: [
+      react(),
+      VitePWA({
+        // Reduce surprise reloads in Safari/Firefox; show prompt instead
+        registerType: 'prompt',
+        // Ensure SW never caches or intercepts API/auth routes
+        workbox: {
+          navigateFallbackDenylist: [/^\/api\//, /^\/login$/, /^\/register$/, /^\/logout$/],
+          runtimeCaching: [
+            {
+              urlPattern: /^https?:\/\/[^/]+\/api\//,
+              handler: 'NetworkOnly',
+              options: { cacheName: 'api-network-only' },
+            },
+            {
+              urlPattern: /\/login$|\/register$|\/logout$/,
+              handler: 'NetworkOnly',
+              options: { cacheName: 'auth-network-only' },
+            },
+          ],
+        },
+      }),
+    ],
     server: {
     port: 8080,     // Standard port for hot reload
     host: true,     // Allow access from host to container
