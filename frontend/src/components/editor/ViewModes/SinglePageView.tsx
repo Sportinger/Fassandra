@@ -81,7 +81,9 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
         <div className="dinA4Page">
           {/* Simple page indicator badge for single page view */}
           <div className="page-number-indicator" aria-label="Page number">Page 1</div>
-          {children}
+          <div className="pageInner">
+            {children}
+          </div>
         </div>
         
         {/* Rehearsal Line - Now at container level */}
