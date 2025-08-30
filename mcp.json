@@ -45,6 +45,10 @@
       "command": "npx",
       "args": ["-y", "chrome-debug-mcp-playwright"]
     },
+    "browserstack": {
+      "command": "npx",
+      "args": ["-y", "@browserstack/mcp-server"]
+    },
     "ElevenLabs": {
       "command": "uvx",
       "args": ["elevenlabs-mcp"],
@@ -53,4 +57,4 @@
       }
     }
   }
-} 
+}
