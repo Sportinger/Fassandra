@@ -697,23 +697,25 @@ export const Editor: React.FC<EditorProps> = ({
             position: 'fixed',
             left: `${localContextMenu.x}px`,
             top: `${localContextMenu.y}px`,
-            background: 'white',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+            background: 'var(--color-background)',
+            color: 'var(--color-text)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '8px',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.25)',
             zIndex: 1000,
             minWidth: '200px',
+            overflow: 'hidden',
           }}
         >
           {rehearsalMode && localContextMenu.rehearsalClickY !== undefined && (
             <div 
               className="context-menu-item"
               style={{
-                padding: '8px 16px',
+                padding: '10px 14px',
                 cursor: 'pointer',
-                borderBottom: '1px solid #eee',
+                borderBottom: '1px solid var(--color-border)',
                 fontWeight: 'bold',
-                color: '#ff0000',
+                color: '#ff6b6b',
               }}
               onClick={() => handleContextMenuAction('jump')}
             >
@@ -725,18 +727,30 @@ export const Editor: React.FC<EditorProps> = ({
               <div 
                 className="context-menu-item"
                 style={{
-                  padding: '8px 16px',
+                  padding: '10px 14px',
                   cursor: 'pointer',
-                  borderBottom: '1px solid #eee',
+                  borderBottom: '1px solid var(--color-border)',
                 }}
                 onClick={() => handleContextMenuAction('insert-dialogue')}
               >
                 <MessageSquareQuoteIcon size={14} /> Insert Dialogue Block
               </div>
+              {/* Dummy Comment option (no-op for now) */}
               <div 
                 className="context-menu-item"
                 style={{
-                  padding: '8px 16px',
+                  padding: '10px 14px',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid var(--color-border)',
+                }}
+                onClick={() => { /* placeholder for future Comment action */ }}
+              >
+                💬 Comment
+              </div>
+              <div 
+                className="context-menu-item"
+                style={{
+                  padding: '10px 14px',
                   cursor: 'pointer',
                 }}
                 onClick={() => handleContextMenuAction('toggle-view')}
@@ -751,9 +765,9 @@ export const Editor: React.FC<EditorProps> = ({
               <div 
                 className="context-menu-item"
                 style={{
-                  padding: '8px 16px',
+                  padding: '10px 14px',
                   cursor: 'pointer',
-                  borderBottom: '1px solid #eee',
+                  borderBottom: '1px solid var(--color-border)',
                 }}
                 onClick={() => handleContextMenuAction('format-speakers')}
               >
@@ -762,7 +776,7 @@ export const Editor: React.FC<EditorProps> = ({
               <div 
                 className="context-menu-item"
                 style={{
-                  padding: '8px 16px',
+                  padding: '10px 14px',
                   cursor: 'pointer',
                 }}
                 onClick={() => handleContextMenuAction('change-speaker-color')}
