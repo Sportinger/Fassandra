@@ -11,19 +11,14 @@ fassandra.de {
     # Backend API - handle API routes first
     handle /api/* {
         reverse_proxy backend:3000 {
-            # WebSocket support
-            header_up Upgrade {header.Upgrade}
-            header_up Connection {header.Connection}
-            
-            # Disable buffering for WebSocket to prevent binary data corruption
-            flush_interval -1
-            
             # Timeouts for long-lived WebSocket connections
             transport http {
+                # Force HTTP/1.1 for upstream to avoid any h2 upgrade quirks (Firefox)
+                versions 1.1
                 read_timeout 24h
                 write_timeout 24h
                 dial_timeout 30s
-                response_header_timeout 30s
+                # No response header timeout for upgraded connections
             }
         }
     }
