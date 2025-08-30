@@ -44,6 +44,11 @@
     max-width: 100% !important;
     overflow-x: hidden !important;
   }
+
+  /* When no header is rendered (auth screens), remove the spacer */
+  .appContent.appContentNoHeader {
+    padding-top: 0 !important;
+  }
 }
 
 .logo {
