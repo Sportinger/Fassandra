@@ -1,0 +1,18 @@
+{
+  "capabilities": {
+    "alwaysMatch": {
+      "platformName": "iOS",
+      "browserName": "safari",
+      "bstack:options": {
+        "deviceName": "iPhone 14",
+        "osVersion": "16",
+        "realMobile": true,
+        "projectName": "Pessoa QA",
+        "buildName": "UI SafeArea Check",
+        "sessionName": "iPhone14 SafeArea",
+        "debug": true,
+        "networkLogs": true
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "capabilities": {
+    "alwaysMatch": {
+      "platformName": "iOS",
+      "browserName": "safari",
+      "bstack:options": {
+        "deviceName": "iPhone 14",
+        "osVersion": "16",
+        "realMobile": true,
+        "projectName": "Pessoa QA",
+        "buildName": "CodexCLI-Flow",
+        "sessionName": "iPhone14 Live Watch",
+        "idleTimeout": 240,
+        "debug": true,
+        "networkLogs": true
+      }
+    }
+  }
+}
