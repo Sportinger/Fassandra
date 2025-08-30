@@ -50,6 +50,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [keyboardManuallyShown, setKeyboardManuallyShown] = useState(false);
+  // Force toolbar to show default context after certain actions (e.g., exit blocks)
+  const [forceDefaultContext, setForceDefaultContext] = useState(false);
   // Track visual viewport offsets for Safari (older versions need left/width adjustments)
   const [vvLeft, setVvLeft] = useState<number>(() => (window.visualViewport ? window.visualViewport.offsetLeft : 0));
   const [vvWidth, setVvWidth] = useState<number>(() => (window.visualViewport ? window.visualViewport.width : window.innerWidth));
@@ -262,6 +264,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   // Determine current context based on editor state
   const getContext = (): ToolbarContext => {
+    // If a recent action requested default toolbar, honor it immediately
+    if (forceDefaultContext) return 'default';
     if (!editor) return 'default';
     
     // Priority order:
@@ -466,6 +470,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         logger.debug('Toolbar', 'Exiting dialogue block');
         focusIfNeeded();
         editor?.chain().exitDialogueBlock().run();
+        // Switch toolbar to default immediately
+        setForceDefaultContext(true);
+        setTimeout(() => setForceDefaultContext(false), 250);
       },
       contexts: ['dialogue-layout', 'speaker-select'],
       order: 8,
@@ -695,6 +702,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             .setTextSelection(endPos)
             .insertContent({ type: 'paragraph' })
             .run();
+          // Switch toolbar to default immediately
+          setForceDefaultContext(true);
+          setTimeout(() => setForceDefaultContext(false), 250);
       }
       },
       contexts: ['cue-select'],
