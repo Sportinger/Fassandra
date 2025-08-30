@@ -130,7 +130,11 @@ html, body {
   position: relative;
   
   /* Content padding - restored full padding */
-  padding: var(--content-padding-y) var(--content-padding-x);
+  /* Slight left correction to equalize perceived edge spacing */
+  padding-right: var(--content-padding-x);
+  padding-left: calc(var(--content-padding-x) + 8px);
+  padding-top: var(--content-padding-y);
+  padding-bottom: var(--content-padding-y);
   
   /* Typography base */
   font-size: var(--font-size-base);
@@ -145,6 +149,12 @@ html, body {
   /* Animation */
   animation: slideInFromBottom 400ms cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: center bottom;
+}
+
+/* Inner wrapper ensures perfectly symmetric text padding regardless of child styles */
+.dinA4Page .pageInner {
+  padding-left: var(--content-padding-x);
+  padding-right: var(--content-padding-x);
 }
 
 /* Single-page view: small page number badge */
@@ -558,7 +568,10 @@ html, body {
     /* Keep page styling */
     box-shadow: var(--shadow-lg);
     border-radius: 0;
-    padding: var(--content-padding-y) var(--content-padding-x);
+    padding-right: var(--content-padding-x);
+    padding-left: calc(var(--content-padding-x) + 8px);
+    padding-top: var(--content-padding-y);
+    padding-bottom: var(--content-padding-y);
   }
   
   /* Override for multi-page view - keep full page styling even on mobile */
