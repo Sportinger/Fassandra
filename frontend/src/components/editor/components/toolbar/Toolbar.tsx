@@ -50,7 +50,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [keyboardManuallyShown, setKeyboardManuallyShown] = useState(false);
+  // Track visual viewport offsets for Safari (older versions need left/width adjustments)
+  const [vvLeft, setVvLeft] = useState<number>(() => (window.visualViewport ? window.visualViewport.offsetLeft : 0));
+  const [vvWidth, setVvWidth] = useState<number>(() => (window.visualViewport ? window.visualViewport.width : window.innerWidth));
   const hiddenInputRef = useRef<HTMLInputElement>(null);
+  // Prevent scroll jumps when we programmatically focus to toggle keyboard
+  const suppressFocusScrollRef = useRef<boolean>(false);
   
   // Hide keyboard when clicking outside editor, but keep editor interactive
   useEffect(() => {
@@ -60,8 +65,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     const handleOutsideClick = (e: MouseEvent) => {
       if (keyboardManuallyShown) {
         const target = e.target as HTMLElement;
-        // If click is not on editor or toolbar
-        if (!target.closest('.ProseMirror') && !target.closest('.floatingToolbar')) {
+        // If click is not on editor, toolbar, or keyboard FAB
+        if (!target.closest('.ProseMirror') && !target.closest('.floatingToolbar') && !target.closest('.keyboardFab')) {
           setKeyboardManuallyShown(false);
           hiddenInputRef.current?.blur();
           // Do not blur the editor here; allow cursor/selection
@@ -129,15 +134,23 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     const detectKeyboard = () => {
       // Use Visual Viewport API if available (modern browsers)
       if (window.visualViewport) {
-        const currentVisualHeight = window.visualViewport.height;
-        const viewportBottom = window.innerHeight - currentVisualHeight;
+        const vv = window.visualViewport;
+        const currentVisualHeight = vv.height;
+        // Insets at the bottom of the layout viewport: distance from bottom of visual viewport
+        // to bottom of layout viewport (covers on‑screen keyboard and browser UI)
+        const insetBottom = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
         
-        // Direct calculation - keyboard height is the difference
-        const keyboardHeightCalculated = viewportBottom > 50 ? viewportBottom : 0;
+        // Direct calculation - keyboard/viewport inset is the difference
+        const keyboardHeightCalculated = insetBottom > 50 ? insetBottom : 0;
+        // Track lateral pan/width to keep fixed elements aligned to the visual viewport
+        setVvLeft(vv.offsetLeft || 0);
+        setVvWidth(vv.width || window.innerWidth);
         
         logger.debug('Toolbar', '[🎭 Mobile Keyboard] Visual Viewport detection:', {
           windowHeight: window.innerHeight,
           visualHeight: currentVisualHeight,
+          offsetTop: vv.offsetTop,
+          insetBottom,
           keyboardHeight: keyboardHeightCalculated,
           deviceType,
           isLandscape,
@@ -171,7 +184,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
     // Listen for viewport changes
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', debouncedDetect);
+      window.visualViewport.addEventListener('resize', debouncedDetect, { passive: true } as any);
+      // Critical: track visual viewport panning when page scrolls/zooms
+      window.visualViewport.addEventListener('scroll', debouncedDetect, { passive: true } as any);
     }
     
     // Fallback resize listener
@@ -185,13 +200,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           // 🎭 THEATER PRIORITY: Ensure focused element is visible above keyboard
           setTimeout(() => {
             debouncedDetect();
-            // Scroll focused element into view with theater-friendly padding
-            if (target.scrollIntoView) {
-              target.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'center',
-                inline: 'nearest'
-              });
+            // Avoid auto-centering scroll if we toggled keyboard via FAB
+            if (!suppressFocusScrollRef.current) {
+              if (target.scrollIntoView) {
+                target.scrollIntoView({ 
+                  behavior: 'smooth', 
+                  block: 'center',
+                  inline: 'nearest'
+                });
+              }
             }
           }, 300); // Small delay for keyboard state
         }
@@ -211,7 +228,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         document.removeEventListener('focusin', handleFocusIn);
         document.removeEventListener('focusout', handleFocusOut);
         if (window.visualViewport) {
-          window.visualViewport.removeEventListener('resize', debouncedDetect);
+          window.visualViewport.removeEventListener('resize', debouncedDetect as any);
+          window.visualViewport.removeEventListener('scroll', debouncedDetect as any);
         }
         window.removeEventListener('resize', debouncedDetect);
       };
@@ -543,34 +561,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       order: 4
     },
     
-    // Mobile-only keyboard toggle button
-    {
-      id: 'keyboard-toggle',
-      icon: keyboardManuallyShown ? '✓' : '⌨',
-      title: keyboardManuallyShown ? 'Hide Keyboard' : 'Show Keyboard',
-      action: () => {
-        const isMobile = window.innerWidth <= 767;
-        if (!isMobile) return;
-        
-        if (keyboardManuallyShown) {
-          // Hide keyboard
-          hiddenInputRef.current?.blur();
-          setKeyboardManuallyShown(false);
-        } else {
-          // Show keyboard
-          hiddenInputRef.current?.focus();
-          setKeyboardManuallyShown(true);
-          // Focus the editor after a small delay to ensure keyboard is shown
-          setTimeout(() => {
-            editor?.commands.focus();
-          }, 100);
-        }
-      },
-      isActive: keyboardManuallyShown,
-      contexts: ['default', 'text-formatting', 'dialogue-layout', 'speaker-select', 'cue-select', 'scene-select'],
-      order: 0, // Make it appear first
-      isMobileOnly: true // Add flag to identify mobile-only buttons
-    },
+    // (Keyboard toggle moved to floating FAB on mobile)
     
     // Scene context buttons (scene-select context)
     {
@@ -812,13 +803,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const calculatedBottom = keyboardActive ? keyboardHeight : 0; // Position directly above keyboard or at bottom
   
   const dynamicStyle = isMobile ? {
-    // Mobile: Fixed position with dynamic bottom
+    // Mobile: Fixed to bottom of visual viewport via transform (Safari-friendly)
     position: 'fixed' as const,
-    bottom: `${keyboardHeight}px`,
-    left: 0,
-    right: 0,
-    // No transforms or transitions
-    transform: 'none',
+    bottom: 0,
+    top: 'auto',
+    left: vvLeft,
+    right: 'auto',
+    width: vvWidth,
+    // Translate up by the keyboard inset; avoids Safari fixed/scroll quirks (use 3D transform)
+    transform: `translate3d(0, -${keyboardHeight}px, 0)`,
     transition: 'none',
   } : {
     minHeight: `${toolbarHeight}px`,
@@ -843,7 +836,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       className={`floatingToolbar context-${currentContext} ${keyboardActive ? 'keyboard-active' : ''} ${className}`}
       style={dynamicStyle}
     >
-      {contextButtons.map((button, index) => {
+      {contextButtons
+        // Hide legacy keyboard button on mobile; now rendered as FAB
+        .filter(b => !(windowWidth <= 767 && b.id === 'keyboard-toggle'))
+        .map((button, index) => {
         // All buttons are immediately visible
         const isVisible = true;
         
@@ -940,6 +936,56 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           aria-hidden="true"
         />
       )}
+
+      {/* Floating round Keyboard toggle FAB (mobile only) */}
+      {windowWidth <= 767 && (
+        <button
+          type="button"
+          className="keyboardFab"
+          title={keyboardManuallyShown ? 'Hide Keyboard' : 'Show Keyboard'}
+          aria-pressed={keyboardManuallyShown}
+          aria-label={keyboardManuallyShown ? 'Hide Keyboard' : 'Show Keyboard'}
+          onClick={() => {
+            const isMobile = window.innerWidth <= 767;
+            if (!isMobile) return;
+            if (keyboardManuallyShown) {
+              hiddenInputRef.current?.blur();
+              setKeyboardManuallyShown(false);
+            } else {
+              // Prevent scroll jumps while toggling
+              suppressFocusScrollRef.current = true;
+              const sx = window.scrollX, sy = window.scrollY;
+              try { (hiddenInputRef.current as any)?.focus?.({ preventScroll: true }); } catch { hiddenInputRef.current?.focus(); }
+              setKeyboardManuallyShown(true);
+              setTimeout(() => {
+                try {
+                  if ((editor as any)?.chain) {
+                    (editor as any).chain().focus(undefined, { scrollIntoView: false }).run();
+                  } else {
+                    (editor as any)?.commands?.focus?.(null, { scrollIntoView: false });
+                  }
+                } catch {
+                  (editor as any)?.commands?.focus?.();
+                }
+                // Restore scroll position just in case
+                try { window.scrollTo(sx, sy); } catch {}
+                setTimeout(() => { suppressFocusScrollRef.current = false; }, 300);
+              }, 120);
+            }
+          }}
+          style={{
+            position: 'fixed',
+            left: vvLeft + 12,
+            bottom: 0,
+            // Translate up by desired offset (max of 30vh or keyboard inset + 12)
+            transform: `translate3d(0, -${Math.max(Math.round(window.innerHeight * 0.30), keyboardHeight + 12)}px, 0)`,
+          }}
+        >
+          <span className="fabIcon" aria-hidden>
+            {keyboardManuallyShown ? '✓' : '⌨'}
+          </span>
+        </button>
+      )}
     </div>
   );
-}; 
+};

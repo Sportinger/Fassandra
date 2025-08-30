@@ -153,6 +153,11 @@ export const Login: React.FC = () => {
               <span className={`${authStyles.chip} ${authStyles.chipLight}`}>{language === 'de' ? 'LICHT' : 'LIGHT'}</span>
               <span className={`${authStyles.chip} ${authStyles.chipSound}`}>{language === 'de' ? 'TON' : 'SOUND'}</span>
               <span className={`${authStyles.chip} ${authStyles.chipVideo}`}>{language === 'de' ? 'VIDEO' : 'VIDEO'}</span>
+              <span className={`${authStyles.chip} ${authStyles.chipProps}`}>{language === 'de' ? 'REQUISITE' : 'PROPS'}</span>
+              {/* Force next items onto a second row */}
+              <span className={authStyles.chipBreak} aria-hidden />
+              <span className={`${authStyles.chip} ${authStyles.chipDramaturgie}`}>{language === 'de' ? 'DRAMATURGIE' : 'DRAMATURGY'}</span>
+              <span className={`${authStyles.chip} ${authStyles.chipSchnuerboden}`}>{language === 'de' ? 'SCHNÜRBODEN' : 'RIGGING'}</span>
             </div>
             {/* Title intentionally removed per design */}
             <p className={authStyles.authSubtitle}>
@@ -163,7 +168,7 @@ export const Login: React.FC = () => {
             {error && <div className={authStyles.errorMessage}>{error}</div>}
             <form onSubmit={handleSubmit}>
               <div className={authStyles.formGroup}>
-                <label htmlFor="login-email" className={authStyles.formLabel}>{language === 'de' ? 'E-Mail' : 'Email'}</label>
+                <label htmlFor="login-email" className={`${authStyles.formLabel} ${authStyles.srOnly}`}>{language === 'de' ? 'E-Mail' : 'Email'}</label>
                 <input
                   id="login-email"
                   type="email"
@@ -175,7 +180,7 @@ export const Login: React.FC = () => {
                 />
               </div>
               <div className={authStyles.formGroup}>
-                <label htmlFor="login-password" className={authStyles.formLabel}>{language === 'de' ? 'Passwort' : 'Password'}</label>
+                <label htmlFor="login-password" className={`${authStyles.formLabel} ${authStyles.srOnly}`}>{language === 'de' ? 'Passwort' : 'Password'}</label>
                 <div className={authStyles.inputWithAction}>
                   <input
                     id="login-password"
@@ -218,8 +223,23 @@ export const Login: React.FC = () => {
                   className={authStyles.oauthBtn}
                   onClick={handleGoogleLogin}
                   style={{ gridColumn: '1 / -1' }}
+                  aria-label="Google Login"
                 >
-                  Google
+                  <span className={authStyles.oauthBtnContent}>
+                    <svg
+                      className={authStyles.oauthIcon}
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <path fill="#4285F4" d="M23.49 12.27c0-.85-.07-1.47-.23-2.11H12v3.83h6.53c-.13.96-.85 2.39-2.44 3.36l-.02.12 3.54 2.75.25.02c2.33-2.15 3.63-5.32 3.63-8.97z"/>
+                      <path fill="#34A853" d="M12 24c3.29 0 6.05-1.09 8.06-2.99l-3.83-2.98c-1.02.7-2.39 1.19-4.23 1.19-3.24 0-5.98-2.14-6.96-5.06l-.14.01-3.75 2.9-.05.13C2.99 21.53 7.13 24 12 24z"/>
+                      <path fill="#FBBC05" d="M5.04 14.16c-.24-.72-.38-1.49-.38-2.28s.14-1.56.37-2.28l-.01-.15-3.8-2.94-.12.06C.41 8.27 0 10.08 0 12c0 1.92.41 3.73 1.11 5.43l3.93-3.27z"/>
+                      <path fill="#EA4335" d="M12 4.74c1.82 0 3.05.79 3.75 1.45l2.74-2.67C18.04 1.4 15.29 0 12 0 7.13 0 2.99 2.47 1.11 6.57l3.92 3.27c.98-2.92 3.72-5.1 6.97-5.1z"/>
+                    </svg>
+                    <span>Google</span>
+                  </span>
                 </button>
               </div>
             </form>
