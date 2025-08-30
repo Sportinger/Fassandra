@@ -107,6 +107,8 @@ export const Login: React.FC = () => {
       }
       (window as any).google.accounts.id.initialize({
         client_id: clientId,
+        ux_mode: 'popup', // avoid third‑party cookie issues by using a first‑party popup
+        auto_select: false,
         callback: async (response: any) => {
           try {
             const idToken = response?.credential;
@@ -123,7 +125,7 @@ export const Login: React.FC = () => {
           }
         }
       });
-      // Show Google account chooser / One Tap prompt
+      // Show Google account chooser as a popup (more reliable across browsers)
       (window as any).google.accounts.id.prompt();
     } catch (e) {
       logger.error('Login', 'Failed to start Google login', e);
@@ -211,8 +213,14 @@ export const Login: React.FC = () => {
               </div>
 
               <div className={authStyles.oauthRow}>
-                <button type="button" className={authStyles.oauthBtn} onClick={handleGoogleLogin}>Google</button>
-                <button type="button" className={authStyles.oauthBtn} disabled>GitHub</button>
+                <button
+                  type="button"
+                  className={authStyles.oauthBtn}
+                  onClick={handleGoogleLogin}
+                  style={{ gridColumn: '1 / -1' }}
+                >
+                  Google
+                </button>
               </div>
             </form>
 

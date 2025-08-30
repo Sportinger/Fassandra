@@ -42,6 +42,9 @@ echo "✅ Backend built successfully"
 
 echo "🔨 Building frontend..."
 cd /home/admins/projects/pessoa/frontend
+if [ -f ../.env.prod ]; then
+    set -a; . ../.env.prod; set +a
+fi
 if ! DOCKER_BUILDKIT=1 docker build \
     $BUILD_OPTS \
     -f Dockerfile.prod \

@@ -130,6 +130,10 @@ rebuild_backend() {
 rebuild_frontend() {
     echo "  Frontend: rebuilding..."
     cd frontend
+    # Load environment for build args
+    if [ -f ../.env.prod ]; then
+        set -a; . ../.env.prod; set +a
+    fi
     DOCKER_BUILDKIT=1 docker build -q \
         -f Dockerfile.prod \
         --build-arg VITE_API_BASE_URL=https://$DOMAIN \
