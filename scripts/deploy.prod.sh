@@ -48,6 +48,25 @@ trap 'echo "❌ DEPLOYMENT FAILED AT LINE $LINENO"' ERR
 
 echo "🚀 Fast deploy to $DOMAIN"
 
+# --- Pre-flight local integrity checks ---
+echo "🔎 Verifying local repo state before deploy..."
+
+# 1) Caddy must route /login/google to backend
+if ! grep -q "/login/google" "$PROJECT_ROOT/Caddyfile"; then
+  echo "❌ Caddyfile missing /login/google route. Aborting deploy."; exit 1; fi
+
+# 2) Frontend CSP must allow Google domains in index.html
+if ! grep -q "accounts.google.com" "$PROJECT_ROOT/frontend/index.html"; then
+  echo "❌ frontend/index.html missing accounts.google.com in CSP. Aborting deploy."; exit 1; fi
+
+# 3) Frontend must skip CSRF for /login/*
+if ! grep -q "path.startsWith('/login/')" "$PROJECT_ROOT/frontend/src/services/ApiService.ts"; then
+  echo "❌ ApiService.ts missing CSRF skip for /login/*. Aborting deploy."; exit 1; fi
+
+# 4) Google popup mode in Login.tsx
+if ! grep -q "ux_mode: 'popup'" "$PROJECT_ROOT/frontend/src/components/Login.tsx"; then
+  echo "❌ Login.tsx missing ux_mode: 'popup'. Aborting deploy."; exit 1; fi
+
 # Test connection
 if ! ssh -o ConnectTimeout=5 $USER@$SERVER "echo 'Connected'" > /dev/null 2>&1; then
     echo "❌ Cannot connect to $SERVER"
@@ -134,7 +153,7 @@ rebuild_frontend() {
     if [ -f ../.env.prod ]; then
         set -a; . ../.env.prod; set +a
     fi
-    DOCKER_BUILDKIT=1 docker build -q \
+    DOCKER_BUILDKIT=1 docker build -q --no-cache \
         -f Dockerfile.prod \
         --build-arg VITE_API_BASE_URL=https://$DOMAIN \
         --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
@@ -142,6 +161,10 @@ rebuild_frontend() {
         -t mylayer-frontend:latest . >/dev/null 2>&1
     cd ..
     docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --force-recreate frontend >/dev/null 2>&1
+
+    # Verify built bundle contains Google client ID
+    if ! docker exec mylayer_pessoa_frontend sh -lc "grep -R -q \"$VITE_GOOGLE_CLIENT_ID\" /srv || grep -R -q \"${VITE_GOOGLE_CLIENT_ID%%.*}\" /srv" >/dev/null 2>&1; then
+        echo "❌ Built frontend bundle does not contain VITE_GOOGLE_CLIENT_ID. Aborting."; exit 1; fi
 }
 
 # Check what needs rebuilding
@@ -165,6 +188,23 @@ fi
 
 # Restart Caddy
 docker compose --env-file .env.prod -f docker-compose.prod.yml restart caddy >/dev/null 2>&1
+
+# --- Post-deploy remote checks ---
+echo "🔎 Verifying remote environment..."
+# 1) Backend environment
+if ! docker exec mylayer_pessoa_backend sh -lc "printenv | grep -q '^GOOGLE_CLIENT_ID='"; then
+  echo "❌ Backend missing GOOGLE_CLIENT_ID env"; exit 1; fi
+if ! docker exec mylayer_pessoa_backend sh -lc "printenv | grep -q '^ALLOWED_ORIGINS='"; then
+  echo "❌ Backend missing ALLOWED_ORIGINS env"; exit 1; fi
+
+# 2) Caddy routing for /login/google
+if ! docker exec mylayer_caddy sh -lc "caddy adapt --config /etc/caddy/Caddyfile --pretty | grep -q '/login/google'"; then
+  echo "❌ Caddy is not routing /login/google to backend"; exit 1; fi
+
+# 3) Sanity check: /login/google reachable (expect non-405)
+HTTP_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"id_token":"dummy"}' https://$DOMAIN/login/google || true)
+if [ "$HTTP_STATUS" = "405" ]; then
+  echo "❌ /login/google returned 405 (not routed to backend). Aborting"; exit 1; fi
 
 # Wait briefly
 sleep 5

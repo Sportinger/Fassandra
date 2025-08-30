@@ -147,7 +147,8 @@ export class ApiService {
         // For backward compatibility, cookies are still sent with credentials: 'include'
 
         // Add CSRF token for state-changing requests (but not for auth endpoints)
-        const isAuthEndpoint = path === '/login' || path === '/register';
+        // Treat all login endpoints as auth (no CSRF, no auth header)
+        const isAuthEndpoint = path === '/login' || path === '/register' || path.startsWith('/login/');
         if (!isAuthEndpoint && options.method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method)) {
             try {
                 const csrfToken = await getCSRFToken();
