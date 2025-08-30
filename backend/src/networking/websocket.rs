@@ -54,7 +54,7 @@ use yrs::encoding::read::Cursor as YrsIoCursor;
 use anyhow;
 
 // Constants for WebSocket timeouts
-pub const CLIENT_TIMEOUT: Duration = Duration::from_secs(120);
+pub const CLIENT_TIMEOUT: Duration = Duration::from_secs(300);
 pub const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(15); // Reduced to prevent y-websocket 30s timeout
 
 /// Global broadcast channel for all WebSocket messages  
@@ -289,23 +289,6 @@ async fn handle_socket(
     // Update session activity
     session.update_activity().await;
     
-    // If WS sync is enabled, proactively send SyncStep1 with server state vector
-    if std::env::var("YJS_WS_SYNC").unwrap_or_default() == "on" {
-        if let Ok(script_uuid) = Uuid::parse_str(&script_id) {
-            match crate::services::yjs_compaction_service::load_state_vector_bytes(pool.as_ref(), script_uuid).await {
-                Ok(sv_bytes) => {
-                    if let Ok(server_sv) = StateVector::decode_v1(&sv_bytes) {
-                        let msg = SyncEnvelope::Sync(SyncInnerMessage::SyncStep1(server_sv));
-                        let payload = msg.encode_v1();
-                        let _ = socket_tx.send(Message::Binary(payload)).await;
-                        tracing::info!("[WS_SYNC] Sent SyncStep1 to client for script {}", script_id);
-                    }
-                }
-                Err(e) => tracing::error!("[WS_SYNC] Failed to load server state vector: {}", e),
-            }
-        }
-    }
-
     // Process incoming messages and broadcast messages
     loop {
         tokio::select! {
@@ -388,6 +371,43 @@ async fn handle_socket(
                         }
                         
                         let is_awareness = is_awareness_update(&bin);
+
+                        let mut broadcast_allowed = true;
+                        if std::env::var("YJS_WS_SYNC").unwrap_or_default() == "on" {
+                            if let Ok(sync_msg) = YrsDecodeTrait::decode(&mut DecoderV1::new(YrsIoCursor::new(&bin))) {
+                                if let YrsSyncMessage::Sync(inner) = sync_msg {
+                                    match inner {
+                                        // Handshake messages should not be broadcast to other clients
+                                        yrs::sync::SyncMessage::SyncStep1(client_sv) => {
+                                            broadcast_allowed = false;
+                                            // Reply with SyncStep2 (diff) to this client only
+                                            use yrs::updates::encoder::Encode as _;
+                                            let client_sv_bytes = client_sv.encode_v1();
+                                            match crate::services::yjs_compaction_service::compute_diff_update(pool.as_ref(), uuid::Uuid::parse_str(&script_id).unwrap_or(uuid::Uuid::nil()), client_sv_bytes.as_slice()).await {
+                                                Ok(diff) => {
+                                                    let msg = yrs::sync::Message::Sync(yrs::sync::SyncMessage::SyncStep2(diff));
+                                                    let payload = msg.encode_v1();
+                                                    let _ = socket_tx.send(Message::Binary(payload)).await;
+                                                    // handled this frame fully
+                                                    continue;
+                                                }
+                                                Err(e) => {
+                                                    tracing::error!("[WS_SYNC] Failed to compute diff: {}", e);
+                                                }
+                                            }
+                                        }
+                                        yrs::sync::SyncMessage::SyncStep2(_) => {
+                                            broadcast_allowed = false; // also do not broadcast step2
+                                        }
+                                        // Updates are fine to broadcast
+                                        yrs::sync::SyncMessage::Update(_) => {
+                                            broadcast_allowed = true;
+                                        }
+                                        _ => { /* leave default */ }
+                                    }
+                                }
+                            }
+                        }
                         tracing::debug!(
                             "[WS_MSG_TYPE] session: {}, awareness: {}, first_50_hex: {}", 
                             session_id, 
@@ -395,36 +415,6 @@ async fn handle_socket(
                             hex::encode(&bin[..bin.len().min(50)])
                         );
                         
-                        // Only persist real content updates, not awareness updates (cursor movements)
-                        if !is_awareness {
-                            // If WS sync feature is enabled, respond to SyncStep1/2 requests
-                            if std::env::var("YJS_WS_SYNC").unwrap_or_default() == "on" {
-                                if let Ok(sync_msg) = YrsDecodeTrait::decode(&mut DecoderV1::new(YrsIoCursor::new(&bin))) {
-                                    if let YrsSyncMessage::Sync(inner) = sync_msg {
-                                        match inner {
-                                            yrs::sync::SyncMessage::SyncStep1(client_sv) => {
-                                                // Client requests server SV; send it back via a diff update as SyncStep2
-                                                use yrs::updates::encoder::Encode as _;
-                                                let client_sv_bytes = client_sv.encode_v1();
-                                                match crate::services::yjs_compaction_service::compute_diff_update(pool.as_ref(), Uuid::parse_str(&script_id).unwrap_or(Uuid::nil()), client_sv_bytes.as_slice()).await {
-                                                    Ok(diff) => {
-                                                        // Build a SyncStep2 frame: [0x00, encoded(Sync(SyncStep2(diff)))]
-                                                        use yrs::updates::encoder::Encode as _;
-                                                        let msg = yrs::sync::Message::Sync(yrs::sync::SyncMessage::SyncStep2(diff));
-                                                        let payload = msg.encode_v1();
-                                                        let _ = socket_tx.send(Message::Binary(payload)).await;
-                                                        continue; // handled
-                                                    }
-                                                    Err(e) => {
-                                                        tracing::error!("[WS_SYNC] Failed to compute diff: {}", e);
-                                                    }
-                                                }
-                                            }
-                                            _ => {}
-                                        }
-                                    }
-                                }
-                            }
                             // Log full content for small updates that might be problematic
                             if bin.len() <= 100 {
                                 tracing::debug!("[WS_CONTENT_FULL] script: {}, size: {}, full_hex: {}", 
@@ -503,7 +493,7 @@ async fn handle_socket(
                         // Always broadcast to all other clients (including awareness updates for real-time cursors)
                         // Send to global broadcast channel - other clients will filter by script_id and session_id
                         // Including session_id prevents echo-back to sender which causes flickering
-                        let _ = GLOBAL_BROADCAST.0.send((script_id.clone(), user_id.clone(), session_id.clone(), bin.clone()));
+                        if broadcast_allowed { let _ = GLOBAL_BROADCAST.0.send((script_id.clone(), user_id.clone(), session_id.clone(), bin.clone())); }
                         tracing::debug!("Broadcasted message from session {} (user {}) for script {} to global channel", session_id, user_id, script_id);
                     }
                     

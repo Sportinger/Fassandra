@@ -56,16 +56,8 @@ fassandra.de {
         -Server
     }
 
-    # Gzip compression (excluding WebSocket to prevent binary corruption)
-    encode {
-        gzip
-        match {
-            header Content-Type text/*
-            header Content-Type application/json
-            header Content-Type application/javascript
-            header Content-Type application/xml
-        }
-    }
+    # Compression
+    encode zstd gzip
 
     # Request body size limit for large Yjs updates
     request_body {
