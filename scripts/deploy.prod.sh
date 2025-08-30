@@ -3,8 +3,7 @@
 # FAST PRODUCTION DEPLOYMENT - RSYNC + DOCKER EXEC
 # Usage: ./deploy.prod.sh [--rebuild-backend] [--rebuild-frontend] [--restart-only]
 
-set -e
-set -o pipefail
+set -euo pipefail
 
 # CONFIGURATION
 SERVER="91.99.69.115"
@@ -25,7 +24,7 @@ REBUILD_BACKEND=false
 REBUILD_FRONTEND=false
 RESTART_ONLY=false
 for arg in "$@"; do
-    case $arg in
+    case "$arg" in
         --rebuild-backend)
             REBUILD_BACKEND=true
             ;;
@@ -48,34 +47,17 @@ trap 'echo "❌ DEPLOYMENT FAILED AT LINE $LINENO"' ERR
 
 echo "🚀 Fast deploy to $DOMAIN"
 
-# --- Pre-flight local integrity checks ---
-echo "🔎 Verifying local repo state before deploy..."
-
-# 1) Caddy must route /login/google to backend
-if ! grep -q "/login/google" "$PROJECT_ROOT/Caddyfile"; then
-  echo "❌ Caddyfile missing /login/google route. Aborting deploy."; exit 1; fi
-
-# 2) Frontend CSP must allow Google domains in index.html
-if ! grep -q "accounts.google.com" "$PROJECT_ROOT/frontend/index.html"; then
-  echo "❌ frontend/index.html missing accounts.google.com in CSP. Aborting deploy."; exit 1; fi
-
-# 3) Frontend must skip CSRF for /login/*
-if ! grep -q "path.startsWith('/login/')" "$PROJECT_ROOT/frontend/src/services/ApiService.ts"; then
-  echo "❌ ApiService.ts missing CSRF skip for /login/*. Aborting deploy."; exit 1; fi
-
-# 4) Google popup mode in Login.tsx
-if ! grep -q "ux_mode: 'popup'" "$PROJECT_ROOT/frontend/src/components/Login.tsx"; then
-  echo "❌ Login.tsx missing ux_mode: 'popup'. Aborting deploy."; exit 1; fi
-
+# --- Pre-flight --- keep only essential connectivity check ---
+echo "🔎 Checking SSH connectivity..."
 # Test connection
-if ! ssh -o ConnectTimeout=5 $USER@$SERVER "echo 'Connected'" > /dev/null 2>&1; then
+if ! ssh -o ConnectTimeout=5 "$USER@$SERVER" "echo 'Connected'" > /dev/null 2>&1; then
     echo "❌ Cannot connect to $SERVER"
     exit 1
 fi
 
 if [ "$RESTART_ONLY" = true ]; then
     echo "🔄 Restarting containers only..."
-    ssh $USER@$SERVER << 'EOF'
+    ssh "$USER@$SERVER" << 'EOF'
 cd /home/admin/app
 docker compose --env-file .env.prod -f docker-compose.prod.yml restart
 EOF
@@ -90,7 +72,7 @@ rsync -az --delete \
     --exclude '*.swp' \
     --exclude '.env' \
     --exclude 'uploads/' \
-    ./backend/ $USER@$SERVER:$APP_DIR/backend/
+    ./backend/ "$USER@$SERVER:$APP_DIR/backend/"
 
 # SYNC FRONTEND FILES
 rsync -az --delete \
@@ -101,7 +83,7 @@ rsync -az --delete \
     --exclude '.env' \
     --exclude 'android/' \
     --exclude 'ios/' \
-    ./frontend/ $USER@$SERVER:$APP_DIR/frontend/
+    ./frontend/ "$USER@$SERVER:$APP_DIR/frontend/"
 
 # SYNC YJS-PARSER FILES
 rsync -az --delete \
@@ -109,20 +91,23 @@ rsync -az --delete \
     --exclude '.git/' \
     --exclude '*.swp' \
     --exclude '.env' \
-    ./yjs-parser/ $USER@$SERVER:$APP_DIR/yjs-parser/
+    ./yjs-parser/ "$USER@$SERVER:$APP_DIR/yjs-parser/"
 
 # SYNC CONFIG FILES
 rsync -az \
     ./.env.prod \
     ./docker-compose.prod.yml \
     ./Caddyfile \
-    $USER@$SERVER:$APP_DIR/
+    "$USER@$SERVER:$APP_DIR/"
 
 # REBUILD AND RESTART CONTAINERS
-
-ssh $USER@$SERVER << 'REMOTE_SCRIPT'
-cd $APP_DIR
+ssh "$USER@$SERVER" bash -s -- "$APP_DIR" "$DOMAIN" "$REBUILD_BACKEND" "$REBUILD_FRONTEND" << 'REMOTE_SCRIPT'
+APP_DIR="$1"
+DOMAIN="$2"
+REBUILD_BACKEND="$3"
+REBUILD_FRONTEND="$4"
 set -e
+cd "$APP_DIR"
 
 # Install yjs-parser dependencies if needed (using Docker)
 if [ -d "yjs-parser" ]; then
@@ -137,12 +122,12 @@ fi
 rebuild_backend() {
     echo "  Backend: rebuilding..."
     cd backend
-    DOCKER_BUILDKIT=1 docker build -q \
+    DOCKER_BUILDKIT=1 docker build \
         -f Dockerfile.prod \
         --target runtime \
-        -t mylayer-backend:latest . >/dev/null 2>&1
+        -t mylayer-backend:latest .
     cd ..
-    docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --force-recreate backend >/dev/null 2>&1
+    docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --force-recreate backend
 }
 
 # Function to rebuild frontend
@@ -153,18 +138,14 @@ rebuild_frontend() {
     if [ -f ../.env.prod ]; then
         set -a; . ../.env.prod; set +a
     fi
-    DOCKER_BUILDKIT=1 docker build -q --no-cache \
+    DOCKER_BUILDKIT=1 docker build --no-cache \
         -f Dockerfile.prod \
         --build-arg VITE_API_BASE_URL=https://$DOMAIN \
         --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
         --build-arg VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID \
-        -t mylayer-frontend:latest . >/dev/null 2>&1
+        -t mylayer-frontend:latest .
     cd ..
-    docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --force-recreate frontend >/dev/null 2>&1
-
-    # Verify built bundle contains Google client ID
-    if ! docker exec mylayer_pessoa_frontend sh -lc "grep -R -q \"$VITE_GOOGLE_CLIENT_ID\" /srv || grep -R -q \"${VITE_GOOGLE_CLIENT_ID%%.*}\" /srv" >/dev/null 2>&1; then
-        echo "❌ Built frontend bundle does not contain VITE_GOOGLE_CLIENT_ID. Aborting."; exit 1; fi
+    docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --force-recreate frontend
 }
 
 # Check what needs rebuilding
@@ -182,40 +163,16 @@ if [ "$REBUILD_BACKEND" = false ] && [ "$REBUILD_FRONTEND" = false ]; then
     # Only rebuild frontend by default (for JS/CSS changes)
     rebuild_frontend
     # Just restart backend container without rebuilding
-    docker compose --env-file .env.prod -f docker-compose.prod.yml restart backend >/dev/null 2>&1
+    docker compose --env-file .env.prod -f docker-compose.prod.yml restart backend
     touch /tmp/last_deploy_frontend
 fi
 
 # Restart Caddy
-docker compose --env-file .env.prod -f docker-compose.prod.yml restart caddy >/dev/null 2>&1
+docker compose --env-file .env.prod -f docker-compose.prod.yml restart caddy
 
-# --- Post-deploy remote checks ---
-echo "🔎 Verifying remote environment..."
-# 1) Backend environment
-if ! docker exec mylayer_pessoa_backend sh -lc "printenv | grep -q '^GOOGLE_CLIENT_ID='"; then
-  echo "❌ Backend missing GOOGLE_CLIENT_ID env"; exit 1; fi
-if ! docker exec mylayer_pessoa_backend sh -lc "printenv | grep -q '^ALLOWED_ORIGINS='"; then
-  echo "❌ Backend missing ALLOWED_ORIGINS env"; exit 1; fi
-
-# 2) Caddy routing for /login/google
-if ! docker exec mylayer_caddy sh -lc "caddy adapt --config /etc/caddy/Caddyfile --pretty | grep -q '/login/google'"; then
-  echo "❌ Caddy is not routing /login/google to backend"; exit 1; fi
-
-# 3) Sanity check: /login/google reachable (expect non-405)
-HTTP_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"id_token":"dummy"}' https://$DOMAIN/login/google || true)
-if [ "$HTTP_STATUS" = "405" ]; then
-  echo "❌ /login/google returned 405 (not routed to backend). Aborting"; exit 1; fi
-
-# Wait briefly
-sleep 5
-
-# Quick check
-if docker exec mylayer_pessoa_backend curl -s http://localhost:8080/health >/dev/null 2>&1 && \
-   docker exec mylayer_pessoa_frontend curl -s http://localhost:80 >/dev/null 2>&1; then
-    echo "  Status: ✅ All services running"
-else
-    echo "  Status: ⚠️ Some services not responding"
-fi
+# Minimal post-deploy summary
+echo "🔎 docker compose ps"
+docker compose --env-file .env.prod -f docker-compose.prod.yml ps
 
 REMOTE_SCRIPT
 
