@@ -300,19 +300,19 @@ export const CueBlock = Node.create<CueBlockOptions>({
               const word = getWordAtPosition(view.state.doc, pos.pos);
               
               if (word) {
-                // Highlight drop target
-                const decorations = DecorationSet.create(view.state.doc, [
-                  Decoration.inline(word.from, word.to, { class: 'drop-target-word drop-ready' }),
-                ]);
-                
-                (view as any).cueDropDecorations = decorations;
-                view.dispatch(view.state.tr.setMeta('addDropDecoration', decorations));
-              } else {
-                // Clear decorations if not over a word
-                if ((view as any).cueDropDecorations) {
-                  view.dispatch(view.state.tr.setMeta('removeDropDecoration', true));
-                  delete (view as any).cueDropDecorations;
+                // Only re-render if the word range actually changed
+                const currentRange = (view as any).cueDropRange as { from: number; to: number } | undefined;
+                if (!currentRange || currentRange.from !== word.from || currentRange.to !== word.to) {
+                  const decorations = DecorationSet.create(view.state.doc, [
+                    Decoration.inline(word.from, word.to, { class: 'drop-target-word drop-ready' }),
+                  ]);
+                  (view as any).cueDropDecorations = decorations;
+                  (view as any).cueDropRange = { from: word.from, to: word.to };
+                  view.dispatch(view.state.tr.setMeta('addDropDecoration', decorations));
                 }
+              } else {
+                // Keep the last decoration until dragleave/drop to avoid flicker near boundaries
+                // Do not clear here to prevent rapid toggling
               }
               
               return true;
@@ -323,6 +323,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
               if ((view as any).cueDropDecorations) {
                 view.dispatch(view.state.tr.setMeta('removeDropDecoration', true));
                 delete (view as any).cueDropDecorations;
+                delete (view as any).cueDropRange;
               }
               return false;
             },
@@ -343,6 +344,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
                 setTimeout(() => {
                   view.dispatch(view.state.tr.setMeta('removeDropDecoration', true));
                   delete (view as any).cueDropDecorations;
+                  delete (view as any).cueDropRange;
                 }, 50);
               }
               
@@ -491,6 +493,8 @@ export const CueBlock = Node.create<CueBlockOptions>({
       
       // Use event delegation for better stability
       const hoverHandler = (e: MouseEvent) => {
+        // During connection drag, ignore hover toggling to prevent flicker
+        if (document.body.classList.contains('cue-connection-dragging')) return;
         const target = e.target as HTMLElement;
         
         // Handle cue block hover
@@ -559,6 +563,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
       };
       
       const hoverOutHandler = (e: MouseEvent) => {
+        if (document.body.classList.contains('cue-connection-dragging')) return;
         const target = e.target as HTMLElement;
         const relatedTarget = e.relatedTarget as HTMLElement;
         

@@ -604,7 +604,9 @@ html, body {
   .single-page-view,
   .multi-page-view,
   .pageCanvas {
-    padding-left: calc(var(--content-padding-x) + var(--toolbar-width) + var(--space-lg));
+    /* Keep symmetric side paddings so content is centered evenly */
+    padding-left: var(--content-padding-x);
+    padding-right: var(--content-padding-x);
   }
   
   /* Side-by-side dialogue layout on desktop */
