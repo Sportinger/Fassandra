@@ -108,10 +108,11 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
             position: 'fixed',
             left: `${contextMenu.x}px`,
             top: `${contextMenu.y}px`,
-            background: 'white',
-            border: '1px solid #ccc',
+            background: 'var(--color-background)',
+            color: 'var(--color-text)',
+            border: '1px solid var(--color-border)',
             borderRadius: '8px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.25)',
             zIndex: 10000,
             minWidth: '200px',
             padding: '4px 0',
@@ -121,25 +122,25 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
           <div 
             className="context-menu-item"
             style={{
-              padding: '12px 16px',
+              padding: '10px 14px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
               fontSize: '14px',
-              borderBottom: '1px solid #eee',
+              borderBottom: '1px solid var(--color-border)',
               transition: 'background-color 0.2s ease',
             }}
             onClick={() => handleContextMenuAction('toggle-ruler')}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-button-bg-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-background)'}
           >
             📏 {showRuler ? 'Hide Ruler' : 'Show Ruler'}
           </div>
           <div 
             className="context-menu-item"
             style={{
-              padding: '12px 16px',
+              padding: '10px 14px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -148,10 +149,28 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
               transition: 'background-color 0.2s ease',
             }}
             onClick={() => handleContextMenuAction('toggle-view')}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-button-bg-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-background)'}
           >
             📄 Switch to Multiple Pages View
+          </div>
+          {/* Dummy Comment option for right-click menu */}
+          <div 
+            className="context-menu-item"
+            style={{
+              padding: '10px 14px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '14px',
+              transition: 'background-color 0.2s ease',
+            }}
+            onClick={() => {/* placeholder for future Comment action */}}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-button-bg-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-background)'}
+          >
+            💬 Comment
           </div>
         </div>
       )}
