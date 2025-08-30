@@ -617,6 +617,33 @@
     color: white;
     animation: pulse 2s infinite;
   }
+
+  /* Floating mobile keyboard FAB */
+  .keyboardFab {
+    position: fixed; /* reinforced inline */
+    z-index: 1100; /* above toolbar */
+    width: 48px;
+    height: 48px;
+    border-radius: 9999px;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    background: rgba(59, 130, 246, 0.14);
+    color: var(--color-text, #e5e7eb);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 20px rgba(0,0,0,.35);
+    backdrop-filter: blur(6px);
+  }
+
+  .keyboardFab .fabIcon { font-size: 18px; line-height: 1; }
+  .keyboardFab[aria-pressed="true"] {
+    background: var(--color-accent, #3b82f6);
+    color: white;
+  }
+
+  @media (min-width: 768px) {
+    .keyboardFab { display: none; }
+  }
   
   @keyframes pulse {
     0%, 100% {
