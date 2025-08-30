@@ -6,7 +6,8 @@
 }
 
 .appContent {
-  padding-top: 50px; /* Better balance - not too tight, not too loose */
+  /* Account for fixed header + iOS safe area */
+  padding-top: calc(60px + env(safe-area-inset-top, 0px));
   padding-left: 2rem;
   padding-right: 2rem;
   width: 100%;
@@ -34,8 +35,8 @@
   }
   
   .appContent {
-    /* Ensure content is not hidden under fixed header */
-    padding-top: 60px !important; /* matches Header height */
+    /* Ensure content is not hidden under fixed header + iOS safe area */
+    padding-top: calc(60px + env(safe-area-inset-top, 0px)) !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
     margin: 0 !important;
