@@ -45,7 +45,9 @@ cd /home/admins/projects/pessoa/frontend
 if [ -f ../.env.prod ]; then
     set -a; . ../.env.prod; set +a
 fi
-if ! DOCKER_BUILDKIT=1 docker build \
+if [ -z "$VITE_GOOGLE_CLIENT_ID" ]; then
+    echo "❌ VITE_GOOGLE_CLIENT_ID not set in .env.prod"; exit 1; fi
+if ! DOCKER_BUILDKIT=1 docker build --no-cache \
     $BUILD_OPTS \
     -f Dockerfile.prod \
     --build-arg VITE_API_BASE_URL=https://$DOMAIN \
@@ -57,6 +59,9 @@ if ! DOCKER_BUILDKIT=1 docker build \
     echo "Check: Are the VITE args correct?"
     exit 1
 fi
+echo "🔎 Verifying built bundle contains client ID..."
+if ! docker run --rm mylayer-frontend:latest sh -lc "grep -R -q \"$VITE_GOOGLE_CLIENT_ID\" /srv || grep -R -q \"${VITE_GOOGLE_CLIENT_ID%%.*}\" /srv"; then
+    echo "❌ Built frontend image does not contain VITE_GOOGLE_CLIENT_ID"; exit 1; fi
 echo "✅ Frontend built successfully"
 cd /home/admins/projects/pessoa
 

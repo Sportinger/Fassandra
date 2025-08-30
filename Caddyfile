@@ -33,6 +33,11 @@ fassandra.de {
         reverse_proxy backend:3000
     }
     
+    # Google login endpoint
+    handle /login/google {
+        reverse_proxy backend:3000
+    }
+    
     # Register endpoint (no /api prefix)
     handle /register {
         reverse_proxy backend:3000
