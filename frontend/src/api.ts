@@ -47,6 +47,15 @@ export const register = async (email: string, username: string, password: string
     });
 };
 
+export const loginWithGoogle = async (idToken: string): Promise<any> => {
+    return apiService.request('/login/google', {
+        method: 'POST',
+        body: { id_token: idToken },
+        requireAuth: false,
+        validate: { idToken }
+    });
+};
+
 export const getCurrentUser = async (): Promise<{ id: string; email: string; username: string; role: string; created_at: string }> => {
     return apiService.get('/api/me');
 };

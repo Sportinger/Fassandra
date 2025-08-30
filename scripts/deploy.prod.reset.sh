@@ -47,6 +47,7 @@ if ! DOCKER_BUILDKIT=1 docker build \
     -f Dockerfile.prod \
     --build-arg VITE_API_BASE_URL=https://$DOMAIN \
     --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
+    --build-arg VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID \
     -t mylayer-frontend:latest .; then
     echo "❌ Frontend build FAILED"
     echo "Check: Does frontend/Dockerfile.prod exist?"

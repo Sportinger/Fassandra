@@ -4,6 +4,7 @@ FROM node:20-alpine AS builder
 # Build arguments
 ARG VITE_API_BASE_URL
 ARG VITE_WS_BASE_URL
+ARG VITE_GOOGLE_CLIENT_ID
 
 WORKDIR /app
 
@@ -17,6 +18,7 @@ RUN --mount=type=cache,target=/root/.npm \
 # Set environment variables
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_WS_BASE_URL=${VITE_WS_BASE_URL}
+ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
 ENV NODE_ENV=production
 
 # Copy all source files

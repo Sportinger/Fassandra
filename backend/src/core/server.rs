@@ -16,7 +16,7 @@ use anyhow::{Context, Result};
 
 use crate::networking::websocket;
 use crate::handlers::script::{script_routes, claude_session_routes};
-use crate::handlers::auth::{health_with_service_manager, register, login, receive_console_logs, get_current_user, logout, get_csrf_token, get_ws_token};
+use crate::handlers::auth::{health_with_service_manager, register, login, login_with_google, receive_console_logs, get_current_user, logout, get_csrf_token, get_ws_token};
 use crate::auth::{rate_limit_middleware, AuthUser, create_csrf_store};
 use crate::services::persistence_event::YjsPersistenceEvent;
 use crate::infrastructure::Config;
@@ -116,6 +116,7 @@ pub fn create_router(
         .route("/health", get(health_with_service_manager))
         .route("/register", post(register))
         .route("/login", post(login))
+        .route("/login/google", post(login_with_google))
         .route("/logout", post(logout))
         .nest("/api", api_routes_with_services(service_manager.get_persistence_sender(), script_services.clone(), csrf_store.clone()))
         .nest("/api/s", script_routes(service_manager.get_rate_limiter()).with_state(extended_script_services))

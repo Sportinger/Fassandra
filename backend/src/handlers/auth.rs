@@ -12,6 +12,9 @@ use crate::auth::{
 use crate::error::AppError;
 use crate::models::user::User;
 use chrono;
+use std::env;
+use serde_json::Value;
+use reqwest::Client;
 
 /// Payload for user login requests.
 #[derive(Deserialize)]
@@ -168,6 +171,130 @@ pub async fn login(
         "token": token.clone()  // Always return token for sessionStorage
     });
     
+    Ok(Json(response))
+}
+
+/// Payload for Google login
+#[derive(Deserialize)]
+pub struct GoogleLoginPayload {
+    pub id_token: String,
+}
+
+/// Minimal shape of Google's tokeninfo response
+#[derive(Deserialize)]
+struct GoogleTokenInfo {
+    aud: String,
+    email: String,
+    #[serde(default)]
+    email_verified: Option<String>,
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    sub: Option<String>,
+}
+
+/// Login or register via Google ID token.
+/// Accepts an ID token from Google Identity Services, verifies it against
+/// Google's tokeninfo endpoint, then issues our own JWT and sets cookies.
+pub async fn login_with_google(
+    State(pool): State<Arc<PgPool>>,
+    cookies: Cookies,
+    Json(payload): Json<GoogleLoginPayload>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let client_id = env::var("GOOGLE_CLIENT_ID")
+        .map_err(|_| AppError::Internal(anyhow::anyhow!("GOOGLE_CLIENT_ID not configured")))?;
+
+    // Verify ID token with Google
+    let http = Client::new();
+    let url = format!("https://oauth2.googleapis.com/tokeninfo?id_token={}", payload.id_token);
+    let resp = http
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to call Google tokeninfo: {}", e)))?;
+
+    if !resp.status().is_success() {
+        return Err(AppError::Unauthorized("Invalid Google token".to_string()));
+    }
+
+    let info: GoogleTokenInfo = resp
+        .json()
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to parse Google tokeninfo: {}", e)))?;
+
+    if info.aud != client_id {
+        return Err(AppError::Unauthorized("Google client mismatch".to_string()));
+    }
+
+    // Ensure email is present and verified if provided
+    if info.email.is_empty() {
+        return Err(AppError::Unauthorized("Google account has no email".to_string()));
+    }
+    if let Some(verified) = info.email_verified.as_deref() {
+        if verified != "true" { 
+            return Err(AppError::Unauthorized("Google email not verified".to_string()));
+        }
+    }
+
+    // Find or create the user by email
+    let existing: Option<User> = sqlx::query_as(
+        "SELECT id, email, username, password_hash, role, created_at FROM users WHERE email = $1"
+    )
+        .bind(&info.email)
+        .fetch_optional(pool.as_ref())
+        .await
+        .map_err(AppError::Db)?;
+
+    let user = match existing {
+        Some(u) => u,
+        None => {
+            let username_base = info
+                .name
+                .as_deref()
+                .unwrap_or_else(|| info.email.split('@').next().unwrap_or("user"));
+            let username = username_base.chars()
+                .filter(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
+                .collect::<String>()
+                .to_lowercase();
+            let password_hash = "oauth:google".to_string();
+            let default_role = "user";
+
+            sqlx::query_as::<_, User>(
+                "INSERT INTO users (email, username, password_hash, role) VALUES ($1, $2, $3, $4)
+                 RETURNING id, email, username, password_hash, role, created_at"
+            )
+                .bind(&info.email)
+                .bind(&username)
+                .bind(&password_hash)
+                .bind(default_role)
+                .fetch_one(pool.as_ref())
+                .await
+                .map_err(|e| {
+                    if let sqlx::Error::Database(db_err) = &e {
+                        if db_err.code().as_deref() == Some("23505") {
+                            return AppError::Conflict("Email already exists".to_string());
+                        }
+                    }
+                    AppError::Db(e)
+                })?
+        }
+    };
+
+    // Issue our JWT
+    let token = generate_token(user.id, &user.email, &user.username, &user.role)?;
+    set_auth_cookie(&cookies, &token)?;
+
+    let response = serde_json::json!({
+        "message": "Login successful",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "username": user.username,
+            "role": user.role
+        },
+        "token": token
+    });
+
     Ok(Json(response))
 }
 

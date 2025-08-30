@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../AuthContext';
-import { login } from '../api';
+import { login, loginWithGoogle } from '../api';
 import { logDebugInfo } from '../utils/debug';
 import authStyles from './Auth.module.css';
 import { getErrorMessage } from '../types/common';
@@ -83,6 +83,54 @@ export const Login: React.FC = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
+  // Lazy-load Google Identity Services script
+  const loadGoogleScript = (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if ((window as any).google?.accounts?.id) return resolve();
+      const s = document.createElement('script');
+      s.src = 'https://accounts.google.com/gsi/client';
+      s.async = true;
+      s.defer = true;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('Failed to load Google Identity script'));
+      document.head.appendChild(s);
+    });
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      await loadGoogleScript();
+      const clientId = (import.meta as any).env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+      if (!clientId) {
+        alert('Google Sign-In is not configured. Missing VITE_GOOGLE_CLIENT_ID');
+        return;
+      }
+      (window as any).google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (response: any) => {
+          try {
+            const idToken = response?.credential;
+            if (!idToken) throw new Error('No credential received');
+            const result = await loginWithGoogle(idToken);
+            // Mirror normal login flow with exit animation
+            setIsExiting(true);
+            setTimeout(() => {
+              setToken(result.token, result.user);
+            }, 300);
+          } catch (err: any) {
+            logger.error('Login', 'Google login failed', err);
+            alert('Google login failed');
+          }
+        }
+      });
+      // Show Google account chooser / One Tap prompt
+      (window as any).google.accounts.id.prompt();
+    } catch (e) {
+      logger.error('Login', 'Failed to start Google login', e);
+      alert('Failed to start Google login');
+    }
+  };
+
   return (
     <div className={authStyles.loginPage}>
       <div className={authStyles.loginLayout}>
@@ -104,7 +152,7 @@ export const Login: React.FC = () => {
               <span className={`${authStyles.chip} ${authStyles.chipSound}`}>{language === 'de' ? 'TON' : 'SOUND'}</span>
               <span className={`${authStyles.chip} ${authStyles.chipVideo}`}>{language === 'de' ? 'VIDEO' : 'VIDEO'}</span>
             </div>
-            <h2 className={authStyles.authTitle}>{language === 'de' ? 'Anmelden' : 'Login'}</h2>
+            {/* Title intentionally removed per design */}
             <p className={authStyles.authSubtitle}>
               {language === 'de'
                 ? 'Arbeite mit deinem Ensemble an Szenen, Notizen und Cues.'
@@ -163,7 +211,7 @@ export const Login: React.FC = () => {
               </div>
 
               <div className={authStyles.oauthRow}>
-                <button type="button" className={authStyles.oauthBtn} disabled>Google</button>
+                <button type="button" className={authStyles.oauthBtn} onClick={handleGoogleLogin}>Google</button>
                 <button type="button" className={authStyles.oauthBtn} disabled>GitHub</button>
               </div>
             </form>
