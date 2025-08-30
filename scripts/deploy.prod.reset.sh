@@ -8,7 +8,8 @@ set -euo pipefail
 # CONFIGURATION
 SERVER="91.99.69.115"
 DOMAIN="fassandra.de"
-USER="root"
+# Remote SSH user (matches server setup)
+USER="admin"
 APP_DIR="/home/admin/app"
 
 # Resolve project root (parent of scripts)
@@ -108,6 +109,9 @@ echo "✅ Server cleaned"
 # CREATE DIRECTORY
 ssh "$USER@$SERVER" "mkdir -p $APP_DIR" || { echo "❌ Failed to create app directory"; exit 1; }
 
+# Ensure previous image archives don't block uploads (owned by root from past runs)
+ssh "$USER@$SERVER" "rm -f $APP_DIR/backend.tar.gz $APP_DIR/frontend.tar.gz" >/dev/null 2>&1 || true
+
 # CHECK REQUIRED FILES
 echo "📋 Checking required files..."
 for file in "$PROJECT_ROOT/.env.prod" "$PROJECT_ROOT/docker-compose.prod.yml" "$PROJECT_ROOT/Caddyfile"; do
@@ -121,7 +125,9 @@ echo "✅ All required files present"
 echo "📡 Transferring images (this may take 2-10 minutes)..."
 echo "   Backend size: $(du -h backend.tar.gz | cut -f1)"
 echo "   Frontend size: $(du -h frontend.tar.gz | cut -f1)"
-scp backend.tar.gz frontend.tar.gz "$USER@$SERVER:$APP_DIR/" || { echo "❌ Failed to transfer images"; exit 1; }
+# Transfer images
+scp backend.tar.gz "$USER@$SERVER:$APP_DIR/backend.tar.gz" || { echo "❌ Failed to transfer backend image"; exit 1; }
+scp frontend.tar.gz "$USER@$SERVER:$APP_DIR/frontend.tar.gz" || { echo "❌ Failed to transfer frontend image"; exit 1; }
 
 echo "📡 Transferring config files..."
 scp "$PROJECT_ROOT/.env.prod" "$USER@$SERVER:$APP_DIR/.env.prod" || { echo "❌ Failed to transfer .env.prod"; exit 1; }
@@ -140,7 +146,8 @@ rm -f backend.tar.gz frontend.tar.gz
 
 # DEPLOY ON SERVER
 echo "🚀 Deploying on server..."
-ssh "$USER@$SERVER" APP_DIR="$APP_DIR" DOMAIN="$DOMAIN" << 'DEPLOY_SCRIPT'
+ssh "$USER@$SERVER" "APP_DIR='$APP_DIR' DOMAIN='$DOMAIN' bash -s" << 'DEPLOY_SCRIPT'
+set -euo pipefail
 cd "$APP_DIR"
 
 # Load backend

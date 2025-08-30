@@ -486,7 +486,7 @@ async fn handle_socket(
                                     tracing::debug!("[WS_PERSIST_NONE] No update payload extracted; not persisting this frame");
                                 }
                             }
-                        } else {
+                        else {
                             tracing::debug!("[WS_AWARENESS_SKIP] script: {}, size: {} bytes", script_id, bin.len());
                         }
                         
