@@ -36,7 +36,9 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/pessoa_db
       CORS_ORIGINS: ${CORS_ORIGINS}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
       JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_API_URL: ${GEMINI_API_URL}
       ENVIRONMENT: production
