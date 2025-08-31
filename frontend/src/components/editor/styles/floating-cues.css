@@ -41,6 +41,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: #000; /* always black for names */
 }
 
 /* Color accents per cue type */

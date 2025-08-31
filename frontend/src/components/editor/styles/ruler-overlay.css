@@ -1,0 +1,15 @@
+.ruler-overlay { z-index: 8; pointer-events: none; }
+.ruler-scrim { backdrop-filter: none; }
+.ruler-bar { pointer-events: auto; position: relative; }
+.ruler-bar .bar-line {
+  position: absolute; left: 0; right: 0; top: 50%; height: 2px; transform: translateY(-50%);
+  background: rgba(37,99,235,0.85);
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+}
+.ruler-bar .bar-arrow {
+  position: absolute; top: 50%; width: 0; height: 0; transform: translateY(-50%);
+  border-top: 8px solid transparent; border-bottom: 8px solid transparent;
+}
+.ruler-bar .bar-arrow.left { left: -1px; border-right: 12px solid rgba(37,99,235,0.95); }
+.ruler-bar .bar-arrow.right { right: -1px; border-left: 12px solid rgba(37,99,235,0.95); }
+.ruler-bar:hover .bar-line { background: rgba(37,99,235,1); }
