@@ -8,6 +8,7 @@ import { LoadingSpinner } from './ui/LoadingSpinner';
 import { StatusIndicator } from './ui/StatusIndicator';
 import { SinglePageView } from '../ViewModes';
 import { FloatingCuesLayer } from './FloatingCuesLayer';
+import RulerOverlay from './RulerOverlay';
 import { AudioTranscription } from './AudioTranscription';
 import { MessageSquareQuoteIcon } from '../icons';
 import type { EditorProps, ViewMode } from '../types';
@@ -23,6 +24,7 @@ import '../styles/search.css';
 import '../styles/cue-connections.css';
 import '../styles/rehearsal-line.css';
 import '../styles/floating-cues.css';
+import '../styles/ruler-overlay.css';
 import '../styles/print.css';
 /**
  * Main Editor Component
@@ -75,6 +77,7 @@ export const Editor: React.FC<EditorProps> = ({
   const [shouldCenterOnRehearsalChange, setShouldCenterOnRehearsalChange] = useState(false);
   const [editAllSpeakers, setEditAllSpeakers] = useState(false);
   const [currentSpeakerName, setCurrentSpeakerName] = useState<string | null>(null);
+  const [rulerOverlayActive, setRulerOverlayActive] = useState(false);
   
   // Removed demo mode state - development utility
   // Removed demo-related state - development utility
@@ -429,6 +432,13 @@ export const Editor: React.FC<EditorProps> = ({
     return () => document.removeEventListener('click', handleClickOutside);
   }, [localContextMenu.visible]);
 
+  // Listen for global toggle event from toolbar ruler button
+  useEffect(() => {
+    const handler = () => setRulerOverlayActive(prev => !prev);
+    window.addEventListener('pessoa:toggle-ruler-overlay', handler as any);
+    return () => window.removeEventListener('pessoa:toggle-ruler-overlay', handler as any);
+  }, []);
+
   // Handle animated navigation back
   const handleAnimatedNavigation = useCallback(() => {
     // Add exit animation class if needed
@@ -553,6 +563,8 @@ export const Editor: React.FC<EditorProps> = ({
               <>
                 {/* eslint-disable-next-line react/jsx-no-useless-fragment */}
                 <FloatingCuesLayer editor={editor} />
+                {/* Ruler overlay */}
+                <RulerOverlay active={rulerOverlayActive} onClose={() => setRulerOverlayActive(false)} />
               </>
             ) : null
           }
