@@ -39,25 +39,26 @@ function getSceneNumberForPosition(state: EditorState, pos: number): number {
 function renumberCuesByMarks(view: EditorView) {
   const { state } = view;
   const tr = state.tr;
-  const seenFirstPos: Record<string, number> = {}; // cueId -> first pos
+  const seenFirstPos: Record<string, number> = {}; // cueId -> pos to keep
   const cueMeta: Record<string, { type: CueType; scene: number } | null> = {};
+  const markType = state.schema.marks['cueConnection'];
 
   // First pass: find first occurrence and scene/type
   state.doc.nodesBetween(0, state.doc.content.size, (node, pos) => {
-    if (node.isText && node.marks?.length) {
-      node.marks.forEach(mark => {
-        if (mark.type.name === 'cueConnection') {
-          const cueId = mark.attrs.cueId as string;
-          const cueType = (mark.attrs.cueType || 'light') as CueType;
-          if (!cueId) return;
-          if (seenFirstPos[cueId] == null) {
-            seenFirstPos[cueId] = pos;
-            const scene = getSceneNumberForPosition(state, pos);
-            cueMeta[cueId] = { type: cueType, scene };
-          }
-        }
-      });
-    }
+    if (!node.isText || !node.marks?.length) return;
+    node.marks.forEach(mark => {
+      if (mark.type.name !== 'cueConnection') return;
+      const cueId = mark.attrs.cueId as string;
+      const cueType = (mark.attrs.cueType || 'light') as CueType;
+      if (!cueId) return;
+      if (seenFirstPos[cueId] == null) {
+        seenFirstPos[cueId] = pos; // first occurrence kept
+        const scene = getSceneNumberForPosition(state, pos);
+        cueMeta[cueId] = { type: cueType, scene };
+      } else {
+        // Do nothing here; we'll drop extras in the rebuild below
+      }
+    });
   });
 
   // Build counters per scene and type
@@ -77,21 +78,29 @@ function renumberCuesByMarks(view: EditorView) {
   // Second pass: update all marks to have consistent cueNumber
   let changed = false;
   state.doc.nodesBetween(0, state.doc.content.size, (node, pos) => {
-    if (node.isText && node.marks?.length) {
-      node.marks.forEach(mark => {
-        if (mark.type.name === 'cueConnection') {
-          const cueId = mark.attrs.cueId as string;
-          if (!cueId) return;
-          const targetNumber = cueNumberMap[cueId];
-          if (targetNumber && mark.attrs.cueNumber !== targetNumber) {
-            // Replace this mark instance with updated cueNumber
-            tr.removeMark(pos, pos + node.nodeSize, mark.type);
-            const newMark = mark.type.create({ ...mark.attrs, cueNumber: targetNumber });
-            tr.addMark(pos, pos + node.nodeSize, newMark);
-            changed = true;
-          }
-        }
-      });
+    if (!node.isText || !node.marks?.length) return;
+    const cueMarks = node.marks.filter(m => m.type.name === 'cueConnection');
+    if (!cueMarks.length) return;
+    const rebuilt: any[] = [];
+    cueMarks.forEach(mark => {
+      const cueId = mark.attrs.cueId as string;
+      if (!cueId) return;
+      // Keep only the first occurrence per cueId across the doc
+      if (seenFirstPos[cueId] != null && pos !== seenFirstPos[cueId]) {
+        changed = true; // drop this duplicate by not re-adding
+        return;
+      }
+      const targetNumber = cueNumberMap[cueId];
+      if (targetNumber && mark.attrs.cueNumber !== targetNumber) {
+        rebuilt.push(markType.create({ ...mark.attrs, cueNumber: targetNumber }));
+        changed = true;
+      } else {
+        rebuilt.push(mark);
+      }
+    });
+    if (changed) {
+      tr.removeMark(pos, pos + node.nodeSize, markType);
+      rebuilt.forEach(m => tr.addMark(pos, pos + node.nodeSize, m));
     }
   });
 
@@ -109,14 +118,34 @@ export const CueSelectTool = Extension.create({
     return {
       startCueSelect:
         (cueType: CueType) => ({ tr, state, dispatch, editor }) => {
-          const pluginState = { active: true, cueType, decorations: DecorationSet.empty };
+          const pluginState = { active: true, cueType, cueId: null, decorations: DecorationSet.empty } as any;
+          tr.setMeta(cueSelectKey, pluginState);
+          if (dispatch) editor.view.dispatch(tr);
+          return true;
+        },
+      startCueExtend:
+        (cueId: string) => ({ tr, state, dispatch, editor }) => {
+          // Find cue type from the first occurrence of this cueId
+          let cueType: CueType | null = null;
+          state.doc.nodesBetween(0, state.doc.content.size, (node, pos) => {
+            if (cueType) return false;
+            if (node.isText && node.marks.length) {
+              node.marks.forEach(mark => {
+                if (mark.type.name === 'cueConnection' && mark.attrs.cueId === cueId) {
+                  cueType = mark.attrs.cueType as CueType;
+                }
+              });
+            }
+          });
+          if (!cueType) cueType = 'light';
+          const pluginState = { active: true, cueType, cueId, decorations: DecorationSet.empty } as any;
           tr.setMeta(cueSelectKey, pluginState);
           if (dispatch) editor.view.dispatch(tr);
           return true;
         },
       stopCueSelect:
         () => ({ tr, state, dispatch, editor }) => {
-          const pluginState = { active: false, cueType: null, decorations: DecorationSet.empty } as any;
+          const pluginState = { active: false, cueType: null, cueId: null, decorations: DecorationSet.empty } as any;
           tr.setMeta(cueSelectKey, pluginState);
           if (dispatch) editor.view.dispatch(tr);
           return true;
@@ -180,16 +209,29 @@ export const CueSelectTool = Extension.create({
               if (!pos) return false;
               const word = getWordAtPosition(view.state.doc, pos.pos);
               if (!word) return false;
-              // Create a new cue mark
-              const cueId = `cue-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+              // Create mark: reuse cueId in extend mode or create a new one
+              const cueId = ps.cueId || `cue-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
               // Temporary number; renumber after insert
               const markType = view.state.schema.marks['cueConnection'];
-              if (!markType) return false;
-              const tr = view.state.tr;
-              const tmpMark = markType.create({ cueId, cueType: ps.cueType, cueNumber: '0' });
-              tr.addMark(word.from, word.to, tmpMark);
+            if (!markType) return false;
+            const tr = view.state.tr;
+            // If we are moving an existing cue, remove only that cue's mark(s) but keep other cues on the same word
+            if (ps.cueId) {
+              view.state.doc.nodesBetween(0, view.state.doc.content.size, (node, pos) => {
+                if (!node.isText || !node.marks.length) return;
+                const cueMarks = node.marks.filter(m => m.type.name === 'cueConnection');
+                const keep = cueMarks.filter(m => m.attrs.cueId !== cueId);
+                const hasToRemove = keep.length !== cueMarks.length;
+                if (hasToRemove) {
+                  tr.removeMark(pos, pos + node.nodeSize, markType);
+                  keep.forEach(m => tr.addMark(pos, pos + node.nodeSize, m));
+                }
+              });
+            }
+            const tmpMark = markType.create({ cueId, cueType: ps.cueType, cueNumber: '0' });
+            tr.addMark(word.from, word.to, tmpMark);
               // Exit select mode and clear highlight
-              tr.setMeta(cueSelectKey, { active: false, cueType: null, decorations: DecorationSet.empty });
+              tr.setMeta(cueSelectKey, { active: false, cueType: null, cueId: null, decorations: DecorationSet.empty });
               view.dispatch(tr);
               // Renumber all cues based on scene/type order
               setTimeout(() => renumberCuesByMarks(view), 0);
@@ -201,8 +243,19 @@ export const CueSelectTool = Extension.create({
           update: (view) => {
             // On any doc change, ensure numbering stays consistent
             renumberCuesByMarks(view);
+            // Toggle body class for pointer behavior during select mode
+            try {
+              const ps = cueSelectKey.getState(view.state) as any;
+              if (ps?.active) {
+                document.body.classList.add('cue-select-active');
+              } else {
+                document.body.classList.remove('cue-select-active');
+              }
+            } catch {}
           },
-          destroy: () => {},
+          destroy: () => {
+            try { document.body.classList.remove('cue-select-active'); } catch {}
+          },
         }),
       }),
     ];

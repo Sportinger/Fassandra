@@ -20,6 +20,8 @@
   font-size: 11px; /* smaller as requested */
   line-height: 1;
   user-select: none;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  will-change: transform;
 }
 
 .floating-cue .floating-cue-icon {
@@ -28,6 +30,17 @@
 
 .floating-cue .floating-cue-number {
   font-weight: 600;
+  color: #000; /* always black for numbers */
+}
+
+.floating-cue .floating-cue-name {
+  margin-left: 6px;
+  opacity: 0.9;
+  display: none; /* reveal on hover */
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Color accents per cue type */
@@ -35,3 +48,70 @@
 .floating-cue-video  { border-left: 3px solid #3b82f6; }
 .floating-cue-sound  { border-left: 3px solid #10b981; }
 .floating-cue-props  { border-left: 3px solid #8b5cf6; }
+
+/* Hover expansion: increase size and reveal name */
+.floating-cue:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+  z-index: 6;
+}
+.floating-cue:hover .floating-cue-number {
+  font-size: 12px;
+}
+.floating-cue:hover .floating-cue-name {
+  display: inline;
+}
+
+.floating-cues-backdrop {
+  position: fixed;
+  inset: 0;
+  pointer-events: auto;
+}
+
+.floating-cue-popover {
+  pointer-events: auto;
+}
+.floating-cue-popover .popover-inner {
+  background: var(--color-surface, #1f2937);
+  color: var(--color-text, #f3f4f6);
+  border: 1px solid var(--color-border, rgba(255,255,255,0.12));
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  padding: 8px;
+  min-width: 180px;
+}
+.floating-cue-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.15));
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: inherit;
+}
+.floating-cue-popover .popover-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.floating-cue-popover .popover-actions button {
+  background: var(--color-button-bg, #374151);
+  color: var(--color-text, #f3f4f6);
+  border: 1px solid var(--color-border, rgba(255,255,255,0.1));
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.cue-type-chip {
+  background: var(--color-button-bg, #374151);
+  border: 1px solid var(--color-border, rgba(255,255,255,0.12));
+  border-radius: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: var(--color-text, #f3f4f6);
+}
+.cue-type-chip.active {
+  background: #2563eb;
+  border-color: #1d4ed8;
+}

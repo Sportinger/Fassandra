@@ -661,6 +661,17 @@ export const Editor: React.FC<EditorProps> = ({
                   
                   // Add selected class to clicked scene block
                   sceneBlockElement.classList.add('scene-selected');
+                  // Move ProseMirror selection inside the clicked scene block
+                  try {
+                    if (editor) {
+                      const view: any = (editor as any).view;
+                      const posInNode = view.posAtDOM(sceneBlockElement, 0);
+                      if (typeof posInNode === 'number' && posInNode >= 0) {
+                        // place cursor at start+1 (inside node content)
+                        editor.chain().setTextSelection(Math.min(posInNode + 1, editor.state.doc.content.size - 1)).run();
+                      }
+                    }
+                  } catch {}
                   
                   showContextMenu(e.clientX, e.clientY, 'scene-select');
                   e.stopPropagation(); // Prevent default toolbar from showing

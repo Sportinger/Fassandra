@@ -129,10 +129,9 @@ html, body {
   border: 1px solid var(--color-border);
   position: relative;
   
-  /* Content padding - restored full padding */
-  /* Slight left correction to equalize perceived edge spacing */
-  padding-right: var(--content-padding-x);
-  padding-left: calc(var(--content-padding-x) + 8px);
+  /* Content padding: vertical only; horizontal via inner wrapper for perfect symmetry */
+  padding-left: 0;
+  padding-right: 0;
   padding-top: var(--content-padding-y);
   padding-bottom: var(--content-padding-y);
   
