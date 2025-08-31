@@ -11,6 +11,7 @@ interface SinglePageViewProps {
   rehearsalMode?: boolean;
   rehearsalLinePosition?: number;
   onOutsideClick?: () => void;
+  overlay?: React.ReactNode;
 }
 
 export const SinglePageView: React.FC<SinglePageViewProps> = ({ 
@@ -21,7 +22,8 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
   onToggleViewMode,
   rehearsalMode = false,
   rehearsalLinePosition = 0,
-  onOutsideClick
+  onOutsideClick,
+  overlay
 }) => {
   const [contextMenu, setContextMenu] = useState<{x: number; y: number; visible: boolean}>({
     x: 0, y: 0, visible: false
@@ -98,6 +100,9 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
             }}
           />
         )}
+
+        {/* Floating overlays (e.g., cue badges) */}
+        {overlay}
       </div>
       
       {/* Context Menu for dark area clicks */}

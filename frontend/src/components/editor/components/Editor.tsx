@@ -7,6 +7,7 @@ import { Toolbar } from './toolbar/Toolbar';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { StatusIndicator } from './ui/StatusIndicator';
 import { SinglePageView } from '../ViewModes';
+import { FloatingCuesLayer } from './FloatingCuesLayer';
 import { AudioTranscription } from './AudioTranscription';
 import { MessageSquareQuoteIcon } from '../icons';
 import type { EditorProps, ViewMode } from '../types';
@@ -21,6 +22,7 @@ import '../styles/scene-blocks.css';
 import '../styles/search.css';
 import '../styles/cue-connections.css';
 import '../styles/rehearsal-line.css';
+import '../styles/floating-cues.css';
 import '../styles/print.css';
 /**
  * Main Editor Component
@@ -545,6 +547,15 @@ export const Editor: React.FC<EditorProps> = ({
           onToggleViewMode={() => setViewMode(viewMode === 'single-page' ? 'multiple-pages' : 'single-page')}
           rehearsalMode={rehearsalMode}
           rehearsalLinePosition={rehearsalLinePosition}
+          overlay={
+            editor ? (
+              // Floating cues overlay anchored to connected words
+              <>
+                {/* eslint-disable-next-line react/jsx-no-useless-fragment */}
+                <FloatingCuesLayer editor={editor} />
+              </>
+            ) : null
+          }
           onOutsideClick={() => {
             try {
               if (editor) {

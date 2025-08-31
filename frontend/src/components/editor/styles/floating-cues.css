@@ -1,0 +1,38 @@
+/* Floating cue overlays anchored to connected words */
+.floating-cues-layer {
+  position: absolute;
+  inset: 0; /* fill the .singlePageContainer */
+  pointer-events: none; /* don't block editor interactions */
+  z-index: 4; /* above page content but below tooltips/menus */
+}
+
+.floating-cue {
+  pointer-events: auto; /* cue itself can be interacted with if needed */
+  background: var(--color-surface, rgba(255,255,255,0.95));
+  color: var(--color-text, #111);
+  border: 1px solid var(--color-border, rgba(0,0,0,0.15));
+  border-radius: 8px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.14);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1;
+  user-select: none;
+}
+
+.floating-cue .floating-cue-icon {
+  font-size: 14px;
+}
+
+.floating-cue .floating-cue-number {
+  font-weight: 600;
+}
+
+/* Color accents per cue type */
+.floating-cue-light { border-left: 3px solid #f59e0b; }
+.floating-cue-video  { border-left: 3px solid #3b82f6; }
+.floating-cue-sound  { border-left: 3px solid #10b981; }
+.floating-cue-props  { border-left: 3px solid #8b5cf6; }
+
