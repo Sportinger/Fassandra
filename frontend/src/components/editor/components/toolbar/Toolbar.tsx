@@ -9,6 +9,7 @@ import { SpeakerColorPicker } from '../../SpeakerColorPicker';
 import { DialogueLayoutDropdown } from '../../DialogueLayoutDropdown';
 import { ViewModeDropdown } from '../../ViewModeDropdown';
 import { MessageSquareQuoteIcon, SearchIcon, ClapperboardIcon, GoalIcon, PrinterIcon, LayoutPanelTopIcon } from '../../icons';
+import { RulerAdjustDropdown } from '../../RulerAdjustDropdown';
 import type { ToolbarProps, ToolbarContext } from '../../types/index';
 import { CueType } from '../../../../types/cue';
 
@@ -603,6 +604,17 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       order: 1
     },
 
+    // Ruler adjust (default context)
+    {
+      id: 'ruler-adjust',
+      icon: '📏',
+      title: 'Adjust Margins',
+      action: () => {}, // handled by dropdown
+      contexts: ['default'],
+      order: 5,
+      isSpecial: true
+    },
+
     // Cue dropdown (default context)
     {
       id: 'cue-dropdown',
@@ -905,6 +917,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 onSetViewMode={onSetViewMode}
                 isVisible={isVisible}
               />
+            ) : button.isSpecial && button.id === 'ruler-adjust' ? (
+              <RulerAdjustDropdown isVisible={isVisible} />
             ) : (
               <button
                 onClick={button.action}

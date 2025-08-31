@@ -25,11 +25,12 @@ import { useAuth } from '../../../AuthContext';
 import { DialogueBlock } from '../extensions/DialogueBlock';
 import { Speaker } from '../extensions/Speaker';
 import { DialogueText } from '../extensions/DialogueText';
-// Removed inline CueBlock rendering; cues are now marks + floating overlay
+import { CueBlockCompat } from '../extensions/CueBlockCompat';
 import { SceneBlock } from '../extensions/SceneBlock';
 import { TrailingNode } from '../extensions/TrailingNode';
 import { CueConnectionMark } from '../extensions/CueConnectionMark';
 import { CueSelectTool } from '../extensions/CueSelectTool';
+import { CueMigration } from '../extensions/CueMigration';
 import { PageIndicatorCompat } from '../extensions/PageIndicatorCompat';
 import { FontSize } from '../FontSizeExtension';
 import { FontFamilyExtension } from '../extensions/FontFamilyExtension';
@@ -559,9 +560,11 @@ export const useEditorCore = ({
             DialogueBlock,
             Speaker,
             DialogueText,
+            CueBlockCompat, // compat: parse legacy cue blocks without plugins
             CueConnectionMark,
             SceneBlock,
             CueSelectTool,
+            CueMigration, // one-time migration of legacy cue blocks
             PageIndicatorCompat,
             TrailingNode.configure({
               node: 'paragraph',
@@ -625,9 +628,11 @@ export const useEditorCore = ({
             DialogueBlock,
             Speaker,
             DialogueText,
+            CueBlockCompat,
             CueConnectionMark,
             SceneBlock,
             CueSelectTool,
+            CueMigration,
             PageIndicatorCompat,
             TrailingNode.configure({
               node: 'paragraph',

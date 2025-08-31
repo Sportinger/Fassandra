@@ -5,6 +5,7 @@ export interface CueConnectionAttributes {
   cueId: string;
   cueType: CueType;
   cueNumber: string;
+  cueName?: string | null;
 }
 
 declare module '@tiptap/core' {
@@ -78,6 +79,16 @@ export const CueConnectionMark = Mark.create({
           }
           return {
             'data-cue-number': attributes.cueNumber,
+          };
+        },
+      },
+      cueName: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-cue-name'),
+        renderHTML: attributes => {
+          if (!attributes.cueName) return {};
+          return {
+            'data-cue-name': attributes.cueName,
           };
         },
       },
@@ -158,6 +169,32 @@ export const CueConnectionMark = Mark.create({
           }
 
           return removed;
+        },
+      updateCueById:
+        (cueId: string, attrs: Partial<CueConnectionAttributes>) =>
+        ({ state, tr, dispatch }) => {
+          let changed = false;
+          const { doc } = state;
+          const markType = this.type;
+          doc.nodesBetween(0, doc.content.size, (node, pos) => {
+            if (!node.isText || !node.marks.length) return;
+            const cueMarks = node.marks.filter(m => m.type.name === this.name);
+            if (!cueMarks.length) return;
+            const newMarks = cueMarks.map(m => {
+              if (m.attrs.cueId === cueId) {
+                changed = true;
+                return markType.create({ ...m.attrs, ...attrs });
+              }
+              return m;
+            });
+            if (changed) {
+              // Rebuild the cue marks for this node only
+              tr.removeMark(pos, pos + node.nodeSize, markType);
+              newMarks.forEach(nm => tr.addMark(pos, pos + node.nodeSize, nm));
+            }
+          });
+          if (changed && dispatch) dispatch(tr);
+          return changed;
         },
     };
   },
