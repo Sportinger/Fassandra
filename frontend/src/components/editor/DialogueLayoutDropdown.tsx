@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Editor as EditorInstance } from '@tiptap/react';
 import './styles/toolbar.css';
+import { LayoutListIcon } from './icons';
 import logger from '../../services/LoggingService';
 
 interface DialogueLayoutDropdownProps {
@@ -129,7 +130,7 @@ export const DialogueLayoutDropdown: React.FC<DialogueLayoutDropdownProps> = ({
         className={`toolbarButton dropdownButton ${isOpen ? 'open' : ''}`}
         type="button"
       >
-        <span className="label">{currentOption?.icon || '≡'}</span>
+        <span className="label"><LayoutListIcon /></span>
         <span className="arrow">▼</span>
       </button>
       

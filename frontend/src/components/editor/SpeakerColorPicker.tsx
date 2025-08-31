@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Editor as EditorInstance } from '@tiptap/react';
 import './styles/toolbar.css';
+import { PaletteIcon } from './icons';
 
 interface SpeakerColorPickerProps {
   editor: EditorInstance | null;
@@ -107,7 +108,7 @@ export const SpeakerColorPicker: React.FC<SpeakerColorPickerProps> = ({
         className={`toolbarButton dropdownButton ${isOpen ? 'open' : ''}`}
         type="button"
       >
-        <span className="label">🎨</span>
+        <span className="label"><PaletteIcon /></span>
         <span className="arrow">▼</span>
       </button>
       

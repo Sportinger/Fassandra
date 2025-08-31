@@ -209,7 +209,8 @@
 /* ===== CONTEXT-SPECIFIC STYLING ===== */
 
 .floatingToolbar.context-text-formatting {
-  border-left: 3px solid var(--color-accent, #3b82f6);
+  /* Match default: remove blue accent */
+  border-left: 1px solid var(--color-border-light, #e5e7eb);
 }
 
 .floatingToolbar.context-dialogue-layout {
@@ -217,7 +218,8 @@
 }
 
 .floatingToolbar.context-speaker-select {
-  border-left: 3px solid #f59e0b;
+  /* Match default: no colored accent */
+  border-left: 1px solid var(--color-border-light, #e5e7eb);
 }
 
 .floatingToolbar.context-empty-page {
