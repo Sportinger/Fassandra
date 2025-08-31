@@ -445,6 +445,19 @@ export const Editor: React.FC<EditorProps> = ({
     return () => document.removeEventListener('click', handleClickOutside);
   }, [localContextMenu.visible]);
 
+  // Ensure we start at top when opening a script the first time
+  useEffect(() => {
+    // Scroll the page and container to the very top once the editor is ready/synced
+    const t = setTimeout(() => {
+      try {
+        const container = document.querySelector('.singlePageContainer') as HTMLElement | null;
+        if (container) container.scrollTop = 0;
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      } catch {}
+    }, 80);
+    return () => clearTimeout(t);
+  }, [scriptId, editor, isYjsSynced]);
+
   // Listen for global toggle event from toolbar ruler button
   useEffect(() => {
     const handler = () => setRulerOverlayActive(prev => !prev);
