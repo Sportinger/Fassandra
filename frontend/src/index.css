@@ -200,6 +200,94 @@ button:focus-visible {
   border-radius: 8px;
 }
 
+/* Persistent selection box for speaker when clicked */
+.ProseMirror [data-type="speaker"].speaker-selected {
+  /* Strong, persistent highlight around the speaker only */
+  position: relative !important;
+  display: inline-block !important;
+  margin-left: 0 !important; /* avoid clipping the border */
+  padding: 2px 6px !important;
+  background-color: rgba(100, 108, 255, 0.08) !important;
+  border: 2px dotted var(--color-accent, #646cff) !important;
+  outline: 2px dotted var(--color-accent, #646cff) !important;
+  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.25) !important; /* fallback ring to ensure visibility */
+  border-radius: 6px !important;
+  z-index: 1;
+}
+
+/* Attribute-based persistent highlight (set via node attributes) */
+.ProseMirror [data-type="speaker"][data-speaker-selected="true"] {
+  position: relative !important;
+  display: inline-block !important;
+  margin-left: 0 !important;
+  padding: 2px 6px !important;
+  background-color: rgba(100, 108, 255, 0.08) !important;
+  border: 2px dotted var(--color-accent, #646cff) !important;
+  outline: 2px dotted var(--color-accent, #646cff) !important;
+  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.25) !important;
+  border-radius: 6px !important;
+  z-index: 1;
+}
+.ProseMirror [data-type="speaker"][data-speaker-selected="true"] > p {
+  display: inline-block !important;
+  margin: 0 !important;
+  background-color: inherit !important;
+  border: 2px dotted var(--color-accent, #646cff) !important;
+  outline: 2px dotted var(--color-accent, #646cff) !important;
+  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.25) !important;
+  border-radius: 6px !important;
+  padding: 0 2px !important;
+}
+
+/* Multi-select highlight when Edit All Speakers is ON */
+.ProseMirror [data-type="speaker"][data-same-speaker="true"] {
+  position: relative !important;
+  display: inline-block !important;
+  padding: 2px 6px !important;
+  background-color: rgba(100, 108, 255, 0.04) !important;
+  border: 1px dashed var(--color-accent, #646cff) !important;
+  border-radius: 6px !important;
+}
+.ProseMirror [data-type="speaker"][data-same-speaker="true"] > p {
+  display: inline-block !important;
+  margin: 0 !important;
+  border: 1px dashed var(--color-accent, #646cff) !important;
+  border-radius: 6px !important;
+  padding: 0 2px !important;
+}
+
+/* Ensure inner paragraph is also boxed if present */
+.ProseMirror [data-type="speaker"].speaker-selected > p {
+  display: inline-block !important; /* shrink to text width */
+  margin: 0 !important;
+  background-color: inherit !important;
+  border: 2px dotted var(--color-accent, #646cff) !important;
+  outline: 2px dotted var(--color-accent, #646cff) !important;
+  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.25) !important; /* fallback ring */
+  border-radius: 6px !important;
+  padding: 0 2px !important;
+}
+
+/* Highly-specific fallback to ensure border wins in cascade */
+.ProseMirror [data-type="dialogue-block"] [data-type="speaker"].speaker-selected,
+.ProseMirror [data-type="dialogue-block"] [data-type="speaker"].speaker-selected > p {
+  border-color: var(--color-accent, #646cff) !important;
+  border-style: dotted !important;
+  border-width: 2px !important;
+}
+
+.ProseMirror [data-type="speaker"].speaker-selected::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border: 2px dotted var(--color-accent, #646cff);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
 /* Dragging state */
 .ProseMirror [data-type="dialogue-block"].dragging {
   opacity: 0.5;
@@ -622,3 +710,10 @@ body.mobile-device.portrait {
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
   }
 }
+.ProseMirror [data-type="speaker"][data-speaker-selected="true"],
+.ProseMirror [data-type="speaker"][data-speaker-selected="true"] > p {
+  border: 1px dashed var(--color-accent, #646cff) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.ProseMirror [data-type="speaker"][data-speaker-selected="true"] { cursor: text !important; }
