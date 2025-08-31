@@ -11,7 +11,7 @@ export interface SessionStatus {
 }
 
 export interface SessionUpdate {
-  type: 'initial' | 'status' | 'output' | 'page_progress' | 'complete' | 'failed';
+  type: 'initial' | 'status' | 'output' | 'page_progress' | 'chunk_info' | 'chunk_progress' | 'complete' | 'failed';
   session?: {
     id: string;
     status: string;
@@ -28,6 +28,11 @@ export interface SessionUpdate {
   current_page?: number;
   total_pages?: number;
   message?: string;
+  // Chunk progress fields
+  current_chunk?: number;
+  total_chunks?: number;
+  pages_start?: number;
+  pages_end?: number;
 }
 
 export class ClaudeSessionService {

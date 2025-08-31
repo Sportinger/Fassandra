@@ -92,16 +92,15 @@ Notes:
    - Emit `[PROGRESS] Page X of Y processed` each time you finish a page.
    - Build JSON with `mode: "chunked"`, correct `chunk` metadata, and `context` continuity fields.
    - First chunk: include full `metadata`. Later chunks: omit `metadata`.
-   - Write JSON to `/tmp/script_data.json` (overwrite each time; ONLY include the current 5 pages).
-   - Execute the importer:
-     - First chunk: `./yjs_to_db.sh /tmp/script_data.json <username>` and capture the printed `Script ID: <UUID>` from the output.
-     - Subsequent chunks: pass that same script id as a third argument: `./yjs_to_db.sh /tmp/script_data.json <username> <SCRIPT_ID>` so chunks append to the same script.
-   - After successful insertion, output: `[CHUNK_COMPLETE] Chunk i of Z processed (pages A-B)`.
+   - Accumulate each chunk object in memory. Do NOT call the importer between chunks.
+   - After finishing all chunks, create a single JSON at `/tmp/script_data.json` containing all chunks, either as a top-level array `[ {...}, {...} ]` or as `{ "chunks": [ {...}, {...} ] }`.
+   - Execute one import at the end: `./yjs_to_db.sh /tmp/script_data.json <username>`.
+   - Output `[CHUNK_COMPLETE] Chunk i of Z processed (pages A-B)` after forming each chunk (for progress only).
 4. After all chunks are processed successfully, output exactly: `iam done with my job rom`.
 
 Implementation notes (critical):
 - Never attempt to parse the entire PDF in one pass. Always iterate strictly in 5-page windows.
-- Always overwrite `/tmp/script_data.json` with just the current chunk's JSON before calling the script.
+ - Only write `/tmp/script_data.json` once at the end with all chunks (array or {chunks: [...] }).
 - Maintain `context` (`last_scene`, `last_speaker`, etc.) to preserve continuity across chunks.
  - Preserve original content verbatim (language, punctuation, diacritics). Do not translate or paraphrase. Normalize only the JSON quoting (ASCII double quotes) and necessary escapes.
  - Do not modify or re-output content from pages outside the current window A..B. Each chunk contains only its pages.

@@ -14,30 +14,24 @@ if [ -z "$JSON_FILE" ] || [ -z "$USERNAME" ]; then
     echo ""
     echo "Example: $0 /tmp/script_data.json admin@example.com"
     echo ""
-    echo "Expected JSON (always 5-page chunked):"
+    echo "Expected JSON (always 5-page chunked). Accepts a single chunk, an array of chunks, or {\"chunks\":[...]}:"
     cat << 'EOF'
 {
-  "mode": "chunked",
-  "chunk": {
-    "number": 1,
-    "total": 10,
-    "pages_start": 1,
-    "pages_end": 5
-  },
-  "metadata": {
-    "title": "Example Script",
-    "author": "John Doe",
-    "total_pages": 50
-  },
-  "content": [
-    { "type": "scene", "content": "ACT I - SCENE 1", "page": 1, "scene_number": "1" },
-    { "type": "dialogue", "speaker": "CHARACTER", "content": "Hello, world!", "page": 1 },
-    { "type": "stage_direction", "content": "(Enter CHARACTER)", "page": 1 }
-  ],
-  "context": {
-    "last_scene": "1",
-    "last_speaker": "CHARACTER"
-  }
+  "chunks": [
+    {
+      "mode": "chunked",
+      "chunk": { "number": 1, "total": 2, "pages_start": 1, "pages_end": 5 },
+      "metadata": { "title": "Example Script", "author": "John Doe", "total_pages": 8 },
+      "content": [ { "type": "scene", "content": "ACT I - SCENE 1", "page": 1, "scene_number": "1" } ],
+      "context": { "last_scene": "1", "last_speaker": "CHARACTER" }
+    },
+    {
+      "mode": "chunked",
+      "chunk": { "number": 2, "total": 2, "pages_start": 6, "pages_end": 8 },
+      "content": [ { "type": "dialogue", "speaker": "CHARACTER", "content": "Goodbye", "page": 6 } ],
+      "context": { "last_scene": "1.1", "last_speaker": "CHARACTER" }
+    }
+  ]
 }
 EOF
     exit 1
