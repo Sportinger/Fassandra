@@ -80,6 +80,8 @@ export const Editor: React.FC<EditorProps> = ({
   const [shouldCenterOnRehearsalChange, setShouldCenterOnRehearsalChange] = useState(false);
   const [editAllSpeakers, setEditAllSpeakers] = useState(false);
   const [currentSpeakerName, setCurrentSpeakerName] = useState<string | null>(null);
+  const liveRenameBaseRef = useRef<string | null>(null);
+  const isLiveRenamingRef = useRef<boolean>(false);
   const [rulerOverlayActive, setRulerOverlayActive] = useState(false);
   const [insertSubmenu, setInsertSubmenu] = useState<{open:boolean;x:number;y:number}>({ open: false, x: 0, y: 0 });
   
@@ -200,98 +202,101 @@ export const Editor: React.FC<EditorProps> = ({
 
   // Highlight all speakers when editAllSpeakers mode changes
   useEffect(() => {
+    const all = Array.from(document.querySelectorAll('[data-type="speaker"]')) as HTMLElement[];
     if (editAllSpeakers && currentSpeakerName) {
-      // Highlight all speakers with the current name
-      document.querySelectorAll('[data-type="speaker"]').forEach(el => {
-        if (el.textContent?.trim() === currentSpeakerName) {
+      // Initialize live-rename baseline to the current selected name
+      liveRenameBaseRef.current = currentSpeakerName;
+      // Highlight all speakers with the same name (non-editable marking)
+      all.forEach((el) => {
+        const isMatch = (el.textContent || '').trim() === currentSpeakerName;
+        if (isMatch) {
           el.classList.add('speaker-selected');
+          try { el.setAttribute('data-same-speaker', 'true'); } catch {}
         } else {
           el.classList.remove('speaker-selected');
+          try { el.removeAttribute('data-same-speaker'); } catch {}
         }
       });
     } else {
-      // Only highlight the current speaker
-      document.querySelectorAll('[data-type="speaker"]').forEach(el => {
-        if (el.textContent?.trim() === currentSpeakerName && el.closest('.speaker-selected')) {
-          // Keep current speaker highlighted
-        } else {
+      liveRenameBaseRef.current = null;
+      // Remove multi-selection highlighting from all except the one explicitly selected via node attr
+      all.forEach((el) => {
+        // Keep explicit selected ones (editable), remove multi-select markings
+        const keepExplicit = el.getAttribute('data-speaker-selected') === 'true';
+        if (!keepExplicit) {
           el.classList.remove('speaker-selected');
         }
+        try { el.removeAttribute('data-same-speaker'); } catch {}
       });
     }
   }, [editAllSpeakers, currentSpeakerName]);
 
-  // Sync speaker name changes across all speakers when in "edit all" mode
+  // Live rename: when edit-all is ON, propagate changes to all matching speakers
   useEffect(() => {
-    if (!editor || !editAllSpeakers || !currentSpeakerName) return;
+    if (!editor) return;
 
-    let isUpdating = false;
+    const handleUpdate = () => {
+      if (!editAllSpeakers) return;
+      const base = liveRenameBaseRef.current;
+      if (!base || !base.trim()) return;
+      if (isLiveRenamingRef.current) return;
 
-    const handleUpdate = ({ transaction }: any) => {
-      // Skip if we're already updating to prevent recursion
-      if (isUpdating || !transaction.docChanged) return;
-      
-      let speakerChanged = false;
-      let newSpeakerName = '';
-      let changedPos = -1;
-      
-      // Find if a speaker was changed
-      transaction.steps.forEach((step: any, index: number) => {
-        if (step.slice && step.slice.content && step.slice.content.firstChild) {
-          const fromPos = step.from || transaction.mapping.maps[index].ranges[0];
-          transaction.doc.nodesBetween(fromPos, fromPos + 1, (checkNode: any, pos: number) => {
-            if (checkNode.type.name === 'speaker' && checkNode.textContent.trim() !== currentSpeakerName) {
-              speakerChanged = true;
-              newSpeakerName = checkNode.textContent.trim();
-              changedPos = pos;
-              return false;
-            }
-          });
+      const { state, view } = editor as any;
+      // Find the currently selected speaker node (by attribute or selection)
+      let selectedPos: number | null = null;
+      let selectedNode: any = null;
+      state.doc.descendants((node: any, position: number) => {
+        if (node.type?.name === 'speaker' && node.attrs?.selected) {
+          selectedPos = position;
+          selectedNode = node;
+          return false;
         }
+        return true;
       });
-      
-      if (speakerChanged && newSpeakerName && changedPos >= 0) {
-        // Set flag to prevent recursion
-        isUpdating = true;
-        
-        // Update all other speakers with the old name to the new name
-        setTimeout(() => {
-          const { state, view } = editor;
-          const { tr } = state;
-          let hasChanges = false;
-          
-          state.doc.descendants((node, pos) => {
-            if (node.type.name === 'speaker' && 
-                node.textContent.trim() === currentSpeakerName && 
-                pos !== changedPos) {
-              // Replace the text content
-              const from = pos + 1;
-              const to = from + node.content.size;
-              tr.replaceRangeWith(from, to, state.schema.text(newSpeakerName));
-              hasChanges = true;
+      // Fallback to selection path
+      if (selectedPos === null) {
+        const $from = state.selection?.$from;
+        if ($from) {
+          for (let depth = $from.depth; depth >= 0; depth--) {
+            const node = $from.node(depth);
+            if (node?.type?.name === 'speaker') {
+              selectedNode = node;
+              selectedPos = $from.before(depth);
+              break;
             }
-          });
-          
-          if (hasChanges) {
-            view.dispatch(tr);
           }
-          
-          // Update the current speaker name
-          setCurrentSpeakerName(newSpeakerName);
-          
-          // Reset flag after a delay
-          setTimeout(() => {
-            isUpdating = false;
-          }, 100);
-        }, 0);
+        }
+      }
+      if (selectedPos === null || !selectedNode) return;
+      const newName = (selectedNode.textContent || '').trim();
+      if (!newName || newName === base) return;
+
+      // Update all speakers whose text equals the base
+      isLiveRenamingRef.current = true;
+      try {
+        let tr = state.tr;
+        let changed = false;
+        state.doc.descendants((node: any, pos: number) => {
+          if (node.type?.name === 'speaker' && node.textContent?.trim() === base) {
+            // Replace content
+            const from = pos + 1;
+            const to = from + node.content.size;
+            tr = tr.replaceRangeWith(from, to, state.schema.text(newName));
+            changed = true;
+          }
+          return true;
+        });
+        if (changed) view.dispatch(tr);
+        liveRenameBaseRef.current = newName;
+        setCurrentSpeakerName(newName);
+      } finally {
+        setTimeout(() => { isLiveRenamingRef.current = false; }, 0);
       }
     };
 
     editor.on('update', handleUpdate);
-    return () => {
-      editor.off('update', handleUpdate);
-    };
-  }, [editor, editAllSpeakers, currentSpeakerName]);
+    return () => { editor.off('update', handleUpdate); };
+  }, [editor, editAllSpeakers]);
 
   // Handle context menu
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
@@ -620,22 +625,36 @@ export const Editor: React.FC<EditorProps> = ({
               </>
             ) : null
           }
-          onOutsideClick={() => {
-            try {
-              if (editor) {
-                const { state } = editor;
-                const { selection } = state;
-                if (selection && !selection.empty) {
-                  const pos = selection.head;
-                  editor.chain().setTextSelection(pos).run();
-                }
-                editor.commands.blur();
-              }
-            } catch {}
-            hideContextMenu();
-            setEditAllSpeakers(false);
-            setCurrentSpeakerName(null);
-          }}
+              onOutsideClick={() => {
+                try {
+                  if (editor) {
+                    const { state } = editor;
+                    const { selection } = state;
+                    if (selection && !selection.empty) {
+                      const pos = selection.head;
+                      editor.chain().setTextSelection(pos).run();
+                    }
+                    editor.commands.blur();
+                    // Also clear any selected speaker node attributes on outside click
+                    try {
+                      const { state: s, view } = editor as any;
+                      let tr = s.tr;
+                      let changed = false;
+                      s.doc.descendants((node: any, position: number) => {
+                        if (node.type?.name === 'speaker' && node.attrs?.selected) {
+                          tr = tr.setNodeMarkup(position, undefined, { ...node.attrs, selected: false });
+                          changed = true;
+                        }
+                        return true;
+                      });
+                      if (changed) view.dispatch(tr);
+                    } catch {}
+                  }
+                } catch {}
+                hideContextMenu();
+                setEditAllSpeakers(false);
+                setCurrentSpeakerName(null);
+              }}
         >
           {editor ? (
             <div 
@@ -655,9 +674,40 @@ export const Editor: React.FC<EditorProps> = ({
                 
                 
                 // Remove any existing selection classes first
-                document.querySelectorAll('[data-type="speaker"].speaker-selected').forEach(el => {
-                  el.classList.remove('speaker-selected');
-                });
+                // Preserve speaker selection if clicking inside the same dialogue block
+                const previouslySelectedSpeaker = document.querySelector('[data-type="speaker"].speaker-selected') as HTMLElement | null;
+                const prevSpeakerBlock = previouslySelectedSpeaker?.closest('[data-type="dialogue-block"]');
+                const currentClickBlock = target.closest('[data-type="dialogue-block"]');
+                if (!previouslySelectedSpeaker || !prevSpeakerBlock || prevSpeakerBlock !== currentClickBlock) {
+                  document.querySelectorAll('[data-type="speaker"].speaker-selected').forEach(el => {
+                    el.classList.remove('speaker-selected');
+                    try { (el as HTMLElement).removeAttribute('data-speaker-selected'); } catch {}
+                    try {
+                      const hel = el as HTMLElement;
+                      hel.style.removeProperty('border');
+                      hel.style.removeProperty('outline');
+                      hel.style.removeProperty('outline-offset');
+                      hel.style.removeProperty('padding');
+                      hel.style.removeProperty('box-shadow');
+                    } catch {}
+                  });
+                  // Also clear the node attributes from the document
+                  try {
+                    if (editor) {
+                      const { state, view } = editor as any;
+                      let tr = state.tr;
+                      let changed = false;
+                      state.doc.descendants((node: any, position: number) => {
+                        if (node.type?.name === 'speaker' && node.attrs?.selected) {
+                          tr = tr.setNodeMarkup(position, undefined, { ...node.attrs, selected: false });
+                          changed = true;
+                        }
+                        return true;
+                      });
+                      if (changed) view.dispatch(tr);
+                    }
+                  } catch {}
+                }
                 document.querySelectorAll('[data-type="cue-block"].cue-selected').forEach(el => {
                   el.classList.remove('cue-selected');
                 });
@@ -666,14 +716,50 @@ export const Editor: React.FC<EditorProps> = ({
                 });
                 
                 if (speakerElement) {
-                  // Clicked on speaker - show speaker-select context
+                  // Clicked on speaker - show SPEAKER menu
                   debugLog('[Editor] Clicked on speaker element:', speakerElement);
                   
                   const speakerName = speakerElement.textContent?.trim() || '';
                   setCurrentSpeakerName(speakerName);
+                  if (editAllSpeakers) liveRenameBaseRef.current = speakerName;
                   
-                  // Add selected class to clicked speaker
-                  speakerElement.classList.add('speaker-selected');
+                  // Persist selection by updating node attribute on the speaker node
+                  try {
+                    if (editor) {
+                      const view: any = (editor as any).view;
+                      const { state } = editor;
+                      let targetPos: number | null = null;
+                      state.doc.descendants((node, position) => {
+                        if (node.type.name === 'speaker') {
+                          const domForNode = view.nodeDOM(position) as HTMLElement | null;
+                          if (domForNode && (domForNode === speakerElement || domForNode.contains(speakerElement))) {
+                            targetPos = position;
+                            return false;
+                          }
+                        }
+                        return true;
+                      });
+                      if (typeof targetPos === 'number') {
+                        const nodeAt = state.doc.nodeAt(targetPos);
+                        if (nodeAt) {
+                          let tr = state.tr;
+                          state.doc.descendants((node, position) => {
+                            if (node.type.name === 'speaker' && node.attrs.selected) {
+                              tr = tr.setNodeMarkup(position, undefined, { ...node.attrs, selected: false });
+                            }
+                            return true;
+                          });
+                          tr = tr.setNodeMarkup(targetPos, undefined, { ...nodeAt.attrs, selected: true });
+                          view.dispatch(tr);
+                          // Place caret at end of speaker name
+                          const end = targetPos + 1 + nodeAt.content.size;
+                          try {
+                            (editor as any).chain().setTextSelection(end).focus().run();
+                          } catch {}
+                        }
+                      }
+                    }
+                  } catch {}
                   
                   // If editAllSpeakers is true, highlight all speakers with the same name
                   if (editAllSpeakers) {
@@ -684,10 +770,12 @@ export const Editor: React.FC<EditorProps> = ({
                     });
                   }
                   
+                  // Show speaker-select toolbar
                   showContextMenu(e.clientX, e.clientY, 'speaker-select');
-                  e.stopPropagation(); // Prevent default toolbar from showing
+                  // Prevent default toolbar switching
+                  e.stopPropagation();
                 } else if (dialogueTextElement && dialogueBlockElement) {
-                  // Clicked inside dialogue text - also show speaker-select context
+                  // Clicked inside dialogue text - show TEXT FORMATTING toolbar
                   debugLog('[Editor] Clicked on dialogue text element:', dialogueTextElement);
                   
                   // Find and highlight the speaker element within the same dialogue block
@@ -696,7 +784,7 @@ export const Editor: React.FC<EditorProps> = ({
                     const speakerName = speakerInBlock.textContent?.trim() || '';
                     setCurrentSpeakerName(speakerName);
                     
-                    speakerInBlock.classList.add('speaker-selected');
+                    // Do not switch speaker into editable mode for dialogue text click
                     
                     // If editAllSpeakers is true, highlight all speakers with the same name
                     if (editAllSpeakers) {
@@ -708,7 +796,7 @@ export const Editor: React.FC<EditorProps> = ({
                     }
                   }
                   
-                  showContextMenu(e.clientX, e.clientY, 'speaker-select');
+                  showContextMenu(e.clientX, e.clientY, 'text-formatting');
                   e.stopPropagation(); // Prevent default toolbar from showing
                 } else if (cueBlockElement) {
                   // Clicked on cue block - show cue-select context
@@ -745,6 +833,22 @@ export const Editor: React.FC<EditorProps> = ({
                   hideContextMenu();
                   setEditAllSpeakers(false);
                   setCurrentSpeakerName(null);
+                  // Clear any selected speaker node attribute
+                  try {
+                    if (editor) {
+                      const { state, view } = editor as any;
+                      let tr = state.tr;
+                      let changed = false;
+                      state.doc.descendants((node: any, position: number) => {
+                        if (node.type?.name === 'speaker' && node.attrs?.selected) {
+                          tr = tr.setNodeMarkup(position, undefined, { ...node.attrs, selected: false });
+                          changed = true;
+                        }
+                        return true;
+                      });
+                      if (changed) view.dispatch(tr);
+                    }
+                  } catch {}
                 }
 }}
             >

@@ -8,7 +8,7 @@ import { SpeakerDropdown } from '../../SpeakerDropdown';
 import { SpeakerColorPicker } from '../../SpeakerColorPicker';
 import { DialogueLayoutDropdown } from '../../DialogueLayoutDropdown';
 import { ViewModeDropdown } from '../../ViewModeDropdown';
-import { MessageSquareQuoteIcon, SearchIcon, ClapperboardIcon, GoalIcon, PrinterIcon, LayoutPanelTopIcon, LayoutListIcon, Trash2Icon, CornerDownLeftIcon, BoldIcon, ItalicIcon, TextAlignCenterIcon, TextAlignEndIcon, TextAlignStartIcon } from '../../icons';
+import { MessageSquareQuoteIcon, SearchIcon, ClapperboardIcon, GoalIcon, PrinterIcon, LayoutPanelTopIcon, LayoutListIcon, Trash2Icon, CornerDownLeftIcon, BoldIcon, ItalicIcon, TextAlignCenterIcon, TextAlignEndIcon, TextAlignStartIcon, KeyboardIcon } from '../../icons';
 import { RulerAdjustDropdown } from '../../RulerAdjustDropdown';
 import type { ToolbarProps, ToolbarContext } from '../../types/index';
 import { CueType } from '../../../../types/cue';
@@ -276,6 +276,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     if (clickContext === 'dialogue-layout') return 'dialogue-layout';
     if (clickContext === 'empty-page') return 'empty-page';
     if (clickContext === 'cue-select') return 'cue-select';
+    if (clickContext === 'text-formatting') return 'text-formatting';
     
     // 2. Text selection always shows formatting tools
     if (hasTextSelection) return 'text-formatting';
@@ -1006,7 +1007,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           }}
         >
           <span className="fabIcon" aria-hidden>
-            {keyboardManuallyShown ? '✓' : '⌨'}
+            <KeyboardIcon size={20} />
           </span>
         </button>
       )}

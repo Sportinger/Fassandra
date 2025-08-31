@@ -401,9 +401,10 @@ html, body {
 
 /* Highlight when speaker-select mode is active */
 .ProseMirror [data-type="speaker"].speaker-selected {
-  background-color: rgba(128, 128, 128, 0.2); /* Neutral gray selection */
-  outline: 2px solid rgba(128, 128, 128, 0.5); /* Neutral gray outline */
-  outline-offset: 2px;
+  background-color: rgba(100, 108, 255, 0.05); /* Subtle accent background */
+  outline: 3px dashed rgba(100, 108, 255, 0.6); /* Match block selection style */
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 
 /* Highlight when scene-select mode is active - desktop only */
