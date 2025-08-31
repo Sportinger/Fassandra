@@ -16,7 +16,8 @@ export const ScriptCreator: React.FC<ScriptCreatorProps> = ({ onCreate, onUpload
   const tilt = useCssTiltWithAccelerometer({
     maxTilt: 10,
     sensitivity: 1.2,
-    mobileMultiplier: 0.6
+    mobileMultiplier: 0.6,
+    invert: true,
   });
 
   useEffect(() => {

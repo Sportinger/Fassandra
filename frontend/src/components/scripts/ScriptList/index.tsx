@@ -11,6 +11,7 @@ import {
 import { Script, ScriptShareWithUser, UploadStatus, PlaceholderScript } from '../../../types';
 import { ClaudeSessionService } from '../../../services/ClaudeSessionService';
 import { useUploadState } from '../../../hooks/useUploadState';
+import UploadStateManager from '../../../services/UploadStateManager';
 import { useScripts } from '../hooks/useScripts';
 import { useScriptActions } from '../hooks/useScriptActions';
 import { ShareScriptModal } from '../modals/ShareScriptModal';
@@ -81,12 +82,8 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     }
   }, [refreshTrigger, tokenReady, token, refreshScripts]);
 
-  // Clean up sessions on unmount
-  React.useEffect(() => {
-    return () => {
-      sessionManager.disposeAll();
-    };
-  }, []);
+  // Keep sessions alive across route changes; cleanup happens on window unload
+  // via SessionManager, so we intentionally do not dispose on unmount here.
 
   // Script selection
   const handleScriptClick = (scriptId: string, scriptTitle: string) => {
@@ -237,6 +234,8 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         throw new Error(`Upload failed: ${uploadResp.status} ${uploadResp.statusText} ${txt}`);
       }
       const { session_id } = await uploadResp.json() as { session_id: string };
+      // Persist session id for potential reconnection
+      UploadStateManager.setSessionId(placeholder.id, session_id);
 
       updateUploadStatus({
         uploadProgress: 20,
@@ -331,7 +330,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   };
 
   const UploadPlaceholderCard: React.FC<{ placeholder: Script }> = ({ placeholder }) => {
-    const tilt = useCssTiltWithAccelerometer({ maxTilt: 10, sensitivity: 1.2, mobileMultiplier: 0.6 });
+    const tilt = useCssTiltWithAccelerometer({ maxTilt: 10, sensitivity: 1.2, mobileMultiplier: 0.6, invert: true });
     return (
       <div key={placeholder.id} style={{ perspective: '1000px' }}>
         <div

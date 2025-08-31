@@ -124,10 +124,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       sessionStorage.removeItem('jwt_token');
       sessionStorage.removeItem('isAuthenticated');
       logDebugInfo('Auth', 'Authentication data removed from sessionStorage');
-      
-      // Clear upload state on logout
-      UploadStateManager.clearAll();
-      logDebugInfo('Auth', 'Upload state cleared');
+      // Do NOT clear upload state on logout; keep showing active uploads
+      // so users can monitor ongoing parsing while logged out.
     }
   }, []); 
 

@@ -36,16 +36,20 @@ class UploadStateManager {
       const stored = localStorage.getItem(this.storageKey);
       if (stored) {
         const parsed = JSON.parse(stored);
-        // Reconstruct Maps from arrays
-        this.state.uploads = new Map(parsed.uploads || []);
-        this.state.sessionIds = new Map(parsed.sessionIds || []);
+        // Reconstruct Maps from arrays (immutable snapshot)
+        const uploads = new Map<string, PlaceholderScript>(parsed.uploads || []);
+        const sessionIds = new Map<string, string>(parsed.sessionIds || []);
+        this.state = { uploads, sessionIds };
         
         // Clean up completed uploads older than 5 minutes
         const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
         for (const [id, upload] of this.state.uploads) {
           if (upload.uploadComplete && upload.uploadStartTime && new Date(upload.uploadStartTime).getTime() < fiveMinutesAgo) {
-            this.state.uploads.delete(id);
-            this.state.sessionIds.delete(id);
+            const newUploads = new Map(this.state.uploads);
+            const newSessionIds = new Map(this.state.sessionIds);
+            newUploads.delete(id);
+            newSessionIds.delete(id);
+            this.state = { uploads: newUploads, sessionIds: newSessionIds };
           }
         }
         this.saveState();
@@ -68,29 +72,41 @@ class UploadStateManager {
   }
 
   addUpload(placeholder: PlaceholderScript): void {
-    this.state.uploads.set(placeholder.id, placeholder);
+    const newUploads = new Map(this.state.uploads);
+    newUploads.set(placeholder.id, {
+      ...placeholder,
+      uploadStartTime: placeholder.uploadStartTime ?? Date.now(),
+    });
+    this.state = { uploads: newUploads, sessionIds: new Map(this.state.sessionIds) };
     this.saveState();
     this.notifyListeners();
   }
 
   setSessionId(uploadId: string, sessionId: string): void {
-    this.state.sessionIds.set(uploadId, sessionId);
+    const newSessionIds = new Map(this.state.sessionIds);
+    newSessionIds.set(uploadId, sessionId);
+    this.state = { uploads: new Map(this.state.uploads), sessionIds: newSessionIds };
     this.saveState();
     this.notifyListeners();
   }
 
   updateUpload(id: string, updates: Partial<PlaceholderScript>): void {
     const upload = this.state.uploads.get(id);
-    if (upload) {
-      this.state.uploads.set(id, { ...upload, ...updates });
-      this.saveState();
-      this.notifyListeners();
-    }
+    if (!upload) return;
+    const updated = { ...upload, ...updates };
+    const newUploads = new Map(this.state.uploads);
+    newUploads.set(id, updated);
+    this.state = { uploads: newUploads, sessionIds: new Map(this.state.sessionIds) };
+    this.saveState();
+    this.notifyListeners();
   }
 
   removeUpload(id: string): void {
-    this.state.uploads.delete(id);
-    this.state.sessionIds.delete(id);
+    const newUploads = new Map(this.state.uploads);
+    const newSessionIds = new Map(this.state.sessionIds);
+    newUploads.delete(id);
+    newSessionIds.delete(id);
+    this.state = { uploads: newUploads, sessionIds: newSessionIds };
     this.saveState();
     this.notifyListeners();
   }
@@ -121,15 +137,27 @@ class UploadStateManager {
   }
 
   private notifyListeners(): void {
-    this.listeners.forEach(listener => listener(this.state));
+    // Emit a fresh snapshot to guarantee React state updates
+    const snapshot: UploadState = {
+      uploads: new Map(this.state.uploads),
+      sessionIds: new Map(this.state.sessionIds),
+    };
+    this.listeners.forEach(listener => listener(snapshot));
   }
 
   // Clear all uploads (useful for logout)
   clearAll(): void {
-    this.state.uploads.clear();
-    this.state.sessionIds.clear();
+    this.state = { uploads: new Map(), sessionIds: new Map() };
     this.saveState();
     this.notifyListeners();
+  }
+
+  // Provide a safe snapshot of current state
+  getState(): UploadState {
+    return {
+      uploads: new Map(this.state.uploads),
+      sessionIds: new Map(this.state.sessionIds),
+    };
   }
 }
 
