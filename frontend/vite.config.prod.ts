@@ -38,6 +38,8 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
+        // Allow disabling PWA for troubleshooting (e.g., iPhone reload loop)
+        disable: process.env.VITE_DISABLE_PWA === '1',
         // Reduce surprise reloads in Safari/Firefox; show prompt instead
         registerType: 'prompt',
         // Ensure SW never caches or intercepts API/auth routes
