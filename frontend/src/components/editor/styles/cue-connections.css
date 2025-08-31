@@ -180,6 +180,13 @@
   box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
 }
 
+/* Hover highlight when in cue select mode */
+.cue-select-hover {
+  background: rgba(250, 204, 21, 0.22) !important; /* amber */
+  outline: 1px solid rgba(250, 204, 21, 0.7);
+  border-radius: 2px;
+}
+
 /* Print styles */
 @media print {
   .cue-connection::before,
