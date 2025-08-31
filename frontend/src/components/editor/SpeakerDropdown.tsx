@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Editor as EditorInstance } from '@tiptap/react';
 import './styles/toolbar.css';
+import { MegaphoneIcon } from './icons';
 
 import logger from '../../services/LoggingService';
 interface SpeakerDropdownProps {
@@ -156,7 +157,7 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
         className={`toolbarButton dropdownButton ${isOpen ? 'active' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span className="label">🗣️</span>
+        <span className="label"><MegaphoneIcon /></span>
         <span className="arrow">▼</span>
       </button>
       

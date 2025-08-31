@@ -8,7 +8,7 @@ import { SpeakerDropdown } from '../../SpeakerDropdown';
 import { SpeakerColorPicker } from '../../SpeakerColorPicker';
 import { DialogueLayoutDropdown } from '../../DialogueLayoutDropdown';
 import { ViewModeDropdown } from '../../ViewModeDropdown';
-import { MessageSquareQuoteIcon, SearchIcon, ClapperboardIcon, GoalIcon, PrinterIcon, LayoutPanelTopIcon } from '../../icons';
+import { MessageSquareQuoteIcon, SearchIcon, ClapperboardIcon, GoalIcon, PrinterIcon, LayoutPanelTopIcon, LayoutListIcon, Trash2Icon, CornerDownLeftIcon, BoldIcon, ItalicIcon, TextAlignCenterIcon, TextAlignEndIcon, TextAlignStartIcon } from '../../icons';
 import { RulerAdjustDropdown } from '../../RulerAdjustDropdown';
 import type { ToolbarProps, ToolbarContext } from '../../types/index';
 import { CueType } from '../../../../types/cue';
@@ -318,7 +318,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     // Text formatting buttons (text-formatting context)
     {
       id: 'bold',
-      icon: 'B',
+      icon: <BoldIcon />,
       title: 'Bold',
       action: () => { focusIfNeeded(); editor?.chain().toggleBold().run(); },
       isActive: editor?.isActive('bold'),
@@ -327,8 +327,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     },
     {
       id: 'italic',
-      icon: 'I',
-      title: 'Italic', 
+      icon: <ItalicIcon />,
+      title: 'Italic',
       action: () => { focusIfNeeded(); editor?.chain().toggleItalic().run(); },
       isActive: editor?.isActive('italic'),
       contexts: ['text-formatting'],
@@ -345,7 +345,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     },
     {
       id: 'align-left',
-      icon: '⊢',
+      icon: <TextAlignStartIcon />,
       title: 'Align Left',
       action: () => { focusIfNeeded(); editor?.chain().setTextAlign('left').run(); },
       isActive: editor?.isActive({ textAlign: 'left' }),
@@ -354,7 +354,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     },
     {
       id: 'align-center',
-      icon: '‖',
+      icon: <TextAlignCenterIcon />,
       title: 'Align Center',
       action: () => { focusIfNeeded(); editor?.chain().setTextAlign('center').run(); },
       isActive: editor?.isActive({ textAlign: 'center' }),
@@ -363,7 +363,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     },
     {
       id: 'align-right',
-      icon: '⊣',
+      icon: <TextAlignEndIcon />,
       title: 'Align Right',
       action: () => { focusIfNeeded(); editor?.chain().setTextAlign('right').run(); },
       isActive: editor?.isActive({ textAlign: 'right' }),
@@ -374,7 +374,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     // Dialogue layout dropdown
     {
       id: 'dialogue-layout-dropdown',
-      icon: '≡',
+      icon: <LayoutListIcon />,
       title: 'Dialogue Layout',
       action: () => {}, // Handled by dropdown
       contexts: ['dialogue-layout', 'speaker-select'],
@@ -452,7 +452,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     },
     {
       id: 'clear-speaker',
-      icon: '🗑️',
+      icon: <Trash2Icon />,
       title: 'Clear Speaker Name',
       action: () => {
         logger.debug('Toolbar', 'Clearing speaker name');
@@ -465,7 +465,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     },
     {
       id: 'exit-dialogue',
-      icon: '↩',
+      icon: <CornerDownLeftIcon />,
       title: 'Exit Dialogue Block (Create Normal Text)',
       action: () => {
         logger.debug('Toolbar', 'Exiting dialogue block');
