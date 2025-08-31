@@ -1,15 +1,16 @@
 #!/bin/bash
 # Script for Claude Code to push YJS JSON data to the PostgreSQL database
-# Usage: ./yjs_to_db.sh <json_file> <username>
+# Usage: ./yjs_to_db.sh <json_file> <username> [script_id]
 
 set -e
 
 JSON_FILE="$1"
 USERNAME="$2"
+SCRIPT_ID="$3"
 
 if [ -z "$JSON_FILE" ] || [ -z "$USERNAME" ]; then
     echo "Error: Missing arguments"
-    echo "Usage: $0 <json_file> <username>"
+    echo "Usage: $0 <json_file> <username> [script_id]"
     echo ""
     echo "Example: $0 /tmp/script_data.json admin@example.com"
     echo ""
@@ -53,12 +54,21 @@ echo "User: $USERNAME"
 echo "---"
 
 # Execute the yjs_to_db binary
-cd /app && ./yjs_to_db "$JSON_FILE" "$USERNAME" 2>&1 || {
+if [ -n "$SCRIPT_ID" ]; then
+  cd /app && ./yjs_to_db "$JSON_FILE" "$USERNAME" "$SCRIPT_ID" 2>&1 || {
     EXIT_CODE=$?
     echo "---"
     echo "Error: YJS to DB operation failed with exit code $EXIT_CODE"
     exit $EXIT_CODE
-}
+  }
+else
+  cd /app && ./yjs_to_db "$JSON_FILE" "$USERNAME" 2>&1 || {
+    EXIT_CODE=$?
+    echo "---"
+    echo "Error: YJS to DB operation failed with exit code $EXIT_CODE"
+    exit $EXIT_CODE
+  }
+fi
 
 echo "---"
 echo "Success: Data inserted into database as YJS document"
