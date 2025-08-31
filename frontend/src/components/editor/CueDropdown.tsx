@@ -30,7 +30,8 @@ export const CueDropdown: React.FC<CueDropdownProps> = ({
   }, []);
 
   const handleCueSelect = (cueType: CueType) => {
-    editor.commands.insertCueBlock(cueType);
+    // Enter cue select mode: highlight words and click to create cue mark
+    (editor as any).commands.startCueSelect(cueType);
     setIsOpen(false);
   };
 

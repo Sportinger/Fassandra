@@ -25,10 +25,11 @@ import { useAuth } from '../../../AuthContext';
 import { DialogueBlock } from '../extensions/DialogueBlock';
 import { Speaker } from '../extensions/Speaker';
 import { DialogueText } from '../extensions/DialogueText';
-import { CueBlock } from '../extensions/CueBlock';
+// Removed inline CueBlock rendering; cues are now marks + floating overlay
 import { SceneBlock } from '../extensions/SceneBlock';
 import { TrailingNode } from '../extensions/TrailingNode';
 import { CueConnectionMark } from '../extensions/CueConnectionMark';
+import { CueSelectTool } from '../extensions/CueSelectTool';
 import { PageIndicatorCompat } from '../extensions/PageIndicatorCompat';
 import { FontSize } from '../FontSizeExtension';
 import { FontFamilyExtension } from '../extensions/FontFamilyExtension';
@@ -194,7 +195,7 @@ export const useEditorCore = ({
         }
       }
 
-      // 🔧 FIXED: Create WebSocket provider with error handling
+    // 🔧 FIXED: Create WebSocket provider with error handling
       let websocketProvider: WebsocketProvider;
       try {
         // Don't clear the document when connecting - YJS will handle sync properly
@@ -558,9 +559,9 @@ export const useEditorCore = ({
             DialogueBlock,
             Speaker,
             DialogueText,
-            CueBlock,
             CueConnectionMark,
             SceneBlock,
+            CueSelectTool,
             PageIndicatorCompat,
             TrailingNode.configure({
               node: 'paragraph',
@@ -624,9 +625,9 @@ export const useEditorCore = ({
             DialogueBlock,
             Speaker,
             DialogueText,
-            CueBlock,
             CueConnectionMark,
             SceneBlock,
+            CueSelectTool,
             PageIndicatorCompat,
             TrailingNode.configure({
               node: 'paragraph',
