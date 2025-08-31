@@ -11,36 +11,32 @@ if [ -z "$JSON_FILE" ] || [ -z "$USERNAME" ]; then
     echo "Error: Missing arguments"
     echo "Usage: $0 <json_file> <username>"
     echo ""
-    echo "Example: $0 script_data.json admin@example.com"
+    echo "Example: $0 /tmp/script_data.json admin@example.com"
     echo ""
-    echo "Example JSON structure for full mode:"
+    echo "Expected JSON (always 5-page chunked):"
     cat << 'EOF'
 {
-  "mode": "full",
+  "mode": "chunked",
+  "chunk": {
+    "number": 1,
+    "total": 10,
+    "pages_start": 1,
+    "pages_end": 5
+  },
   "metadata": {
     "title": "Example Script",
     "author": "John Doe",
-    "total_pages": 8
+    "total_pages": 50
   },
   "content": [
-    {
-      "type": "scene",
-      "content": "ACT I - SCENE 1",
-      "page": 1,
-      "scene_number": "1"
-    },
-    {
-      "type": "dialogue",
-      "speaker": "CHARACTER",
-      "content": "Hello, world!",
-      "page": 1
-    },
-    {
-      "type": "stage_direction",
-      "content": "(Enter CHARACTER)",
-      "page": 1
-    }
-  ]
+    { "type": "scene", "content": "ACT I - SCENE 1", "page": 1, "scene_number": "1" },
+    { "type": "dialogue", "speaker": "CHARACTER", "content": "Hello, world!", "page": 1 },
+    { "type": "stage_direction", "content": "(Enter CHARACTER)", "page": 1 }
+  ],
+  "context": {
+    "last_scene": "1",
+    "last_speaker": "CHARACTER"
+  }
 }
 EOF
     exit 1

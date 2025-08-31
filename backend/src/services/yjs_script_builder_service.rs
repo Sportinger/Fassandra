@@ -1,6 +1,6 @@
 //! YJS Script Builder Service
 //!
-//! This service takes JSON data (either full or chunked) and builds YJS documents.
+//! This service takes chunked JSON data (5-page windows) and builds YJS documents.
 //! It replaces the old json_to_db_service by directly creating YJS updates
 //! instead of inserting blocks into the database.
 
@@ -101,14 +101,10 @@ impl YjsScriptBuilderService {
         // Get user ID
         let user_id = self.get_user_id(username).await?;
 
-        // Process based on mode
+        // Always process chunked (fallback to chunked if mode is missing)
         match chunk.mode.as_str() {
-            "chunked" => {
-                self.process_chunked_script(&chunk, script_id, user_id).await
-            }
-            "full" | _ => {
-                self.process_full_script(&chunk, script_id, user_id).await
-            }
+            "chunked" => self.process_chunked_script(&chunk, script_id, user_id).await,
+            _ => self.process_chunked_script(&chunk, script_id, user_id).await,
         }
     }
 

@@ -26,30 +26,26 @@ async fn main() {
         eprintln!("Error: Invalid number of arguments");
         eprintln!("Usage: {} <json_file> <username>", args[0]);
         eprintln!("");
-        eprintln!("Example JSON structure for full mode (scripts ≤ 10 pages):");
+        eprintln!("Expected JSON (always 5-page chunked):");
         eprintln!(r#"{{
-  "mode": "full",
-  "metadata": {{
-    "title": "Script Title",
-    "author": "Author Name",
-    "total_pages": 8
+  \"mode\": \"chunked\",
+  \"chunk\": {{
+    \"number\": 1,
+    \"total\": 10,
+    \"pages_start\": 1,
+    \"pages_end\": 5
   }},
-  "content": [
-    {{
-      "type": "scene",
-      "content": "INT. OFFICE - DAY",
-      "page": 1,
-      "scene_number": "1"
-    }},
-    {{
-      "type": "dialogue",
-      "speaker": "CHARACTER",
-      "content": "The dialogue text",
-      "page": 1
-    }}
+  \"metadata\": {{
+    \"title\": \"Script Title\",
+    \"author\": \"Author Name\",
+    \"total_pages\": 50
+  }},
+  \"content\": [
+    {{ \"type\": \"scene\", \"content\": \"INT. OFFICE - DAY\", \"page\": 1, \"scene_number\": \"1\" }},
+    {{ \"type\": \"dialogue\", \"speaker\": \"CHARACTER\", \"content\": \"Hello\", \"page\": 1 }}
   ]
 }}"#);
-        eprintln!("\nFor chunked mode (scripts > 10 pages), see documentation.");
+        eprintln!("\nNote: Provide metadata only in the first chunk; subsequent chunks omit metadata and include context.");
         process::exit(1);
     }
 
