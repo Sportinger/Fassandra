@@ -44,30 +44,22 @@ async fn main() -> Result<()> {
 async fn test_single_chunk(pool: &Arc<sqlx::PgPool>) -> Result<()> {
     let json_data = r#"
     {
-        "mode": "full",
+        "mode": "chunked",
+        "chunk": {
+            "number": 1,
+            "total": 1,
+            "pages_start": 1,
+            "pages_end": 5
+        },
         "metadata": {
             "title": "Test Script - Single Chunk",
             "author": "Test Author",
             "total_pages": 5
         },
         "content": [
-            {
-                "type": "scene",
-                "content": "INT. OFFICE - DAY",
-                "page": 1,
-                "scene_number": "1"
-            },
-            {
-                "type": "dialogue",
-                "speaker": "JOHN",
-                "content": "This is a test.",
-                "page": 1
-            },
-            {
-                "type": "stage_direction",
-                "content": "John sits down.",
-                "page": 1
-            }
+            { "type": "scene", "content": "INT. OFFICE - DAY", "page": 1, "scene_number": "1" },
+            { "type": "dialogue", "speaker": "JOHN", "content": "This is a test.", "page": 1 },
+            { "type": "stage_direction", "content": "John sits down.", "page": 1 }
         ]
     }
     "#;
