@@ -85,7 +85,7 @@ Notes:
 
 ## Workflow (always 5-page chunks)
 
-1. Read the PDF at the provided path and determine total pages (Y).
+1. Read the PDF at the provided path and determine the exact total pages (Y) before starting. Do not guess; ensure the full document is loaded.
 2. Compute total chunks Z = ceil(Y / 5). Output: `[PROGRESS] Starting chunked parsing - Total pages: Y, Chunks: Z`.
 3. For i = 1..Z, process pages A..B where A = 5*(i-1)+1 and B = min(5*i, Y):
    - Parse only pages A..B and structure the data as per the schema above.
@@ -93,7 +93,9 @@ Notes:
    - Build JSON with `mode: "chunked"`, correct `chunk` metadata, and `context` continuity fields.
    - First chunk: include full `metadata`. Later chunks: omit `metadata`.
    - Write JSON to `/tmp/script_data.json` (overwrite each time; ONLY include the current 5 pages).
-   - Execute: `./yjs_to_db.sh /tmp/script_data.json <username>`.
+   - Execute the importer:
+     - First chunk: `./yjs_to_db.sh /tmp/script_data.json <username>` and capture the printed `Script ID: <UUID>` from the output.
+     - Subsequent chunks: pass that same script id as a third argument: `./yjs_to_db.sh /tmp/script_data.json <username> <SCRIPT_ID>` so chunks append to the same script.
    - After successful insertion, output: `[CHUNK_COMPLETE] Chunk i of Z processed (pages A-B)`.
 4. After all chunks are processed successfully, output exactly: `iam done with my job rom`.
 
@@ -101,6 +103,10 @@ Implementation notes (critical):
 - Never attempt to parse the entire PDF in one pass. Always iterate strictly in 5-page windows.
 - Always overwrite `/tmp/script_data.json` with just the current chunk's JSON before calling the script.
 - Maintain `context` (`last_scene`, `last_speaker`, etc.) to preserve continuity across chunks.
+ - Preserve original content verbatim (language, punctuation, diacritics). Do not translate or paraphrase. Normalize only the JSON quoting (ASCII double quotes) and necessary escapes.
+ - Do not modify or re-output content from pages outside the current window A..B. Each chunk contains only its pages.
+ - Strict JSON: use standard ASCII double quotes (`"`), escape internal quotes correctly, and avoid typographic quotes (e.g., “ ” „ ”). Validate the JSON before calling the importer.
+ - Validate JSON before import: if available, run `jq -e . /tmp/script_data.json` (or `python -m json.tool /tmp/script_data.json`) and fix errors before proceeding.
 
 ## Progress Reporting
 

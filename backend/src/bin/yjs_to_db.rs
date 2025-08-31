@@ -2,7 +2,7 @@
 //!
 //! This binary allows Claude Code to insert parsed script data into the database
 //! using the YJS format instead of the old blocks format.
-//! Usage: yjs_to_db <json_file> <username>
+//! Usage: yjs_to_db <json_file> <username> [script_id]
 
 use backend::services::yjs_script_builder_service::YjsScriptBuilderService;
 use std::env;
@@ -22,9 +22,9 @@ async fn main() {
     // Parse command line arguments
     let args: Vec<String> = env::args().collect();
     
-    if args.len() != 3 {
+    if args.len() < 3 || args.len() > 4 {
         eprintln!("Error: Invalid number of arguments");
-        eprintln!("Usage: {} <json_file> <username>", args[0]);
+        eprintln!("Usage: {} <json_file> <username> [script_id]", args[0]);
         eprintln!("");
         eprintln!("Expected JSON (always 5-page chunked):");
         eprintln!(r#"{{
@@ -45,12 +45,25 @@ async fn main() {
     {{ \"type\": \"dialogue\", \"speaker\": \"CHARACTER\", \"content\": \"Hello\", \"page\": 1 }}
   ]
 }}"#);
-        eprintln!("\nNote: Provide metadata only in the first chunk; subsequent chunks omit metadata and include context.");
+        eprintln!("\nNotes:");
+        eprintln!("- Provide metadata only in the first chunk; subsequent chunks omit metadata and include context.");
+        eprintln!("- Optional third argument \"script_id\" should be the UUID printed after the first successful chunk to append subsequent chunks to the same script.");
         process::exit(1);
     }
 
     let json_file = &args[1];
     let username = &args[2];
+    let script_id_arg = if args.len() == 4 { Some(args[3].clone()) } else { None };
+    let script_id_opt: Option<Uuid> = match script_id_arg {
+        Some(s) => match Uuid::parse_str(&s) {
+            Ok(id) => Some(id),
+            Err(_) => {
+                eprintln!("Error: Invalid script_id UUID: {}", s);
+                process::exit(1);
+            }
+        },
+        None => None,
+    };
 
     // Read JSON file
     let json_content = match fs::read_to_string(json_file) {
@@ -81,7 +94,7 @@ async fn main() {
     let service = YjsScriptBuilderService::new(db_pool.into());
 
     // Process the JSON
-    match service.build_script_from_json(&json_content, None, username).await {
+    match service.build_script_from_json(&json_content, script_id_opt, username).await {
         Ok(result) => {
             if result.success {
                 println!("Success: Script inserted as YJS document");
