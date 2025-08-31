@@ -60,11 +60,29 @@ async fn handle_claude_session_socket(
     // Spawn task to monitor session and send updates
     let claude_service_clone = claude_service.clone();
     let monitor_task = tokio::spawn(async move {
-        let mut last_line_count = 0;
+        let mut last_line_count = 0usize;
+        let mut last_progress: Option<u8> = None;
+        let mut last_status: Option<String> = None;
+
         loop {
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-            
+
             if let Some(session) = claude_service_clone.get_session(session_id).await {
+                // Emit status/progress changes
+                let status_str = format!("{:?}", session.status);
+                if last_progress.map(|p| p != session.progress).unwrap_or(true)
+                    || last_status.as_deref() != Some(&status_str)
+                {
+                    last_progress = Some(session.progress);
+                    last_status = Some(status_str.clone());
+                    let _ = tx
+                        .send(SessionUpdate::Status {
+                            status: session.status.clone(),
+                            progress: session.progress,
+                        })
+                        .await;
+                }
+
                 // Check for new log lines
                 if let Some(logs) = claude_service_clone.get_session_logs(session_id, last_line_count).await {
                     for line in logs {
@@ -72,7 +90,7 @@ async fn handle_claude_session_socket(
                     }
                     last_line_count = session.output.len();
                 }
-                
+
                 // Check if session is complete or failed
                 match session.status {
                     crate::services::claude_session_service::SessionStatus::Complete => {

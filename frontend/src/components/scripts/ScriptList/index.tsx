@@ -273,10 +273,23 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
               uploadProgress: Math.round(pageProgress),
               uploadSubStage: update.message || `Processing page ${update.current_page} of ${update.total_pages}`
             });
+          } else if (update.type === 'chunk_progress' && update.current_chunk && update.total_chunks) {
+            // Map chunk progress into the same 20-80% band
+            const chunkProg = (update.current_chunk / update.total_chunks) * 60 + 20;
+            const pages = (update.pages_start && update.pages_end) ? ` (pages ${update.pages_start}-${update.pages_end})` : '';
+            updateUploadStatus({
+              uploadProgress: Math.round(chunkProg),
+              uploadSubStage: update.message || `Processing chunk ${update.current_chunk} of ${update.total_chunks}${pages}`
+            });
           } else if (typeof update.progress === 'number') {
             // Regular progress updates
             const prog = Math.min(95, Math.max(20, Math.round(update.progress)));
             updateUploadStatus({ uploadProgress: prog });
+          }
+
+          // Stream raw Claude output into logs for visibility
+          if (update.type === 'output' && update.line) {
+            logger.info('Claude', update.line);
           }
           
           if (update.status) {
