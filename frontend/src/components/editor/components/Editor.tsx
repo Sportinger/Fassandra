@@ -8,6 +8,7 @@ import { LoadingSpinner } from './ui/LoadingSpinner';
 import { StatusIndicator } from './ui/StatusIndicator';
 import { SinglePageView } from '../ViewModes';
 import { FloatingCuesLayer } from './FloatingCuesLayer';
+import { FloatingCommentsLayer } from './FloatingCommentsLayer';
 import RulerOverlay from './RulerOverlay';
 import { AudioTranscription } from './AudioTranscription';
 import { MessageSquareQuoteIcon } from '../icons';
@@ -25,6 +26,7 @@ import '../styles/cue-connections.css';
 import '../styles/rehearsal-line.css';
 import '../styles/floating-cues.css';
 import '../styles/ruler-overlay.css';
+import '../styles/comments.css';
 import '../styles/print.css';
 /**
  * Main Editor Component
@@ -353,6 +355,17 @@ export const Editor: React.FC<EditorProps> = ({
     if (!editor) return;
     
     switch (action) {
+      case 'add-comment': {
+        const { state } = editor;
+        const sel = state.selection;
+        if (sel.empty) break;
+        const id = `cmt-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+        (editor as any).chain().focus().addComment({ commentId: id, commentText: '' }).run();
+        // open the comment popover for this id
+        const evt = new CustomEvent('pessoa:open-comment', { detail: { commentId: id, commentText: '' } });
+        window.dispatchEvent(evt);
+        break;
+      }
       case 'insert-dialogue':
         debugLog('Inserting dialogue block from context menu');
         editor.chain().focus().insertDialogueBlock().run();
@@ -565,6 +578,8 @@ export const Editor: React.FC<EditorProps> = ({
                 <FloatingCuesLayer editor={editor} />
                 {/* Ruler overlay */}
                 <RulerOverlay active={rulerOverlayActive} onClose={() => setRulerOverlayActive(false)} />
+                {/* Comments overlay */}
+                <FloatingCommentsLayer editor={editor} />
               </>
             ) : null
           }
@@ -756,8 +771,21 @@ export const Editor: React.FC<EditorProps> = ({
               Jump
             </div>
           )}
-          {localContextMenu.onPageBackground && (
+          {(localContextMenu.onPageBackground || (editor && editor.state && !editor.state.selection.empty)) && (
             <>
+              {!editor?.state.selection.empty && (
+                <div 
+                  className="context-menu-item"
+                  style={{
+                    padding: '10px 14px',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid var(--color-border)',
+                  }}
+                  onClick={() => handleContextMenuAction('add-comment')}
+                >
+                  💬 Add Comment
+                </div>
+              )}
               <div 
                 className="context-menu-item"
                 style={{
@@ -768,18 +796,6 @@ export const Editor: React.FC<EditorProps> = ({
                 onClick={() => handleContextMenuAction('insert-dialogue')}
               >
                 <MessageSquareQuoteIcon size={14} /> Insert Dialogue Block
-              </div>
-              {/* Dummy Comment option (no-op for now) */}
-              <div 
-                className="context-menu-item"
-                style={{
-                  padding: '10px 14px',
-                  cursor: 'pointer',
-                  borderBottom: '1px solid var(--color-border)',
-                }}
-                onClick={() => { /* placeholder for future Comment action */ }}
-              >
-                💬 Comment
               </div>
               <div 
                 className="context-menu-item"

@@ -57,6 +57,10 @@
 
     # Handle all other requests - proxy to frontend (Vite)
     handle {
+        # Clear site data for local origin to mimic production wipe
+        header {
+            Clear-Site-Data "\"cache\", \"cookies\", \"storage\", \"executionContexts\""
+        }
         reverse_proxy localhost:8081 {
             # Support WebSocket for HMR
             header_up Host {host}
@@ -120,6 +124,9 @@
     }
 
     handle {
+        header {
+            Clear-Site-Data "\"cache\", \"cookies\", \"storage\", \"executionContexts\""
+        }
         reverse_proxy localhost:8081 {
             header_up Host {host}
             header_up X-Real-IP {remote}
