@@ -8,6 +8,8 @@ export default defineConfig(() => {
   
   // Temporarily disable HTTPS for testing
   const useHttps = false;
+  const disableHMR = process.env.IOS_NO_HMR === '1' || process.env.VITE_NO_HMR === '1';
+  const hmrHost = process.env.VITE_HMR_HOST || undefined; // e.g., '192.168.1.42'
   
   let httpsConfig: any = false;
   if (useHttps) {
@@ -21,7 +23,14 @@ export default defineConfig(() => {
   }
   
   return {
-    plugins: [react(), VitePWA({ registerType: 'autoUpdate' })],
+    plugins: [
+      react(),
+      // Disable PWA SW during development to avoid iOS reload loops
+      VitePWA({
+        registerType: 'autoUpdate',
+        devOptions: { enabled: false },
+      }),
+    ],
     server: {
       port: 8080,
       host: '0.0.0.0', // Allow external connections
@@ -30,8 +39,9 @@ export default defineConfig(() => {
         usePolling: true, // Required for Docker
         interval: 500,
       },
-      hmr: {
-        // HMR configuration for Docker with dynamic host detection
+      hmr: disableHMR ? false : {
+        // HMR configuration for Docker / LAN iOS
+        host: hmrHost, // optionally override hostname for iPhone Safari
         port: 8080,
         clientPort: 8080, // Explicitly set client port for Docker
         timeout: 60000, // Increase timeout for stability
