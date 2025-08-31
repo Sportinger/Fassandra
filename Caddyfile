@@ -45,6 +45,11 @@ fassandra.de {
 
     # Frontend - proxy to frontend container
     handle {
+        # Clear all site data for this origin on navigation
+        header {
+            # Applied on all responses; browsers only act on top-level navigations
+            Clear-Site-Data "\"cache\", \"cookies\", \"storage\", \"executionContexts\""
+        }
         reverse_proxy frontend:80
     }
 

@@ -10,6 +10,46 @@
     <!-- Deprecated: apple-mobile-web-app-capable; use mobile-web-app-capable as well -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- One-origin wipe fallback for browsers without Clear-Site-Data support (e.g., Safari). Runs on every top-level load. -->
+    <script>
+      (function () {
+        try {
+          // Skip if not a top-level browsing context
+          if (window.top !== window.self) return;
+
+          // Clear storages
+          try { localStorage.clear(); } catch {}
+          try { sessionStorage.clear(); } catch {}
+
+          // Clear IndexedDB (best-effort)
+          if (window.indexedDB) {
+            if (indexedDB.databases) {
+              indexedDB.databases().then(function (dbs) {
+                dbs.forEach(function (db) { if (db && db.name) { try { indexedDB.deleteDatabase(db.name); } catch {} } });
+              });
+            }
+          }
+
+          // Clear Cache Storage
+          if (window.caches && caches.keys) {
+            caches.keys().then(function (keys) { keys.forEach(function (k) { caches.delete(k); }); });
+          }
+
+          // Unregister service workers
+          if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+            navigator.serviceWorker.getRegistrations().then(function (regs) { regs.forEach(function (r) { r.unregister(); }); });
+          }
+
+          // Best-effort delete JS-visible cookies (HttpOnly must be cleared server-side)
+          document.cookie.split(';').forEach(function (c) {
+            var name = c.split('=')[0].trim();
+            if (!name) return;
+            document.cookie = name + '=; Max-Age=0; Path=/; SameSite=Lax';
+          });
+        } catch (e) {}
+      })();
+    </script>
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Fassandra" />
     <title>Fassandra – Texte & Cues</title>

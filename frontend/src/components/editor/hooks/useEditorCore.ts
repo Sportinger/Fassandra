@@ -31,6 +31,7 @@ import { TrailingNode } from '../extensions/TrailingNode';
 import { CueConnectionMark } from '../extensions/CueConnectionMark';
 import { CueSelectTool } from '../extensions/CueSelectTool';
 import { CueMigration } from '../extensions/CueMigration';
+import { CommentMark } from '../extensions/CommentMark';
 import { PageIndicatorCompat } from '../extensions/PageIndicatorCompat';
 import { FontSize } from '../FontSizeExtension';
 import { FontFamilyExtension } from '../extensions/FontFamilyExtension';
@@ -564,6 +565,7 @@ export const useEditorCore = ({
             CueConnectionMark,
             SceneBlock,
             CueSelectTool,
+            CommentMark,
             CueMigration, // one-time migration of legacy cue blocks
             PageIndicatorCompat,
             TrailingNode.configure({
@@ -632,6 +634,7 @@ export const useEditorCore = ({
             CueConnectionMark,
             SceneBlock,
             CueSelectTool,
+            CommentMark,
             CueMigration,
             PageIndicatorCompat,
             TrailingNode.configure({
