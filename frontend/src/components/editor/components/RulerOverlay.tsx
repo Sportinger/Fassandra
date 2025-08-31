@@ -9,6 +9,8 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
   const [dragging, setDragging] = useState(false);
   const [startX, setStartX] = useState<number | null>(null);
   const [startInnerWidth, setStartInnerWidth] = useState<number>(0);
+  const [dragMode, setDragMode] = useState<'left' | 'right' | 'center' | null>(null);
+  const [frame, setFrame] = useState<number>(0); // force re-render during live drag
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Load persisted padding on mount
@@ -37,8 +39,14 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
   const handleMouseMove = (e: MouseEvent) => {
     if (!dragging || startX == null) return;
     const dx = e.clientX - startX;
-    // Expand/contract inner width symmetrically: newWidth = startInnerWidth + 2*dx
-    let newInnerWidth = startInnerWidth + 2 * dx;
+    // Drag mapping by mode
+    //  - right zone: natural (drag right -> widen content)
+    //  - left/center zone: inverted (drag right -> narrow content)
+    const delta = 2 * dx;
+    let newInnerWidth =
+      dragMode === 'right'
+        ? startInnerWidth + delta
+        : startInnerWidth - delta;
     const page = document.querySelector('.dinA4Page') as HTMLElement | null;
     const pageRect = page?.getBoundingClientRect();
     const pageWidth = pageRect?.width || 0;
@@ -47,6 +55,7 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
     newInnerWidth = Math.max(minInner, Math.min(maxInner, newInnerWidth));
     const newPad = (pageWidth - newInnerWidth) / 2;
     applyPad(newPad, false);
+    setFrame((f) => f + 1);
   };
 
   const handleMouseUp = () => {
@@ -59,6 +68,8 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
     applyPad(px, true);
     setDragging(false);
     setStartX(null);
+    setDragMode(null);
+    onClose?.();
   };
 
   useEffect(() => {
@@ -92,10 +103,28 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
     pointerEvents: 'none',
   };
 
-  const containerRect = (document.querySelector('.singlePageContainer') as HTMLElement).getBoundingClientRect();
-  const barLeft = innerRect.left - containerRect.left;
-  const barRight = innerRect.right - containerRect.left;
-  const barTop = pageRect.top - containerRect.top + Math.max(24, Math.min(pageRect.height - 24, innerRect.top - pageRect.top + innerRect.height / 2));
+  const containerEl = document.querySelector('.singlePageContainer') as HTMLElement;
+  const containerRect = containerEl.getBoundingClientRect();
+  const innerCS = getComputedStyle(inner);
+  const padL = parseFloat(innerCS.paddingLeft || '0') || 0;
+  const padR = parseFloat(innerCS.paddingRight || '0') || 0;
+  const barLeft = innerRect.left + padL - containerRect.left;   // left text edge
+  const barRight = innerRect.right - padR - containerRect.left; // right text edge
+  // Place bar at current viewport center within page bounds
+  const viewMidAbs = window.scrollY + window.innerHeight / 2;
+  const pageTopAbs = pageRect.top + window.scrollY;
+  const pageBottomAbs = pageRect.bottom + window.scrollY;
+
+  // Compute a tall hit area ~ 4 lines of text
+  const cs = getComputedStyle(inner);
+  const fontSize = parseFloat(cs.fontSize || '16') || 16;
+  const lineHeight = (() => { const lh = cs.lineHeight; return lh === 'normal' ? 1.5 * fontSize : parseFloat(lh || '24'); })();
+  const barHeight = Math.max(4 * lineHeight, 56);
+
+  // Clamp bar center within page vertical range, then convert to container coordinates
+  const clampedCenterAbs = Math.max(pageTopAbs + barHeight / 2, Math.min(pageBottomAbs - barHeight / 2, viewMidAbs));
+  const containerTopAbs = containerRect.top + window.scrollY;
+  const barTop = clampedCenterAbs - containerTopAbs - barHeight / 2;
 
   return (
     <div className="ruler-overlay" ref={containerRef} style={overlayStyle} onClick={(e) => { e.stopPropagation(); }}>
@@ -110,17 +139,60 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
       {/* Central double-arrow bar spanning the text width */}
       <div
         className="ruler-bar"
-        style={{ position: 'absolute', top: barTop - 9, left: barLeft, width: barRight - barLeft, height: 18 }}
+        style={{ position: 'absolute', top: barTop, left: barLeft, width: barRight - barLeft, height: barHeight }}
         onMouseDown={(e) => {
           e.preventDefault(); e.stopPropagation();
           setDragging(true);
           setStartX(e.clientX);
           setStartInnerWidth(barRight - barLeft);
+          setDragMode('center');
         }}
       >
-        <span className="bar-line" />
-        <span className="bar-arrow left" />
-        <span className="bar-arrow right" />
+        {/* Separate drag zones near arrows */}
+        {(() => {
+          const totalW = barRight - barLeft;
+          const zoneW = Math.min(220, Math.max(120, totalW * 0.22));
+          return (
+            <>
+              <span
+                className="drag-zone left"
+                style={{ position: 'absolute', left: 0, top: 0, width: zoneW, height: '100%' }}
+                onMouseDown={(e) => {
+                  e.preventDefault(); e.stopPropagation();
+                  setDragging(true);
+                  setStartX(e.clientX);
+                  setStartInnerWidth(totalW);
+                  setDragMode('left');
+                }}
+              />
+              <span
+                className="drag-zone right"
+                style={{ position: 'absolute', right: 0, top: 0, width: zoneW, height: '100%' }}
+                onMouseDown={(e) => {
+                  e.preventDefault(); e.stopPropagation();
+                  setDragging(true);
+                  setStartX(e.clientX);
+                  setStartInnerWidth(totalW);
+                  setDragMode('right');
+                }}
+              />
+            </>
+          );
+        })()}
+        {/* Left arrow icon (4x size) */}
+        <span className="bar-icon left" aria-hidden>
+          <svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+            <path d="M13 9a1 1 0 0 1-1-1V5.061a1 1 0 0 0-1.811-.75l-6.835 6.836a1.207 1.207 0 0 0 0 1.707l6.835 6.835a1 1 0 0 0 1.811-.75V16a1 1 0 0 1 1-1h2a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1z"/>
+            <path d="M20 9v6"/>
+          </svg>
+        </span>
+        {/* Right arrow icon (4x size) */}
+        <span className="bar-icon right" aria-hidden>
+          <svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+            <path d="M11 9a1 1 0 0 0 1-1V5.061a1 1 0 0 1 1.811-.75l6.836 6.836a1.207 1.207 0 0 1 0 1.707l-6.836 6.835a1 1 0 0 1-1.811-.75V16a1 1 0 0 0-1-1H9a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1z"/>
+            <path d="M4 9v6"/>
+          </svg>
+        </span>
       </div>
     </div>
   );
