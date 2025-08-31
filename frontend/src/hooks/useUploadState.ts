@@ -3,22 +3,20 @@ import UploadStateManager, { UploadState } from '../services/UploadStateManager'
 import { PlaceholderScript } from '../types';
 
 export function useUploadState() {
-  const [state, setState] = useState<UploadState>({
-    uploads: UploadStateManager['state'].uploads,
-    sessionIds: UploadStateManager['state'].sessionIds
-  });
+  const [state, setState] = useState<UploadState>(UploadStateManager.getState());
 
   useEffect(() => {
     // Subscribe to state changes
     const unsubscribe = UploadStateManager.subscribe((newState) => {
-      setState(newState);
+      // Always replace with a fresh snapshot to ensure rerender
+      setState({
+        uploads: new Map(newState.uploads),
+        sessionIds: new Map(newState.sessionIds)
+      });
     });
 
-    // Get initial state
-    setState({
-      uploads: UploadStateManager['state'].uploads,
-      sessionIds: UploadStateManager['state'].sessionIds
-    });
+    // Get initial state from a snapshot
+    setState(UploadStateManager.getState());
 
     return unsubscribe;
   }, []);

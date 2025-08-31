@@ -21,6 +21,7 @@ interface TiltOptions {
   maxTilt?: number;
   sensitivity?: number;
   mobileMultiplier?: number;
+  invert?: boolean; // invert tilt directions
 }
 
 export const useCssTiltWithAccelerometer = (options: TiltOptions = {}) => {
@@ -28,6 +29,7 @@ export const useCssTiltWithAccelerometer = (options: TiltOptions = {}) => {
     maxTilt = 8,
     sensitivity = 1,
     mobileMultiplier = 0.5,
+    invert = false,
   } = options;
 
   const ref = useRef<HTMLDivElement>(null);
@@ -58,8 +60,9 @@ export const useCssTiltWithAccelerometer = (options: TiltOptions = {}) => {
     const clampedY = Math.max(-1, Math.min(1, percentY));
     
     // Calculate tilt
-    const tiltX = clampedY * -maxTilt * sensitivity;
-    const tiltY = clampedX * maxTilt * sensitivity;
+    let tiltX = clampedY * -maxTilt * sensitivity;
+    let tiltY = clampedX * maxTilt * sensitivity;
+    if (invert) { tiltX = -tiltX; tiltY = -tiltY; }
     
     // Set CSS variables directly on the element
     ref.current.style.setProperty('--tilt-x', `${tiltX}deg`);
@@ -143,10 +146,11 @@ export const useCssTiltWithAccelerometer = (options: TiltOptions = {}) => {
       // INVERTED: Tilt opposite to phone movement
       // Phone tilt up = card tilts down, phone left = card right
       if (hasMovement) {
-        targetTiltRef.current.x = Math.max(-maxTilt, Math.min(maxTilt, 
-          (betaDiff / 25) * maxTilt * sensitivity * mobileMultiplier)); // NOT inverted for up/down
-        targetTiltRef.current.y = Math.max(-maxTilt, Math.min(maxTilt, 
-          -(gammaDiff / 25) * maxTilt * sensitivity * mobileMultiplier)); // Inverted for left/right
+        let tx = (betaDiff / 25) * maxTilt * sensitivity * mobileMultiplier;      // up/down
+        let ty = -(gammaDiff / 25) * maxTilt * sensitivity * mobileMultiplier;    // left/right inverted baseline
+        if (invert) { tx = -tx; ty = -ty; }
+        targetTiltRef.current.x = Math.max(-maxTilt, Math.min(maxTilt, tx));
+        targetTiltRef.current.y = Math.max(-maxTilt, Math.min(maxTilt, ty));
       }
 
       // Smooth interpolation to target (for auto-centering effect)

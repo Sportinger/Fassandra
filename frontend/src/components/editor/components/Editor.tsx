@@ -12,6 +12,7 @@ import { FloatingCommentsLayer } from './FloatingCommentsLayer';
 import RulerOverlay from './RulerOverlay';
 import { AudioTranscription } from './AudioTranscription';
 import { MessageSquareQuoteIcon } from '../icons';
+import { TextSelection } from '@tiptap/pm/state';
 import type { EditorProps, ViewMode } from '../types';
 
 import logger from '../../../services/LoggingService';
@@ -80,6 +81,7 @@ export const Editor: React.FC<EditorProps> = ({
   const [editAllSpeakers, setEditAllSpeakers] = useState(false);
   const [currentSpeakerName, setCurrentSpeakerName] = useState<string | null>(null);
   const [rulerOverlayActive, setRulerOverlayActive] = useState(false);
+  const [insertSubmenu, setInsertSubmenu] = useState<{open:boolean;x:number;y:number}>({ open: false, x: 0, y: 0 });
   
   // Removed demo mode state - development utility
   // Removed demo-related state - development utility
@@ -355,6 +357,23 @@ export const Editor: React.FC<EditorProps> = ({
     if (!editor) return;
     
     switch (action) {
+      case 'insert-paragraph': {
+        try {
+          const { state, view } = editor;
+          const { $from } = state.selection;
+          // Insert a new empty paragraph AFTER the current block (like scene/speaker handlers)
+          const insertPos = $from.after($from.depth);
+          const paragraph = state.schema.nodes.paragraph.create();
+          const tr = state.tr
+            .insert(insertPos, paragraph)
+            .setSelection(TextSelection.near(state.doc.resolve(Math.min(insertPos + 1, state.doc.content.size - 1))));
+          view.dispatch(tr);
+        } catch {
+          // Fallback to simple insert at cursor
+          editor.chain().focus().insertContent({ type: 'paragraph' }).run();
+        }
+        break;
+      }
       case 'add-comment': {
         const { state } = editor;
         const sel = state.selection;
@@ -369,6 +388,9 @@ export const Editor: React.FC<EditorProps> = ({
       case 'insert-dialogue':
         debugLog('Inserting dialogue block from context menu');
         editor.chain().focus().insertDialogueBlock().run();
+        break;
+      case 'insert-scene':
+        editor.chain().focus().insertSceneBlock().run();
         break;
       case 'toggle-view':
         setViewMode(prev => prev === 'single-page' ? 'multiple-pages' : 'single-page');
@@ -430,6 +452,7 @@ export const Editor: React.FC<EditorProps> = ({
     // If menu closed without jumping, re-enable auto scroll but don't auto-center
     setSuppressRehearsalAutoScroll(false);
     setShouldCenterOnRehearsalChange(false);
+    setInsertSubmenu({ open: false, x: 0, y: 0 });
   }, [editor, debugLog, localContextMenu.rehearsalClickY, provider]);
 
   // Close context menu on click outside
@@ -438,6 +461,7 @@ export const Editor: React.FC<EditorProps> = ({
       if (localContextMenu.visible) {
         setLocalContextMenu(prev => ({ ...prev, visible: false }));
         setSuppressRehearsalAutoScroll(false);
+        setInsertSubmenu({ open: false, x: 0, y: 0 });
       }
     };
     
@@ -799,16 +823,23 @@ export const Editor: React.FC<EditorProps> = ({
                   💬 Add Comment
                 </div>
               )}
+              {/* Insert submenu trigger */}
               <div 
                 className="context-menu-item"
                 style={{
                   padding: '10px 14px',
                   cursor: 'pointer',
                   borderBottom: '1px solid var(--color-border)',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                 }}
-                onClick={() => handleContextMenuAction('insert-dialogue')}
+                onMouseEnter={(e) => {
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setInsertSubmenu({ open: true, x: rect.right + 4, y: rect.top });
+                }}
+                onMouseLeave={() => {/* keep open for submenu */}}
               >
-                <MessageSquareQuoteIcon size={14} /> Insert Dialogue Block
+                <span>➕ Insert</span>
+                <span style={{ opacity: 0.6 }}>▶</span>
               </div>
               <div 
                 className="context-menu-item"
@@ -850,7 +881,38 @@ export const Editor: React.FC<EditorProps> = ({
           )}
         </div>
       )}
-      
+
+      {/* Insert submenu */}
+      {insertSubmenu.open && (
+        <div
+          className="context-submenu"
+          style={{
+            position: 'fixed',
+            left: `${insertSubmenu.x}px`,
+            top: `${insertSubmenu.y}px`,
+            background: 'var(--color-background)',
+            color: 'var(--color-text)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '8px',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.25)',
+            zIndex: 1001,
+            minWidth: '180px',
+            padding: '4px 0',
+          }}
+          onMouseLeave={() => setInsertSubmenu({open:false,x:0,y:0})}
+        >
+          <div className="context-menu-item" style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--color-border)' }} onClick={() => handleContextMenuAction('insert-paragraph')}>
+            📝 Free Text
+          </div>
+          <div className="context-menu-item" style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--color-border)' }} onClick={() => handleContextMenuAction('insert-dialogue')}>
+            <MessageSquareQuoteIcon size={14} /> Dialogue
+          </div>
+          <div className="context-menu-item" style={{ padding: '10px 14px', cursor: 'pointer' }} onClick={() => handleContextMenuAction('insert-scene')}>
+            🎬 Scene
+          </div>
+        </div>
+      )}
+
       {/* Floating Toolbar */}
       <Toolbar 
         editor={editor}
