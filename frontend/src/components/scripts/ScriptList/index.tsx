@@ -300,6 +300,13 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
           if (update.type === 'output' && update.line) {
             logger.info('Claude', update.line);
             appendLog(placeholder.id, update.line);
+            // If the line looks like JSON (starts with '[' or '{'), treat it as a real incremental update
+            const trimmed = update.line.trimStart();
+            if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+              const current = UploadStateManager.getUpload(placeholder.id)?.uploadProgress ?? 20;
+              const next = Math.min(95, current + 1); // advance by 1% per CLI event, cap before completion
+              updateUploadStatus({ uploadProgress: next });
+            }
             // Fallback parsing for Claude progress lines to surface in UI
             const line = update.line;
             try {
