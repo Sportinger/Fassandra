@@ -12,6 +12,7 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
   const [dragMode, setDragMode] = useState<'left' | 'right' | 'center' | null>(null);
   const [frame, setFrame] = useState<number>(0); // force re-render during live drag
   const containerRef = useRef<HTMLDivElement>(null);
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
 
   // Load persisted padding on mount
   useEffect(() => {
@@ -36,9 +37,8 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
     }
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const applyDragDelta = (dx: number) => {
     if (!dragging || startX == null) return;
-    const dx = e.clientX - startX;
     // Drag mapping by mode
     //  - right zone: natural (drag right -> widen content)
     //  - left/center zone: inverted (drag right -> narrow content)
@@ -56,6 +56,20 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
     const newPad = (pageWidth - newInnerWidth) / 2;
     applyPad(newPad, false);
     setFrame((f) => f + 1);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!dragging || startX == null) return;
+    const dx = e.clientX - startX;
+    applyDragDelta(dx);
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (!dragging || startX == null) return;
+    if (e.touches.length === 0) return;
+    const dx = e.touches[0].clientX - startX;
+    e.preventDefault();
+    applyDragDelta(dx);
   };
 
   const handleMouseUp = () => {
@@ -78,9 +92,13 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
     const onUp = () => handleMouseUp();
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', onUp);
     return () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', handleTouchMove as any);
+      window.removeEventListener('touchend', onUp);
     };
   }, [active, dragging, startX, startInnerWidth]);
 
@@ -125,6 +143,9 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
   const clampedCenterAbs = Math.max(pageTopAbs + barHeight / 2, Math.min(pageBottomAbs - barHeight / 2, viewMidAbs));
   const containerTopAbs = containerRect.top + window.scrollY;
   const barTop = clampedCenterAbs - containerTopAbs - barHeight / 2;
+  // Mobile central grip sizing
+  const gripWidth = Math.min(320, Math.max(200, containerRect.width * 0.7));
+  const gripLeft = Math.max(8, (containerRect.width - gripWidth) / 2);
 
   return (
     <div className="ruler-overlay" ref={containerRef} style={overlayStyle} onClick={(e) => { e.stopPropagation(); }}>
@@ -139,11 +160,19 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
       {/* Central double-arrow bar spanning the text width */}
       <div
         className="ruler-bar"
-        style={{ position: 'absolute', top: barTop, left: barLeft, width: barRight - barLeft, height: barHeight }}
+        style={{ position: 'absolute', top: barTop, left: barLeft, width: barRight - barLeft, height: barHeight, pointerEvents: 'auto', cursor: 'ew-resize' }}
         onMouseDown={(e) => {
           e.preventDefault(); e.stopPropagation();
           setDragging(true);
           setStartX(e.clientX);
+          setStartInnerWidth(barRight - barLeft);
+          setDragMode('center');
+        }}
+        onTouchStart={(e) => {
+          e.preventDefault(); e.stopPropagation();
+          const x = e.touches && e.touches[0] ? e.touches[0].clientX : 0;
+          setDragging(true);
+          setStartX(x);
           setStartInnerWidth(barRight - barLeft);
           setDragMode('center');
         }}
@@ -164,6 +193,14 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
                   setStartInnerWidth(totalW);
                   setDragMode('left');
                 }}
+                onTouchStart={(e) => {
+                  e.preventDefault(); e.stopPropagation();
+                  const x = e.touches && e.touches[0] ? e.touches[0].clientX : 0;
+                  setDragging(true);
+                  setStartX(x);
+                  setStartInnerWidth(totalW);
+                  setDragMode('left');
+                }}
               />
               <span
                 className="drag-zone right"
@@ -172,6 +209,14 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
                   e.preventDefault(); e.stopPropagation();
                   setDragging(true);
                   setStartX(e.clientX);
+                  setStartInnerWidth(totalW);
+                  setDragMode('right');
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault(); e.stopPropagation();
+                  const x = e.touches && e.touches[0] ? e.touches[0].clientX : 0;
+                  setDragging(true);
+                  setStartX(x);
                   setStartInnerWidth(totalW);
                   setDragMode('right');
                 }}
@@ -194,6 +239,40 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
           </svg>
         </span>
       </div>
+      {/* Mobile-only central grip area: keeps arrows at edges but puts draggable zone in the visible middle */}
+      {isMobile && (
+        <div
+          className="ruler-center-grip"
+          aria-label="Adjust page width"
+          style={{
+            position: 'absolute',
+            top: barTop,
+            left: gripLeft,
+            width: gripWidth,
+            height: barHeight,
+            pointerEvents: 'auto',
+            cursor: 'ew-resize',
+            borderRadius: 10,
+            background: 'rgba(100,108,255,0.08)',
+            border: '1px dashed rgba(100,108,255,0.4)'
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault(); e.stopPropagation();
+            setDragging(true);
+            setStartX(e.clientX);
+            setStartInnerWidth(barRight - barLeft);
+            setDragMode('center');
+          }}
+          onTouchStart={(e) => {
+            e.preventDefault(); e.stopPropagation();
+            const x = e.touches && e.touches[0] ? e.touches[0].clientX : 0;
+            setDragging(true);
+            setStartX(x);
+            setStartInnerWidth(barRight - barLeft);
+            setDragMode('center');
+          }}
+        />
+      )}
     </div>
   );
 };
