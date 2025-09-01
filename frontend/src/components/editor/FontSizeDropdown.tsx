@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { MobilePortal } from './MobilePortal';
 import { Editor as EditorInstance } from '@tiptap/react';
 import './styles/toolbar.css';
 
@@ -23,6 +24,14 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
   const [dropdownPosition, setDropdownPosition] = useState<'right' | 'left'>('right');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuPortalRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth <= 767 : false);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 767);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Get current font size from editor
   useEffect(() => {
@@ -147,7 +156,10 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const inContainer = dropdownRef.current?.contains(target);
+      const inMenu = menuPortalRef.current?.contains(target);
+      if (!inContainer && !inMenu) {
         setIsOpen(false);
       }
     };
@@ -194,20 +206,18 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
         </span>
       </button>
 
-      {isOpen && (
-        <div className={[
-          'dropdownMenu',
-          `position-${dropdownPosition}`
-        ].filter(Boolean).join(' ')} style={{ background: '#1a1a1a' }}>
+      {isOpen && (!isMobile ? (
+        <div
+          className={[ 'dropdownMenu', `position-${dropdownPosition}` ].join(' ')}
+          style={{ background: '#1a1a1a' }}
+          ref={menuPortalRef}
+        >
           <div className="dropdownList">
             {FONT_SIZES.map((size) => (
               <button
                 key={size}
                 type="button"
-                className={[
-                  'dropdownItem',
-                  currentSize === size ? 'active' : ''
-                ].filter(Boolean).join(' ')}
+                className={[ 'dropdownItem', currentSize === size ? 'active' : '' ].join(' ')}
                 onClick={() => handleFontSizeChange(size)}
                 style={{ fontSize: `${Math.min(size, 18)}px` }}
               >
@@ -216,7 +226,25 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
             ))}
           </div>
         </div>
-      )}
+      ) : (
+        <MobilePortal ref={menuPortalRef}>
+          <div className="dropdownMenu" style={{ background: '#1a1a1a' }}>
+            <div className="dropdownList">
+              {FONT_SIZES.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  className={[ 'dropdownItem', currentSize === size ? 'active' : '' ].join(' ')}
+                  onClick={() => handleFontSizeChange(size)}
+                  style={{ fontSize: `${Math.min(size, 18)}px` }}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+        </MobilePortal>
+      ))}
     </div>
   );
 }; 

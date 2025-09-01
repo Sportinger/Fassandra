@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { MobilePortal } from './MobilePortal';
 import { Editor as EditorInstance } from '@tiptap/react';
 import './styles/toolbar.css';
 import { MegaphoneIcon } from './icons';
@@ -21,6 +22,14 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
   const [currentSpeaker, setCurrentSpeaker] = useState('Speaker');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuPortalRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth <= 767 : false);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 767);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Get current speaker name from selection
   useEffect(() => {
@@ -119,7 +128,10 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const inContainer = dropdownRef.current?.contains(target);
+      const inMenu = menuPortalRef.current?.contains(target);
+      if (!inContainer && !inMenu) {
         setIsOpen(false);
       }
     };
@@ -161,8 +173,8 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
         <span className="arrow">▼</span>
       </button>
       
-      {isOpen && (
-        <div className="dropdownMenu" style={{ background: '#1a1a1a' }}>
+      {isOpen && (!isMobile ? (
+        <div className="dropdownMenu" style={{ background: '#1a1a1a' }} ref={menuPortalRef}>
           {allSpeakers.map((speaker, index) => (
             <button
               key={index}
@@ -183,14 +195,38 @@ export const SpeakerDropdown: React.FC<SpeakerDropdownProps> = ({
               {speaker === '+ New Speaker' ? '➕ New Speaker' : speaker}
             </button>
           ))}
-          
           {allSpeakers.length === 0 && (
-            <div className="dropdownItem">
-              No speakers found in script
-            </div>
+            <div className="dropdownItem">No speakers found in script</div>
           )}
         </div>
-      )}
+      ) : (
+        <MobilePortal ref={menuPortalRef}>
+          <div className="dropdownMenu" style={{ background: '#1a1a1a' }}>
+            <div className="dropdownList">
+              {allSpeakers.map((speaker, index) => (
+                <button
+                  key={index}
+                  className={`dropdownItem ${
+                    speaker === currentSpeaker ? 'active' : ''
+                  } ${speaker === '+ New Speaker' ? 'special' : ''}`}
+                  onClick={() => {
+                    if (speaker === '+ New Speaker') {
+                      const newSpeaker = prompt('Enter new speaker name:');
+                      if (newSpeaker && newSpeaker.trim()) {
+                        handleSpeakerSelect(newSpeaker.trim());
+                      }
+                    } else {
+                      handleSpeakerSelect(speaker);
+                    }
+                  }}
+                >
+                  {speaker === '+ New Speaker' ? '➕ New Speaker' : speaker}
+                </button>
+              ))}
+            </div>
+          </div>
+        </MobilePortal>
+      ))}
     </div>
   );
 }; 

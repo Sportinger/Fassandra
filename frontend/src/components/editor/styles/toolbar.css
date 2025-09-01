@@ -448,6 +448,9 @@
 /* ===== MOBILE RESPONSIVE ADJUSTMENTS ===== */
 
 @media (max-width: 767px) {
+  /* Normalized constant for layout math on mobile */
+  :root { --mobile-toolbar-height: 64px; }
+
   .floatingToolbar {
     /* Full-width bottom bar on mobile */
     position: fixed !important;
@@ -486,7 +489,7 @@
 
     /* Allow height to grow with content */
     height: auto;
-    min-height: 64px; /* Slightly smaller minimum height to fit one row */
+    min-height: var(--mobile-toolbar-height); /* Single-row bar height */
 
     /* Ensure toolbar stays visible above keyboard */
     z-index: 1000;
@@ -508,12 +511,17 @@
     /* Horizontal scrolling when overflowing; smooth on iOS */
     overflow-x: auto;
     overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
+      -webkit-overflow-scrolling: touch;
 
     /* Ensure toolbar doesn't scroll with content */
     -webkit-transform: translateZ(0);
-    backface-visibility: hidden;
-  }
+      backface-visibility: hidden;
+    }
+
+    /* Prevent any child from flex-wrapping or stretching; keep one row */
+    .floatingToolbar > * {
+      flex: 0 0 auto;
+    }
   
   /* Visual feedback when keyboard is active */
   .floatingToolbar.keyboard-active {
@@ -573,21 +581,60 @@
   /* Dropdown adjustments for mobile */
   .dropdownMenu,
   .cue-dropdown-menu {
-    position: fixed;
-    /* Place above the toolbar */
-    bottom: calc(44px + var(--space-lg) + var(--space-lg));
-    top: auto;
-    left: 50%;
-    right: auto; /* Clear any left-opening desktop rule */
-    transform: translateX(-50%);
-    width: calc(100vw - var(--space-lg) * 2);
-    max-width: 400px;
-    max-height: 60vh; /* Keep entire menu on-screen */
-    overflow-y: auto;
-    z-index: 1200; /* Above the toolbar (which is 1000) */
+    /* Independent full-width popup directly above the toolbar */
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    top: auto !important;
+    bottom: calc(var(--mobile-toolbar-height) + var(--keyboard-offset, 0px) + env(safe-area-inset-bottom, 0px) + 8px) !important;
+    transform: none !important;
+    z-index: 4000 !important; /* Above the toolbar and other UI */
 
-    /* Reduced mobile dropdown shadow */
-    box-shadow: var(--shadow-lg);
+    /* Match toolbar visual style */
+    background: #1f1f1f; /* Same dark background as toolbar */
+    color: #e5e7eb;
+    border-radius: 0;
+    border: none;
+    border-top: 1px solid #333;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+
+    /* Horizontal layout like toolbar */
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: row;
+    gap: 8px;
+    height: var(--mobile-toolbar-height) !important;
+    min-height: var(--mobile-toolbar-height) !important;
+    padding: 12px 16px !important;
+
+    /* Scrolling if many options */
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Normalize any left-opening variants to full-width popup */
+  .dropdownMenu.position-left,
+  .dropdownMenuLeft {
+    left: 0 !important;
+    right: 0 !important;
+  }
+
+  /* Ensure list wrappers lay out horizontally like the toolbar */
+  .dropdownMenu .dropdownList,
+  .cue-dropdown-menu .dropdownList {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    height: 100% !important;
+    width: 100% !important;
+    padding: 0 16px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
   }
   
   .dropdownButton {
@@ -615,6 +662,34 @@
     font-size: 10px;
   }
   
+  /* Dropdown items behave like toolbar buttons in the popup */
+  .dropdownItem,
+  .cue-dropdown-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 48px;
+    min-width: 48px;
+    padding: 0 12px;
+    margin: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-lg);
+    color: #e5e7eb;
+    font-weight: 600;
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+
+  .dropdownItem:hover,
+  .cue-dropdown-item:hover {
+    background: var(--color-accent, #3b82f6);
+    color: #fff;
+  }
+
+  /* Header inside dropdown not needed in horizontal popup */
+  .dropdownHeader { display: none; }
+
   /* Keyboard toggle button styling */
   .toolbarButton[title*="Keyboard"] {
     background: rgba(59, 130, 246, 0.1);

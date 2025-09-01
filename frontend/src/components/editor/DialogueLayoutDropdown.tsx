@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { MobilePortal } from './MobilePortal';
 import { Editor as EditorInstance } from '@tiptap/react';
 import './styles/toolbar.css';
 import { LayoutListIcon } from './icons';
@@ -50,6 +51,14 @@ export const DialogueLayoutDropdown: React.FC<DialogueLayoutDropdownProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [currentLayout, setCurrentLayout] = useState<LayoutType>('default');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuPortalRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth <= 767 : false);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 767);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Get current layout from editor
   useEffect(() => {
@@ -80,7 +89,10 @@ export const DialogueLayoutDropdown: React.FC<DialogueLayoutDropdownProps> = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const inContainer = dropdownRef.current?.contains(target);
+      const inMenu = menuPortalRef.current?.contains(target);
+      if (!inContainer && !inMenu) {
         setIsOpen(false);
       }
     };
@@ -134,8 +146,8 @@ export const DialogueLayoutDropdown: React.FC<DialogueLayoutDropdownProps> = ({
         <span className="arrow">▼</span>
       </button>
       
-      {isOpen && (
-        <div className="dropdownMenu" style={{ background: '#1a1a1a' }}>
+      {isOpen && (!isMobile ? (
+        <div className="dropdownMenu" style={{ background: '#1a1a1a' }} ref={menuPortalRef}>
           {LAYOUT_OPTIONS.map((option) => (
             <button
               key={option.id}
@@ -153,18 +165,32 @@ export const DialogueLayoutDropdown: React.FC<DialogueLayoutDropdownProps> = ({
               <span style={{ fontSize: '1.2em' }}>{option.icon}</span>
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontWeight: 600 }}>{option.label}</div>
-                <div style={{ 
-                  fontSize: '0.85em', 
-                  opacity: 0.7,
-                  marginTop: '2px'
-                }}>
+                <div style={{ fontSize: '0.85em', opacity: 0.7, marginTop: '2px' }}>
                   {option.description}
                 </div>
               </div>
             </button>
           ))}
         </div>
-      )}
+      ) : (
+        <MobilePortal ref={menuPortalRef}>
+          <div className="dropdownMenu" style={{ background: '#1a1a1a' }}>
+            <div className="dropdownList">
+              {LAYOUT_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => handleLayoutSelect(option.id)}
+                  className={`dropdownItem ${currentLayout === option.id ? 'active' : ''}`}
+                  type="button"
+                >
+                  <span style={{ fontSize: '1.2em', marginRight: '8px' }}>{option.icon}</span>
+                  <span>{option.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </MobilePortal>
+      ))}
     </div>
   );
 };

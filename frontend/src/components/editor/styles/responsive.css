@@ -463,7 +463,8 @@ html, body {
 /* ===== STAGE DIRECTIONS ===== */
 
 .ProseMirror p em {
-  color: #666;  /* Gray color for stage directions in italics */
+  /* Keep italic text the same color as normal text (no gray) */
+  color: var(--color-text);
   font-style: italic;
   margin: 1em 0;  /* Extra spacing around stage directions */
 }

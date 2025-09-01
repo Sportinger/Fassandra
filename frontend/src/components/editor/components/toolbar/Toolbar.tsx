@@ -824,6 +824,16 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const isMobile = windowWidth <= 767;
   const keyboardActive = isMobile && keyboardHeight > 0;
   const calculatedBottom = keyboardActive ? keyboardHeight : 0; // Position directly above keyboard or at bottom
+
+  // Expose keyboard inset to CSS so mobile dropdown portal can position above toolbar
+  React.useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--keyboard-offset', `${keyboardHeight}px`);
+      return () => {
+        document.documentElement.style.removeProperty('--keyboard-offset');
+      };
+    }
+  }, [keyboardHeight]);
   
   const dynamicStyle = isMobile ? {
     // Mobile: Fixed to bottom of visual viewport via transform (Safari-friendly)
