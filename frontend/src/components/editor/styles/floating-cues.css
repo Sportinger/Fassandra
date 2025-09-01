@@ -116,3 +116,24 @@
   background: #2563eb;
   border-color: #1d4ed8;
 }
+
+/* Mobile adjustments: present cues as half-spheres on right edge */
+@media (max-width: 768px) {
+  .floating-cue {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 14px 0 0 14px; /* half-sphere on right edge */
+    justify-content: center;
+    overflow: hidden;
+    gap: 0;
+  }
+  .floating-cue .floating-cue-number,
+  .floating-cue .floating-cue-name {
+    display: none !important;
+  }
+  .floating-cue .floating-cue-icon {
+    font-size: 14px;
+    line-height: 1;
+  }
+}

@@ -201,8 +201,16 @@ pub async fn login_with_google(
     cookies: Cookies,
     Json(payload): Json<GoogleLoginPayload>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let client_id = env::var("GOOGLE_CLIENT_ID")
-        .map_err(|_| AppError::Internal(anyhow::anyhow!("GOOGLE_CLIENT_ID not configured")))?;
+    // Support one or multiple client IDs via env. Prefer GOOGLE_CLIENT_IDS if set, fallback to GOOGLE_CLIENT_ID.
+    // Comma-separated list allows staging/production/mobile variants without code changes.
+    let client_ids_raw = env::var("GOOGLE_CLIENT_IDS")
+        .or_else(|_| env::var("GOOGLE_CLIENT_ID"))
+        .map_err(|_| AppError::Internal(anyhow::anyhow!("GOOGLE_CLIENT_ID(S) not configured")))?;
+    let client_ids: Vec<String> = client_ids_raw
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
 
     // Verify ID token with Google
     let http = Client::new();
@@ -222,7 +230,13 @@ pub async fn login_with_google(
         .await
         .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to parse Google tokeninfo: {}", e)))?;
 
-    if info.aud != client_id {
+    // Validate audience against allowed client IDs
+    if !client_ids.iter().any(|cid| *cid == info.aud) {
+        tracing::warn!(
+            "Google login rejected: audience mismatch (aud={}, allowed={})",
+            info.aud,
+            client_ids.join(",")
+        );
         return Err(AppError::Unauthorized("Google client mismatch".to_string()));
     }
 
