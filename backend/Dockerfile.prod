@@ -200,15 +200,17 @@ COPY --chown=appuser:appuser --from=builder /app/target/x86_64-unknown-linux-gnu
 COPY --chown=appuser:appuser --from=builder /app/target/x86_64-unknown-linux-gnu/release/yjs_to_db /app/yjs_to_db
 COPY --chown=appuser:appuser execute_sql.sh /app/execute_sql.sh
 COPY --chown=appuser:appuser yjs_to_db.sh /app/yjs_to_db.sh
+COPY --chown=appuser:appuser json_mem.sh /app/json_mem.sh
 COPY --chown=appuser:appuser init-claude.sh /app/init-claude.sh
 COPY --chown=appuser:appuser docker-entrypoint.sh /app/docker-entrypoint.sh
 COPY --chown=appuser:appuser claude-wrapper.sh /app/claude-wrapper.sh
 COPY --chown=appuser:appuser claude-session-wrapper.sh /app/claude-session-wrapper.sh
 COPY --chown=appuser:appuser monitor-claude-session.sh /app/monitor-claude-session.sh
 COPY --chown=appuser:appuser src/services/prompt.md /app/src/services/prompt.md
+COPY --chown=appuser:appuser scripts/split_pdf.sh /app/split_pdf.sh
 
 # Make scripts executable
-RUN chmod +x /app/execute_sql.sh /app/yjs_to_db.sh /app/init-claude.sh /app/docker-entrypoint.sh /app/claude-wrapper.sh /app/claude-session-wrapper.sh /app/monitor-claude-session.sh
+RUN chmod +x /app/execute_sql.sh /app/yjs_to_db.sh /app/json_mem.sh /app/split_pdf.sh /app/init-claude.sh /app/docker-entrypoint.sh /app/claude-wrapper.sh /app/claude-session-wrapper.sh /app/monitor-claude-session.sh
 
 # Setup Claude Code settings with bypass permissions in ALL locations
 # First create all necessary directories

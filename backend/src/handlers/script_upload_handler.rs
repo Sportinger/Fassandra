@@ -85,6 +85,49 @@ pub async fn upload_and_parse_script(
         .to_string_lossy()
         .to_string();
 
+    // Prepare chunk directory and split PDF into 5-page chunks
+    let stem = std::path::Path::new(&original_filename)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("script");
+    let chunk_dir_host = upload_dir.join(format!("{}_{}_chunks", temp_id, stem));
+    fs::create_dir_all(&chunk_dir_host).await.map_err(|e| {
+        AppError::Internal(anyhow!("Failed to create chunk directory: {}", e))
+    })?;
+
+    let chunk_dir_abs = std::fs::canonicalize(&chunk_dir_host)
+        .map_err(|e| AppError::Internal(anyhow!("Failed to get absolute chunk dir: {}", e)))?
+        .to_string_lossy()
+        .to_string();
+
+    // Convert host paths to container paths for splitting
+    let container_pdf_path = abs_pdf_path.replace(
+        "/home/admins/projects/pessoa/backend",
+        "/app"
+    );
+    let container_chunk_dir = chunk_dir_abs.replace(
+        "/home/admins/projects/pessoa/backend",
+        "/app"
+    );
+
+    // Run splitter inside container context
+    let split_status = tokio::process::Command::new("/app/split_pdf.sh")
+        .arg(&container_pdf_path)
+        .arg(&container_chunk_dir)
+        .arg("5")
+        .output()
+        .await
+        .map_err(|e| AppError::Internal(anyhow!("Failed to start split script: {}", e)))?;
+
+    if !split_status.status.success() {
+        let stderr = String::from_utf8_lossy(&split_status.stderr).to_string();
+        let stdout = String::from_utf8_lossy(&split_status.stdout).to_string();
+        return Err(AppError::Internal(anyhow!(
+            "PDF split failed. Status: {:?}\nSTDOUT:\n{}\nSTDERR:\n{}",
+            split_status.status.code(), stdout, stderr
+        )));
+    }
+
     // Get database pool from services
     let pool = services.script_services.script_service.get_pool();
     
@@ -101,9 +144,10 @@ pub async fn upload_and_parse_script(
     let (tx, _rx) = mpsc::channel::<SessionUpdate>(100);
     
     // Start Claude session
+    // Start Claude session pointing to the chunk directory (host path; service will map to /app)
     let session_id = services.claude_session_service
         .start_session(
-            abs_pdf_path.clone(),
+            chunk_dir_abs.clone(),
             user_email.clone(),
             move |_session_id, update| {
                 let tx = tx.clone();

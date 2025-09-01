@@ -160,7 +160,7 @@ impl ClaudeSessionService {
         // Prepare the command - inline the full instructions to maximize
         // adherence to required [PROGRESS]/[CHUNK_COMPLETE] markers.
         let prompt = format!(
-            "{}\n\n---\nRuntime Parameters\n- PDF path: {}\n- Username: {}\n\nIMPORTANT:\n- Emit progress markers exactly as specified above (lines starting with [PROGRESS] and [CHUNK_COMPLETE]).\n- Never write JSON using heredocs/echo; always use the Python json module and atomic writes as shown above.\n- Keep /tmp/script_data.json valid JSON after every append and validate it.\n- After finishing all chunks, run exactly one import using: ./yjs_to_db.sh /tmp/script_data.json {}\n- After successful import, output exactly: iam done with my job rom\n",
+            "{}\n\n---\nRuntime Parameters\n- Input path: {} (directory of pre-split 5-page chunk PDFs)\n- Username: {}\n\nIMPORTANT:\n- Emit progress markers exactly as specified above (lines starting with [PROGRESS] and [CHUNK_COMPLETE]).\n- Do not edit /tmp/script_data.json directly. Initialize and append via: /app/json_mem.sh init, then /app/json_mem.sh add <chunk.json> /tmp/script_data.json\n- Validate each chunk with: jq -e . <chunk.json>; keep /tmp/script_data.json valid JSON after every append.\n- The input is a directory of pre-split chunk PDFs; iterate files in numeric order and process each PDF as one chunk. Use original page numbering via offsets (A..B) for each chunk.\n- After finishing all chunks, run exactly one import using: ./yjs_to_db.sh /tmp/script_data.json {}\n- After successful import, output exactly: iam done with my job rom\n",
             PARSING_PROMPT_MD,
             container_pdf_path,
             username,
@@ -171,35 +171,52 @@ impl ClaudeSessionService {
         tracing::info!("Starting Claude Code with PDF path: {}", container_pdf_path);
         tracing::info!("Original PDF path: {}", pdf_path);
         
-        // Check if the PDF file exists
+        // Check if the input path exists
         if !tokio::fs::metadata(&container_pdf_path).await.is_ok() {
-            tracing::error!("PDF file does not exist at: {}", container_pdf_path);
-            return Err(anyhow!("PDF file not found at: {}", container_pdf_path));
+            tracing::error!("Input path does not exist: {}", container_pdf_path);
+            return Err(anyhow!("Input path not found: {}", container_pdf_path));
         }
 
-        // Try to pre-read page count with pdfinfo to provide immediate chunk info
-        if let Ok(output) = Command::new("pdfinfo").arg(&container_pdf_path).output().await {
-            if output.status.success() {
-                if let Ok(text) = String::from_utf8(output.stdout) {
-                    if let Some(line) = text.lines().find(|l| l.starts_with("Pages:")) {
-                        let pages_str = line.split(':').nth(1).map(|s| s.trim()).unwrap_or("");
-                        if let Ok(total_pages) = pages_str.parse::<u32>() {
-                            let total_chunks = ((total_pages + 4) / 5).max(1);
-                            // Set early status and emit chunk info
-                            Self::update_progress(&session_info, &update_callback, session_id, 12, SessionStatus::ParsingPdf).await;
-                            update_callback(session_id, SessionUpdate::ChunkInfo { total_pages, total_chunks });
-                            // Also append a Claude-style progress line so WebSocket log stream picks it up
-                            {
-                                let mut info = session_info.lock().await;
-                                let line = format!(
-                                    "[PROGRESS] Starting chunked parsing - Total pages: {}, Chunks: {}",
-                                    total_pages, total_chunks
-                                );
-                                info.output.push(line.clone());
-                                // Also log so operators can grep backend logs
-                                tracing::info!("[Claude] {}", line);
+        // If input is a directory of pre-split PDFs, try to compute chunk/page info
+        if let Ok(meta) = tokio::fs::metadata(&container_pdf_path).await {
+            if meta.is_dir() {
+                let mut entries = tokio::fs::read_dir(&container_pdf_path).await
+                    .map_err(|e| anyhow!("Failed to read input directory: {}", e))?;
+                let mut pdfs: Vec<String> = Vec::new();
+                while let Ok(Some(entry)) = entries.next_entry().await {
+                    if let Ok(ft) = entry.file_type().await { if ft.is_file() {
+                        let p = entry.path();
+                        if let Some(ext) = p.extension() { if ext == "pdf" { pdfs.push(p.to_string_lossy().to_string()); } }
+                    }}
+                }
+                pdfs.sort();
+                if !pdfs.is_empty() {
+                    let total_chunks = pdfs.len() as u32;
+                    // Get last chunk page count via pdfinfo
+                    let mut total_pages: u32 = 0;
+                    if let Some(last) = pdfs.last() {
+                        if let Ok(out) = Command::new("pdfinfo").arg(last).output().await {
+                            if out.status.success() {
+                                if let Ok(txt) = String::from_utf8(out.stdout) {
+                                    if let Some(line) = txt.lines().find(|l| l.starts_with("Pages:")) {
+                                        if let Ok(last_pages) = line.split(':').nth(1).map(|s| s.trim()).unwrap_or("").parse::<u32>() {
+                                            total_pages = (total_chunks - 1) * 5 + last_pages;
+                                        }
+                                    }
+                                }
                             }
                         }
+                    }
+                    // Fallback if we couldn't compute pages
+                    if total_pages == 0 { total_pages = total_chunks * 5; }
+
+                    Self::update_progress(&session_info, &update_callback, session_id, 12, SessionStatus::ParsingPdf).await;
+                    update_callback(session_id, SessionUpdate::ChunkInfo { total_pages, total_chunks });
+                    {
+                        let mut info = session_info.lock().await;
+                        let line = format!("[PROGRESS] Starting chunked parsing - Total pages: {}, Chunks: {}", total_pages, total_chunks);
+                        info.output.push(line.clone());
+                        tracing::info!("[Claude] {}", line);
                     }
                 }
             }
