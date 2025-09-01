@@ -140,6 +140,7 @@ export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, of
   const [openId, setOpenId] = useState<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState<string>('');
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
 
   const openFor = (cueId: string, currentName: string | null | undefined) => {
     setOpenId(cueId);
@@ -206,39 +207,72 @@ export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, of
               {item.cueName ? <span className="floating-cue-name">{item.cueName}</span> : null}
             </div>
             {isOpen && (
-              <div
-                className="floating-cue-popover"
-                style={{ position: 'absolute', top: '0', right: '100%', marginRight: 8, zIndex: 10 }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="popover-inner">
-                  <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                    {(['light','video','sound','props'] as const).map(t => (
-                      <button
-                        key={t}
-                        className={`cue-type-chip ${t === item.cueType ? 'active' : ''}`}
-                        type="button"
-                        onClick={() => setType(item.cueId, t)}
-                        title={`Set type: ${t}`}
-                      >{CUE_TYPE_ICONS[t]}</button>
-                    ))}
-                  </div>
-                  <div style={{ marginBottom: 6 }}>
-                    <input
-                      className="floating-cue-input"
-                      placeholder="Cue name"
-                      value={draftName}
-                      onChange={(e) => setDraftName(e.target.value)}
-                    />
-                  </div>
-                  <div className="popover-actions">
-                    <button type="button" onClick={() => saveName(item.cueId)}>Save</button>
-                    <button type="button" onClick={() => jumpTo(item.cueId)}>Jump</button>
-                    <button type="button" onClick={() => extendCue(item.cueId)}>Move Link</button>
-                    <button type="button" onClick={() => removeCue(item.cueId)} style={{ color: '#dc2626' }}>Delete</button>
+              isMobile ? (
+                <div className="floating-cue-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+                  <div className="popover-inner">
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                      {(['light','video','sound','props'] as const).map(t => (
+                        <button
+                          key={t}
+                          className={`cue-type-chip ${t === item.cueType ? 'active' : ''}`}
+                          type="button"
+                          onClick={() => setType(item.cueId, t)}
+                          title={`Set type: ${t}`}
+                        >{CUE_TYPE_ICONS[t]}</button>
+                      ))}
+                    </div>
+                    <div style={{ marginBottom: 6 }}>
+                      <input
+                        className="floating-cue-input"
+                        placeholder="Cue name"
+                        value={draftName}
+                        onChange={(e) => setDraftName(e.target.value)}
+                      />
+                    </div>
+                    <div className="popover-actions">
+                      <button type="button" onClick={() => saveName(item.cueId)}>Save</button>
+                      <button type="button" onClick={() => jumpTo(item.cueId)}>Jump</button>
+                      <button type="button" onClick={() => extendCue(item.cueId)}>Move Link</button>
+                      <button type="button" onClick={() => removeCue(item.cueId)} style={{ color: '#dc2626' }}>Delete</button>
+                      <button type="button" onClick={closePopover}>Close</button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div
+                  className="floating-cue-popover"
+                  style={{ position: 'absolute', top: '0', right: '100%', marginRight: 8, zIndex: 10 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="popover-inner">
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                      {(['light','video','sound','props'] as const).map(t => (
+                        <button
+                          key={t}
+                          className={`cue-type-chip ${t === item.cueType ? 'active' : ''}`}
+                          type="button"
+                          onClick={() => setType(item.cueId, t)}
+                          title={`Set type: ${t}`}
+                        >{CUE_TYPE_ICONS[t]}</button>
+                      ))}
+                    </div>
+                    <div style={{ marginBottom: 6 }}>
+                      <input
+                        className="floating-cue-input"
+                        placeholder="Cue name"
+                        value={draftName}
+                        onChange={(e) => setDraftName(e.target.value)}
+                      />
+                    </div>
+                    <div className="popover-actions">
+                      <button type="button" onClick={() => saveName(item.cueId)}>Save</button>
+                      <button type="button" onClick={() => jumpTo(item.cueId)}>Jump</button>
+                      <button type="button" onClick={() => extendCue(item.cueId)}>Move Link</button>
+                      <button type="button" onClick={() => removeCue(item.cueId)} style={{ color: '#dc2626' }}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              )
             )}
           </div>
         );
