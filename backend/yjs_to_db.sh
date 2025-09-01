@@ -42,6 +42,23 @@ if [ ! -f "$JSON_FILE" ]; then
     exit 1
 fi
 
+echo "Validating JSON..."
+if command -v jq >/dev/null 2>&1; then
+  if ! jq -e . "$JSON_FILE" >/dev/null 2>&1; then
+    echo "Error: Invalid JSON in $JSON_FILE (jq validation failed)"
+    exit 1
+  fi
+else
+  python3 - <<PY || {
+import json, sys
+with open(sys.argv[1], 'r', encoding='utf-8') as f:
+    json.load(f)
+PY
+    echo "Error: Invalid JSON in $JSON_FILE (python validation failed)"
+    exit 1
+  } "$JSON_FILE"
+fi
+
 echo "Pushing YJS JSON to database..."
 echo "File: $JSON_FILE"
 echo "User: $USERNAME"

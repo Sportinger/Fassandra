@@ -160,7 +160,7 @@ impl ClaudeSessionService {
         // Prepare the command - inline the full instructions to maximize
         // adherence to required [PROGRESS]/[CHUNK_COMPLETE] markers.
         let prompt = format!(
-            "{}\n\n---\nRuntime Parameters\n- PDF path: {}\n- Username: {}\n\nIMPORTANT:\n- Emit progress markers exactly as specified above (lines starting with [PROGRESS] and [CHUNK_COMPLETE]).\n- After finishing all chunks, run exactly one import using: ./yjs_to_db.sh /tmp/script_data.json {}\n- After successful import, output exactly: iam done with my job rom\n",
+            "{}\n\n---\nRuntime Parameters\n- PDF path: {}\n- Username: {}\n\nIMPORTANT:\n- Emit progress markers exactly as specified above (lines starting with [PROGRESS] and [CHUNK_COMPLETE]).\n- Never write JSON using heredocs/echo; always use the Python json module and atomic writes as shown above.\n- Keep /tmp/script_data.json valid JSON after every append and validate it.\n- After finishing all chunks, run exactly one import using: ./yjs_to_db.sh /tmp/script_data.json {}\n- After successful import, output exactly: iam done with my job rom\n",
             PARSING_PROMPT_MD,
             container_pdf_path,
             username,
@@ -434,14 +434,7 @@ impl ClaudeSessionService {
                         update_callback(session_id, SessionUpdate::Output { line: format!("[STDERR] {}", line) });
                     }
                     _ = heartbeat.tick() => {
-                        // Heartbeat progress: if no activity for a while, gently advance progress up to 80%
-                        if last_activity.elapsed() > Duration::from_secs(5) {
-                            let current = { session_info.lock().await.progress };
-                            if current < 80 {
-                                let next = (current + 1).min(80);
-                                Self::update_progress(&session_info, &update_callback, session_id, next, SessionStatus::ParsingPdf).await;
-                            }
-                        }
+                        // Heartbeat disabled: rely solely on real CLI output for progress
                     }
                     else => break,
                 }

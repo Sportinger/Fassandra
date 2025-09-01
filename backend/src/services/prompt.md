@@ -89,6 +89,19 @@ Notes:
 2. Compute total chunks Z = ceil(Y / 5). Output: `[PROGRESS] Starting chunked parsing - Total pages: Y, Chunks: Z`.
 3. Initialize persistent memory file:
    - Create `/tmp/script_data.json` at the start containing an empty collection for chunks. Preferred structure: `{ "chunks": [] }`. Acceptable alternative: `[]`.
+   - Use Python for initialization to guarantee valid JSON:
+```bash
+python3 << 'PY'
+import json, os
+mem = {"chunks": []}
+tmp = "/tmp/script_data.json.tmp"
+dst = "/tmp/script_data.json"
+with open(tmp, 'w', encoding='utf-8') as f:
+    json.dump(mem, f, ensure_ascii=True)
+os.replace(tmp, dst)
+print("[PROGRESS] Initialized persistent memory file")
+PY
+```
 
 4. For i = 1..Z, process pages A..B where A = 5*(i-1)+1 and B = min(5*i, Y):
    - Parse only pages A..B and structure the data as per the schema above.
@@ -107,15 +120,75 @@ Notes:
 
 Implementation notes (critical):
 - Never attempt to parse the entire PDF in one pass. Always iterate strictly in 5-page windows.
- - The file `/tmp/script_data.json` is the source of truth (memory) and grows chunk by chunk. Keep it valid JSON after every append.
- - Prefer wrapper form `{ "chunks": [...] }` to simplify appending; handle array form `[]` if already present.
- - Use atomic writes when updating the file: write to `/tmp/script_data.json.tmp` then rename to `/tmp/script_data.json`.
- - Validate JSON after each write: `jq -e . /tmp/script_data.json` (or `python -m json.tool /tmp/script_data.json`). Fix before proceeding.
+- The file `/tmp/script_data.json` is the source of truth (memory) and grows chunk by chunk. Keep it valid JSON after every append.
+- Prefer wrapper form `{ "chunks": [...] }` to simplify appending; handle array form `[]` if already present.
+- Use atomic writes when updating the file: write to `/tmp/script_data.json.tmp` then rename to `/tmp/script_data.json`.
+- Validate JSON after each write: `jq -e . /tmp/script_data.json` (or `python -m json.tool /tmp/script_data.json`). Fix before proceeding.
 - Maintain `context` (`last_scene`, `last_speaker`, etc.) to preserve continuity across chunks.
- - Preserve original content verbatim (language, punctuation, diacritics). Do not translate or paraphrase. Normalize only the JSON quoting (ASCII double quotes) and necessary escapes.
- - Do not modify or re-output content from pages outside the current window A..B. Each chunk contains only its pages.
- - Strict JSON: use standard ASCII double quotes (`"`), escape internal quotes correctly, and avoid typographic quotes (e.g., “ ” „ ”). Validate the JSON before calling the importer.
- - Validate JSON before import: if available, run `jq -e . /tmp/script_data.json` (or `python -m json.tool /tmp/script_data.json`) and fix errors before proceeding.
+- Preserve original content verbatim (language, punctuation, diacritics). Do not translate or paraphrase. Normalize only the JSON quoting (ASCII double quotes) and necessary escapes.
+- Do not modify or re-output content from pages outside the current window A..B. Each chunk contains only its pages.
+- Strict JSON: use standard ASCII double quotes (`"`), escape internal quotes correctly, and avoid typographic quotes (e.g., “ ” „ ”). Validate the JSON before calling the importer.
+- Validate JSON before import: if available, run `jq -e . /tmp/script_data.json` (or `python -m json.tool /tmp/script_data.json`) and fix errors before proceeding.
+
+Strict command constraints (to prevent invalid JSON):
+- Do NOT create JSON files with shell heredocs, `echo`, or manual quoting.
+- ALWAYS build and write JSON using Python's `json` module so that all strings are escaped correctly.
+- Use `ensure_ascii=True` and atomic writes. Never write partial JSON.
+
+Safe JSON write pattern (single chunk file):
+```bash
+python3 << 'PY'
+import json, os, tempfile
+chunk = {
+  "mode": "chunked",
+  # fill the rest programmatically from parsed data
+}
+tmp = "/tmp/chunk.json.tmp"
+dst = "/tmp/chunk.json"
+with open(tmp, "w", encoding="utf-8") as f:
+    json.dump(chunk, f, ensure_ascii=True)
+os.replace(tmp, dst)
+print("[PROGRESS] Created chunk JSON")
+PY
+```
+
+Safe append pattern (append chunk into persistent memory file):
+```bash
+python3 << 'PY'
+import json, os
+mem = "/tmp/script_data.json"
+tmp = mem + ".tmp"
+
+def load_mem(path):
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            j = json.load(f)
+    except FileNotFoundError:
+        return {"chunks": []}
+    except json.JSONDecodeError:
+        # If corrupted, fall back to wrapper form
+        return {"chunks": []}
+    if isinstance(j, list):
+        return {"chunks": j}
+    if isinstance(j, dict) and isinstance(j.get("chunks"), list):
+        return j
+    return {"chunks": []}
+
+mem_obj = load_mem(mem)
+with open('/tmp/chunk.json', 'r', encoding='utf-8') as f:
+    chunk = json.load(f)
+mem_obj["chunks"].append(chunk)
+with open(tmp, 'w', encoding='utf-8') as f:
+    json.dump(mem_obj, f, ensure_ascii=True)
+os.replace(tmp, mem)
+print("[PROGRESS] Appended chunk to memory file")
+PY
+```
+
+Validation step (after append):
+```bash
+jq -e . /tmp/script_data.json > /dev/null || python3 -m json.tool /tmp/script_data.json > /dev/null
+```
 
 ## Progress Reporting
 
