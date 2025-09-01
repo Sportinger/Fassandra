@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { MobilePortal } from './MobilePortal';
 import { Editor as EditorInstance } from '@tiptap/react';
 import { CueType, CUE_TYPE_LABELS, CUE_TYPE_ICONS } from '../../types/cue';
 import './styles/toolbar.css';
@@ -21,6 +22,14 @@ export const CueTypeDropdown: React.FC<CueTypeDropdownProps> = ({
   const [dropdownPosition, setDropdownPosition] = useState<'right' | 'left'>('right');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuPortalRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth <= 767 : false);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 767);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Handle cue type change
   const handleCueTypeChange = (newType: CueType) => {
@@ -82,7 +91,10 @@ export const CueTypeDropdown: React.FC<CueTypeDropdownProps> = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const inContainer = dropdownRef.current?.contains(target);
+      const inMenu = menuPortalRef.current?.contains(target);
+      if (!inContainer && !inMenu) {
         setIsOpen(false);
       }
     };
@@ -129,27 +141,43 @@ export const CueTypeDropdown: React.FC<CueTypeDropdownProps> = ({
         </span>
       </button>
 
-      {isOpen && (
-        <div className={[
-          'dropdownMenu',
-          `position-${dropdownPosition}`
-        ].filter(Boolean).join(' ')} style={{ background: '#1a1a1a' }}>
-            {cueTypes.map((type) => (
-              <button
-                key={type}
-                type="button"
-                className={[
-                  'dropdownItem',
-                  currentCueType === type ? 'active' : ''
-                ].filter(Boolean).join(' ')}
-                onClick={() => handleCueTypeChange(type)}
-              >
-                <span style={{ marginRight: '8px' }}>{CUE_TYPE_ICONS[type]}</span>
-                {CUE_TYPE_LABELS[type]}
-              </button>
-            ))}
+      {isOpen && (!isMobile ? (
+        <div
+          className={[ 'dropdownMenu', `position-${dropdownPosition}` ].join(' ')}
+          style={{ background: '#1a1a1a' }}
+          ref={menuPortalRef}
+        >
+          {cueTypes.map((type) => (
+            <button
+              key={type}
+              type="button"
+              className={[ 'dropdownItem', currentCueType === type ? 'active' : '' ].join(' ')}
+              onClick={() => handleCueTypeChange(type)}
+            >
+              <span style={{ marginRight: '8px' }}>{CUE_TYPE_ICONS[type]}</span>
+              {CUE_TYPE_LABELS[type]}
+            </button>
+          ))}
         </div>
-      )}
+      ) : (
+        <MobilePortal ref={menuPortalRef}>
+          <div className="dropdownMenu" style={{ background: '#1a1a1a' }}>
+            <div className="dropdownList">
+              {cueTypes.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  className={[ 'dropdownItem', currentCueType === type ? 'active' : '' ].join(' ')}
+                  onClick={() => handleCueTypeChange(type)}
+                >
+                  <span style={{ marginRight: '8px' }}>{CUE_TYPE_ICONS[type]}</span>
+                  {CUE_TYPE_LABELS[type]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </MobilePortal>
+      ))}
     </div>
   );
 };

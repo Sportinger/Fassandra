@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { MobilePortal } from './MobilePortal';
 import { Editor } from '@tiptap/react';
 
 interface FontStyleDropdownProps {
@@ -13,6 +14,14 @@ export const FontStyleDropdown: React.FC<FontStyleDropdownProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [currentFontStyle, setCurrentFontStyle] = useState('default');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuPortalRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth <= 767 : false);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 767);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   
   // Font style options - using beautiful Google Fonts
   const fontStyles = [
@@ -64,7 +73,10 @@ export const FontStyleDropdown: React.FC<FontStyleDropdownProps> = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const inContainer = dropdownRef.current?.contains(target);
+      const inMenu = menuPortalRef.current?.contains(target);
+      if (!inContainer && !inMenu) {
         setIsOpen(false);
       }
     };
@@ -95,8 +107,8 @@ export const FontStyleDropdown: React.FC<FontStyleDropdownProps> = ({
         <span className="arrow">▼</span>
       </button>
       
-      {isOpen && (
-        <div className="dropdownMenu">
+      {isOpen && (!isMobile ? (
+        <div className="dropdownMenu" ref={menuPortalRef}>
           <div className="dropdownHeader">Font Style</div>
           {fontStyles.map((style) => (
             <button
@@ -109,7 +121,24 @@ export const FontStyleDropdown: React.FC<FontStyleDropdownProps> = ({
             </button>
           ))}
         </div>
-      )}
+      ) : (
+        <MobilePortal ref={menuPortalRef}>
+          <div className="dropdownMenu">
+            <div className="dropdownList">
+              {fontStyles.map((style) => (
+                <button
+                  key={style.value}
+                  className={`dropdownItem ${currentFontStyle === style.value ? 'active' : ''}`}
+                  onClick={() => handleFontStyleChange(style.value)}
+                  style={{ fontFamily: style.fontFamily }}
+                >
+                  {style.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </MobilePortal>
+      ))}
     </div>
   );
 };

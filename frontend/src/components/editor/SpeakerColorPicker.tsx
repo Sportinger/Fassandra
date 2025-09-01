@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { MobilePortal } from './MobilePortal';
 import { Editor as EditorInstance } from '@tiptap/react';
 import './styles/toolbar.css';
 import { PaletteIcon } from './icons';
@@ -35,11 +36,22 @@ export const SpeakerColorPicker: React.FC<SpeakerColorPickerProps> = ({
   const [selectedColor, setSelectedColor] = useState('#000000');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const menuPortalRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth <= 767 : false);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 767);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const inContainer = dropdownRef.current?.contains(target);
+      const inMenu = menuPortalRef.current?.contains(target);
+      if (!inContainer && !inMenu) {
         setIsOpen(false);
       }
     };
@@ -112,8 +124,8 @@ export const SpeakerColorPicker: React.FC<SpeakerColorPickerProps> = ({
         <span className="arrow">▼</span>
       </button>
       
-      {isOpen && (
-        <div className="dropdownMenu" style={{ background: '#1a1a1a' }}>
+      {isOpen && (!isMobile ? (
+        <div className="dropdownMenu" style={{ background: '#1a1a1a' }} ref={menuPortalRef}>
           <div style={{ padding: '8px' }}>
             {/* Custom color input */}
             <div style={{ marginBottom: '12px' }}>
@@ -165,7 +177,29 @@ export const SpeakerColorPicker: React.FC<SpeakerColorPickerProps> = ({
             </div>
           </div>
         </div>
-      )}
+      ) : (
+        <MobilePortal ref={menuPortalRef}>
+          <div className="dropdownMenu" style={{ background: '#1a1a1a' }}>
+            <div className="dropdownList" style={{ padding: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {PRESET_COLORS.map((color) => (
+                <button
+                  key={color}
+                  onClick={() => handleColorSelect(color)}
+                  className="dropdownItem"
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    backgroundColor: color,
+                    border: '2px solid #444',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </MobilePortal>
+      ))}
     </div>
   );
 };
