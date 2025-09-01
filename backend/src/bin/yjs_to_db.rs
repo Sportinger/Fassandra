@@ -30,7 +30,7 @@ async fn main() {
         eprintln!("Expected JSON (always 5-page chunked). You can provide:");
         eprintln!("- A single chunk object (mode=chunked)");
         eprintln!("- An array of chunk objects (processed sequentially)");
-        eprintln!("- An object with {\"chunks\": [ ... ]}");
+        eprintln!("- An object with {{\"chunks\": [ ... ]}}");
         eprintln!(r#"{{
   \"mode\": \"chunked\",
   \"chunk\": {{
@@ -120,7 +120,7 @@ async fn main() {
                         overall_success &= res.success;
                         total_items += res.items_processed;
                         if final_script_id.is_none() { final_script_id = res.script_id; }
-                        println!("Chunk processed{}", match (res.chunk_number, res.total_chunks) { Some(n), Some(t) => format!(" ({} of {})", n, t), _ => String::new() });
+                        println!("Chunk processed{}", match (res.chunk_number, res.total_chunks) { (Some(n), Some(t)) => format!(" ({} of {})", n, t), _ => String::new() });
                         if !res.success { break; }
                     }
                     Err(e) => { eprintln!("Error: {}", e); overall_success = false; break; }
@@ -137,7 +137,7 @@ async fn main() {
                             overall_success &= res.success;
                             total_items += res.items_processed;
                             if final_script_id.is_none() { final_script_id = res.script_id; }
-                            println!("Chunk processed{}", match (res.chunk_number, res.total_chunks) { Some(n), Some(t) => format!(" ({} of {})", n, t), _ => String::new() });
+                            println!("Chunk processed{}", match (res.chunk_number, res.total_chunks) { (Some(n), Some(t)) => format!(" ({} of {})", n, t), _ => String::new() });
                             if !res.success { break; }
                         }
                         Err(e) => { eprintln!("Error: {}", e); overall_success = false; break; }

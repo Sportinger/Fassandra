@@ -7,6 +7,12 @@ use uuid::Uuid;
 use chrono::{DateTime, Utc};
 use anyhow::{Result, anyhow};
 use tokio::time::{timeout, Duration};
+use std::time::Instant;
+
+// Embed the detailed parsing prompt so the Claude CLI reliably emits
+// the expected progress markers that our parser understands.
+// This avoids relying on the model to read a file path string.
+const PARSING_PROMPT_MD: &str = include_str!("prompt.md");
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct SessionInfo {
     pub id: Uuid,
@@ -133,6 +139,7 @@ impl ClaudeSessionService {
         update_callback: Arc<dyn Fn(Uuid, SessionUpdate) + Send + Sync>,
         active_process: Arc<Mutex<Option<u32>>>,
     ) -> Result<Uuid> {
+        const MEMORY_FILE: &str = "/tmp/script_data.json";
         // Update status to processing
         {
             let mut info = session_info.lock().await;
@@ -150,12 +157,13 @@ impl ClaudeSessionService {
             "/app"
         );
 
-        // Prepare the command - use YJS format prompt
+        // Prepare the command - inline the full instructions to maximize
+        // adherence to required [PROGRESS]/[CHUNK_COMPLETE] markers.
         let prompt = format!(
-            "Parse the PDF at {} using the instructions in /app/src/services/prompt.md\n\
-             The username is: {}\n\
-             When complete, the yjs_to_db.sh script should have successfully inserted the data.",
+            "{}\n\n---\nRuntime Parameters\n- PDF path: {}\n- Username: {}\n\nIMPORTANT:\n- Emit progress markers exactly as specified above (lines starting with [PROGRESS] and [CHUNK_COMPLETE]).\n- After finishing all chunks, run exactly one import using: ./yjs_to_db.sh /tmp/script_data.json {}\n- After successful import, output exactly: iam done with my job rom\n",
+            PARSING_PROMPT_MD,
             container_pdf_path,
+            username,
             username
         );
 
@@ -167,6 +175,34 @@ impl ClaudeSessionService {
         if !tokio::fs::metadata(&container_pdf_path).await.is_ok() {
             tracing::error!("PDF file does not exist at: {}", container_pdf_path);
             return Err(anyhow!("PDF file not found at: {}", container_pdf_path));
+        }
+
+        // Try to pre-read page count with pdfinfo to provide immediate chunk info
+        if let Ok(output) = Command::new("pdfinfo").arg(&container_pdf_path).output().await {
+            if output.status.success() {
+                if let Ok(text) = String::from_utf8(output.stdout) {
+                    if let Some(line) = text.lines().find(|l| l.starts_with("Pages:")) {
+                        let pages_str = line.split(':').nth(1).map(|s| s.trim()).unwrap_or("");
+                        if let Ok(total_pages) = pages_str.parse::<u32>() {
+                            let total_chunks = ((total_pages + 4) / 5).max(1);
+                            // Set early status and emit chunk info
+                            Self::update_progress(&session_info, &update_callback, session_id, 12, SessionStatus::ParsingPdf).await;
+                            update_callback(session_id, SessionUpdate::ChunkInfo { total_pages, total_chunks });
+                            // Also append a Claude-style progress line so WebSocket log stream picks it up
+                            {
+                                let mut info = session_info.lock().await;
+                                let line = format!(
+                                    "[PROGRESS] Starting chunked parsing - Total pages: {}, Chunks: {}",
+                                    total_pages, total_chunks
+                                );
+                                info.output.push(line.clone());
+                                // Also log so operators can grep backend logs
+                                tracing::info!("[Claude] {}", line);
+                            }
+                        }
+                    }
+                }
+            }
         }
         
         // Use the executor script if it exists, otherwise try direct execution
@@ -188,6 +224,8 @@ impl ClaudeSessionService {
             tracing::info!("Using Claude at: {}", claude_path);
             let mut cmd = Command::new(claude_path);
             cmd.arg("--print")
+                .arg("--output-format").arg("stream-json") // stream incremental output as JSON lines
+                .arg("--verbose") // increase verbosity (safe)
                 .arg("--dangerously-skip-permissions");
             cmd
         };
@@ -237,10 +275,14 @@ impl ClaudeSessionService {
         
         let mut stdout_reader = BufReader::new(stdout).lines();
         let mut stderr_reader = BufReader::new(stderr).lines();
+        let mut heartbeat = tokio::time::interval(Duration::from_secs(3));
+        let mut last_activity = Instant::now();
 
         let mut all_output = Vec::new();
         let mut found_completion = false;
         let mut script_id = None;
+
+        // NOTE: chunk memory file monitor intentionally disabled per request — rely on CLI streaming
 
         // Set a timeout of 10 minutes
         let timeout_duration = Duration::from_secs(600);
@@ -249,6 +291,7 @@ impl ClaudeSessionService {
             loop {
                 tokio::select! {
                     Ok(Some(line)) = stdout_reader.next_line() => {
+                        last_activity = Instant::now();
                         all_output.push(line.clone());
                         
                         // Log Claude output for debugging
@@ -260,10 +303,23 @@ impl ClaudeSessionService {
                             info.output.push(line.clone());
                         }
                         
-                        // Send output update
-                        update_callback(session_id, SessionUpdate::Output { 
-                            line: line.clone() 
-                        });
+                        // Try to parse stream-json and extract human text, but always forward raw line
+                        let mut forwarded = false;
+                        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&line) {
+                            if let Some(obj) = v.as_object() {
+                                // Prefer "data" / "text" / "message" fields if present
+                                if let Some(s) = obj.get("data").and_then(|x| x.as_str())
+                                    .or_else(|| obj.get("text").and_then(|x| x.as_str()))
+                                    .or_else(|| obj.get("message").and_then(|x| x.as_str())) {
+                                    update_callback(session_id, SessionUpdate::Output { line: s.to_string() });
+                                    forwarded = true;
+                                }
+                            }
+                        }
+                        if !forwarded {
+                            // Fallback: forward entire line
+                            update_callback(session_id, SessionUpdate::Output { line: line.clone() });
+                        }
                         
                         // Check for progress indicators
                         if line.contains("[PROGRESS]") {
@@ -323,14 +379,40 @@ impl ClaudeSessionService {
                             Self::update_progress(&session_info, &update_callback, session_id, 20, SessionStatus::ParsingPdf).await;
                         } else if line.contains("Creating JSON") {
                             Self::update_progress(&session_info, &update_callback, session_id, 85, SessionStatus::CreatingJson).await;
-                        } else if line.contains("json_to_db") || line.contains("Pushing JSON to database") {
+                        } else if line.contains("json_to_db") || line.contains("Pushing JSON to database") || line.contains("Pushing YJS JSON to database") {
                             Self::update_progress(&session_info, &update_callback, session_id, 90, SessionStatus::InsertingData).await;
-                        } else if line.contains("Success: Data inserted into database") {
+                        } else if line.contains("Success: Data inserted into database") || line.contains("Success: Script inserted as YJS document") {
                             // Try to extract script ID from previous lines
                             for prev_line in all_output.iter().rev().take(10) {
                                 if let Some(id) = Self::extract_script_id(prev_line) {
                                     script_id = Some(id);
                                     break;
+                                }
+                            }
+                        } else if line.starts_with("Script ID:") || line.starts_with("Script Id:") {
+                            if let Some(id) = Self::extract_script_id(&line) { script_id = Some(id); }
+                        } else if line.starts_with("Chunk processed") {
+                            // Fallback progress based on importer output, e.g.:
+                            // "Chunk processed (X of Y)" — map to 85-95% range so the UI keeps moving
+                            // Try to parse numbers between parentheses
+                            if let Some(start) = line.find('(') {
+                                if let Some(end) = line.find(')') {
+                                    let nums = &line[start+1..end];
+                                    let parts: Vec<&str> = nums.split(" of ").collect();
+                                    if parts.len() == 2 {
+                                        if let (Ok(cur), Ok(total)) = (parts[0].trim().parse::<u32>(), parts[1].trim().parse::<u32>()) {
+                                            // Map chunk progress into 85-95% band
+                                            let pct = 85u8.saturating_add(((cur as f32 / total as f32) * 10.0).round() as u8).min(95);
+                                            Self::update_progress(&session_info, &update_callback, session_id, pct, SessionStatus::CreatingJson).await;
+                                            // Also send a chunk_progress-style update to frontend expectations
+                                            update_callback(session_id, SessionUpdate::ChunkProgress { 
+                                                current_chunk: cur,
+                                                total_chunks: total,
+                                                pages_start: 0,
+                                                pages_end: 0,
+                                            });
+                                        }
+                                    }
                                 }
                             }
                         } else if line.contains("iam done with my job rom") {
@@ -339,6 +421,7 @@ impl ClaudeSessionService {
                         }
                     }
                     Ok(Some(line)) = stderr_reader.next_line() => {
+                        last_activity = Instant::now();
                         all_output.push(format!("[STDERR] {}", line));
                         
                         // Update session output
@@ -347,10 +430,18 @@ impl ClaudeSessionService {
                             info.output.push(format!("[STDERR] {}", line));
                         }
                         
-                        // Send output update
-                        update_callback(session_id, SessionUpdate::Output { 
-                            line: format!("[STDERR] {}", line) 
-                        });
+                        // Send output update (stderr)
+                        update_callback(session_id, SessionUpdate::Output { line: format!("[STDERR] {}", line) });
+                    }
+                    _ = heartbeat.tick() => {
+                        // Heartbeat progress: if no activity for a while, gently advance progress up to 80%
+                        if last_activity.elapsed() > Duration::from_secs(5) {
+                            let current = { session_info.lock().await.progress };
+                            if current < 80 {
+                                let next = (current + 1).min(80);
+                                Self::update_progress(&session_info, &update_callback, session_id, next, SessionStatus::ParsingPdf).await;
+                            }
+                        }
                     }
                     else => break,
                 }
@@ -480,7 +571,7 @@ impl ClaudeSessionService {
                 return Some(id);
             }
         }
-        
+
         None
     }
     

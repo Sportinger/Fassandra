@@ -44,12 +44,19 @@ fassandra.de {
     }
 
     # Frontend - proxy to frontend container
-    handle {
-        # Clear all site data for this origin on navigation
+    
+    # Optional: explicit wipe endpoint (manual use only)
+    @wipe_origin path /_wipe
+    handle @wipe_origin {
         header {
-            # Applied on all responses; browsers only act on top-level navigations
+            # One-shot wipe: call https://fassandra.de/_wipe from a tab, then reload
             Clear-Site-Data "\"cache\", \"cookies\", \"storage\", \"executionContexts\""
         }
+        respond "" 204
+    }
+
+    # Default: serve frontend without wiping site data on every request
+    handle {
         reverse_proxy frontend:80
     }
 

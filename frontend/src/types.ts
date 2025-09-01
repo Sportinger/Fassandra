@@ -58,6 +58,8 @@ export interface PlaceholderScript extends Script {
   sessionService?: any; // Claude session service for cancellation
   uploadComplete?: boolean; // Whether upload is complete
   uploadStartTime?: number; // Timestamp when upload started
+  debugLogs?: string[]; // Recent Claude output lines
+  lastOutput?: string; // Last Claude output line
 }
 
 // Blocks are deprecated - content is now stored in YJS documents

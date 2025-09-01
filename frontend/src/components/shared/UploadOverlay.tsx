@@ -58,6 +58,11 @@ export const UploadOverlay: React.FC = () => {
             <div style={{ fontSize: 11, opacity: 0.75, marginTop: 4 }}>
               {u.uploadSubStage || 'Processing...'}
             </div>
+            {u.lastOutput && (
+              <div style={{ fontSize: 10, opacity: 0.55, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {u.lastOutput}
+              </div>
+            )}
           </div>
           <div style={{ fontSize: 12, opacity: 0.8, minWidth: 36, textAlign: 'right' }}>{Math.round(u.uploadProgress || 0)}%</div>
         </div>
@@ -67,4 +72,3 @@ export const UploadOverlay: React.FC = () => {
 };
 
 export default UploadOverlay;
-

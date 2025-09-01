@@ -29,6 +29,7 @@ export function useUploadState() {
     removeUpload: (id: string) => UploadStateManager.removeUpload(id),
     setSessionId: (uploadId: string, sessionId: string) => UploadStateManager.setSessionId(uploadId, sessionId),
     getSessionId: (uploadId: string) => UploadStateManager.getSessionId(uploadId),
+    appendLog: (id: string, line: string) => UploadStateManager.appendLog(id, line),
     clearAll: () => UploadStateManager.clearAll()
   };
 }

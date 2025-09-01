@@ -64,7 +64,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   const [sharingLoading, setSharingLoading] = useState(false);
   
   // Upload state
-  const { uploads, addUpload, updateUpload, removeUpload } = useUploadState();
+  const { uploads, addUpload, updateUpload, removeUpload, appendLog } = useUploadState();
 
   // Expose methods to parent
   useImperativeHandle(ref, () => ({
@@ -266,6 +266,15 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         wsToken,
         (update) => {
           // Handle different types of updates
+          if (update.type === 'chunk_info' && update.total_pages && update.total_chunks) {
+            updateUploadStatus({
+              uploadProgress: Math.max(12, placeholder.uploadProgress || 12),
+              uploadSubStage: update.message || `Script will be processed in ${update.total_chunks} chunks (${update.total_pages} pages)`
+            });
+            if (update.message) {
+              logger.info('Claude', update.message);
+            }
+          } else
           if (update.type === 'page_progress' && update.current_page && update.total_pages) {
             // Calculate progress based on page parsing (20-80% range)
             const pageProgress = (update.current_page / update.total_pages) * 60 + 20;
@@ -290,19 +299,66 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
           // Stream raw Claude output into logs for visibility
           if (update.type === 'output' && update.line) {
             logger.info('Claude', update.line);
+            appendLog(placeholder.id, update.line);
+            // Fallback parsing for Claude progress lines to surface in UI
+            const line = update.line;
+            try {
+              if (line.includes('[PROGRESS] Starting chunked parsing')) {
+                const m = line.match(/Total pages: (\d+), Chunks: (\d+)/);
+                if (m) {
+                  const total_pages = parseInt(m[1], 10);
+                  const total_chunks = parseInt(m[2], 10);
+                  updateUploadStatus({
+                    uploadProgress: Math.max(12, placeholder.uploadProgress || 12),
+                    uploadSubStage: `Script will be processed in ${total_chunks} chunks (${total_pages} pages)`
+                  });
+                }
+              } else if (line.includes('[PROGRESS] Page') && line.includes('processed')) {
+                const m = line.match(/Page\s+(\d+)\s+of\s+(\d+)\s+processed/);
+                if (m) {
+                  const current_page = parseInt(m[1], 10);
+                  const total_pages = parseInt(m[2], 10);
+                  const pageProgress = (current_page / total_pages) * 60 + 20;
+                  updateUploadStatus({
+                    uploadProgress: Math.round(pageProgress),
+                    uploadSubStage: `Processing page ${current_page} of ${total_pages}`
+                  });
+                }
+              } else if (line.includes('[CHUNK_COMPLETE]')) {
+                const m = line.match(/Chunk\s+(\d+)\s+of\s+(\d+)/);
+                if (m) {
+                  const cur = parseInt(m[1], 10);
+                  const total = parseInt(m[2], 10);
+                  const chunkProg = (cur / total) * 60 + 20;
+                  updateUploadStatus({
+                    uploadProgress: Math.round(chunkProg),
+                    uploadSubStage: `Processing chunk ${cur} of ${total}`
+                  });
+                }
+              }
+            } catch {}
           }
           
           if (update.status) {
             // Map status to user-friendly messages
-            let statusMessage = update.status;
-            if (update.status.includes('ParsingPdf')) {
-              statusMessage = 'Parsing PDF content...';
-            } else if (update.status.includes('CreatingJson')) {
-              statusMessage = 'Creating structured data...';
-            } else if (update.status.includes('InsertingData')) {
-              statusMessage = 'Saving to database...';
+            // Only set generic status if we don't already have a more specific message
+            const cur = UploadStateManager.getUpload(placeholder.id);
+            const hasSpecific = cur?.uploadSubStage && (
+              cur.uploadSubStage.startsWith('Processing page') ||
+              cur.uploadSubStage.startsWith('Processing chunk') ||
+              cur.uploadSubStage.includes('will be processed')
+            );
+            if (!hasSpecific) {
+              let statusMessage = update.status;
+              if (update.status.includes('ParsingPdf')) {
+                statusMessage = 'Parsing PDF content...';
+              } else if (update.status.includes('CreatingJson')) {
+                statusMessage = 'Creating structured data...';
+              } else if (update.status.includes('InsertingData')) {
+                statusMessage = 'Saving to database...';
+              }
+              updateUploadStatus({ uploadSubStage: statusMessage });
             }
-            updateUploadStatus({ uploadSubStage: statusMessage });
           }
         },
         (scriptId) => {
@@ -310,13 +366,14 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
           updateUploadStatus({
             uploadStatus: 'completed' as UploadStatus,
             uploadProgress: 100,
-            uploadSubStage: 'Upload complete!'
+            uploadSubStage: 'Upload finished successfully'
           });
+          // Keep completed upload box visible for 10s before removal
           setTimeout(() => {
             refreshScripts();
             removeUpload(placeholder.id);
             sessionManager.dispose(placeholder.id);
-          }, 1000);
+          }, 10000);
         },
         (errMsg) => {
           updateUploadStatus({
@@ -366,10 +423,18 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
                   />
                 </div>
                 <div className={styles.progressText}>{Math.round(placeholder.uploadProgress || 0)}%</div>
+                {('lastOutput' in placeholder) && (placeholder as any).lastOutput && (
+                  <div style={{ fontSize: 10, opacity: 0.6, marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {(placeholder as any).lastOutput}
+                  </div>
+                )}
               </>
             )}
             {placeholder.uploadStatus === 'processing' && (
               <div className={styles.processingText}>Processing...</div>
+            )}
+            {placeholder.uploadStatus === 'completed' && (
+              <div className={styles.processingText}>Upload finished successfully</div>
             )}
             {placeholder.uploadStatus === 'error' && (
               <div className={styles.errorText}>{placeholder.uploadError}</div>
@@ -381,7 +446,8 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   };
 
   // Combine scripts with upload placeholders
-  const uploadPlaceholders = uploads.filter(u => u.uploadStatus && u.uploadStatus !== 'completed');
+  // Include recently completed uploads; they will be removed after a short delay
+  const uploadPlaceholders = uploads.filter(u => !!u.uploadStatus);
   const allScripts = [...scripts, ...uploadPlaceholders];
 
   if (loading) {
