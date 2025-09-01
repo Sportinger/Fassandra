@@ -63,6 +63,10 @@ async fn handle_claude_session_socket(
         let mut last_line_count = 0usize;
         let mut last_progress: Option<u8> = None;
         let mut last_status: Option<String> = None;
+        // Track last-seen parsed signals to avoid duplicate emissions
+        let mut last_page_seen: Option<(u32, u32)> = None; // (current, total)
+        let mut last_chunk_seen: Option<(u32, u32)> = None; // (current, total)
+        let mut chunk_info_sent: Option<(u32, u32)> = None; // (total_pages, total_chunks)
 
         loop {
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -86,7 +90,26 @@ async fn handle_claude_session_socket(
                 // Check for new log lines
                 if let Some(logs) = claude_service_clone.get_session_logs(session_id, last_line_count).await {
                     for line in logs {
-                        let _ = tx.send(SessionUpdate::Output { line }).await;
+                        // Forward raw output
+                        let _ = tx.send(SessionUpdate::Output { line: line.clone() }).await;
+
+                        // Parse known progress markers from the line and forward structured updates
+                        if let Some((tp, tc)) = parse_chunk_info(&line) {
+                            if chunk_info_sent != Some((tp, tc)) {
+                                chunk_info_sent = Some((tp, tc));
+                                let _ = tx.send(SessionUpdate::ChunkInfo { total_pages: tp, total_chunks: tc }).await;
+                            }
+                        } else if let Some((cur, total)) = parse_page_progress(&line) {
+                            if last_page_seen != Some((cur, total)) {
+                                last_page_seen = Some((cur, total));
+                                let _ = tx.send(SessionUpdate::PageProgress { current_page: cur, total_pages: total }).await;
+                            }
+                        } else if let Some((cur, total, ps, pe)) = parse_chunk_complete(&line) {
+                            if last_chunk_seen != Some((cur, total)) {
+                                last_chunk_seen = Some((cur, total));
+                                let _ = tx.send(SessionUpdate::ChunkProgress { current_chunk: cur, total_chunks: total, pages_start: ps, pages_end: pe }).await;
+                            }
+                        }
                     }
                     last_line_count = session.output.len();
                 }
@@ -199,4 +222,46 @@ async fn handle_claude_session_socket(
         _ = forward_task => {},
         _ = receive_task => {},
     }
+}
+
+// Lightweight parsers for Claude output markers
+fn parse_chunk_info(line: &str) -> Option<(u32, u32)> {
+    // "[PROGRESS] Starting chunked parsing - Total pages: Y, Chunks: Z"
+    if line.contains("Starting chunked parsing") {
+        let tp = line.split("Total pages:").nth(1)?.trim();
+        let tp_num = tp.split(',').next()?.trim().parse::<u32>().ok()?;
+        let tc = line.split("Chunks:").nth(1)?.trim();
+        let tc_num = tc.split_whitespace().next()?.trim().parse::<u32>().ok()?;
+        return Some((tp_num, tc_num));
+    }
+    None
+}
+
+fn parse_page_progress(line: &str) -> Option<(u32, u32)> {
+    // "[PROGRESS] Page X of Y processed"
+    if let Some(start) = line.find("Page ") {
+        let rest = &line[start + 5..];
+        let parts: Vec<&str> = rest.split(" of ").collect();
+        if parts.len() >= 2 {
+            let cur = parts[0].trim().parse::<u32>().ok()?;
+            let total_str = parts[1].split_whitespace().next()?;
+            let total = total_str.trim().parse::<u32>().ok()?;
+            return Some((cur, total));
+        }
+    }
+    None
+}
+
+fn parse_chunk_complete(line: &str) -> Option<(u32, u32, u32, u32)> {
+    // "[CHUNK_COMPLETE] Chunk X of Z processed (pages A-B)"
+    if line.contains("[CHUNK_COMPLETE]") && line.contains("Chunk") {
+        let cur = line.split("Chunk ").nth(1)?.split_whitespace().next()?.parse::<u32>().ok()?;
+        let total = line.split(" of ").nth(1)?.split_whitespace().next()?.parse::<u32>().ok()?;
+        let pages = line.split("(pages ").nth(1)?.split(')').next()?;
+        let mut it = pages.split('-');
+        let ps = it.next()?.trim().parse::<u32>().ok()?;
+        let pe = it.next()?.trim().parse::<u32>().ok()?;
+        return Some((cur, total, ps, pe));
+    }
+    None
 }

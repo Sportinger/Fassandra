@@ -87,20 +87,30 @@ Notes:
 
 1. Read the PDF at the provided path and determine the exact total pages (Y) before starting. Do not guess; ensure the full document is loaded.
 2. Compute total chunks Z = ceil(Y / 5). Output: `[PROGRESS] Starting chunked parsing - Total pages: Y, Chunks: Z`.
-3. For i = 1..Z, process pages A..B where A = 5*(i-1)+1 and B = min(5*i, Y):
+3. Initialize persistent memory file:
+   - Create `/tmp/script_data.json` at the start containing an empty collection for chunks. Preferred structure: `{ "chunks": [] }`. Acceptable alternative: `[]`.
+
+4. For i = 1..Z, process pages A..B where A = 5*(i-1)+1 and B = min(5*i, Y):
    - Parse only pages A..B and structure the data as per the schema above.
    - Emit `[PROGRESS] Page X of Y processed` each time you finish a page.
    - Build JSON with `mode: "chunked"`, correct `chunk` metadata, and `context` continuity fields.
    - First chunk: include full `metadata`. Later chunks: omit `metadata`.
-   - Accumulate each chunk object in memory. Do NOT call the importer between chunks.
-   - After finishing all chunks, create a single JSON at `/tmp/script_data.json` containing all chunks, either as a top-level array `[ {...}, {...} ]` or as `{ "chunks": [ {...}, {...} ] }`.
-   - Execute one import at the end: `./yjs_to_db.sh /tmp/script_data.json <username>`.
+   - Append this chunk to the persistent memory file `/tmp/script_data.json`:
+     - Read the existing file, parse JSON (array or `{ "chunks": [...] }`).
+     - Push the new chunk object to the collection.
+     - Write the file back atomically (write to temp then rename) to avoid partial writes.
+     - Validate JSON (see below) after writing.
+   - Do NOT call the importer between chunks.
+   - After finishing all chunks, execute one import: `./yjs_to_db.sh /tmp/script_data.json <username>`.
    - Output `[CHUNK_COMPLETE] Chunk i of Z processed (pages A-B)` after forming each chunk (for progress only).
 4. After all chunks are processed successfully, output exactly: `iam done with my job rom`.
 
 Implementation notes (critical):
 - Never attempt to parse the entire PDF in one pass. Always iterate strictly in 5-page windows.
- - Only write `/tmp/script_data.json` once at the end with all chunks (array or {chunks: [...] }).
+ - The file `/tmp/script_data.json` is the source of truth (memory) and grows chunk by chunk. Keep it valid JSON after every append.
+ - Prefer wrapper form `{ "chunks": [...] }` to simplify appending; handle array form `[]` if already present.
+ - Use atomic writes when updating the file: write to `/tmp/script_data.json.tmp` then rename to `/tmp/script_data.json`.
+ - Validate JSON after each write: `jq -e . /tmp/script_data.json` (or `python -m json.tool /tmp/script_data.json`). Fix before proceeding.
 - Maintain `context` (`last_scene`, `last_speaker`, etc.) to preserve continuity across chunks.
  - Preserve original content verbatim (language, punctuation, diacritics). Do not translate or paraphrase. Normalize only the JSON quoting (ASCII double quotes) and necessary escapes.
  - Do not modify or re-output content from pages outside the current window A..B. Each chunk contains only its pages.

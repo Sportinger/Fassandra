@@ -101,6 +101,21 @@ class UploadStateManager {
     this.notifyListeners();
   }
 
+  appendLog(id: string, line: string): void {
+    const upload = this.state.uploads.get(id);
+    if (!upload) return;
+    const logs = (upload.debugLogs ? [...upload.debugLogs] : []);
+    logs.push(line);
+    // Cap logs to last 200 lines to avoid unbounded growth
+    const capped = logs.slice(Math.max(0, logs.length - 200));
+    const updated: PlaceholderScript = { ...upload, debugLogs: capped, lastOutput: line };
+    const newUploads = new Map(this.state.uploads);
+    newUploads.set(id, updated);
+    this.state = { uploads: newUploads, sessionIds: new Map(this.state.sessionIds) };
+    this.saveState();
+    this.notifyListeners();
+  }
+
   removeUpload(id: string): void {
     const newUploads = new Map(this.state.uploads);
     const newSessionIds = new Map(this.state.sessionIds);

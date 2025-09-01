@@ -24,6 +24,26 @@ echo "------------------------"
 sudo docker ps --format "table {{.Names}}\t{{.Ports}}" 2>/dev/null || echo "Docker not running"
 echo ""
 
+# 3b. IPv6 Reachability (domain) 
+echo "3b. IPV6 REACHABILITY (fassandra.de):"
+echo "-------------------------------------"
+if command -v ping >/dev/null 2>&1; then
+  ping -6 -c 2 fassandra.de 2>/dev/null || echo "ping -6 failed"
+else
+  echo "ping not available"
+fi
+if command -v nc >/dev/null 2>&1; then
+  nc -6 -vz -w5 fassandra.de 443 2>&1 || true
+else
+  echo "nc not available"
+fi
+if command -v curl >/dev/null 2>&1; then
+  curl -6Is --max-time 5 https://fassandra.de || true
+else
+  echo "curl not available"
+fi
+echo ""
+
 # 4. Failed SSH Attempts
 echo "4. RECENT FAILED SSH ATTEMPTS:"
 echo "-------------------------------"

@@ -17,6 +17,14 @@ echo "1. Installing security tools..."
 apt-get update
 apt-get install -y ufw fail2ban unattended-upgrades
 
+echo "1b. Ensuring IPv6 is enabled system-wide..."
+# Enable IPv6 at kernel level (in case it was disabled)
+cat > /etc/sysctl.d/99-enable-ipv6.conf <<EOF
+net.ipv6.conf.all.disable_ipv6=0
+net.ipv6.conf.default.disable_ipv6=0
+EOF
+sysctl --system >/dev/null 2>&1 || true
+
 echo "2. Configuring UFW firewall..."
 # Reset UFW to defaults
 ufw --force reset
@@ -24,6 +32,13 @@ ufw --force reset
 # Set default policies
 ufw default deny incoming
 ufw default allow outgoing
+
+# Ensure UFW processes IPv6 rules
+if [ -f /etc/default/ufw ]; then
+  sed -i 's/^IPV6=.*/IPV6=yes/' /etc/default/ufw || true
+else
+  echo "IPV6=yes" > /etc/default/ufw
+fi
 
 # Allow SSH (restrict to your IP if possible)
 echo "Allowing SSH on port 22..."

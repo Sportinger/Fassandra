@@ -113,7 +113,14 @@ pub async fn upload_and_parse_script(
             }
         )
         .await
-        .map_err(|e| AppError::Internal(anyhow!("Failed to start Claude session: {}", e)))?;
+        .map_err(|e| {
+            let msg = e.to_string();
+            if msg.contains("Another Claude Code session is already running") {
+                AppError::TooManyRequests("Another parsing session is already running. Please wait for it to finish or cancel it.".to_string())
+            } else {
+                AppError::Internal(anyhow!("Failed to start Claude session: {}", msg))
+            }
+        })?;
 
     // Note: We're NOT deleting the PDF file anymore - Claude will process it
     // The cleanup can happen after processing is complete
