@@ -144,6 +144,11 @@ fn sanitize_error_message(message: &str, error_type: &str) -> String {
         "Invalid email format",
         "Invalid token format", 
         "Invalid credentials",
+        // OAuth/Google-specific safe messages
+        "Google client mismatch",
+        "Invalid Google token",
+        "Google account has no email",
+        "Google email not verified",
         "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)",
         "Password must be at least 8 characters long",
         "Access denied",

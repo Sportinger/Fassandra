@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import type { Editor as TipTapEditor } from '@tiptap/react';
 import { CUE_TYPE_ICONS } from '../../../types/cue';
-import type { Editor as TipTapEditor } from '@tiptap/react';
 
 type FloatingCueKey = string; // cueId
 
@@ -61,7 +60,8 @@ export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, of
     const page = container.querySelector('.dinA4Page') as HTMLElement | null;
     const pageRect = page ? page.getBoundingClientRect() : containerRect;
     const rightEdge = pageRect.right - containerRect.left; // relative to container
-    const sideOffset = 16; // gap from page edge
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    const sideOffset = isMobile ? -12 : 16; // on mobile, tuck slightly inside the page edge
     type Temp = FloatingCueItem & { rawTop: number; col: number };
     const temps: Temp[] = [];
     for (const { el, cueId, cueType, cueNumber, cueName } of anchors) {
@@ -86,7 +86,7 @@ export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, of
     }
     // Apply vertical spacing (optional) and horizontal offsets
     const minGap = 18;
-    const hShift = 22; // px horizontal shift between columns
+    const hShift = 22; // px horizontal shift between columns (disabled on mobile)
     // Flatten in order and adjust positions
     const out: FloatingCueItem[] = [];
     for (let gi = 0; gi < groups.length; gi++) {
@@ -99,7 +99,7 @@ export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, of
       }
       for (const t of g.items) {
         const top = baseTop; // same row baseline
-        const left = (rightEdge + sideOffset) + t.col * hShift;
+        const left = (rightEdge + sideOffset) + (isMobile ? 0 : t.col * hShift);
         out.push({ key: t.key, cueId: t.cueId, cueType: t.cueType, cueNumber: t.cueNumber, cueName: t.cueName, top, left });
       }
     }
@@ -206,7 +206,11 @@ export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, of
               {item.cueName ? <span className="floating-cue-name">{item.cueName}</span> : null}
             </div>
             {isOpen && (
-              <div className="floating-cue-popover" style={{ position: 'absolute', top: '0', left: '100%', marginLeft: 8, zIndex: 10 }} onClick={(e) => e.stopPropagation()}>
+              <div
+                className="floating-cue-popover"
+                style={{ position: 'absolute', top: '0', right: '100%', marginRight: 8, zIndex: 10 }}
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="popover-inner">
                   <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
                     {(['light','video','sound','props'] as const).map(t => (

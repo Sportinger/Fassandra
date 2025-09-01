@@ -120,16 +120,19 @@ export const Login: React.FC = () => {
               setToken(result.token, result.user);
             }, 300);
           } catch (err: any) {
-            logger.error('Login', 'Google login failed', err);
-            alert('Google login failed');
+            // Surface detailed error for faster diagnosis (e.g., client mismatch)
+            const message = (err?.body || err?.message || 'Google login failed').toString();
+            logger.error('Login', 'Google login failed', message);
+            alert(message);
           }
         }
       });
       // Show Google account chooser as a popup (more reliable across browsers)
       (window as any).google.accounts.id.prompt();
-    } catch (e) {
-      logger.error('Login', 'Failed to start Google login', e);
-      alert('Failed to start Google login');
+    } catch (e: any) {
+      const msg = (e?.message || 'Failed to start Google login').toString();
+      logger.error('Login', 'Failed to start Google login', msg);
+      alert(msg);
     }
   };
 
