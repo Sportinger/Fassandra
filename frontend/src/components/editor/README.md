@@ -1,4 +1,4 @@
-# Pessoa Editor - Collaborative Scriptwriting Platform
+# Fassandra Editor - Collaborative Scriptwriting Platform
 
 > **Status: ✅ REFACTORED & OPTIMIZED** (2025)
 > 
@@ -6,7 +6,7 @@
 
 ## 🎯 **Overview**
 
-The Pessoa Editor is a sophisticated collaborative scriptwriting platform built with React, TipTap, and Yjs. It provides real-time collaboration, mobile-optimized editing, and maintains professional DIN A4 scriptwriting formatting across all devices.
+The Fassandra Editor is a sophisticated collaborative scriptwriting platform built with React, TipTap, and Yjs. It provides real-time collaboration, mobile-optimized editing, and maintains professional DIN A4 scriptwriting formatting across all devices.
 
 ## 🏗️ **Architecture (Post-2025 Refactoring)**
 
@@ -211,4 +211,4 @@ const {
 ---
 
 **Built with ❤️ for professional scriptwriting**
-*Pessoa Editor - Where stories come to life collaboratively* ✨ 
+*Fassandra Editor - Where stories come to life collaboratively* ✨ 

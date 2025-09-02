@@ -1,4 +1,4 @@
-//! Services module for the Pessoa theater collaboration platform.
+//! Services module for the Fassandra theater collaboration platform.
 //!
 //! This module contains various service implementations including:
 //! - Thumbnail generation for script previews

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🔍 Debugging Pessoa Android App..."
+echo "🔍 Debugging Fassandra Android App..."
 
 # Set up paths
 export ANDROID_HOME=~/Android/Sdk
@@ -9,7 +9,7 @@ export PATH=$PATH:$ANDROID_HOME/platform-tools
 # Clear previous logs
 adb logcat -c
 
-echo "📱 Open the Pessoa app on your phone and try to login..."
+echo "📱 Open the Fassandra app on your phone and try to login..."
 echo "📊 Monitoring logs..."
 echo "================================"
 

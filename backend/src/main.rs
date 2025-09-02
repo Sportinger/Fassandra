@@ -9,7 +9,7 @@ use backend::core::service_manager;
 
 static MIGRATOR: Migrator = sqlx::migrate!();
 
-/// Main entry point for the Pessoa Theater Collaboration Platform backend.
+/// Main entry point for the Fassandra Theater Collaboration Platform backend.
 ///
 /// This function initializes the entire application stack:
 /// 1. Configures logging and tracing
@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    tracing::info!("🎭 Starting Pessoa Theater Collaboration Platform backend...");
+    tracing::info!("🎭 Starting Fassandra Theater Collaboration Platform backend...");
 
     // Load application configuration from environment variables
     let config = Config::from_env()

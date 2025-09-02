@@ -1,4 +1,4 @@
-//! Script analysis data structures for the Pessoa theater collaboration platform.
+//! Script analysis data structures for the Fassandra theater collaboration platform.
 //! Includes data models for parsing and representing theatrical scripts.
 
 use std::collections::HashMap;

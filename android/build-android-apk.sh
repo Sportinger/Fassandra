@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-echo "🚀 Building Pessoa Android APK..."
+echo "🚀 Building Fassandra Android APK..."
 
 # Resolve directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -24,7 +24,7 @@ EOF
 cat > "$FRONTEND_DIR/capacitor.config.json" << EOF
 {
   "appId": "com.pessoa.app",
-  "appName": "Pessoa",
+  "appName": "Fassandra",
   "webDir": "dist",
   "server": {
     "androidScheme": "http",

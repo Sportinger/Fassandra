@@ -51,7 +51,7 @@ import type {
 
 /**
  * useEditorCore Hook  
- * Core editor functionality that integrates with Pessoa's existing infrastructure
+ * Core editor functionality that integrates with Fassandra's existing infrastructure
  */
 
 // 🔧 DISABLED: Offline storage - removed IndexeddbPersistence import

@@ -1,4 +1,4 @@
-//! Infrastructure module for the Pessoa theater collaboration platform.
+//! Infrastructure module for the Fassandra theater collaboration platform.
 //!
 //! This module provides core infrastructure functionality including:
 //! - Application configuration management from environment variables

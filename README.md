@@ -1,4 +1,4 @@
-Pessoa — Collaborative Theater Script Platform
+Fassandra — Collaborative Theater Script Platform
 
 Overview
 - End-to-end platform for creating, rehearsing, and sharing theater scripts.

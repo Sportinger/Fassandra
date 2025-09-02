@@ -1,4 +1,4 @@
-//! Core library for the Pessoa Theater Collaboration Platform backend.
+//! Core library for the Fassandra Theater Collaboration Platform backend.
 //!
 //! This module serves as the composition root, providing clean module exports
 //! and essential utilities for the backend service. The heavy lifting is now

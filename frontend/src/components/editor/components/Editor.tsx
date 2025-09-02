@@ -49,7 +49,7 @@ export const Editor: React.FC<EditorProps> = ({
     return process.env.NODE_ENV === 'development' ? console.log : () => {};
   }, []);
   
-  // Initialize editor core with Pessoa's existing infrastructure
+  // Initialize editor core with Fassandra's existing infrastructure
   const {
     editor,
     ydoc,
@@ -78,6 +78,8 @@ export const Editor: React.FC<EditorProps> = ({
   const [rehearsalDocPos, setRehearsalDocPos] = useState<number | null>(null);
   const [suppressRehearsalAutoScroll, setSuppressRehearsalAutoScroll] = useState(false);
   const [shouldCenterOnRehearsalChange, setShouldCenterOnRehearsalChange] = useState(false);
+  // Prevent feedback loops when applying remote awareness updates
+  const isApplyingRemoteRehearsalRef = useRef(false);
   const [editAllSpeakers, setEditAllSpeakers] = useState(false);
   const [currentSpeakerName, setCurrentSpeakerName] = useState<string | null>(null);
   const liveRenameBaseRef = useRef<string | null>(null);
@@ -130,10 +132,13 @@ export const Editor: React.FC<EditorProps> = ({
           if (state.rehearsalLinePosition !== undefined) {
             debugLog('[Rehearsal Sync] Received position from other user:', state.rehearsalLinePosition);
             const newPosition = state.rehearsalLinePosition;
+            // Mark that we are applying a remote value so we don't rebroadcast it
+            isApplyingRemoteRehearsalRef.current = true;
             setRehearsalLinePosition(newPosition);
             
-            // Scroll to the new position if in rehearsal mode and single-page view
-            if (!suppressRehearsalAutoScroll && shouldCenterOnRehearsalChange && rehearsalMode && viewMode === 'single-page' && newPosition > 0) {
+            // Scroll to the new position for remote updates when in rehearsal mode and single-page view
+            // Note: For remote awareness changes we always scroll so all clients stay in sync.
+            if (rehearsalMode && viewMode === 'single-page' && newPosition > 0) {
               debugLog('[Rehearsal Sync] Scrolling to synced position:', newPosition);
               
               // Find the container element
@@ -152,6 +157,8 @@ export const Editor: React.FC<EditorProps> = ({
                 debugLog('[Rehearsal Sync] Scrolled to position:', targetScrollPosition);
               }
             }
+            // Release the remote-apply flag on next tick
+            setTimeout(() => { isApplyingRemoteRehearsalRef.current = false; }, 0);
           }
         }
       });
@@ -164,9 +171,11 @@ export const Editor: React.FC<EditorProps> = ({
     };
   }, [provider, debugLog, rehearsalMode, viewMode, suppressRehearsalAutoScroll, shouldCenterOnRehearsalChange]);
 
-  // Initialize rehearsal line position in awareness when provider is ready
+  // Initialize/broadcast rehearsal line position when changed locally (avoid rebroadcast on remote apply)
   useEffect(() => {
-    if (provider && provider.awareness && rehearsalLinePosition > 0) {
+    if (!provider || !provider.awareness) return;
+    if (isApplyingRemoteRehearsalRef.current) return; // skip rebroadcasting remote updates
+    if (rehearsalLinePosition > 0) {
       provider.awareness.setLocalStateField('rehearsalLinePosition', rehearsalLinePosition);
     }
   }, [provider, rehearsalLinePosition]); // Run when provider becomes available or position changes
@@ -404,6 +413,7 @@ export const Editor: React.FC<EditorProps> = ({
         if (localContextMenu.rehearsalClickY !== undefined) {
           // Prefer precise mapping via ProseMirror doc position if available
           let newPosition = localContextMenu.rehearsalClickY;
+          let jumpedDocPos: number | undefined = undefined;
           try {
             if (editor && typeof localContextMenu.rehearsalDocPos === 'number') {
               const pos = localContextMenu.rehearsalDocPos;
@@ -417,6 +427,7 @@ export const Editor: React.FC<EditorProps> = ({
                 newPosition = coords.top - containerRect.top + containerScrollTop;
               }
               setRehearsalDocPos(pos);
+              jumpedDocPos = pos;
             }
           } catch {}
           debugLog('[Jump Action] Setting rehearsal line position to:', newPosition);
@@ -427,9 +438,9 @@ export const Editor: React.FC<EditorProps> = ({
             debugLog('[Jump Action] Syncing position via awareness:', newPosition);
             provider.awareness.setLocalStateField('rehearsalLinePosition', newPosition);
             // Also broadcast precise doc position if we have it (ephemeral)
-            if (typeof rehearsalDocPos === 'number') {
+            if (typeof jumpedDocPos === 'number') {
               try {
-                (provider.awareness as any).setLocalStateField('rehearsalDocPos', rehearsalDocPos);
+                (provider.awareness as any).setLocalStateField('rehearsalDocPos', jumpedDocPos);
               } catch {}
             }
           }
@@ -1048,6 +1059,8 @@ export const Editor: React.FC<EditorProps> = ({
                   }
                 });
                 if (sharedPos !== null) {
+                  // Adopt shared position locally without rebroadcasting
+                  isApplyingRemoteRehearsalRef.current = true;
                   setRehearsalLinePosition(sharedPos);
                   // If a precise doc pos is advertised, use it to compute Y locally
                   try {
@@ -1066,8 +1079,8 @@ export const Editor: React.FC<EditorProps> = ({
                       }
                     }
                   } catch {}
-                  // Publish our local state so late joiners see it too
-                  awareness.setLocalStateField('rehearsalLinePosition', sharedPos);
+                  // Release the remote-apply guard shortly after applying
+                  setTimeout(() => { isApplyingRemoteRehearsalRef.current = false; }, 0);
                   // Center on that position in single-page view
                   if (viewMode === 'single-page') {
                     setTimeout(() => {
@@ -1082,7 +1095,7 @@ export const Editor: React.FC<EditorProps> = ({
                   }
                 } else {
                   // No shared position → start at beginning and publish 0
-                  awareness.setLocalStateField('rehearsalLinePosition', 0);
+                  // Do not broadcast 0 to avoid resetting others; keep local default
                 }
               }
             } catch {}

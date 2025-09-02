@@ -1,6 +1,6 @@
-//! # Pessoa Theater Collaboration Platform - Backend Library
+//! # Fassandra Theater Collaboration Platform - Backend Library
 //!
-//! This library provides the core backend functionality for the Pessoa theater
+//! This library provides the core backend functionality for the Fassandra theater
 //! collaboration platform, including:
 //!
 //! - **Authentication**: JWT-based authentication with role-based access control
