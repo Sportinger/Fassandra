@@ -64,10 +64,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Claude Code CLI globally
-RUN npm install -g @anthropic-ai/claude-code
-
-# Install Gemini CLI globally
-RUN npm install -g @google/gemini-cli
+## Removed Claude Code and Gemini CLI installs (unused)
 
 # Install sqlx-cli
 RUN cargo install sqlx-cli --version=0.7.4 --features rustls,postgres --no-default-features --locked
@@ -152,10 +149,7 @@ RUN apt-get update && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Node.js for Claude Code
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y nodejs && \
-    rm -rf /var/lib/apt/lists/*
+## Removed redundant Node.js install for Claude Code
 
 # Copy SSL certificates
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
@@ -165,17 +159,7 @@ COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/backend .
 COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/hash_password ./hash_password
 COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/yjs_to_db ./yjs_to_db
 
-# Copy Claude Code settings
-RUN mkdir -p .claude /home/backend/.config/claude-code
-# Copy settings.json if it exists
-RUN if [ -f ".claude/settings.json" ]; then \
-      cp .claude/settings.json /root/.claude.json && \
-      cp .claude/settings.json /home/backend/.config/claude-code/settings.json; \
-    fi
-
-# Set proper permissions for Claude configuration directories
-RUN mkdir -p /root/.claude && \
-    chmod 755 /root/.claude
+## Removed Claude settings copy (unused)
 
 # Create uploads directory with proper permissions  
 RUN mkdir -p uploads/scripts
@@ -201,34 +185,14 @@ COPY --chown=appuser:appuser --from=builder /app/target/x86_64-unknown-linux-gnu
 COPY --chown=appuser:appuser execute_sql.sh /app/execute_sql.sh
 COPY --chown=appuser:appuser yjs_to_db.sh /app/yjs_to_db.sh
 COPY --chown=appuser:appuser json_mem.sh /app/json_mem.sh
-COPY --chown=appuser:appuser init-claude.sh /app/init-claude.sh
 COPY --chown=appuser:appuser docker-entrypoint.sh /app/docker-entrypoint.sh
-COPY --chown=appuser:appuser claude-wrapper.sh /app/claude-wrapper.sh
-COPY --chown=appuser:appuser claude-session-wrapper.sh /app/claude-session-wrapper.sh
-COPY --chown=appuser:appuser monitor-claude-session.sh /app/monitor-claude-session.sh
 COPY --chown=appuser:appuser src/services/prompt.md /app/src/services/prompt.md
 COPY --chown=appuser:appuser scripts/split_pdf.sh /app/split_pdf.sh
 
 # Make scripts executable
-RUN chmod +x /app/execute_sql.sh /app/yjs_to_db.sh /app/json_mem.sh /app/split_pdf.sh /app/init-claude.sh /app/docker-entrypoint.sh /app/claude-wrapper.sh /app/claude-session-wrapper.sh /app/monitor-claude-session.sh
+RUN chmod +x /app/execute_sql.sh /app/yjs_to_db.sh /app/json_mem.sh /app/split_pdf.sh /app/docker-entrypoint.sh
 
-# Setup Claude Code settings with bypass permissions in ALL locations
-# First create all necessary directories
-RUN mkdir -p /root/.config/claude-code /home/appuser/.config/claude-code \
-    /root/.claude /home/appuser/.claude && \
-    chmod 755 /root/.config/claude-code /home/appuser/.config/claude-code \
-    /root/.claude /home/appuser/.claude
-
-# Copy settings to ALL possible locations for root
-COPY claude-settings.json /root/.config/claude-code/settings.json
-COPY claude-settings.json /root/.claude/settings.json
-
-# Copy settings to ALL possible locations for appuser
-COPY --chown=appuser:appuser claude-settings.json /home/appuser/.config/claude-code/settings.json
-COPY --chown=appuser:appuser claude-settings.json /home/appuser/.claude/settings.json
-
-# Ensure proper ownership
-RUN chown -R appuser:appuser /home/appuser/.config/claude-code /home/appuser/.claude
+## Removed Claude settings and directories (unused)
 
 # Create uploads directory
 RUN mkdir -p /app/uploads/scripts && chown -R appuser:appuser /app/uploads
@@ -247,11 +211,7 @@ USER appuser
 ENV NPM_CONFIG_PREFIX=/home/appuser/.npm-global
 ENV PATH=$PATH:/home/appuser/.npm-global/bin
 
-# Install Claude Code as appuser
-RUN npm install -g @anthropic-ai/claude-code
-
-# Install Gemini CLI as appuser
-RUN npm install -g @google/gemini-cli
+## Removed Claude/Gemini CLI installs for appuser (unused)
 
 # Set working directory
 WORKDIR /app
