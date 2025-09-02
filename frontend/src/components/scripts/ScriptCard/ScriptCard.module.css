@@ -144,7 +144,7 @@
   /* Isolate from 3D transforms for better performance */
   transform: translateZ(0);
   will-change: contents;
-  background: rgba(255, 255, 255, 0.5);
+  background: #ffffff; /* Solid white to ensure preview is white in dark mode */
   border-radius: 8px;
   margin: 0.5rem 0;
   contain: layout style paint;
