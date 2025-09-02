@@ -234,13 +234,24 @@ impl ClaudeSessionService {
         } else {
             // Fall back to direct execution
             tracing::info!("Executor script not found, using direct Claude execution");
-            // Use full path to claude binary to avoid PATH issues
-            let claude_path = if tokio::fs::metadata("/home/appuser/.npm-global/bin/claude").await.is_ok() {
-                "/home/appuser/.npm-global/bin/claude"
-            } else {
-                "claude" // Fallback to PATH lookup
-            };
-            tracing::info!("Using Claude at: {}", claude_path);
+            // Try multiple known locations, then PATH lookup. Allow override via CLAUDE_BIN.
+            let mut candidates: Vec<String> = Vec::new();
+            if let Ok(override_bin) = std::env::var("CLAUDE_BIN") {
+                if !override_bin.trim().is_empty() { candidates.push(override_bin); }
+            }
+            candidates.push("/home/appuser/.npm-global/bin/claude".to_string());
+            candidates.push("/usr/local/bin/claude".to_string());
+            candidates.push("/usr/bin/claude".to_string());
+            // Final fallback uses PATH search
+            let mut claude_path = String::from("claude");
+            for c in candidates {
+                if tokio::fs::metadata(&c).await.is_ok() {
+                    claude_path = c;
+                    break;
+                }
+            }
+            let path_env = std::env::var("PATH").unwrap_or_else(|_| "<unset>".into());
+            tracing::info!("Using Claude at: {} (PATH={})", claude_path, path_env);
             let mut cmd = Command::new(claude_path);
             cmd.arg("--print")
                 .arg("--output-format").arg("stream-json") // stream incremental output as JSON lines

@@ -209,9 +209,11 @@ USER appuser
 
 # Configure npm to use user directory
 ENV NPM_CONFIG_PREFIX=/home/appuser/.npm-global
-ENV PATH=$PATH:/home/appuser/.npm-global/bin
+# Set an explicit PATH; do not rely on shell expansion in Dockerfile ENV
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/appuser/.npm-global/bin
 
-## Removed Claude/Gemini CLI installs for appuser (unused)
+## Install Claude/Gemini CLI for appuser (required for PDF parsing feature)
+RUN npm install -g @anthropic-ai/claude-code@^1.0.67 @google/gemini-cli
 
 # Set working directory
 WORKDIR /app
