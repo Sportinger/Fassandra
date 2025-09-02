@@ -1,4 +1,4 @@
-# Caddy development configuration for Pessoa
+# Caddy development configuration for Fassandra
 # Serves both frontend and backend on the same port to avoid CORS/cookie issues
 
 :8080 {

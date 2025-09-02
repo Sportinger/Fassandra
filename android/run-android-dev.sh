@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Script to run Pessoa app on Android device in development mode
+# Script to run Fassandra app on Android device in development mode
 
 set -e
-echo "🚀 Starting Pessoa Android Development Server..."
+echo "🚀 Starting Fassandra Android Development Server..."
 
 # Resolve directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -35,7 +35,7 @@ EOF
 cat > "$FRONTEND_DIR/capacitor.config.json" << EOF
 {
   "appId": "com.pessoa.app",
-  "appName": "Pessoa",
+  "appName": "Fassandra",
   "webDir": "dist",
   "server": {
     "androidScheme": "http",
@@ -75,7 +75,7 @@ echo ""
 echo "📌 Next steps:"
 echo "1. Open Chrome on your Android device"
 echo "2. Navigate to: http://$LOCAL_IP:5173"
-echo "3. You should see the Pessoa app connected to your local backend!"
+echo "3. You should see the Fassandra app connected to your local backend!"
 echo ""
 echo "Press Ctrl+C to stop the server"
 

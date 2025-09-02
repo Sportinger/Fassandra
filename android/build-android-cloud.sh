@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-echo "🚀 Building Pessoa Android APK for Cloud Production (pessoa.theater)..."
+echo "🚀 Building Fassandra Android APK for Cloud Production (pessoa.theater)..."
 
 # Resolve directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -26,7 +26,7 @@ EOF
 cat > "$FRONTEND_DIR/capacitor.config.json" << EOF
 {
   "appId": "com.pessoa.app",
-  "appName": "Pessoa",
+  "appName": "Fassandra",
   "webDir": "dist",
   "server": {
     "androidScheme": "https",

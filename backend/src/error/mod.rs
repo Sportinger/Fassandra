@@ -1,4 +1,4 @@
-//! Error handling module for the Pessoa theater collaboration platform.
+//! Error handling module for the Fassandra theater collaboration platform.
 //!
 //! This module provides comprehensive error handling functionality including:
 //! - Custom application error types with proper HTTP status mapping

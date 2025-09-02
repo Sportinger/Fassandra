@@ -1,4 +1,4 @@
-//! External service integrations for the Pessoa theater collaboration platform.
+//! External service integrations for the Fassandra theater collaboration platform.
 //!
 //! This module contains integrations with external services and APIs.
 //! Currently focused on future external integrations as we use Claude Code

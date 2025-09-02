@@ -1,4 +1,4 @@
-//! Authentication module for the Pessoa theater collaboration platform.
+//! Authentication module for the Fassandra theater collaboration platform.
 //!
 //! This module provides comprehensive authentication functionality including:
 //! - JWT token generation and verification

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-🔒 PESSOA THEATER SECURITY VERIFICATION SCRIPT
+🔒 FASSANDRA THEATER SECURITY VERIFICATION SCRIPT
 
 This script tests all the security hardening measures implemented during the security audit.
-Run this against a running Pessoa backend to verify security is working correctly.
+Run this against a running Fassandra backend to verify security is working correctly.
 
 Usage: python3 security_verification.py
 """
@@ -37,7 +37,7 @@ class SecurityTester:
     
     def run_all_tests(self):
         """Run all security verification tests"""
-        print("🔒 PESSOA THEATER SECURITY VERIFICATION")
+        print("🔒 FASSANDRA THEATER SECURITY VERIFICATION")
         print("=" * 50)
         
         test_results = []
@@ -411,7 +411,7 @@ class SecurityTester:
 
 def main():
     """Main execution function"""
-    print("Starting Pessoa Theater Security Verification...")
+    print("Starting Fassandra Theater Security Verification...")
     print(f"Testing against: {BASE_URL}")
     
     tester = SecurityTester()

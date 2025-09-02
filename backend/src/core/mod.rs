@@ -1,4 +1,4 @@
-//! Core module for the Pessoa theater collaboration platform.
+//! Core module for the Fassandra theater collaboration platform.
 //!
 //! This module contains the core application components including:
 //! - Server setup and routing configuration

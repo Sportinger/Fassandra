@@ -1,4 +1,4 @@
-//! Networking module for the Pessoa theater collaboration platform.
+//! Networking module for the Fassandra theater collaboration platform.
 //!
 //! This module handles real-time networking functionality including:
 //! - WebSocket connections for real-time collaboration
