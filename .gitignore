@@ -57,6 +57,3 @@ frontend/coverage/
 .setup-files/
 .dev-files/
 
-# Claude Flow
-.claude-flow/
-scripts/.claude-flow/
