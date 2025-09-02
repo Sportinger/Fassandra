@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-echo "🚀 Building Fassandra Android APK for Cloud Production (pessoa.theater)..."
+echo "🚀 Building Fassandra Android APK for Cloud Production (fassandra.de)..."
 
 # Resolve directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -25,7 +25,7 @@ EOF
 # Update Capacitor config for production
 cat > "$FRONTEND_DIR/capacitor.config.json" << EOF
 {
-  "appId": "com.pessoa.app",
+  "appId": "com.fassandra.app",
   "appName": "Fassandra",
   "webDir": "dist",
   "server": {

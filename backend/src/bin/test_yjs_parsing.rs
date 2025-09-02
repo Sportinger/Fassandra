@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
 
     // Connect to database
     let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://pessoa_user:dev_password_123@localhost:5432/pessoa_db".to_string());
+        .unwrap_or_else(|_| "postgres://fassandra_user:dev_password_123@localhost:5432/fassandra_db".to_string());
     
     println!("📦 Connecting to database...");
     let pool = PgPoolOptions::new()

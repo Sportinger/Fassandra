@@ -14,7 +14,7 @@ echo "📊 Monitoring logs..."
 echo "================================"
 
 # Monitor specific logs with better filtering
-adb logcat -v time | grep -E "(com.pessoa.app|Capacitor|chromium|Console|WebView|http://|Network|ERROR|WARN)" | while read -r line; do
+adb logcat -v time | grep -E "(com.fassandra.app|Capacitor|chromium|Console|WebView|http://|Network|ERROR|WARN)" | while read -r line; do
     # Highlight errors in red
     if echo "$line" | grep -q "ERROR\|error\|Error"; then
         echo -e "\033[31m$line\033[0m"

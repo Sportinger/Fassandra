@@ -229,7 +229,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       if (part === '...') {
         elements.push(
-          <span key={part} className={`${styles.segment} ${styles.pessoaSegment}`}>...</span>
+          <span key={part} className={`${styles.segment} ${styles.fassandraSegment}`}>...</span>
         );
       } else if (part === 'Scripts') {
         if (currentView === 'scripts') {

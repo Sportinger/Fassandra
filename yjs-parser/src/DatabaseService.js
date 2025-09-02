@@ -6,7 +6,7 @@ const { Pool } = pg;
 export class DatabaseService {
   constructor(connectionString) {
     this.pool = new Pool({
-      connectionString: connectionString || 'postgres://pessoa_user:dev_password_123@localhost:5432/pessoa_db'
+      connectionString: connectionString || 'postgres://fassandra_user:dev_password_123@localhost:5432/fassandra_db'
     });
   }
 

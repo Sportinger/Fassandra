@@ -8,7 +8,6 @@
         <domain includeSubdomains="true">fassandra.de</domain>
         <domain includeSubdomains="true">www.fassandra.de</domain>
         <domain includeSubdomains="true">91.99.69.115</domain>
-        <domain includeSubdomains="true">pessoa.theater</domain>
     </domain-config>
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>

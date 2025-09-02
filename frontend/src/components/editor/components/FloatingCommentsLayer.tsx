@@ -71,8 +71,8 @@ export const FloatingCommentsLayer: React.FC<FloatingCommentsLayerProps> = ({ ed
       setOpenId(e.detail?.commentId || null);
       setDraft(e.detail?.commentText || '');
     };
-    window.addEventListener('pessoa:open-comment', handler as any);
-    return () => window.removeEventListener('pessoa:open-comment', handler as any);
+    window.addEventListener('fassandra:open-comment', handler as any);
+    return () => window.removeEventListener('fassandra:open-comment', handler as any);
   }, []);
 
   const save = (id: string) => {

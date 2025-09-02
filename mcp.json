@@ -27,7 +27,7 @@
         "@ahmetbarut/mcp-database-server"
       ],
       "env": {
-        "DATABASE_CONNECTIONS": "pessoa_db=postgresql://pessoa_user:dev_password_123@localhost:5432/pessoa_db"
+        "DATABASE_CONNECTIONS": "fassandra_db=postgresql://fassandra_user:dev_password_123@localhost:5432/fassandra_db"
       }
     },
     "puppeteer": {

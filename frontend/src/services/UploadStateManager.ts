@@ -14,7 +14,7 @@ class UploadStateManager {
   };
   
   private listeners: Set<(state: UploadState) => void> = new Set();
-  private storageKey = 'pessoa_upload_state';
+  private storageKey = 'fassandra_upload_state';
 
   private constructor() {
     // Load state from localStorage on initialization

@@ -80,7 +80,7 @@ async fn main() {
 
     // Connect to database
     let database_url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://pessoa_user:dev_password_123@db:5432/pessoa_db".to_string());
+        .unwrap_or_else(|_| "postgres://fassandra_user:dev_password_123@db:5432/fassandra_db".to_string());
     
     let db_pool = match PgPoolOptions::new()
         .max_connections(5)

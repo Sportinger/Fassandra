@@ -100,15 +100,19 @@ pub async fn upload_and_parse_script(
         .to_string_lossy()
         .to_string();
 
-    // Convert host paths to container paths for splitting
-    let container_pdf_path = abs_pdf_path.replace(
-        "/home/admins/projects/pessoa/backend",
-        "/app"
-    );
-    let container_chunk_dir = chunk_dir_abs.replace(
-        "/home/admins/projects/pessoa/backend",
-        "/app"
-    );
+    // Convert host paths to container paths for splitting by replacing the host backend root with /app
+    // This works regardless of the specific absolute path prefix on the host.
+    let to_container_path = |host_path: &str| -> String {
+        if let Some(idx) = host_path.find("/backend") {
+            let suffix = &host_path[idx + "/backend".len()..];
+            format!("/app{}", suffix)
+        } else {
+            // Fallback: if no '/backend' in path, return as-is (may still work if already container path)
+            host_path.to_string()
+        }
+    };
+    let container_pdf_path = to_container_path(&abs_pdf_path);
+    let container_chunk_dir = to_container_path(&chunk_dir_abs);
 
     // Run splitter inside container context
     let split_status = tokio::process::Command::new("/app/split_pdf.sh")

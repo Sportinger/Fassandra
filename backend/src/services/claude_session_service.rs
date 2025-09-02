@@ -151,11 +151,13 @@ impl ClaudeSessionService {
             progress: 10,
         });
 
-        // Convert host path to container path
-        let container_pdf_path = pdf_path.replace(
-            "/home/admins/projects/pessoa/backend",
-            "/app"
-        );
+        // Convert host path to container path by replacing host backend root with /app
+        let container_pdf_path = if let Some(idx) = pdf_path.find("/backend") {
+            let suffix = &pdf_path[idx + "/backend".len()..];
+            format!("/app{}", suffix)
+        } else {
+            pdf_path.clone()
+        };
 
         // Prepare the command - inline the full instructions to maximize
         // adherence to required [PROGRESS]/[CHUNK_COMPLETE] markers.
