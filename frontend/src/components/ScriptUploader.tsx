@@ -154,7 +154,7 @@ const ScriptUploader: React.FC<ScriptUploaderProps> = ({
                         <p><strong>📋 PDF Upload Instructions:</strong></p>
                         <ul>
                             <li>✅ Upload theater scripts as PDF files</li>
-                            <li>🤖 AI will analyze your script structure automatically</li>
+                            <li>🧭 Script structure is detected automatically</li>
                             <li>🎭 Extract dialogue, stage directions, and characters</li>
                             <li>📄 Preserve original page numbers</li>
                             <li>⚡ Convert to collaborative format instantly</li>
@@ -193,7 +193,7 @@ const ScriptUploader: React.FC<ScriptUploaderProps> = ({
                               disabled={!selectedFile || isLoading}
                               className={styles.uploadButton}
                           >
-                              {isLoading ? 'Processing...' : '🚀 Upload & Analyze PDF'}
+                              {isLoading ? 'Processing...' : '🚀 Upload & Convert PDF'}
                           </button>
                         </>
                     )}
