@@ -23,7 +23,7 @@ EOF
 # Update Capacitor config JSON used for native app assets
 cat > "$FRONTEND_DIR/capacitor.config.json" << EOF
 {
-  "appId": "com.pessoa.app",
+  "appId": "com.fassandra.app",
   "appName": "Fassandra",
   "webDir": "dist",
   "server": {

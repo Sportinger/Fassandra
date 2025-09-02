@@ -5,8 +5,10 @@ set -e
 
 echo "🚀 Building Android app with production endpoints (fassandra.de)..."
 
-# Navigate to frontend directory
-cd /home/admins/projects/pessoa/frontend
+# Navigate to frontend directory (relative to repo root)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT/frontend"
 
 # Copy production environment
 echo "📋 Setting production environment..."
@@ -26,7 +28,7 @@ cd android
 ./gradlew assembleDebug
 
 # Path to the built APK
-APK_PATH="/home/admins/projects/pessoa/frontend/android/app/build/outputs/apk/debug/app-debug.apk"
+APK_PATH="$REPO_ROOT/frontend/android/app/build/outputs/apk/debug/app-debug.apk"
 
 if [ -f "$APK_PATH" ]; then
     echo "✅ APK built successfully: $APK_PATH"

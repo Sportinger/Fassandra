@@ -20,7 +20,7 @@ export const RulerAdjustDropdown: React.FC<RulerAdjustDropdownProps> = ({ isVisi
       <button
         onClick={() => {
           // Toggle overlay via custom event
-          const evt = new Event('pessoa:toggle-ruler-overlay');
+          const evt = new Event('fassandra:toggle-ruler-overlay');
           window.dispatchEvent(evt);
         }}
         className={`toolbarButton dropdownButton`}

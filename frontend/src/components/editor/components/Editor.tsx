@@ -395,7 +395,7 @@ export const Editor: React.FC<EditorProps> = ({
         const id = `cmt-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
         (editor as any).chain().focus().addComment({ commentId: id, commentText: '' }).run();
         // open the comment popover for this id
-        const evt = new CustomEvent('pessoa:open-comment', { detail: { commentId: id, commentText: '' } });
+        const evt = new CustomEvent('fassandra:open-comment', { detail: { commentId: id, commentText: '' } });
         window.dispatchEvent(evt);
         break;
       }
@@ -501,8 +501,8 @@ export const Editor: React.FC<EditorProps> = ({
   // Listen for global toggle event from toolbar ruler button
   useEffect(() => {
     const handler = () => setRulerOverlayActive(prev => !prev);
-    window.addEventListener('pessoa:toggle-ruler-overlay', handler as any);
-    return () => window.removeEventListener('pessoa:toggle-ruler-overlay', handler as any);
+    window.addEventListener('fassandra:toggle-ruler-overlay', handler as any);
+    return () => window.removeEventListener('fassandra:toggle-ruler-overlay', handler as any);
   }, []);
 
   // Handle animated navigation back

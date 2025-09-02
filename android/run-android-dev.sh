@@ -34,7 +34,7 @@ EOF
 # Update Capacitor config with current IP (in frontend)
 cat > "$FRONTEND_DIR/capacitor.config.json" << EOF
 {
-  "appId": "com.pessoa.app",
+  "appId": "com.fassandra.app",
   "appName": "Fassandra",
   "webDir": "dist",
   "server": {

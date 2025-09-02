@@ -50,7 +50,7 @@ echo "✅ Build complete! The Android app is now configured to use the productio
 if command -v adb &> /dev/null && adb devices | grep -q "device$"; then
     echo "📱 Clearing app cache on connected device..."
     # Clear app data and cache
-    adb shell pm clear com.pessoa.app 2>/dev/null || true
+    adb shell pm clear com.fassandra.app 2>/dev/null || true
     echo "✅ App cache cleared"
 fi
 

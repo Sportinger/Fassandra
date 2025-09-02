@@ -1,5 +1,5 @@
 {
-  "name": "pessoa",
+  "name": "fassandra",
   "version": "1.0.0",
   "description": "Theater script editor with AI integration",
   "scripts": {
@@ -42,13 +42,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Sportinger/pessoa.git"
+    "url": "git+https://github.com/Sportinger/fassandra.git"
   },
   "keywords": [],
   "author": "",
   "license": "AGPL-3.0-or-later",
   "bugs": {
-    "url": "https://github.com/Sportinger/pessoa/issues"
+    "url": "https://github.com/Sportinger/fassandra/issues"
   },
-  "homepage": "https://github.com/Sportinger/pessoa#readme"
+  "homepage": "https://github.com/Sportinger/fassandra#readme"
 }

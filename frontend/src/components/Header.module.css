@@ -24,7 +24,7 @@
   min-height: 1.2em; /* Prevent height jumping during animation */
 }
 
-.pessoaSegment {
+.fassandraSegment {
   font-size: 1.1em; /* 1.1x bigger than siblings */
   color: #966c5d; /* Red-brown tint */
   font-weight: 600;

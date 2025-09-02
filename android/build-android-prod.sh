@@ -20,7 +20,7 @@ EOF
 # Update Capacitor config for production (in frontend)
 cat > "$FRONTEND_DIR/capacitor.config.json" << EOF
 {
-  "appId": "com.pessoa.app",
+  "appId": "com.fassandra.app",
   "appName": "Fassandra",
   "webDir": "dist",
   "server": {

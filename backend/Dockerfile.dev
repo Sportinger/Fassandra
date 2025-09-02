@@ -10,7 +10,7 @@ ENV RUST_LOG=debug
 
 # Accept DATABASE_URL as build argument
 ARG DATABASE_URL
-ENV DATABASE_URL=${DATABASE_URL:-postgres://pessoa_user:dev_password_123@db:5432/pessoa_db}
+ENV DATABASE_URL=${DATABASE_URL:-postgres://fassandra_user:dev_password_123@db:5432/fassandra_db}
 
 WORKDIR /app
 

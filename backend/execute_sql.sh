@@ -21,7 +21,7 @@ echo "Executing SQL from: $SQL_FILE"
 echo "---"
 
 # Execute SQL and capture both stdout and stderr
-PGPASSWORD=dev_password_123 psql -h db -U pessoa_user -d pessoa_db -f "$SQL_FILE" 2>&1 || {
+PGPASSWORD=dev_password_123 psql -h db -U fassandra_user -d fassandra_db -f "$SQL_FILE" 2>&1 || {
     EXIT_CODE=$?
     echo "---"
     echo "Error: SQL execution failed with exit code $EXIT_CODE"
