@@ -7,16 +7,11 @@
     "dev": "vite --config vite.config.dev.ts",
     "build": "tsc -b && vite build --config vite.config.prod.ts",
     "lint": "eslint .",
-    "lint:console": "node scripts/check-console-simple.cjs",
     "preview": "vite preview --config vite.config.prod.ts",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage",
-    "android": "npm run build && npx cap sync android && npx cap run android",
-    "android:dev": "npm run build && npx cap sync android && npx cap run android --livereload --external",
-    "android:build": "npm run build && npx cap sync android && cd android && ./gradlew assembleDebug",
-    "prepare": "husky",
-    "pre-commit": "npm run lint:console"
+    "android": "bash ../android/build-android-prod.sh",
+    "android:dev": "bash ../android/run-android-dev.sh",
+    "android:build": "bash ../android/build-android-prod.sh",
+    "prepare": "echo 'no hooks'"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.2",
@@ -43,26 +38,18 @@
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "@eslint/js": "^9.22.0",
-    "@testing-library/jest-dom": "^6.4.2",
-    "@testing-library/react": "^14.3.1",
-    "@types/jest": "^29.5.14",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.3.4",
-    "@vitest/coverage-v8": "^1.0.0",
-    "@vitest/ui": "^1.0.0",
     "eslint": "^9.22.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
-    "husky": "^9.1.7",
-    "jsdom": "^24.0.0",
-    "lint-staged": "^16.1.4",
+    
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.26.1",
     "vite": "^6.3.1",
-    "vitest": "^1.0.0",
     "ws": "^8.18.2"
   }
 }

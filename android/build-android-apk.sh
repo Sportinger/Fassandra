@@ -1,20 +1,27 @@
 #!/bin/bash
 
+set -e
 echo "🚀 Building Pessoa Android APK..."
+
+# Resolve directories
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+FRONTEND_DIR="$REPO_ROOT/frontend"
+ANDROID_DIR="$REPO_ROOT/android"
 
 # Get local IP for backend connection
 LOCAL_IP=$(hostname -I | awk '{print $1}')
 
-# Update production environment with local backend
-cat > .env.production << EOF
+# Update production environment with local backend (in frontend)
+cat > "$FRONTEND_DIR/.env.production" << EOF
 # Production environment for Android APK
 VITE_API_BASE_URL=http://$LOCAL_IP:3000
 VITE_BACKEND_URL=http://$LOCAL_IP:3000
 VITE_WS_URL=ws://$LOCAL_IP:3000
 EOF
 
-# Update Capacitor config for production
-cat > ../capacitor.config.json << EOF
+# Update Capacitor config JSON used for native app assets
+cat > "$FRONTEND_DIR/capacitor.config.json" << EOF
 {
   "appId": "com.pessoa.app",
   "appName": "Pessoa",
@@ -28,13 +35,15 @@ cat > ../capacitor.config.json << EOF
 EOF
 
 echo "📦 Building production bundle..."
+pushd "$FRONTEND_DIR" >/dev/null
 npx vite build --mode production
 
 echo "🔄 Syncing with Capacitor..."
 npx cap sync android
+popd >/dev/null
 
 echo "📱 Building APK (this may take a few minutes)..."
-cd android
+cd "$ANDROID_DIR"
 
 # Use bundled gradle with Java 17 workaround
 export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64

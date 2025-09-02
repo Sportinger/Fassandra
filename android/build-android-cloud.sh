@@ -1,14 +1,21 @@
 #!/bin/bash
 
+set -e
 echo "🚀 Building Pessoa Android APK for Cloud Production (pessoa.theater)..."
 
+# Resolve directories
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+FRONTEND_DIR="$REPO_ROOT/frontend"
+ANDROID_DIR="$REPO_ROOT/android"
+
 # Save current environment if exists
-if [ -f .env.production ]; then
-    cp .env.production .env.production.backup
+if [ -f "$FRONTEND_DIR/.env.production" ]; then
+    cp "$FRONTEND_DIR/.env.production" "$FRONTEND_DIR/.env.production.backup"
 fi
 
 # Set production environment for fassandra.de
-cat > .env.production << EOF
+cat > "$FRONTEND_DIR/.env.production" << EOF
 # Production environment for Android APK
 # Points to fassandra.de backend
 VITE_API_BASE_URL=https://fassandra.de
@@ -16,7 +23,7 @@ VITE_WS_BASE_URL=wss://fassandra.de/api/collab
 EOF
 
 # Update Capacitor config for production
-cat > capacitor.config.json << EOF
+cat > "$FRONTEND_DIR/capacitor.config.json" << EOF
 {
   "appId": "com.pessoa.app",
   "appName": "Pessoa",
@@ -30,13 +37,15 @@ cat > capacitor.config.json << EOF
 EOF
 
 echo "📦 Building production bundle..."
+pushd "$FRONTEND_DIR" >/dev/null
 npm run build -- --mode production
 
 echo "🔄 Syncing with Capacitor..."
 npx cap sync android
 
 echo "📱 Building APK (this may take a few minutes)..."
-cd android
+popd >/dev/null
+cd "$ANDROID_DIR"
 
 # Use bundled gradle with Java 17 workaround
 export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64

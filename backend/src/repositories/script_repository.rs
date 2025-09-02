@@ -197,7 +197,7 @@ pub mod tests {
             Ok(scripts.iter()
                 .filter(|s| {
                     s.created_by == Some(user_id) || // User's own scripts
-                    s.is_public                      // Public scripts from anyone
+                    s.is_public.unwrap_or(false)      // Public scripts from anyone
                 })
                 .cloned()
                 .collect())
