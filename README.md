@@ -77,6 +77,53 @@ The gallery below is sized for readability on GitHub. Images use responsive HTML
   </tr>
 </table>
 
+Product Tour
+
+Scripts Overview
+The dashboard presents scripts as cards with thumbnails, visibility badges, and quick actions. Use it to create a new script or upload a PDF for parsing. Public scripts are marked and shared scripts are highlighted for clarity.
+
+<img src="docs/screenshots/scripts-grid.png" alt="Scripts overview" width="920"/>
+
+Collaborative Editor
+The editor is built for rehearsal and production: speaker labels, cue blocks, and a clean page layout. Collaboration runs over Yjs with a WebSocket provider; awareness shows cursors and a shared rehearsal line.
+
+<img src="docs/screenshots/editor-annotated.png" alt="Editor with collaboration and toolbar" width="980"/>
+
+Roles & Styling
+Pick speakers quickly and apply role‑aware formatting. Font size/style and dialogue layout controls live in a focused toolbar that appears contextually.
+
+<img src="docs/screenshots/speaker-dropdown.png" alt="Speaker selection and role styling" width="560"/>
+
+Rehearsal Mode
+Lock attention with a synchronized rehearsal line. The position travels via awareness so everyone stays in the same spot during a run‑through.
+
+<img src="docs/screenshots/rehearsal-mode.png" alt="Rehearsal mode" width="720"/>
+
+Search & Navigation
+Search highlights all matches inline and provides next/previous jumps. Large scripts remain snappy thanks to virtualized rendering and Yjs updates.
+
+<img src="docs/screenshots/search.png" alt="Inline search" width="560"/>
+
+Cues & Word Connections
+Attach cues and connect them to words or phrases. Badges provide quick reference in the margin; hovering reveals precise anchors.
+
+<img src="docs/screenshots/cue-badges.png" alt="Cue badges" width="320"/> <img src="docs/screenshots/word-highlight.png" alt="Word highlight connection" width="420"/>
+
+Layout & Pagination
+Switch between single‑page and paginated views. Navigation arrows make it easy to step through long scenes with consistent rhythm on stage.
+
+<img src="docs/screenshots/navigation-arrows.png" alt="Navigation arrows" width="720"/>
+
+Light Mode & Print
+Preview in a clean light mode and print to PDF with production‑ready formatting. The print stylesheet removes UI chrome and optimizes spacing/typography.
+
+<img src="docs/screenshots/page-light.png" alt="Light page style" width="560"/> <img src="docs/screenshots/print-preview.png" alt="Print preview" width="420"/>
+
+Create & Upload
+Start from a blank script or upload a PDF. The backend splits the PDF and orchestrates parsing so you can begin rehearsing quickly.
+
+<img src="docs/screenshots/create-upload.png" alt="Create or upload" width="560"/>
+
 Architecture
 - Backend (Rust/Axum): `backend/`
   - HTTP + WebSocket server, JWT auth (httpOnly cookies), CSRF token endpoint, strict CORS, security headers.
@@ -169,4 +216,5 @@ PgAdmin In Dev
   - Permanent: comment/remove the `pgadmin:` service block, or use Compose profiles to enable it only when requested.
 
 License
-- MIT (see LICENSE)
+- AGPL-3.0-or-later (see LICENSE).
+- For commercial licensing (to keep modifications private or embed without AGPL obligations), contact the maintainer.
