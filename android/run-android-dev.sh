@@ -2,7 +2,14 @@
 
 # Script to run Pessoa app on Android device in development mode
 
+set -e
 echo "🚀 Starting Pessoa Android Development Server..."
+
+# Resolve directories
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+FRONTEND_DIR="$REPO_ROOT/frontend"
+ANDROID_DIR="$REPO_ROOT/android"
 
 # Kill any existing vite processes on port 5173
 lsof -ti:5173 | xargs kill -9 2>/dev/null || true
@@ -11,8 +18,8 @@ lsof -ti:5173 | xargs kill -9 2>/dev/null || true
 LOCAL_IP=$(hostname -I | awk '{print $1}')
 echo "📡 Using IP: $LOCAL_IP"
 
-# Update .env.android with current IP
-cat > .env.android << EOF
+# Update .env.android with current IP (in frontend)
+cat > "$FRONTEND_DIR/.env.android" << EOF
 # Environment variables for Android development
 # This file is used when running the app on Android devices
 
@@ -24,8 +31,8 @@ VITE_BACKEND_URL=http://$LOCAL_IP:3000
 VITE_WS_URL=ws://$LOCAL_IP:3000
 EOF
 
-# Update Capacitor config with current IP
-cat > ../capacitor.config.json << EOF
+# Update Capacitor config with current IP (in frontend)
+cat > "$FRONTEND_DIR/capacitor.config.json" << EOF
 {
   "appId": "com.pessoa.app",
   "appName": "Pessoa",
@@ -45,6 +52,7 @@ echo "📡 Backend URL: http://$LOCAL_IP:3000"
 echo "📱 Frontend URL: http://$LOCAL_IP:5173"
 
 # Load Android environment variables and start Vite
+pushd "$FRONTEND_DIR" >/dev/null
 npx vite --host --port 5173 --mode android &
 VITE_PID=$!
 
@@ -55,6 +63,7 @@ sleep 3
 if ! adb devices | grep -q "device$"; then
     echo "❌ No Android device connected. Please connect your device with USB debugging enabled."
     kill $VITE_PID 2>/dev/null
+    popd >/dev/null
     exit 1
 fi
 
@@ -74,6 +83,7 @@ echo "Press Ctrl+C to stop the server"
 cleanup() {
     echo "🛑 Stopping servers..."
     kill $VITE_PID 2>/dev/null
+    popd >/dev/null
     exit 0
 }
 

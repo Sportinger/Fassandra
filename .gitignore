@@ -39,6 +39,10 @@ errors_before_test
 /coverage/
 frontend/coverage/
 
+# Capacitor generated config (use TS config as source)
+capacitor.config.json
+frontend/capacitor.config.json
+
 # Local database files
 *.db
 *.sqlite
@@ -56,4 +60,3 @@ frontend/coverage/
 # Temporary setup files (used during initial deployment)
 .setup-files/
 .dev-files/
-
