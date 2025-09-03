@@ -151,7 +151,32 @@ impl ClaudeSessionService {
             progress: 10,
         });
 
-        // Convert host path to container path by replacing host backend root with /app
+        // Resolve execution context and paths so the CLI starts in the right place
+        // 1) Decide where helper scripts live and set the working directory there
+        //    Prefer /app (container runtime). Fallback to repo backend directory on host.
+        let in_container = tokio::fs::metadata("/app/json_mem.sh").await.is_ok()
+            && tokio::fs::metadata("/app/yjs_to_db.sh").await.is_ok();
+
+        // Try to locate scripts on host if not in container
+        let host_backend_has_scripts = tokio::fs::metadata("./yjs_to_db.sh").await.is_ok()
+            && tokio::fs::metadata("./json_mem.sh").await.is_ok();
+        let host_repo_backend_has_scripts = tokio::fs::metadata("backend/yjs_to_db.sh").await.is_ok()
+            && tokio::fs::metadata("backend/json_mem.sh").await.is_ok();
+
+        // Determine execution CWD where ./json_mem.sh and ./yjs_to_db.sh will be available
+        let exec_cwd = if in_container {
+            std::path::PathBuf::from("/app")
+        } else if host_backend_has_scripts {
+            // current directory already contains scripts
+            std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
+        } else if host_repo_backend_has_scripts {
+            std::path::PathBuf::from("backend")
+        } else {
+            // Fallback to /app to keep behavior predictable; prompt will still reference ./ scripts
+            std::path::PathBuf::from("/app")
+        };
+
+        // 2) Convert host path to container path only when running in the container
         let container_pdf_path = if let Some(idx) = pdf_path.find("/backend") {
             let suffix = &pdf_path[idx + "/backend".len()..];
             format!("/app{}", suffix)
@@ -159,30 +184,43 @@ impl ClaudeSessionService {
             pdf_path.clone()
         };
 
+        // The path that will be presented to the Claude CLI and used for existence checks
+        let effective_input_path = if in_container { container_pdf_path.clone() } else { pdf_path.clone() };
+
         // Prepare the command - inline the full instructions to maximize
         // adherence to required [PROGRESS]/[CHUNK_COMPLETE] markers.
+        // Helper script usage is relative to the working directory
+        let mem_helper_cmd = "./json_mem.sh";
+        let import_cmd = format!("./yjs_to_db.sh /tmp/script_data.json {}", username);
+
         let prompt = format!(
             "{}\n\n---\nRuntime Parameters\n- Input path: {} (directory of pre-split 5-page chunk PDFs)\n- Username: {}\n\nIMPORTANT:\n- Emit progress markers exactly as specified above (lines starting with [PROGRESS] and [CHUNK_COMPLETE]).\n- Do not edit /tmp/script_data.json directly. Initialize and append via: /app/json_mem.sh init, then /app/json_mem.sh add <chunk.json> /tmp/script_data.json\n- Validate each chunk with: jq -e . <chunk.json>; keep /tmp/script_data.json valid JSON after every append.\n- The input is a directory of pre-split chunk PDFs; iterate files in numeric order and process each PDF as one chunk. Use original page numbering via offsets (A..B) for each chunk.\n- After finishing all chunks, run exactly one import using: ./yjs_to_db.sh /tmp/script_data.json {}\n- After successful import, output exactly: iam done with my job rom\n",
             PARSING_PROMPT_MD,
-            container_pdf_path,
+            effective_input_path,
             username,
             username
         );
+        // Patch helper paths inside IMPORTANT block to match our working directory
+        // Replace the absolute /app helper paths with ./ to ensure they resolve under exec_cwd
+        let prompt = prompt
+            .replace("/app/json_mem.sh", mem_helper_cmd)
+            .replace("./yjs_to_db.sh /tmp/script_data.json ", &import_cmd.replace(" /tmp/script_data.json ", " "));
 
         // Log the paths for debugging
-        tracing::info!("Starting Claude Code with PDF path: {}", container_pdf_path);
-        tracing::info!("Original PDF path: {}", pdf_path);
+        tracing::info!("Starting Claude Code with input path: {}", effective_input_path);
+        tracing::info!("Original (host) path: {}", pdf_path);
+        tracing::info!("Execution working directory: {}", exec_cwd.display());
         
         // Check if the input path exists
-        if !tokio::fs::metadata(&container_pdf_path).await.is_ok() {
-            tracing::error!("Input path does not exist: {}", container_pdf_path);
-            return Err(anyhow!("Input path not found: {}", container_pdf_path));
+        if !tokio::fs::metadata(&effective_input_path).await.is_ok() {
+            tracing::error!("Input path does not exist: {}", effective_input_path);
+            return Err(anyhow!("Input path not found: {}", effective_input_path));
         }
 
         // If input is a directory of pre-split PDFs, try to compute chunk/page info
-        if let Ok(meta) = tokio::fs::metadata(&container_pdf_path).await {
+        if let Ok(meta) = tokio::fs::metadata(&effective_input_path).await {
             if meta.is_dir() {
-                let mut entries = tokio::fs::read_dir(&container_pdf_path).await
+                let mut entries = tokio::fs::read_dir(&effective_input_path).await
                     .map_err(|e| anyhow!("Failed to read input directory: {}", e))?;
                 let mut pdfs: Vec<String> = Vec::new();
                 while let Ok(Some(entry)) = entries.next_entry().await {
@@ -259,11 +297,95 @@ impl ClaudeSessionService {
                 .arg("--dangerously-skip-permissions");
             cmd
         };
+
+        // Ensure Claude CLI sees the correct auth/config.
+        // Goal: make automated session use the same login as a manual `claude` on host.
+        // Strategy:
+        // 1) Respect explicit overrides via env: CLAUDE_HOME, XDG_CONFIG_HOME, CLAUDE_CONFIG_DIR.
+        // 2) Try common locations, including /home/appuser, /root, /app.
+        // 3) Prefer XDG (~/.config/claude-code) but also support legacy ~/.claude.
+        let mut configured_auth_env = false;
+
+        // Helper to wire envs once we decide on paths
+        let mut apply_env = |home_dir: &str, xdg_cfg: &str| {
+            tracing::info!(
+                "Using Claude config from HOME={} XDG_CONFIG_HOME={}",
+                home_dir, xdg_cfg
+            );
+            cmd.env("HOME", home_dir);
+            cmd.env("XDG_CONFIG_HOME", xdg_cfg);
+            let xdg_cache = format!("{}/.cache", home_dir);
+            cmd.env("XDG_CACHE_HOME", &xdg_cache);
+            configured_auth_env = true;
+        };
+
+        // 1) Explicit overrides
+        let env_home = std::env::var("CLAUDE_HOME").ok();
+        let env_xdg = std::env::var("XDG_CONFIG_HOME").ok();
+        let env_cfg_dir = std::env::var("CLAUDE_CONFIG_DIR").ok();
+        if let (Some(h), Some(x)) = (env_home.as_deref(), env_xdg.as_deref()) {
+            let cfg_dir = std::path::Path::new(x).join("claude-code");
+            let legacy_dir = std::path::Path::new(h).join(".claude");
+            if cfg_dir.exists() || legacy_dir.exists() {
+                apply_env(h, x);
+            }
+        }
+        if !configured_auth_env {
+            if let Some(dir) = env_cfg_dir.as_deref() {
+                let p = std::path::Path::new(dir);
+                // Accept either .../claude-code or a parent directory containing it
+                let (home_dir, xdg_cfg) = if p.ends_with("claude-code") {
+                    // XDG is parent of claude-code, HOME stays as current or /home/appuser if available
+                    let parent = p.parent().unwrap_or(std::path::Path::new("/home/appuser"));
+                    // Pick a reasonable HOME
+                    let home_guess = env_home
+                        .as_deref()
+                        .unwrap_or("/home/appuser");
+                    (home_guess.to_string(), parent.to_string_lossy().to_string())
+                } else {
+                    // Provided path is already XDG_CONFIG_HOME
+                    let home_guess = env_home
+                        .as_deref()
+                        .unwrap_or("/home/appuser");
+                    (home_guess.to_string(), dir.to_string())
+                };
+                let cfg_dir = std::path::Path::new(&xdg_cfg).join("claude-code");
+                let legacy_dir = std::path::Path::new(&home_dir).join(".claude");
+                if cfg_dir.exists() || legacy_dir.exists() {
+                    apply_env(&home_dir, &xdg_cfg);
+                }
+            }
+        }
+
+        // 2) Common locations (if no explicit env worked)
+        if !configured_auth_env {
+            let candidate_configs = [
+                ("/home/appuser", "/home/appuser/.config"),
+                ("/root", "/root/.config"),
+                ("/app", "/app/.config"),
+            ];
+            for (home_dir, xdg_cfg) in candidate_configs {
+                let cfg_dir = std::path::Path::new(xdg_cfg).join("claude-code");
+                let legacy_dir = std::path::Path::new(home_dir).join(".claude");
+                if cfg_dir.exists() || legacy_dir.exists() {
+                    apply_env(home_dir, xdg_cfg);
+                    break;
+                }
+            }
+        }
+
+        if !configured_auth_env {
+            tracing::warn!(
+                "Claude config not found in /home/appuser, /root or /app; relying on process HOME ({}). Set CLAUDE_CONFIG_DIR or mount ~/.config/claude-code into the container.",
+                std::env::var("HOME").unwrap_or_else(|_| "<unset>".into())
+            );
+        }
         
         tracing::info!("Running with prompt: {}", prompt);
         
         // Run Claude Code
         let mut child = cmd
+            .current_dir(&exec_cwd)
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())

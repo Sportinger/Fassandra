@@ -63,7 +63,7 @@ Notes:
 
 ## Content Types
 
-- scene: Scene headers with scene_number
+- scene: Scene headers with numbering and a non-empty title
 - dialogue: Character dialogue with speaker
 - stage_direction: Stage directions and actions
 - monologue: Extended character speech
@@ -72,9 +72,18 @@ Notes:
 
 ## Important Field Names
 
-- Use "content" for all textual content (not "line" or "description")
-- Use "page" for page numbers (not "page_number")
-- Each element is a separate object in the content array
+- Use "content" for all textual content (not "line" or "description"). For scene items, "content" MUST be the scene title/heading text (e.g., "INT. OFFICE - DAY"). It must never be empty.
+- Use "page" for page numbers (not "page_number"). Every item MUST include a correct original page number.
+- Each element is a separate object in the content array.
+
+## Scene And Page Numbering (Strict)
+
+- Scene items MUST include both:
+  - "content": the scene title/heading string, non-empty. Prefer the exact heading from the PDF (e.g., "INT. OFFICE - DAY", "EXT. STREET – NIGHT", or localized forms like "SZENE 3 – PARK").
+  - "scene_number": a string scene counter.
+- Maintain scene numbering continuously across chunks using the `context.last_scene` value. If `context.last_scene` is provided, the next scene's `scene_number` starts from `parseInt(context.last_scene)+1`.
+- If a scene heading is visually present but the title text cannot be extracted, infer a concise title from the first descriptive line (5–12 words), uppercase major words, and use that as `content`. Never leave the scene `content` empty.
+- Page numbers MUST reflect the original PDF pages (see Workflow). Every emitted item (scene, dialogue, stage_direction, etc.) MUST carry a `page` consistent with the page window A..B for the current chunk.
 
 ## Dialogue Line Break Rules
 
@@ -96,7 +105,7 @@ Input assumptions:
 
 4. For i = 1..Z, process the i-th chunk PDF from the directory (corresponding to pages A..B where A = 5*(i-1)+1, B = min(5*i, Y)):
    - Parse only this chunk PDF and structure the data as per the schema above.
-   - Assign the `page` field using original numbering: start at A and increment per page within the chunk.
+   - Assign the `page` field using original numbering: start at A and increment per page within the chunk. Ensure every item includes the correct `page`.
    - Emit `[PROGRESS] Page X of Y processed` each time you finish a page.
    - Build JSON with `mode: "chunked"`, correct `chunk` metadata, and `context` continuity fields.
    - First chunk: include full `metadata`. Later chunks: omit `metadata`.
@@ -116,11 +125,18 @@ Implementation notes (critical):
 - The file `/tmp/script_data.json` is the source of truth (memory) and grows chunk by chunk. Keep it valid JSON after every append.
 - Prefer wrapper form `{ "chunks": [...] }`; the helper will normalize `[]` automatically.
 - Validate each chunk with `jq -e .` before appending. If invalid, regenerate it.
-- Maintain `context` (`last_scene`, `last_speaker`, etc.) to preserve continuity across chunks.
+- Maintain `context` (`last_scene`, `last_speaker`, etc.) to preserve continuity across chunks. Update `last_scene` to the most recent `scene_number` you emitted in the chunk.
 - Preserve original content verbatim (language, punctuation, diacritics). Do not translate or paraphrase.
 - Do not modify or re-output content from pages outside the current window A..B. Each chunk contains only its pages.
 - Strict JSON: use standard ASCII double quotes (`"`), escape internal quotes correctly, and avoid typographic quotes (e.g., “ ” „ ”).
 - Validate JSON before import: `jq -e . /tmp/script_data.json` and fix errors before proceeding.
+
+## Validation Checklist (Per Chunk)
+
+- Pages: Every item has a correct `page` within A..B.
+- Scenes: Every scene has non-empty `content` (title) and a `scene_number` string.
+- Continuity: `context.last_scene` matches the last emitted scene number in this chunk.
+- Schema: Only allowed `type` values are used and fields are correctly named.
 
 ## Progress Reporting
 
