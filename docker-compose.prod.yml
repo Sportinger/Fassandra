@@ -36,7 +36,7 @@ services:
     restart: unless-stopped
     env_file: .env.prod
     environment:
-      CLAUDE_CONFIG_DIR: /home/appuser/.config
+      CLAUDE_BIN: /host-claude/bin/claude
     depends_on:
       db:
         condition: service_healthy
@@ -48,6 +48,8 @@ services:
       - ./yjs-parser:/app/yjs-parser:ro
       - ~/.config/claude-code:/home/appuser/.config/claude-code:ro
       - ~/.claude:/home/appuser/.claude:ro
+      - ~/.nvm/versions/node/v22.19.0/bin:/host-claude/bin:ro
+      - ~/.nvm/versions/node/v22.19.0/lib/node_modules:/host-claude/lib/node_modules:ro
       # Claude settings are now baked into the Docker image with bypass permissions
       # - ~/.config/claude-code:/root/.config/claude-code:ro
       - ~/.config/gcloud:/root/.config/gcloud:ro
