@@ -115,29 +115,38 @@ impl YjsScriptBuilderService {
         info!("Processing chunk {} of {} for script {}", 
               chunk_info.number, chunk_info.total, script_id);
 
-        // If this is the first chunk, create the script record
+        // If this is the first chunk, create the script record and initialize an empty base state
         if chunk_info.number == 1 {
             if let Some(metadata) = &chunk.metadata {
                 self.create_script_record(script_id, user_id, metadata).await?;
+                // Initialize a minimal base state like manual scripts do (will be overwritten at finalization)
+                self.initialize_empty_base_state(script_id).await.ok();
             }
         }
 
         // Load or create YJS document
         let doc = self.load_or_create_document(script_id).await?;
+        // Capture state vector BEFORE applying this chunk, so we can compute a DIFF update
+        use yrs::updates::decoder::Decode as _;
+        let prev_sv_bytes = { let t = doc.transact(); t.state_vector().encode_v1() };
 
         // Apply chunk content to document
         self.apply_chunk_to_document(&doc, chunk)?;
 
-        // Get the update
-        let update = doc.transact().encode_state_as_update_v1(&StateVector::default());
+        // Get a DIFF update against the previous state vector to avoid overwriting user edits
+        let prev_sv = yrs::StateVector::decode_v1(&prev_sv_bytes)
+            .unwrap_or_else(|_| yrs::StateVector::default());
+        let update = doc.transact().encode_state_as_update_v1(&prev_sv);
 
         // Store the update
         self.store_yjs_update(script_id, user_id, update).await?;
 
-        // If this is the last chunk, trigger compaction
+        // If this is the last chunk, finalize by compacting recent updates into base state immediately
         if chunk_info.number == chunk_info.total {
-            info!("Last chunk processed, triggering compaction for script {}", script_id);
-            // Compaction will happen automatically via the compaction service
+            info!("Last chunk processed, finalizing script {} into base state", script_id);
+            if let Err(e) = self.compact_now_to_base(script_id).await {
+                error!("Failed to finalize script {} into base state: {}", script_id, e);
+            }
         }
 
         Ok(BuildResult {
@@ -200,6 +209,88 @@ impl YjsScriptBuilderService {
         .await?;
 
         info!("Created script record: {} - '{}'", script_id, metadata.title);
+        Ok(())
+    }
+
+    // Initialize an empty YJS base state similar to manual script creation
+    async fn initialize_empty_base_state(&self, script_id: Uuid) -> Result<()> {
+        use yrs::{Doc, Options, Transact};
+        use yrs::updates::encoder::Encode;
+        use yrs::{XmlElementPrelim, XmlFragment as _};
+
+        let doc = Doc::with_options(Options::default());
+        {
+            let mut txn = doc.transact_mut();
+            let default_fragment = txn.get_or_insert_xml_fragment("default");
+            // Add an initial empty paragraph
+            default_fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+            txn.get_or_insert_text("prosemirror");
+            txn.get_or_insert_map("metadata");
+        }
+        let base_state = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
+        let state_vector = doc.transact().state_vector().encode_v1();
+
+        sqlx::query(
+            r#"
+            INSERT INTO yjs_base_states 
+                (script_id, base_state, state_vector, compacted_at, last_compacted_update_id, update_count, document_size)
+            VALUES ($1, $2, $3, NOW(), 0, 0, $4)
+            ON CONFLICT (script_id) DO NOTHING
+            "#
+        )
+        .bind(script_id)
+        .bind(base_state.as_slice())
+        .bind(state_vector.as_slice())
+        .bind(base_state.len() as i32)
+        .execute(&*self.db_pool)
+        .await?;
+        Ok(())
+    }
+
+    // Compact current updates into base state immediately (synchronous finalization)
+    async fn compact_now_to_base(&self, script_id: Uuid) -> Result<()> {
+        use crate::services::yjs_compaction_service::load_document;
+        use yrs::updates::encoder::Encode;
+        use yrs::Transact;
+
+        // Load doc = base + recent updates
+        let doc = load_document(&*self.db_pool, script_id).await?;
+        let new_base = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
+        let state_vector = doc.transact().state_vector().encode_v1();
+
+        // Save/overwrite base state
+        sqlx::query(
+            r#"
+            INSERT INTO yjs_base_states (script_id, base_state, state_vector, last_compacted_update_id, update_count, document_size)
+            VALUES ($1, $2, $3, 
+                COALESCE((SELECT MAX(id) FROM yjs_recent_updates WHERE script_id = $1), 0),
+                (SELECT COUNT(*) FROM yjs_recent_updates WHERE script_id = $1),
+                $4)
+            ON CONFLICT (script_id)
+            DO UPDATE SET 
+                base_state = EXCLUDED.base_state,
+                state_vector = EXCLUDED.state_vector,
+                last_compacted_update_id = EXCLUDED.last_compacted_update_id,
+                update_count = yjs_base_states.update_count + EXCLUDED.update_count,
+                document_size = EXCLUDED.document_size,
+                compacted_at = NOW()
+            "#
+        )
+        .bind(script_id)
+        .bind(new_base.as_slice())
+        .bind(state_vector.as_slice())
+        .bind(new_base.len() as i32)
+        .execute(&*self.db_pool)
+        .await?;
+
+        // Mark updates as compacted now
+        sqlx::query(
+            r#"UPDATE yjs_recent_updates SET is_compacted = true WHERE script_id = $1 AND is_compacted = false"#
+        )
+        .bind(script_id)
+        .execute(&*self.db_pool)
+        .await?;
+
         Ok(())
     }
 
@@ -322,11 +413,10 @@ impl YjsScriptBuilderService {
         {
             let mut txn = doc.transact_mut();
             let fragment = txn.get_or_insert_xml_fragment("default");
-
-            // Clear previous content
-            while fragment.len(&txn) > 0 {
-                fragment.remove(&mut txn, 0);
-            }
+            // IMPORTANT: Do NOT clear previous content here.
+            // The parser processes multiple chunks sequentially. Clearing would wipe
+            // user edits made during an ongoing parsing session. Instead, we only append
+            // content for each chunk, preserving existing content and edits.
 
             let mut current_page: i32 = -1;
             for item in &chunk.content {
