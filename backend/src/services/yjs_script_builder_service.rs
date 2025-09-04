@@ -318,27 +318,66 @@ impl YjsScriptBuilderService {
             txt.push(&mut txn, &buffer);
         }
 
-        // Also populate a simple structure into the 'default' XmlFragment
-        // Split the buffer into logical blocks and create paragraph nodes
+        // Also populate a structured TipTap-compatible document in the 'default' fragment
         {
             let mut txn = doc.transact_mut();
             let fragment = txn.get_or_insert_xml_fragment("default");
 
             // Clear previous content
             while fragment.len(&txn) > 0 {
-                fragment.remove_range(&mut txn, 0, 1);
+                fragment.remove(&mut txn, 0);
             }
 
-            // Create paragraphs for each block; keep page/scenes as plain text markers
-            let blocks: Vec<&str> = buffer
-                .split("\n\n")
-                .map(|b| b.trim())
-                .filter(|b| !b.is_empty())
-                .collect();
+            let mut current_page: i32 = -1;
+            for item in &chunk.content {
+                let page_num = item.page.unwrap_or(-1);
+                if page_num >= 0 && page_num != current_page {
+                    current_page = page_num;
+                    let page_el = XmlElementPrelim::empty("pageIndicator");
+                    let page_ref = fragment.push_back(&mut txn, page_el);
+                    page_ref.push_back(&mut txn, XmlTextPrelim::new(format!("Page {}", current_page)));
+                }
 
-            for block in blocks {
-                let p = fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
-                p.push_back(&mut txn, XmlTextPrelim::new(block.to_string()));
+                match item.content_type.as_str() {
+                    "scene" | "scene_heading" => {
+                        let scene_el = XmlElementPrelim::empty("sceneBlock");
+                        let scene_ref = fragment.push_back(&mut txn, scene_el);
+                        let title = if item.content.trim().is_empty() { "Untitled Scene".to_string() } else { item.content.clone() };
+                        scene_ref.push_back(&mut txn, XmlTextPrelim::new(title));
+                    }
+                    "dialogue" | "monologue" => {
+                        let dlg_ref = fragment.push_back(&mut txn, XmlElementPrelim::empty("dialogueBlock"));
+                        let sp_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("speaker"));
+                        if let Some(spk) = &item.speaker { if !spk.trim().is_empty() { sp_ref.push_back(&mut txn, XmlTextPrelim::new(spk.trim().to_string())); } }
+                        let dtext_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("dialogueText"));
+                        let parts: Vec<&str> = item.content.split('\n').collect();
+                        if parts.is_empty() {
+                            let p = dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                            p.push_back(&mut txn, XmlTextPrelim::new(String::new()));
+                        } else {
+                            for ptxt in parts {
+                                let t = ptxt.trim();
+                                if t.is_empty() { continue; }
+                                let p = dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                                p.push_back(&mut txn, XmlTextPrelim::new(t.to_string()));
+                            }
+                        }
+                    }
+                    "stage_direction" | "reading" => {
+                        let txt = item.content.trim();
+                        if !txt.is_empty() {
+                            let p = fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                            p.push_back(&mut txn, XmlTextPrelim::new(txt.to_string()));
+                        }
+                    }
+                    _ => {
+                        let txt = item.content.trim();
+                        if !txt.is_empty() {
+                            let p = fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                            p.push_back(&mut txn, XmlTextPrelim::new(txt.to_string()));
+                        }
+                    }
+                }
             }
         }
         Ok(())
