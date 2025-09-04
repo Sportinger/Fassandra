@@ -24,6 +24,8 @@ use crate::infrastructure::middleware::create_security_headers_middleware;
 use crate::models::script::Script;
 use yrs::{ReadTxn, Transact};
 use yrs::updates::encoder::Encode;
+use yrs::{Text, XmlFragment as _};
+use yrs::GetString;
 
 /// Script create request payload
 #[derive(serde::Deserialize)]
@@ -274,7 +276,7 @@ async fn get_script_yjs_state(
         if needs && legacy_len > 0 {
             let legacy = {
                 let t = doc.transact();
-                t.get_text("prosemirror").map(|x| x.to_string(&t)).unwrap_or_default()
+                t.get_text("prosemirror").map(|x| x.get_string(&t)).unwrap_or_default()
             };
             let blocks: Vec<&str> = legacy.split("\n\n").map(|b| b.trim()).filter(|b| !b.is_empty()).collect();
             let mut w = doc.transact_mut();

@@ -49,14 +49,15 @@ if command -v jq >/dev/null 2>&1; then
     exit 1
   fi
 else
-  python3 - <<PY || {
+  # Fallback JSON validation using Python if jq is not available
+  python3 - "$JSON_FILE" <<'PY' || {
 import json, sys
 with open(sys.argv[1], 'r', encoding='utf-8') as f:
     json.load(f)
 PY
     echo "Error: Invalid JSON in $JSON_FILE (python validation failed)"
     exit 1
-  } "$JSON_FILE"
+  }
 fi
 
 echo "Pushing YJS JSON to database..."
@@ -64,16 +65,31 @@ echo "File: $JSON_FILE"
 echo "User: $USERNAME"
 echo "---"
 
-# Execute the yjs_to_db binary
+#!/usr/bin/env bash
+
+# Locate yjs_to_db binary robustly (prefer /app in container)
+YJS_BIN=""
+if [ -x "/app/yjs_to_db" ]; then
+  YJS_BIN="/app/yjs_to_db"
+elif [ -x "./yjs_to_db" ]; then
+  YJS_BIN="./yjs_to_db"
+elif command -v yjs_to_db >/dev/null 2>&1; then
+  YJS_BIN="$(command -v yjs_to_db)"
+else
+  echo "Error: yjs_to_db binary not found (checked /app, CWD, and PATH)"
+  exit 1
+fi
+
+# Execute the yjs_to_db binary without changing directories
 if [ -n "$SCRIPT_ID" ]; then
-  cd /app && ./yjs_to_db "$JSON_FILE" "$USERNAME" "$SCRIPT_ID" 2>&1 || {
+  "$YJS_BIN" "$JSON_FILE" "$USERNAME" "$SCRIPT_ID" 2>&1 || {
     EXIT_CODE=$?
     echo "---"
     echo "Error: YJS to DB operation failed with exit code $EXIT_CODE"
     exit $EXIT_CODE
   }
 else
-  cd /app && ./yjs_to_db "$JSON_FILE" "$USERNAME" 2>&1 || {
+  "$YJS_BIN" "$JSON_FILE" "$USERNAME" 2>&1 || {
     EXIT_CODE=$?
     echo "---"
     echo "Error: YJS to DB operation failed with exit code $EXIT_CODE"

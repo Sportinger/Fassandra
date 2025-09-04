@@ -129,11 +129,14 @@ export class ClaudeSessionService {
     }
   }
 
-  static async getSessionStatus(sessionId: string, token: string): Promise<SessionStatus> {
+  static async getSessionStatus(sessionId: string, token?: string): Promise<SessionStatus> {
+    const headers: Record<string, string> = {};
+    if (token && token !== 'authenticated') {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
     const response = await fetch(`/api/s/session/${sessionId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+      headers,
+      credentials: 'include',
     });
 
     if (!response.ok) {

@@ -397,6 +397,49 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       sessionManager.track(placeholder.id, sessionService);
       sessionService.connect();
 
+      // Fallback polling in case WS events are blocked: poll session status
+      // and update progress; mark complete when status reaches Complete.
+      let pollTimer: any = null;
+      const startPolling = () => {
+        if (pollTimer) return;
+        pollTimer = setInterval(async () => {
+          try {
+            const st = await ClaudeSessionService.getSessionStatus(session_id, token);
+            if (typeof st.progress === 'number') {
+              const prog = Math.min(99, Math.max(20, Math.round(st.progress)));
+              updateUploadStatus({ uploadProgress: prog });
+            }
+            if (st.status === 'Complete') {
+              clearInterval(pollTimer);
+              pollTimer = null;
+              updateUploadStatus({
+                uploadStatus: 'completed' as UploadStatus,
+                uploadProgress: 100,
+                uploadSubStage: 'Upload finished successfully'
+              });
+              setTimeout(() => {
+                refreshScripts();
+                removeUpload(placeholder.id);
+                sessionManager.dispose(placeholder.id);
+              }, 3000);
+            } else if (st.status === 'Failed') {
+              clearInterval(pollTimer);
+              pollTimer = null;
+              updateUploadStatus({
+                uploadStatus: 'error' as UploadStatus,
+                uploadError: st.error || 'Processing failed',
+                uploadSubStage: 'Upload failed'
+              });
+              sessionManager.dispose(placeholder.id);
+              removeUpload(placeholder.id);
+            }
+          } catch {
+            // Ignore transient errors
+          }
+        }, 3000);
+      };
+      startPolling();
+
     } catch (error: any) {
       logger.error('ScriptList', 'Upload failed:', error);
       updateUploadStatus({ 
