@@ -20,7 +20,8 @@ import { useRouting } from './hooks/useRouting';
 import { useUIState } from './hooks/useUIState';
 
 import './App.css'
-import UploadOverlay from './components/shared/UploadOverlay';
+// Upload overlay disabled per request
+// import UploadOverlay from './components/shared/UploadOverlay';
 // import './styles/ErrorBoundary.css'
 // import './styles/ErrorFallbacks.css'
 
@@ -211,8 +212,7 @@ function App(): JSX.Element {
 
           <main className={token ? 'appContent' : 'appContent appContentFull appContentNoHeader'}>
             {viewComponent}
-            {/* Always show upload overlay so users see progress even when logged out */}
-            <UploadOverlay />
+            {/* Upload overlay removed for cleaner UI */}
             
             {token && isUploaderOpen && (
               <ErrorBoundary level="component" isolate={true}>
