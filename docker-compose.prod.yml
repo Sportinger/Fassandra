@@ -46,8 +46,8 @@ services:
     volumes:
       - ./backend/uploads:/app/uploads
       - ./yjs-parser:/app/yjs-parser:ro
-      - ~/.config/claude-code:/home/appuser/.config/claude-code:ro
-      - ~/.claude:/home/appuser/.claude:ro
+      - ~/.config/claude-code:/home/appuser/.config/claude-code:rw
+      - ~/.claude:/home/appuser/.claude:rw
       - ~/.nvm/versions/node/v22.19.0/bin:/host-claude/bin:ro
       - ~/.nvm/versions/node/v22.19.0/lib/node_modules:/host-claude/lib/node_modules:ro
       # Claude settings are now baked into the Docker image with bypass permissions

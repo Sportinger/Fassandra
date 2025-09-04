@@ -206,10 +206,10 @@ impl ClaudeSessionService {
             .replace("/app/json_mem.sh", mem_helper_cmd)
             .replace("./yjs_to_db.sh /tmp/script_data.json ", &import_cmd.replace(" /tmp/script_data.json ", " "));
 
-        // Log the paths for debugging
+        // Logging: keep operational details concise at info level
         tracing::info!("Starting Claude Code with input path: {}", effective_input_path);
-        tracing::info!("Original (host) path: {}", pdf_path);
-        tracing::info!("Execution working directory: {}", exec_cwd.display());
+        tracing::debug!("Original (host) path: {}", pdf_path);
+        tracing::debug!("Execution working directory: {}", exec_cwd.display());
         
         // Check if the input path exists
         if !tokio::fs::metadata(&effective_input_path).await.is_ok() {
@@ -289,7 +289,8 @@ impl ClaudeSessionService {
                 }
             }
             let path_env = std::env::var("PATH").unwrap_or_else(|_| "<unset>".into());
-            tracing::info!("Using Claude at: {} (PATH={})", claude_path, path_env);
+            tracing::info!("Using Claude at: {}", claude_path);
+            tracing::debug!("PATH={}", path_env);
             let mut cmd = Command::new(claude_path);
             cmd.arg("--print")
                 .arg("--output-format").arg("stream-json") // stream incremental output as JSON lines
@@ -378,12 +379,12 @@ impl ClaudeSessionService {
 
         if !configured_auth_env {
             tracing::warn!(
-                "Claude config not found in /home/appuser, /root or /app; relying on process HOME ({}). Set CLAUDE_CONFIG_DIR or mount ~/.config/claude-code into the container.",
+                "Claude config not found in common locations; using HOME={}. Consider setting CLAUDE_CONFIG_DIR or mounting ~/.config/claude-code.",
                 std::env::var("HOME").unwrap_or_else(|_| "<unset>".into())
             );
         }
-        
-        tracing::info!("Running with prompt: {}", prompt);
+        // Do not log the full prompt at info level to avoid noisy or sensitive output
+        tracing::debug!("Running with embedded parsing prompt (chunked PDF parser)");
         
         // Run Claude Code
         let mut child = cmd
@@ -436,6 +437,11 @@ impl ClaudeSessionService {
         let mut found_completion = false;
         let mut script_id = None;
 
+        // Determine log verbosity for forwarding to frontend. Default is concise (no raw stream).
+        let concise_mode = std::env::var("CLAUDE_LOG_VERBOSITY")
+            .map(|v| v.to_lowercase() != "debug")
+            .unwrap_or(true);
+
         // NOTE: chunk memory file monitor intentionally disabled per request — rely on CLI streaming
 
         // Set a timeout of 10 minutes
@@ -449,30 +455,31 @@ impl ClaudeSessionService {
                         all_output.push(line.clone());
                         
                         // Log Claude output for debugging
-                        tracing::info!("[Claude] {}", line);
+                        tracing::debug!("[Claude] {}", line);
                         
-                        // Update session output
-                        {
+                        // Append to session output only if concise-safe (progress markers) or in debug verbosity
+                        let is_progress_line = line.contains("[PROGRESS]") || line.contains("[CHUNK_COMPLETE]");
+                        if !concise_mode || is_progress_line {
                             let mut info = session_info.lock().await;
                             info.output.push(line.clone());
                         }
                         
-                        // Try to parse stream-json and extract human text, but always forward raw line
-                        let mut forwarded = false;
-                        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&line) {
-                            if let Some(obj) = v.as_object() {
-                                // Prefer "data" / "text" / "message" fields if present
-                                if let Some(s) = obj.get("data").and_then(|x| x.as_str())
-                                    .or_else(|| obj.get("text").and_then(|x| x.as_str()))
-                                    .or_else(|| obj.get("message").and_then(|x| x.as_str())) {
-                                    update_callback(session_id, SessionUpdate::Output { line: s.to_string() });
-                                    forwarded = true;
+                        // Forward output to frontend only in debug verbosity
+                        if !concise_mode {
+                            let mut forwarded = false;
+                            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&line) {
+                                if let Some(obj) = v.as_object() {
+                                    if let Some(s) = obj.get("data").and_then(|x| x.as_str())
+                                        .or_else(|| obj.get("text").and_then(|x| x.as_str()))
+                                        .or_else(|| obj.get("message").and_then(|x| x.as_str())) {
+                                        update_callback(session_id, SessionUpdate::Output { line: s.to_string() });
+                                        forwarded = true;
+                                    }
                                 }
                             }
-                        }
-                        if !forwarded {
-                            // Fallback: forward entire line
-                            update_callback(session_id, SessionUpdate::Output { line: line.clone() });
+                            if !forwarded {
+                                update_callback(session_id, SessionUpdate::Output { line: line.clone() });
+                            }
                         }
                         
                         // Check for progress indicators
@@ -578,14 +585,16 @@ impl ClaudeSessionService {
                         last_activity = Instant::now();
                         all_output.push(format!("[STDERR] {}", line));
                         
-                        // Update session output
-                        {
+                        // Append stderr to session output only in debug verbosity
+                        if !concise_mode {
                             let mut info = session_info.lock().await;
                             info.output.push(format!("[STDERR] {}", line));
                         }
                         
-                        // Send output update (stderr)
-                        update_callback(session_id, SessionUpdate::Output { line: format!("[STDERR] {}", line) });
+                        // Send output update (stderr) only in debug verbosity
+                        if !concise_mode {
+                            update_callback(session_id, SessionUpdate::Output { line: format!("[STDERR] {}", line) });
+                        }
                     }
                     _ = heartbeat.tick() => {
                         // Heartbeat disabled: rely solely on real CLI output for progress
