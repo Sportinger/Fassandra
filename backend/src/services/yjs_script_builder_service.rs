@@ -287,12 +287,25 @@ impl YjsScriptBuilderService {
                     "scene" | "scene_heading" => {
                         let scene_el = XmlElementPrelim::empty("sceneBlock");
                         let scene_ref = default_fragment.push_back(&mut txn, scene_el);
+                        // Attach attributes so UI/analysis can access without parsing text
+                        if let Some(n) = &item.scene_number {
+                            scene_ref.insert_attribute(&mut txn, "sceneNumber", n.clone());
+                        }
+                        if page_num >= 0 {
+                            scene_ref.insert_attribute(&mut txn, "pageNumber", page_num.to_string());
+                        }
+                        if !item.content.is_empty() {
+                            scene_ref.insert_attribute(&mut txn, "sceneTitle", item.content.clone());
+                        }
                         if !item.content.is_empty() {
                             let _ignored = scene_ref.push_back(&mut txn, XmlTextPrelim::new(item.content.clone()));
                         }
                     }
                     "dialogue" | "monologue" => {
                         let dlg_ref = default_fragment.push_back(&mut txn, XmlElementPrelim::empty("dialogueBlock"));
+                        if page_num >= 0 {
+                            dlg_ref.insert_attribute(&mut txn, "pageNumber", page_num.to_string());
+                        }
                         let sp_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("speaker"));
                         if let Some(spk) = &item.speaker { let _ignored = sp_ref.push_back(&mut txn, XmlTextPrelim::new(spk.clone())); }
                         let dtext_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("dialogueText"));
@@ -310,6 +323,9 @@ impl YjsScriptBuilderService {
                     "stage_direction" | "reading" | _ => {
                         if !item.content.is_empty() {
                             let p = default_fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                            if page_num >= 0 {
+                                p.insert_attribute(&mut txn, "pageNumber", page_num.to_string());
+                            }
                             let _ignored = p.push_back(&mut txn, XmlTextPrelim::new(item.content.clone()));
                         }
                     }
