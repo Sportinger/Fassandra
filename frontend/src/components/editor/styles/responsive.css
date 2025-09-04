@@ -284,6 +284,16 @@ html, body {
   text-decoration: none;
 }
 
+/* Visible inline page indicators inside content */
+.ProseMirror .page-indicator-inline,
+.ProseMirror [data-type="page-indicator"] {
+  display: block;
+  text-align: right;
+  font-size: 11px;
+  color: #bbb;
+  margin: 8px 0 12px;
+}
+
 /* ===== PARAGRAPH STYLES ===== */
 
 .ProseMirror p {

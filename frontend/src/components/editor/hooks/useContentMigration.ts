@@ -41,8 +41,9 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
           // Page indicator: [PAGE] N
           const pageMatch = block.match(/^\[PAGE\]\s*(\d+)/i);
           if (pageMatch) {
-            // Insert invisible page indicator node (compat extension)
-            docContent.push({ type: 'pageIndicator' });
+            const n = parseInt(pageMatch[1], 10) || 1;
+            // Insert visible page indicator node with number
+            docContent.push({ type: 'pageIndicator', attrs: { pageNumber: n } });
             continue;
           }
 

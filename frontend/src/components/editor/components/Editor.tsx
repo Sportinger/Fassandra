@@ -120,17 +120,23 @@ export const Editor: React.FC<EditorProps> = ({
     debugLog('[Editor] viewMode changed to:', viewMode);
   }, [viewMode, debugLog]);
 
-  // Compute page count from Yjs prosemirror markers ("[PAGE]")
+  // Compute page count from TipTap pageIndicator nodes
   useEffect(() => {
-    try {
-      if (!ydoc) return;
-      const t = ydoc.getText('prosemirror');
-      const s = t ? t.toString() : '';
-      const matches = s.match(/\[PAGE\]/g);
-      const count = matches && matches.length > 0 ? matches.length : 1;
-      setPageCount(count);
-    } catch {}
-  }, [ydoc]);
+    if (!editor) return;
+    const recompute = () => {
+      try {
+        let count = 0;
+        editor.state.doc.descendants((node: any) => {
+          if (node.type && node.type.name === 'pageIndicator') count += 1;
+        });
+        if (count === 0) count = 1;
+        setPageCount(count);
+      } catch {}
+    };
+    recompute();
+    editor.on('update', recompute);
+    return () => { editor.off('update', recompute); };
+  }, [editor]);
 
   // Compute current page from TipTap document by counting pageIndicator nodes before selection
   useEffect(() => {
