@@ -389,6 +389,8 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
             uploadSubStage: 'Upload failed'
           });
           sessionManager.dispose(placeholder.id);
+          // Remove failed upload placeholder so the box vanishes
+          removeUpload(placeholder.id);
         }
       );
 
@@ -403,6 +405,8 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
         uploadSubStage: 'Upload failed'
       });
       sessionManager.dispose(placeholder.id); // Clean up session on error
+      // Remove failed upload placeholder so the box vanishes
+      removeUpload(placeholder.id);
     }
   };
 
