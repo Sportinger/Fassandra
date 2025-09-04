@@ -509,6 +509,39 @@ impl ScriptApplicationService {
         // Load the YJS document using the compaction service
         match crate::services::yjs_compaction_service::load_document(self.pool.as_ref(), script_id).await {
             Ok(doc) => {
+                // Opportunistic server-side migration: if the 'default' fragment is empty
+                // but legacy 'prosemirror' text has content, materialize minimal paragraphs
+                // into 'default' so frontends always see content.
+                {
+                    use yrs::{Transact, ReadTxn, WriteTxn, XmlElementPrelim, XmlTextPrelim};
+                    let mut needs_migration = false;
+                    let prosemirror_len = {
+                        let t = doc.transact();
+                        let txt = t.get_text("prosemirror");
+                        let len = txt.as_ref().map(|x| x.len(&t)).unwrap_or(0);
+                        let default_len = t.get_xml_fragment("default").map(|f| f.len(&t)).unwrap_or(0);
+                        needs_migration = default_len == 0 && len > 0;
+                        len
+                    };
+                    if needs_migration && prosemirror_len > 0 {
+                        let legacy = {
+                            let t = doc.transact();
+                            t.get_text("prosemirror").map(|x| x.to_string(&t)).unwrap_or_default()
+                        };
+                        let blocks: Vec<&str> = legacy
+                            .split("\n\n")
+                            .map(|b| b.trim())
+                            .filter(|b| !b.is_empty())
+                            .collect();
+                        let mut w = doc.transact_mut();
+                        let frag = w.get_or_insert_xml_fragment("default");
+                        for b in blocks {
+                            let p = frag.push_back(&mut w, XmlElementPrelim::empty("paragraph"));
+                            p.push_back(&mut w, XmlTextPrelim::new(b.to_string()));
+                        }
+                    }
+                }
+
                 // Encode the document state for transmission
                 use yrs::{Transact, ReadTxn};
                 

@@ -257,6 +257,35 @@ async fn get_script_yjs_state(
         .await
         .map_err(|e| crate::error::AppError::Internal(e.into()))?;
     
+    // Server-side fallback migration: if 'default' is empty but legacy
+    // 'prosemirror' text contains content, materialize simple paragraphs
+    // so the editor can render immediately.
+    {
+        use yrs::{Transact, ReadTxn, WriteTxn, XmlElementPrelim, XmlTextPrelim};
+        let mut needs = false;
+        let legacy_len = {
+            let t = doc.transact();
+            let txt = t.get_text("prosemirror");
+            let len = txt.as_ref().map(|x| x.len(&t)).unwrap_or(0);
+            let def_len = t.get_xml_fragment("default").map(|f| f.len(&t)).unwrap_or(0);
+            needs = def_len == 0 && len > 0;
+            len
+        };
+        if needs && legacy_len > 0 {
+            let legacy = {
+                let t = doc.transact();
+                t.get_text("prosemirror").map(|x| x.to_string(&t)).unwrap_or_default()
+            };
+            let blocks: Vec<&str> = legacy.split("\n\n").map(|b| b.trim()).filter(|b| !b.is_empty()).collect();
+            let mut w = doc.transact_mut();
+            let frag = w.get_or_insert_xml_fragment("default");
+            for b in blocks {
+                let p = frag.push_back(&mut w, XmlElementPrelim::empty("paragraph"));
+                p.push_back(&mut w, XmlTextPrelim::new(b.to_string()));
+            }
+        }
+    }
+    
     // Get the YJS state as update
     let update = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
     

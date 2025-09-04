@@ -10,7 +10,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use anyhow::{Result, anyhow};
 use tracing::{info, error, debug};
-use yrs::{Doc, Options, Transact, ReadTxn, WriteTxn, StateVector, Xml, Text};
+use yrs::{Doc, Options, Transact, ReadTxn, WriteTxn, StateVector, Xml};
+use yrs::{XmlElementPrelim, XmlTextPrelim};
 // use yrs::updates::encoder::Encode; // Not needed; we use encode via transact
 
 // Define the structures for chunks (since yjs_document_builder is disabled)
@@ -261,8 +262,9 @@ impl YjsScriptBuilderService {
     }
 
     fn apply_chunk_to_document(&self, doc: &Doc, chunk: &ScriptChunk) -> Result<()> {
-        // Write plain text markers into 'prosemirror' field so the frontend migration can build proper TipTap nodes.
-        // Do NOT write into the 'default' fragment here; leaving it empty allows migration to trigger.
+        // Write plain text markers into 'prosemirror' field for legacy compatibility
+        // AND populate a minimal TipTap-compatible structure in the 'default' fragment
+        // so the editor can display content even without running the migration.
         let mut buffer = String::new();
 
         let mut current_page: i32 = -1;
@@ -307,15 +309,37 @@ impl YjsScriptBuilderService {
             }
         }
 
-        // Apply to Y.Doc 'prosemirror' text
+        // Apply to Y.Doc 'prosemirror' text (legacy)
         {
             let mut txn = doc.transact_mut();
             let txt = txn.get_or_insert_text("prosemirror");
             let cur_len = txt.len(&txn);
-            if cur_len > 0 {
-                txt.remove_range(&mut txn, 0, cur_len);
-            }
+            if cur_len > 0 { txt.remove_range(&mut txn, 0, cur_len); }
             txt.push(&mut txn, &buffer);
+        }
+
+        // Also populate a simple structure into the 'default' XmlFragment
+        // Split the buffer into logical blocks and create paragraph nodes
+        {
+            let mut txn = doc.transact_mut();
+            let fragment = txn.get_or_insert_xml_fragment("default");
+
+            // Clear previous content
+            while fragment.len(&txn) > 0 {
+                fragment.remove_range(&mut txn, 0, 1);
+            }
+
+            // Create paragraphs for each block; keep page/scenes as plain text markers
+            let blocks: Vec<&str> = buffer
+                .split("\n\n")
+                .map(|b| b.trim())
+                .filter(|b| !b.is_empty())
+                .collect();
+
+            for block in blocks {
+                let p = fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                p.push_back(&mut txn, XmlTextPrelim::new(block.to_string()));
+            }
         }
         Ok(())
     }

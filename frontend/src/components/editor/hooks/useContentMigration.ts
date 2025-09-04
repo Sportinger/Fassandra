@@ -21,7 +21,9 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
       try { prosemirrorText = ydoc.getText('prosemirror'); } catch {}
       let contentText: Y.Text | null = null;
       try { contentText = ydoc.getText('content'); } catch {}
-      const prosemirrorXml = ydoc.getXmlFragment('prosemirror');
+      // 'prosemirror' might be a Text in legacy docs; guard the XML access
+      let prosemirrorXml: Y.XmlFragment | null = null;
+      try { prosemirrorXml = ydoc.getXmlFragment('prosemirror'); } catch {}
       const defaultFragment = ydoc.getXmlFragment('default');
       const meta = ydoc.getMap('metadata');
       const alreadyMigrated = (meta.get('migrated') as any) === true;
@@ -29,7 +31,7 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
       logger.info('useContentMigration', '[MIGRATION_CHECK] Checking for content migration:', {
         hasProsemirrorField: !!prosemirrorText,
         prosemirrorLength: prosemirrorText?.length || 0,
-        prosemirrorXmlLength: prosemirrorXml.length,
+        prosemirrorXmlLength: prosemirrorXml ? prosemirrorXml.length : 0,
         contentTextLength: contentText?.length || 0,
         defaultFragmentLength: defaultFragment.length,
         editorEmpty: editor.isEmpty
@@ -48,7 +50,7 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
           ? prosemirrorText!.toString()
           : shouldMigrateFromContentText
             ? contentText!.toString()
-            : prosemirrorXml.toString();
+            : prosemirrorXml!.toString();
         logger.info('useContentMigration', '[MIGRATION_START] Found content in prosemirror field:', textContent.substring(0, 200));
 
         // Split into blocks on blank lines to preserve paragraph grouping
