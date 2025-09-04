@@ -32,7 +32,7 @@ import { CueConnectionMark } from '../extensions/CueConnectionMark';
 import { CueSelectTool } from '../extensions/CueSelectTool';
 import { CueMigration } from '../extensions/CueMigration';
 import { CommentMark } from '../extensions/CommentMark';
-import { PageIndicatorCompat } from '../extensions/PageIndicatorCompat';
+import { PageIndicator } from '../extensions/PageIndicator';
 import { FontSize } from '../FontSizeExtension';
 import { FontFamilyExtension } from '../extensions/FontFamilyExtension';
 import { extractSpeakerNames } from '../utils/contentConverters';
@@ -567,7 +567,7 @@ export const useEditorCore = ({
             CueSelectTool,
             CommentMark,
             CueMigration, // one-time migration of legacy cue blocks
-            PageIndicatorCompat,
+            PageIndicator,
             TrailingNode.configure({
               node: 'paragraph',
               notAfter: ['paragraph'],
@@ -636,7 +636,7 @@ export const useEditorCore = ({
             CueSelectTool,
             CommentMark,
             CueMigration,
-            PageIndicatorCompat,
+            PageIndicator,
             TrailingNode.configure({
               node: 'paragraph',
               notAfter: ['paragraph'],
