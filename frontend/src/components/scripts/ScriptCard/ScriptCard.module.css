@@ -17,7 +17,8 @@
   text-align: left;
   cursor: pointer;
   position: relative;
-  overflow: hidden;
+  /* Allow badges/menus to extend beyond the card when tilted */
+  overflow: visible;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: box-shadow 0.2s ease-out, border-color 0.2s ease-out;
   animation: fadeInCard 0.8s ease-out forwards;
