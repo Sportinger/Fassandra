@@ -75,6 +75,145 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     }
   }));
 
+  // Resume monitoring active uploads after reload/navigation
+  React.useEffect(() => {
+    // Helper to attach to an in-flight Claude session using stored sessionId
+    const attachToSession = async (placeholder: PlaceholderScript, sessionId: string) => {
+      try {
+        // Avoid double attaching
+        if (sessionManager.hasSession(placeholder.id)) return;
+
+        // Ensure we have a WS auth token
+        let wsToken = token;
+        if (!wsToken || wsToken === 'authenticated') {
+          try {
+            const wsTokResp = await fetch('/api/ws-token', { credentials: 'include' });
+            if (wsTokResp.ok) {
+              const data = await wsTokResp.json() as { token: string };
+              wsToken = data.token;
+            }
+          } catch (e) {
+            logger.warn('ScriptList', '[ResumeUpload] Failed to retrieve WS token from cookie endpoint:', e);
+          }
+        }
+        if (!wsToken || wsToken === 'authenticated') {
+          logger.warn('ScriptList', '[ResumeUpload] Missing auth token; will rely on polling only');
+        }
+
+        // Set minimal status to indicate ongoing processing
+        updateUpload(placeholder.id, {
+          uploadStatus: placeholder.uploadStatus || ('uploading' as UploadStatus),
+          uploadSubStage: placeholder.uploadSubStage || 'Resuming processing...'
+        });
+
+        // Recreate session service and connect (for live progress); also start polling fallback
+        const sessionService = new ClaudeSessionService(
+          sessionId,
+          wsToken || 'authenticated',
+          (update) => {
+            if (update.type === 'chunk_info' && update.total_pages && update.total_chunks) {
+              updateUpload(placeholder.id, {
+                uploadSubStage: update.message || `Script will be processed in ${update.total_chunks} chunks (${update.total_pages} pages)`
+              });
+            } else if (update.type === 'page_progress' && update.current_page && update.total_pages) {
+              const pageProgress = (update.current_page / update.total_pages) * 60 + 20;
+              updateUpload(placeholder.id, {
+                uploadProgress: Math.round(pageProgress),
+                uploadSubStage: update.message || `Processing page ${update.current_page} of ${update.total_pages}`
+              });
+            } else if (update.type === 'chunk_progress' && update.current_chunk && update.total_chunks) {
+              const chunkProg = (update.current_chunk / update.total_chunks) * 60 + 20;
+              updateUpload(placeholder.id, {
+                uploadProgress: Math.round(chunkProg),
+                uploadSubStage: update.message || `Processing chunk ${update.current_chunk} of ${update.total_chunks}`
+              });
+            }
+            if (update.type === 'output' && update.line) {
+              appendLog(placeholder.id, update.line);
+            }
+          },
+          (scriptId) => {
+            updateUpload(placeholder.id, {
+              uploadStatus: 'completed' as UploadStatus,
+              uploadProgress: 100,
+              uploadSubStage: 'Upload finished successfully'
+            });
+            setTimeout(() => {
+              refreshScripts();
+              removeUpload(placeholder.id);
+              sessionManager.dispose(placeholder.id);
+            }, 5000);
+          },
+          (errMsg) => {
+            updateUpload(placeholder.id, {
+              uploadStatus: 'error' as UploadStatus,
+              uploadError: errMsg || 'Processing failed',
+              uploadSubStage: 'Upload failed'
+            });
+            sessionManager.dispose(placeholder.id);
+            removeUpload(placeholder.id);
+          }
+        );
+
+        sessionManager.track(placeholder.id, sessionService);
+        try { sessionService.connect(); } catch {}
+
+        // Start polling fallback to keep UI updated if WS drops
+        let pollTimer: any = null;
+        const startPolling = () => {
+          if (pollTimer) return;
+          pollTimer = setInterval(async () => {
+            try {
+              const st = await ClaudeSessionService.getSessionStatus(sessionId, token || undefined);
+              if (typeof st.progress === 'number') {
+                const prog = Math.min(99, Math.max(20, Math.round(st.progress)));
+                updateUpload(placeholder.id, { uploadProgress: prog });
+              }
+              if (st.status === 'Complete') {
+                clearInterval(pollTimer); pollTimer = null;
+                updateUpload(placeholder.id, {
+                  uploadStatus: 'completed' as UploadStatus,
+                  uploadProgress: 100,
+                  uploadSubStage: 'Upload finished successfully'
+                });
+                setTimeout(() => {
+                  refreshScripts();
+                  removeUpload(placeholder.id);
+                  sessionManager.dispose(placeholder.id);
+                }, 3000);
+              } else if (st.status === 'Failed') {
+                clearInterval(pollTimer); pollTimer = null;
+                updateUpload(placeholder.id, {
+                  uploadStatus: 'error' as UploadStatus,
+                  uploadError: st.error || 'Processing failed',
+                  uploadSubStage: 'Upload failed'
+                });
+                sessionManager.dispose(placeholder.id);
+                removeUpload(placeholder.id);
+              }
+            } catch {
+              // ignore transient errors
+            }
+          }, 3000);
+        };
+        startPolling();
+      } catch (e) {
+        logger.error('ScriptList', '[ResumeUpload] Failed to attach to session:', e);
+      }
+    };
+
+    // Iterate current uploads and resume any with a stored session id
+    (async () => {
+      for (const u of uploads) {
+        // Only placeholders have uploadStatus; skip completed/errored
+        if (!u.uploadStatus || u.uploadStatus === 'completed' || u.uploadStatus === 'error') continue;
+        const sid = getSessionId(u.id);
+        if (!sid) continue;
+        await attachToSession(u as unknown as PlaceholderScript, sid);
+      }
+    })();
+  }, [uploads, token]);
+
   // Refresh scripts on trigger change
   React.useEffect(() => {
     if (refreshTrigger && tokenReady && token) {

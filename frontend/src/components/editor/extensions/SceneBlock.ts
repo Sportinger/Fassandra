@@ -150,7 +150,9 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
 
   renderHTML({ HTMLAttributes, node }) {
     const sceneNumber = node.attrs.sceneNumber || HTMLAttributes['data-scene-number'] || '1';
-    const sceneName = node.attrs.sceneName || HTMLAttributes['data-scene-name'] || 'Untitled Scene';
+    // Fallback to inline text content if attribute is missing (supports server-imported scenes)
+    const inlineText = (node as any).textContent || '';
+    const sceneName = node.attrs.sceneName || HTMLAttributes['data-scene-name'] || inlineText || 'Untitled Scene';
     
     return [
       'div',
@@ -163,7 +165,8 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
       }),
       ['span', { class: 'scene-number', contenteditable: 'false' }, sceneNumber],
       ['span', { class: 'scene-separator', contenteditable: 'false' }, ' '],
-      ['span', { class: 'scene-name', contenteditable: 'true' }, sceneName],
+      // Render inline content (editable) for the scene name. This enables renaming.
+      ['span', { class: 'scene-name' }, 0],
     ];
   },
 

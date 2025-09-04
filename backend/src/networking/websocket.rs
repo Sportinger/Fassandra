@@ -446,7 +446,9 @@ async fn handle_socket(
                             if should_persist {
                                 // Decode sync message and persist only raw Yjs Update payloads
                                 let mut to_persist: Option<Vec<u8>> = None;
+                                let mut decode_succeeded = false;
                                 if let Ok(sync_msg) = YrsDecodeTrait::decode(&mut DecoderV1::new(YrsIoCursor::new(&bin))) {
+                                    decode_succeeded = true;
                                     if let YrsSyncMessage::Sync(inner) = sync_msg {
                                         match inner {
                                             YrsInnerSyncMessage::Update(update) => {
@@ -465,6 +467,15 @@ async fn handle_socket(
                                             }
                                         }
                                     }
+                                }
+
+                                // Fallback: if decoding failed or yielded no payload but this isn't awareness,
+                                // persist the raw binary frame to avoid data loss for variant frames.
+                                // Only fallback if the frame could not be decoded at all (likely a raw Update),
+                                // and it's not an awareness ping.
+                                if to_persist.is_none() && !decode_succeeded && !is_awareness {
+                                    tracing::debug!("[WS_PERSIST_FALLBACK] Persisting raw binary frame ({} bytes) for script {}", bin.len(), script_id);
+                                    to_persist = Some(bin.clone());
                                 }
 
                                 if let Some(update_bytes) = to_persist {
