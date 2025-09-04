@@ -202,9 +202,9 @@ impl ClaudeSessionService {
         );
         // Patch helper paths inside IMPORTANT block to match our working directory
         // Replace the absolute /app helper paths with ./ to ensure they resolve under exec_cwd
+        // Normalize helper paths. Keep importer command exact with the JSON file arg preserved.
         let prompt = prompt
-            .replace("/app/json_mem.sh", mem_helper_cmd)
-            .replace("./yjs_to_db.sh /tmp/script_data.json ", &import_cmd.replace(" /tmp/script_data.json ", " "));
+            .replace("/app/json_mem.sh", mem_helper_cmd);
 
         // Logging: keep operational details concise at info level
         tracing::info!("Starting Claude Code with input path: {}", effective_input_path);
