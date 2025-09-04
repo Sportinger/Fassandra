@@ -13,7 +13,8 @@ use anyhow::Result;
 use crate::analysis::structs::Script as ParsedScript;
 use crate::domain::script_service::ScriptService;
 use yrs::updates::encoder::Encode;
-use yrs::{ReadTxn, WriteTxn};
+use yrs::{ReadTxn, WriteTxn, Text, XmlFragment as _};
+use yrs::GetString;
 
 
 /// Application service for script operations
@@ -159,7 +160,7 @@ impl ScriptApplicationService {
         info!(script_id = %new_script_id, "Transaction committed successfully");
 
         // Build initial YJS document from parsed content into the 'default' fragment (TipTap field)
-        use yrs::{Doc, Options, Transact, XmlElementPrelim, XmlFragment, XmlTextPrelim};
+use yrs::{Doc, Options, Transact, XmlElementPrelim, XmlFragment, XmlTextPrelim};
         let doc = Doc::with_options(Options::default());
         {
             let mut txn = doc.transact_mut();
@@ -515,18 +516,18 @@ impl ScriptApplicationService {
                 {
                     use yrs::{Transact, ReadTxn, WriteTxn, XmlElementPrelim, XmlTextPrelim};
                     let mut needs_migration = false;
-                    let prosemirror_len = {
-                        let t = doc.transact();
-                        let txt = t.get_text("prosemirror");
-                        let len = txt.as_ref().map(|x| x.len(&t)).unwrap_or(0);
-                        let default_len = t.get_xml_fragment("default").map(|f| f.len(&t)).unwrap_or(0);
-                        needs_migration = default_len == 0 && len > 0;
-                        len
-                    };
-                    if needs_migration && prosemirror_len > 0 {
+                        let prosemirror_len = {
+                            let t = doc.transact();
+                            let txt = t.get_text("prosemirror");
+                            let len = txt.as_ref().map(|x| x.len(&t)).unwrap_or(0);
+                            let default_len = t.get_xml_fragment("default").map(|f| f.len(&t)).unwrap_or(0);
+                            needs_migration = default_len == 0 && len > 0;
+                            len
+                        };
+                        if needs_migration && prosemirror_len > 0 {
                         let legacy = {
                             let t = doc.transact();
-                            t.get_text("prosemirror").map(|x| x.to_string(&t)).unwrap_or_default()
+                            t.get_text("prosemirror").map(|x| x.get_string(&t)).unwrap_or_default()
                         };
                         let blocks: Vec<&str> = legacy
                             .split("\n\n")

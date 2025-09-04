@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use anyhow::{Result, anyhow};
 use tracing::{info, error, debug};
-use yrs::{Doc, Options, Transact, ReadTxn, WriteTxn, StateVector, Xml};
-use yrs::{XmlElementPrelim, XmlTextPrelim};
+use yrs::{Doc, Options, Transact, ReadTxn, WriteTxn, StateVector};
+use yrs::{XmlElementPrelim, XmlTextPrelim, Text, XmlFragment as _};
 // use yrs::updates::encoder::Encode; // Not needed; we use encode via transact
 
 // Define the structures for chunks (since yjs_document_builder is disabled)
