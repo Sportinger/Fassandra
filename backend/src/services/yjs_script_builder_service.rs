@@ -261,76 +261,61 @@ impl YjsScriptBuilderService {
     }
 
     fn apply_chunk_to_document(&self, doc: &Doc, chunk: &ScriptChunk) -> Result<()> {
-        use yrs::{XmlElementPrelim, XmlTextPrelim, XmlFragment};
-        {
-            let mut txn = doc.transact_mut();
-            // TipTap reads from 'default'
-            let default_fragment = txn.get_or_insert_xml_fragment("default");
-            // Ensure auxiliary fields
-            txn.get_or_insert_text("prosemirror");
-            txn.get_or_insert_map("metadata");
+        // Write plain text markers into 'prosemirror' field so the frontend migration can build proper TipTap nodes.
+        // Do NOT write into the 'default' fragment here; leaving it empty allows migration to trigger.
+        let mut buffer = String::new();
 
-            // Insert page indicators when page changes
-            let mut current_page: i32 = -1;
+        let mut current_page: i32 = -1;
+        for item in &chunk.content {
+            let page_num = item.page.unwrap_or(-1);
+            if page_num >= 0 && page_num != current_page {
+                current_page = page_num;
+                buffer.push_str(&format!("[PAGE] {}\n\n", current_page));
+            }
 
-            for item in &chunk.content {
-                let page_num = item.page.unwrap_or(-1);
-                if page_num >= 0 && page_num != current_page {
-                    current_page = page_num;
-                    let page_el = XmlElementPrelim::empty("pageIndicator");
-                    let page_ref = default_fragment.push_back(&mut txn, page_el);
-                    // Set pageNumber attribute for TipTap mapping; do not add child text
-                    page_ref.insert_attribute(&mut txn, "pageNumber", current_page.to_string());
+            match item.content_type.as_str() {
+                "scene" | "scene_heading" => {
+                    let title = if item.content.trim().is_empty() { "Untitled Scene".to_string() } else { item.content.clone() };
+                    buffer.push_str(&format!("[SCENE] {}\n\n", title));
                 }
-
-                match item.content_type.as_str() {
-                    "scene" | "scene_heading" => {
-                        let scene_el = XmlElementPrelim::empty("sceneBlock");
-                        let scene_ref = default_fragment.push_back(&mut txn, scene_el);
-                        // Attach attributes so UI/analysis can access without parsing text
-                        if let Some(n) = &item.scene_number {
-                            scene_ref.insert_attribute(&mut txn, "sceneNumber", n.clone());
-                        }
-                        if page_num >= 0 {
-                            scene_ref.insert_attribute(&mut txn, "pageNumber", page_num.to_string());
-                        }
-                        if !item.content.is_empty() {
-                            scene_ref.insert_attribute(&mut txn, "sceneTitle", item.content.clone());
-                        }
-                        if !item.content.is_empty() {
-                            let _ignored = scene_ref.push_back(&mut txn, XmlTextPrelim::new(item.content.clone()));
-                        }
-                    }
-                    "dialogue" | "monologue" => {
-                        let dlg_ref = default_fragment.push_back(&mut txn, XmlElementPrelim::empty("dialogueBlock"));
-                        if page_num >= 0 {
-                            dlg_ref.insert_attribute(&mut txn, "pageNumber", page_num.to_string());
-                        }
-                        let sp_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("speaker"));
-                        if let Some(spk) = &item.speaker { let _ignored = sp_ref.push_back(&mut txn, XmlTextPrelim::new(spk.clone())); }
-                        let dtext_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("dialogueText"));
-                        // Split into paragraphs by line breaks
-                        let parts: Vec<&str> = item.content.split('\n').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+                "dialogue" | "monologue" => {
+                    let spk = item.speaker.as_deref().unwrap_or("").trim();
+                    if !spk.is_empty() {
+                        // Preserve paragraph breaks within dialogue
+                        let parts: Vec<&str> = item.content.split('\n').collect();
                         if parts.is_empty() {
-                            let _ = dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                            buffer.push_str(&format!("{}: \n\n", spk));
                         } else {
-                            for part in parts {
-                                let p = dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
-                                let _ignored = p.push_back(&mut txn, XmlTextPrelim::new(part.to_string()));
+                            // First paragraph on same line
+                            buffer.push_str(&format!("{}: {}\n", spk, parts[0].trim()));
+                            for p in parts.iter().skip(1) {
+                                buffer.push_str(&format!("{}\n", p.trim()));
                             }
+                            buffer.push_str("\n\n");
                         }
+                    } else {
+                        // Fallback as paragraph
+                        buffer.push_str(&format!("{}\n\n", item.content.trim()));
                     }
-                    "stage_direction" | "reading" | _ => {
-                        if !item.content.is_empty() {
-                            let p = default_fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
-                            if page_num >= 0 {
-                                p.insert_attribute(&mut txn, "pageNumber", page_num.to_string());
-                            }
-                            let _ignored = p.push_back(&mut txn, XmlTextPrelim::new(item.content.clone()));
-                        }
+                }
+                "stage_direction" | "reading" | _ => {
+                    let txt = item.content.trim();
+                    if !txt.is_empty() {
+                        buffer.push_str(&format!("({})\n\n", txt));
                     }
                 }
             }
+        }
+
+        // Apply to Y.Doc 'prosemirror' text
+        {
+            let mut txn = doc.transact_mut();
+            let txt = txn.get_or_insert_text("prosemirror");
+            let cur_len = txt.len(&txn);
+            if cur_len > 0 {
+                txt.remove_range(&mut txn, 0, cur_len);
+            }
+            txt.push(&mut txn, &buffer);
         }
         Ok(())
     }

@@ -38,6 +38,14 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
         const docContent: any[] = [];
 
         for (const block of blocks) {
+          // Page indicator: [PAGE] N
+          const pageMatch = block.match(/^\[PAGE\]\s*(\d+)/i);
+          if (pageMatch) {
+            // Insert invisible page indicator node (compat extension)
+            docContent.push({ type: 'pageIndicator' });
+            continue;
+          }
+
           // Scene headers: [SCENE] Title
           const sceneMatch = block.match(/^\[SCENE\]\s*(.+)$/i);
           if (sceneMatch) {
