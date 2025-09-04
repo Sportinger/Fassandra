@@ -12,6 +12,8 @@ interface SinglePageViewProps {
   rehearsalLinePosition?: number;
   onOutsideClick?: () => void;
   overlay?: React.ReactNode;
+  pageNumber?: number;
+  pageCount?: number;
 }
 
 export const SinglePageView: React.FC<SinglePageViewProps> = ({ 
@@ -23,7 +25,9 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
   rehearsalMode = false,
   rehearsalLinePosition = 0,
   onOutsideClick,
-  overlay
+  overlay,
+  pageNumber = 1,
+  pageCount
 }) => {
   const [contextMenu, setContextMenu] = useState<{x: number; y: number; visible: boolean}>({
     x: 0, y: 0, visible: false
@@ -82,7 +86,9 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
       <div className="singlePageContainer" style={{ position: 'relative' }}>
         <div className="dinA4Page">
           {/* Simple page indicator badge for single page view */}
-          <div className="page-number-indicator" aria-label="Page number">Page 1</div>
+          <div className="page-number-indicator" aria-label="Page number">
+            {pageCount && pageCount > 0 ? `Page ${Math.max(1, pageNumber)} of ${pageCount}` : `Page ${Math.max(1, pageNumber)}`}
+          </div>
           <div className="pageInner">
             {children}
           </div>

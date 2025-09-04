@@ -71,6 +71,8 @@ export const Editor: React.FC<EditorProps> = ({
   
   // Local UI state
   const [viewMode, setViewMode] = useState<ViewMode>('single-page');
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const [pageCount, setPageCount] = useState<number>(1);
   const [showRuler, setShowRuler] = useState(false);
   const [audioTranscriptionActive, setAudioTranscriptionActive] = useState(false);
   const [rehearsalMode, setRehearsalMode] = useState(false);
@@ -117,6 +119,40 @@ export const Editor: React.FC<EditorProps> = ({
   useEffect(() => {
     debugLog('[Editor] viewMode changed to:', viewMode);
   }, [viewMode, debugLog]);
+
+  // Compute page count from Yjs prosemirror markers ("[PAGE]")
+  useEffect(() => {
+    try {
+      if (!ydoc) return;
+      const t = ydoc.getText('prosemirror');
+      const s = t ? t.toString() : '';
+      const matches = s.match(/\[PAGE\]/g);
+      const count = matches && matches.length > 0 ? matches.length : 1;
+      setPageCount(count);
+    } catch {}
+  }, [ydoc]);
+
+  // Compute current page from TipTap document by counting pageIndicator nodes before selection
+  useEffect(() => {
+    if (!editor) return;
+    const recompute = () => {
+      try {
+        let current = 1;
+        let passed = 0;
+        const selPos = editor.state?.selection?.from ?? 0;
+        editor.state.doc.descendants((node: any, pos: number) => {
+          if (node.type && node.type.name === 'pageIndicator') {
+            passed += 1;
+            if (pos < selPos) current = passed;
+          }
+        });
+        setPageNumber(current);
+      } catch {}
+    };
+    recompute();
+    editor.on('update', recompute);
+    return () => { editor.off('update', recompute); };
+  }, [editor]);
 
   // Sync rehearsal line position with other users via awareness
   useEffect(() => {
@@ -619,6 +655,8 @@ export const Editor: React.FC<EditorProps> = ({
       {
         <SinglePageView 
           showRuler={false}
+          pageNumber={pageNumber}
+          pageCount={pageCount}
           onToggleRuler={() => setShowRuler(!showRuler)}
           onToggleViewMode={() => setViewMode(viewMode === 'single-page' ? 'multiple-pages' : 'single-page')}
           rehearsalMode={rehearsalMode}
