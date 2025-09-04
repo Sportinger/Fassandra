@@ -10,11 +10,16 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
   useEffect(() => {
     if (!ydoc || !editor) return;
 
+    // Prevent double migration: use a Yjs metadata flag and a local guard
+    let localMigrated = false;
+
     // Attempt migration from 'prosemirror' text to structured TipTap nodes
     // This supports scripts imported via the Rust YRS path that writes plain text into 'prosemirror'
     const checkAndMigrate = () => {
       const prosemirrorText = ydoc.getText('prosemirror');
       const defaultFragment = ydoc.getXmlFragment('default');
+      const meta = ydoc.getMap('metadata');
+      const alreadyMigrated = (meta.get('migrated') as any) === true;
 
       logger.info('useContentMigration', '[MIGRATION_CHECK] Checking for content migration:', {
         hasProsemirrorField: !!prosemirrorText,
@@ -24,7 +29,7 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
       });
 
       // If prosemirror has content but default fragment is empty, migrate
-      if (prosemirrorText && prosemirrorText.length > 0 && defaultFragment.length === 0) {
+      if (!localMigrated && !alreadyMigrated && prosemirrorText && prosemirrorText.length > 0 && defaultFragment.length === 0) {
         const textContent = prosemirrorText.toString();
         logger.info('useContentMigration', '[MIGRATION_START] Found content in prosemirror field:', textContent.substring(0, 200));
 
@@ -109,6 +114,17 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
           });
           editor.commands.setContent(contentJson, false, { preserveWhitespace: true });
           logger.info('useContentMigration', '[MIGRATION_COMPLETE] Content migrated to TipTap nodes');
+
+          // Mark migrated and clear source text to avoid re-running
+          try {
+            ydoc.transact(() => {
+              meta.set('migrated', true as any);
+              prosemirrorText.delete(0, prosemirrorText.length);
+            });
+            localMigrated = true;
+          } catch (e) {
+            logger.warn('useContentMigration', 'Failed to mark migration or clear source text', e);
+          }
         }
       }
     };

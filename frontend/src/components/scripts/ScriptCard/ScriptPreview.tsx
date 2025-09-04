@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { getScriptWithYjs } from '../../../api';
+import { getScriptWithYjs, getYjsState } from '../../../api';
 import * as Y from 'yjs';
 import styles from './ScriptPreview.module.css';
 import logger from '../../../services/LoggingService';
@@ -16,80 +16,68 @@ export const ScriptPreview: React.FC<ScriptPreviewProps> = ({ scriptId }) => {
   const [hasInitialLoad, setHasInitialLoad] = useState(false);
 
   const fetchScriptContent = useCallback(async (isInitial = false) => {
-    try {
-      // Only show loading state on initial load
-      if (isInitial || !hasInitialLoad) {
-        setLoading(true);
-      }
-      setError(null);
-      
-      const scriptData = await getScriptWithYjs(scriptId);
-      
-      if (scriptData && scriptData.yjs_state) {
-        // Decode the YJS state
-        const stateBuffer = Uint8Array.from(atob(scriptData.yjs_state), c => c.charCodeAt(0));
-        
-        // Create a temporary Y.Doc to extract content
-        const doc = new Y.Doc();
-        Y.applyUpdate(doc, stateBuffer);
-        
-        // Try to get content from different possible YJS structures
-        let content = '';
-        
-        // Try prosemirror fragment first (TipTap uses this)
-        const xmlFragment = doc.getXmlFragment('prosemirror');
-        if (xmlFragment && xmlFragment.length > 0) {
-          // Convert XML to HTML-like preview
-          content = extractContentFromYXml(xmlFragment);
-        }
-        
-        // Fallback to default fragment
-        if (!content) {
-          const defaultFragment = doc.getXmlFragment('default');
-          if (defaultFragment && defaultFragment.length > 0) {
-            content = extractContentFromYXml(defaultFragment);
-          }
-        }
-        
-        // Fallback to content text
-        if (!content) {
-          const contentText = doc.getText('content');
-          if (contentText) {
-            content = contentText.toString();
-          }
-        }
-
-        // Fallback to prosemirror text (backend may store plain text here)
-        if (!content) {
-          const prosemirrorText = doc.getText('prosemirror');
-          if (prosemirrorText) {
-            content = prosemirrorText.toString();
-          }
-        }
-        
-        setPreviewContent(content || 'No content available');
-      } else {
-        setPreviewContent('');
-      }
-      
-      if (!hasInitialLoad) {
-        setHasInitialLoad(true);
-      }
-    } catch (err) {
-      logger.error('ScriptPreview', 'Failed to fetch script content:', err);
-      setError('Failed to load preview');
-      
-      // For demo purposes, show mock data when API fails in development
-      if (process.env.NODE_ENV === 'development') {
-        setPreviewContent(`
-          <div><strong>HAMLET:</strong> To be or not to be, that is the question</div>
-          <div><em>(Enter OPHELIA)</em></div>
-          <div><strong>OPHELIA:</strong> My lord, I have remembrances of yours that I have longed long to re-deliver</div>
-        `);
-      }
-    } finally {
-      setLoading(false);
+    // Only show loading state on initial load
+    if (isInitial || !hasInitialLoad) {
+      setLoading(true);
     }
+    setError(null);
+
+    const doc = new Y.Doc();
+    let applied = false;
+    // Try JSON endpoint first, but don't abort if it fails
+    try {
+      const scriptData = await getScriptWithYjs(scriptId);
+      if (scriptData?.yjs_state) {
+        const stateBuffer = Uint8Array.from(atob(scriptData.yjs_state), c => c.charCodeAt(0));
+        Y.applyUpdate(doc, stateBuffer);
+        applied = true;
+      }
+    } catch (e) {
+      logger.warn('ScriptPreview', 'getScriptWithYjs failed, will try binary endpoint', e);
+    }
+
+    // Fallback to binary endpoint
+    if (!applied) {
+      try {
+        const bin = await getYjsState(scriptId);
+        if (bin && (bin as ArrayBuffer).byteLength > 0) {
+          Y.applyUpdate(doc, new Uint8Array(bin));
+          applied = true;
+        }
+      } catch (e) {
+        logger.error('ScriptPreview', 'getYjsState failed', e);
+      }
+    }
+
+    // If still not applied, show error
+    if (!applied) {
+      setError('Failed to load preview');
+      setLoading(false);
+      return;
+    }
+
+    // Extract content robustly
+    let content = '';
+    try {
+      const xmlDefault = doc.getXmlFragment('default');
+      if (xmlDefault && xmlDefault.length > 0) {
+        content = extractContentFromYXml(xmlDefault);
+      }
+    } catch {}
+    try {
+      if (!content) {
+        const xmlPm = doc.getXmlFragment('prosemirror');
+        if (xmlPm && xmlPm.length > 0) content = extractContentFromYXml(xmlPm);
+      }
+    } catch {}
+    if (!content) {
+      const t = doc.getText('prosemirror') || doc.getText('content');
+      if (t) content = t.toString();
+    }
+    setPreviewContent(content || '');
+
+    if (!hasInitialLoad) setHasInitialLoad(true);
+    setLoading(false);
   }, [scriptId, hasInitialLoad]);
 
   // Extract readable content from YJS XML structure
