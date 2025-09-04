@@ -28,6 +28,17 @@ const ScriptUploader: React.FC<ScriptUploaderProps> = ({
         return uploads.find(u => u.id === uploadId) || null;
     }, [uploads, uploadId]);
 
+    // Auto-close the uploader if the active upload fails
+    React.useEffect(() => {
+        if (activeUpload && activeUpload.uploadStatus === 'error') {
+            // Clear local state and close the modal
+            setUploadId(null);
+            setIsLoading(false);
+            setSelectedFile(null);
+            onClose();
+        }
+    }, [activeUpload, onClose]);
+
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files[0]) {
             const file = event.target.files[0];

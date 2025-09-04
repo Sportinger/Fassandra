@@ -306,7 +306,7 @@ impl ClaudeSessionService {
         // 3) Prefer XDG (~/.config/claude-code) but also support legacy ~/.claude.
         let mut configured_auth_env = false;
 
-        // Helper to wire envs once we decide on paths
+        // Helper to wire envs once we decide on paths (does not touch configured_auth_env)
         let mut apply_env = |home_dir: &str, xdg_cfg: &str| {
             tracing::info!(
                 "Using Claude config from HOME={} XDG_CONFIG_HOME={}",
@@ -316,7 +316,6 @@ impl ClaudeSessionService {
             cmd.env("XDG_CONFIG_HOME", xdg_cfg);
             let xdg_cache = format!("{}/.cache", home_dir);
             cmd.env("XDG_CACHE_HOME", &xdg_cache);
-            configured_auth_env = true;
         };
 
         // 1) Explicit overrides
@@ -328,6 +327,7 @@ impl ClaudeSessionService {
             let legacy_dir = std::path::Path::new(h).join(".claude");
             if cfg_dir.exists() || legacy_dir.exists() {
                 apply_env(h, x);
+                configured_auth_env = true;
             }
         }
         if !configured_auth_env {
@@ -353,6 +353,7 @@ impl ClaudeSessionService {
                 let legacy_dir = std::path::Path::new(&home_dir).join(".claude");
                 if cfg_dir.exists() || legacy_dir.exists() {
                     apply_env(&home_dir, &xdg_cfg);
+                    configured_auth_env = true;
                 }
             }
         }
@@ -369,6 +370,7 @@ impl ClaudeSessionService {
                 let legacy_dir = std::path::Path::new(home_dir).join(".claude");
                 if cfg_dir.exists() || legacy_dir.exists() {
                     apply_env(home_dir, xdg_cfg);
+                    configured_auth_env = true;
                     break;
                 }
             }
