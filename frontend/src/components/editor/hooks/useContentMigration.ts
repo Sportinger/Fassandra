@@ -13,10 +13,15 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
     // Prevent double migration: use a Yjs metadata flag and a local guard
     let localMigrated = false;
 
-    // Attempt migration from 'prosemirror' text to structured TipTap nodes
+    // Attempt migration from legacy text/XML fields to structured TipTap nodes
     // This supports scripts imported via the Rust YRS path that writes plain text into 'prosemirror'
     const checkAndMigrate = () => {
-      const prosemirrorText = ydoc.getText('prosemirror');
+      // Access legacy 'prosemirror' as text safely; also look for alternatives.
+      let prosemirrorText: Y.Text | null = null;
+      try { prosemirrorText = ydoc.getText('prosemirror'); } catch {}
+      let contentText: Y.Text | null = null;
+      try { contentText = ydoc.getText('content'); } catch {}
+      const prosemirrorXml = ydoc.getXmlFragment('prosemirror');
       const defaultFragment = ydoc.getXmlFragment('default');
       const meta = ydoc.getMap('metadata');
       const alreadyMigrated = (meta.get('migrated') as any) === true;
@@ -24,13 +29,26 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
       logger.info('useContentMigration', '[MIGRATION_CHECK] Checking for content migration:', {
         hasProsemirrorField: !!prosemirrorText,
         prosemirrorLength: prosemirrorText?.length || 0,
+        prosemirrorXmlLength: prosemirrorXml.length,
+        contentTextLength: contentText?.length || 0,
         defaultFragmentLength: defaultFragment.length,
         editorEmpty: editor.isEmpty
       });
 
-      // If prosemirror has content but default fragment is empty, migrate
-      if (!localMigrated && !alreadyMigrated && prosemirrorText && prosemirrorText.length > 0 && defaultFragment.length === 0) {
-        const textContent = prosemirrorText.toString();
+      // If legacy 'prosemirror' text has content and the current editor
+      // document is effectively empty, migrate. Consider the document
+      // empty when the TipTap editor reports empty (it may pre‑create
+      // a single empty paragraph which makes defaultFragment.length > 0).
+      const editorIsEffectivelyEmpty = !!editor?.isEmpty;
+      const shouldMigrateFromText = prosemirrorText && prosemirrorText.length > 0;
+      const shouldMigrateFromContentText = !shouldMigrateFromText && contentText && contentText.length > 0;
+      const shouldMigrateFromXml = !shouldMigrateFromText && !shouldMigrateFromContentText && prosemirrorXml && prosemirrorXml.length > 0;
+      if (!localMigrated && !alreadyMigrated && editorIsEffectivelyEmpty && (shouldMigrateFromText || shouldMigrateFromContentText || shouldMigrateFromXml)) {
+        const textContent = shouldMigrateFromText
+          ? prosemirrorText!.toString()
+          : shouldMigrateFromContentText
+            ? contentText!.toString()
+            : prosemirrorXml.toString();
         logger.info('useContentMigration', '[MIGRATION_START] Found content in prosemirror field:', textContent.substring(0, 200));
 
         // Split into blocks on blank lines to preserve paragraph grouping
@@ -119,7 +137,13 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
           try {
             ydoc.transact(() => {
               meta.set('migrated', true as any);
-              prosemirrorText.delete(0, prosemirrorText.length);
+              if (prosemirrorText && prosemirrorText.length > 0) {
+                prosemirrorText.delete(0, prosemirrorText.length);
+              }
+              if (contentText && contentText.length > 0) {
+                contentText.delete(0, contentText.length);
+              }
+              // Don't modify XML fragment; leave as-is
             });
             localMigrated = true;
           } catch (e) {

@@ -67,12 +67,28 @@ export const ScriptPreview: React.FC<ScriptPreviewProps> = ({ scriptId }) => {
     try {
       if (!content) {
         const xmlPm = doc.getXmlFragment('prosemirror');
-        if (xmlPm && xmlPm.length > 0) content = extractContentFromYXml(xmlPm);
+        // If the prosemirror fragment exists (even if empty), do NOT
+        // try to read it as a text type to avoid Yjs type conflicts.
+        if (xmlPm && xmlPm.length > 0) {
+          content = extractContentFromYXml(xmlPm);
+        }
       }
     } catch {}
+
+    // Fallback order for text fields. Try 'prosemirror' as Text first
+    // (guarded) and then a generic 'content' Text field.
     if (!content) {
-      const t = doc.getText('prosemirror') || doc.getText('content');
-      if (t) content = t.toString();
+      // Try legacy text storage under 'prosemirror'
+      try {
+        const t = doc.getText('prosemirror');
+        if (t && t.length > 0) content = t.toString();
+      } catch {}
+    }
+    if (!content) {
+      try {
+        const t = doc.getText('content');
+        if (t && t.length > 0) content = t.toString();
+      } catch {}
     }
     setPreviewContent(content || '');
 
