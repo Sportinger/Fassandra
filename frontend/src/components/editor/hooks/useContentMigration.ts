@@ -45,7 +45,23 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
       const shouldMigrateFromText = prosemirrorText && prosemirrorText.length > 0;
       const shouldMigrateFromContentText = !shouldMigrateFromText && contentText && contentText.length > 0;
       const shouldMigrateFromXml = !shouldMigrateFromText && !shouldMigrateFromContentText && prosemirrorXml && prosemirrorXml.length > 0;
-      if (!localMigrated && !alreadyMigrated && editorIsEffectivelyEmpty && (shouldMigrateFromText || shouldMigrateFromContentText || shouldMigrateFromXml)) {
+
+      // Detect server-side fallback content: only paragraphs and text nodes
+      const contentJson = !editorIsEffectivelyEmpty ? (editor.getJSON?.() || null) : null;
+      const hasOnlyParagraphs = (() => {
+        if (!contentJson || !Array.isArray(contentJson.content)) return false;
+        const stack: any[] = [...contentJson.content];
+        while (stack.length) {
+          const node = stack.pop();
+          if (!node) continue;
+          if (node.type && !['paragraph', 'text', 'doc'].includes(node.type)) return false;
+          if (Array.isArray(node.content)) stack.push(...node.content);
+        }
+        return true;
+      })();
+
+      const shouldForceMigration = (shouldMigrateFromText || shouldMigrateFromContentText || shouldMigrateFromXml) && (editorIsEffectivelyEmpty || (hasOnlyParagraphs && !alreadyMigrated));
+      if (!localMigrated && shouldForceMigration) {
         const textContent = shouldMigrateFromText
           ? prosemirrorText!.toString()
           : shouldMigrateFromContentText

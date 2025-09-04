@@ -125,6 +125,52 @@
   border-radius: 3px;
 }
 
+.uploadMenuButton {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: #e5e7eb;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+}
+
+.uploadMenuButton:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.uploadDropdownMenu {
+  position: absolute;
+  top: 40px;
+  right: 8px;
+  min-width: 160px;
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  z-index: 5;
+}
+
+.uploadDropdownItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  color: #e5e7eb;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.uploadDropdownItem:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
 /* Tilt effect using CSS variables with scale (match ScriptCard) */
 .tiltCard {
   --tilt-x: 0deg;
