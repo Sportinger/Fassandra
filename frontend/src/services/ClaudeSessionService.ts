@@ -111,11 +111,14 @@ export class ClaudeSessionService {
 
   async cancelSession(): Promise<void> {
     try {
+      const headers: Record<string, string> = {};
+      if (this.token && this.token !== 'authenticated') {
+        headers['Authorization'] = `Bearer ${this.token}`;
+      }
       const response = await fetch(`/api/s/session/${this.sessionId}/cancel`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.token}`
-        }
+        headers,
+        credentials: 'include',
       });
 
       if (!response.ok) {

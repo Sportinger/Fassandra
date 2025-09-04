@@ -453,8 +453,37 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
     }
   };
 
+  const handleCancelUploadFromCard = async (placeholderId: string) => {
+    try {
+      const sessionId = UploadStateManager.getSessionId(placeholderId);
+      if (!sessionId) {
+        logger.warn('ScriptList', '[CancelUpload] No session id for placeholder', placeholderId);
+        removeUpload(placeholderId);
+        return;
+      }
+      const svc = new ClaudeSessionService(sessionId, token || 'authenticated', () => {}, () => {}, () => {});
+      await svc.cancelSession();
+      sessionManager.dispose(placeholderId);
+      removeUpload(placeholderId);
+    } catch (e) {
+      logger.error('ScriptList', '[CancelUpload] Failed to cancel:', e);
+      // Remove anyway to avoid stale box
+      sessionManager.dispose(placeholderId);
+      removeUpload(placeholderId);
+    }
+  };
+
   const UploadPlaceholderCard: React.FC<{ placeholder: Script }> = ({ placeholder }) => {
     const tilt = useCssTiltWithAccelerometer({ maxTilt: 10, sensitivity: 1.2, mobileMultiplier: 0.6, invert: true });
+    const [menuOpen, setMenuOpen] = React.useState(false);
+    const menuRef = React.useRef<HTMLDivElement>(null);
+    React.useEffect(() => {
+      const onDocClick = (e: MouseEvent) => {
+        if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+      };
+      document.addEventListener('mousedown', onDocClick);
+      return () => document.removeEventListener('mousedown', onDocClick);
+    }, []);
     return (
       <div key={placeholder.id} style={{ perspective: '1000px' }}>
         <div
@@ -465,6 +494,13 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
           onMouseLeave={tilt.onMouseLeave}
           onTouchStart={tilt.onTouchStart}
         >
+          {/* Menu button */}
+          <button className={styles.uploadMenuButton} onClick={() => setMenuOpen(v => !v)} title="Options">⋮</button>
+          {menuOpen && (
+            <div ref={menuRef} className={styles.uploadDropdownMenu}>
+              <button className={styles.uploadDropdownItem} onClick={() => handleCancelUploadFromCard(placeholder.id)}>Cancel upload</button>
+            </div>
+          )}
           <div className={styles.uploadTitle}>{placeholder.title}</div>
           <div className={styles.uploadProgress}>
             {placeholder.uploadStatus === 'uploading' && (
