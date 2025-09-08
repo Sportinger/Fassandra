@@ -628,8 +628,8 @@ html, body {
   .single-page-view,
   .multi-page-view,
   .pageCanvas {
-    /* Keep symmetric side paddings so content is centered evenly */
-    padding-left: var(--content-padding-x);
+    /* Reserve only the icon rail width + a small gap */
+    padding-left: calc(var(--toolbar-button-size) + var(--space-md));
     padding-right: var(--content-padding-x);
   }
   
