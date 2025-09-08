@@ -10,7 +10,6 @@ import { SinglePageView } from '../ViewModes';
 import { FloatingCuesLayer } from './FloatingCuesLayer';
 import { FloatingCommentsLayer } from './FloatingCommentsLayer';
 import RulerOverlay from './RulerOverlay';
-import { AudioTranscription } from './AudioTranscription';
 import { MessageSquareQuoteIcon } from '../icons';
 import { TextSelection } from '@tiptap/pm/state';
 import type { EditorProps, ViewMode } from '../types';
@@ -74,7 +73,6 @@ export const Editor: React.FC<EditorProps> = ({
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [pageCount, setPageCount] = useState<number>(1);
   const [showRuler, setShowRuler] = useState(false);
-  const [audioTranscriptionActive, setAudioTranscriptionActive] = useState(false);
   const [rehearsalMode, setRehearsalMode] = useState(false);
   const [rehearsalLinePosition, setRehearsalLinePosition] = useState<number>(0);
   const [rehearsalDocPos, setRehearsalDocPos] = useState<number | null>(null);
@@ -1147,12 +1145,7 @@ export const Editor: React.FC<EditorProps> = ({
         }}
       />
       
-      {/* Audio Transcription - Floating */}
-      <AudioTranscription 
-        editor={editor}
-        isActive={audioTranscriptionActive}
-        onToggle={setAudioTranscriptionActive}
-      />
+      {/* Audio Transcription removed per request */}
     </div>
   );
 }; 

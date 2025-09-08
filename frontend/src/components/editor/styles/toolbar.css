@@ -7,42 +7,47 @@
 
 /* ===== FLOATING TOOLBAR CONTAINER ===== */
 
+/* Base: left/right docked toolbar without visible container chrome */
 .floatingToolbar {
+  /* Docked left sidebar on desktop */
   position: fixed;
-  left: var(--space-lg);
-  top: 50%;
-  transform: translateY(-50%);
+  left: 0; /* flush with window edge */
+  /* Sit below the fixed header with a little breathing room */
+  top: calc(var(--header-height) + env(safe-area-inset-top, 0px) + var(--space-md));
+  /* Occupy vertical space to bottom with padding */
+  bottom: var(--space-md);
+  transform: none;
   z-index: var(--z-index-fixed);
-  
+
   display: flex;
   flex-direction: column;
   gap: var(--toolbar-gap);
-  
+
   /* Responsive sizing */
-  width: var(--toolbar-width);
+  width: var(--toolbar-button-size); /* rail as wide as icons */
   min-width: var(--toolbar-button-size);
-  max-height: 90vh; /* Prevent toolbar from being taller than viewport */
-  /* Allow dropdowns to extend outside toolbar */
-  overflow-y: visible;
-  overflow-x: visible;
-  
-  /* Styling */
-  background: var(--color-background, white);
-  border: 1px solid var(--color-border-light, #e5e7eb);
-  border-radius: var(--radius-lg);
-  padding: var(--toolbar-padding);
-  box-shadow: var(--shadow-xl);
-  
-  /* No transitions */
-  /* transition: all var(--transition-normal); */
-  
+  /* Make it a true sidebar with internal scroll when taller than viewport */
+  max-height: none;
+  height: auto;
+  overflow-y: auto;
+  overflow-x: visible; /* allow dropdowns */
+
+  /* Subtle rail surface (match headbox gray) */
+  background: var(--color-background);
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+
   /* Backdrop filter for modern look */
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  
+  /* No backdrop blur for a clean, floating-icon look */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+
   /* Custom scrollbar for overflow */
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border-light, #e5e7eb) transparent;
+  /* Hide scrollbar track for a cleaner rail */
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
 }
 
 /* Custom scrollbar styling for webkit browsers */
@@ -63,11 +68,7 @@
   background: var(--color-border, #d1d5db);
 }
 
-.floatingToolbar:hover {
-  box-shadow: var(--shadow-xl);
-  /* No transform animation */
-  /* transform: translateY(-50%) translateX(2px); */
-}
+.floatingToolbar:hover { box-shadow: none; }
 
 /* ===== TOOLBAR BUTTON ===== */
 
@@ -106,12 +107,11 @@
   touch-action: manipulation;
 }
 
+/* Hover: only change icon color, not background */
 .toolbarButton:hover {
-  background: var(--color-accent, #3b82f6);
-  color: white;
-  /* No scale animation */
-  /* transform: scale(1.05); */
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  background: transparent;
+  color: var(--color-accent, #3b82f6);
+  box-shadow: none;
 }
 
 .toolbarButton:active {
@@ -120,9 +120,9 @@
 }
 
 .toolbarButton.active {
-  background: var(--color-accent, #3b82f6);
-  color: white;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+  background: transparent;
+  color: var(--color-accent, #3b82f6);
+  box-shadow: none;
 }
 
 /* Button icon styling */
@@ -162,13 +162,8 @@
 
 /* ===== TOOLBAR SEPARATOR ===== */
 
-.toolbarSeparator {
-  width: calc(var(--toolbar-button-size) * 0.8);
-  height: 1px;
-  background: var(--color-border-light, #e5e7eb);
-  margin: var(--space-xs) auto;
-  opacity: 0.6;
-}
+/* Slim visual gap without line */
+.toolbarSeparator { height: var(--space-sm); width: 1px; opacity: 0; }
 
 /* ===== MORPHING ANIMATIONS REMOVED ===== */
 
@@ -208,32 +203,13 @@
 
 /* ===== CONTEXT-SPECIFIC STYLING ===== */
 
-.floatingToolbar.context-text-formatting {
-  /* Match default: remove blue accent */
-  border-left: 1px solid var(--color-border-light, #e5e7eb);
-}
-
-.floatingToolbar.context-dialogue-layout {
-  border-left: 3px solid #10b981;
-}
-
-.floatingToolbar.context-speaker-select {
-  /* Match default: no colored accent */
-  border-left: 1px solid var(--color-border-light, #e5e7eb);
-}
-
-.floatingToolbar.context-empty-page {
-  border-left: 3px solid #8b5cf6;
-}
-
-.floatingToolbar.context-cue-select {
-  border-left: 3px solid #10b981;
-}
-
-.floatingToolbar.context-scene-select {
-  border-left: 3px solid #15803d; /* Dark green for scenes */
-  background: rgba(21, 128, 61, 0.05); /* Subtle green tint */
-}
+/* Remove all context accent borders/tints for a clean rail */
+.floatingToolbar.context-text-formatting,
+.floatingToolbar.context-dialogue-layout,
+.floatingToolbar.context-speaker-select,
+.floatingToolbar.context-empty-page,
+.floatingToolbar.context-cue-select,
+.floatingToolbar.context-scene-select { border-left: none !important; background: transparent !important; }
 
 /* ===== DROPDOWN COMPONENTS ===== */
 
@@ -281,13 +257,14 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  left: calc(100% + var(--space-md));  /* Increased spacing from toolbar */
+  left: calc(100% + var(--space-sm));  /* Open towards the page from left rail */
+  right: auto;
   min-width: 200px;
   max-width: 300px;
   
   /* Dark gray background like editor */
   background: #1d1d1d;
-  border: 2px solid #535353;
+  border: none;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   
@@ -474,8 +451,8 @@
 
     /* Padding for content */
     padding: 12px 16px;
-    background: #1f1f1f; /* Dark gray toolbar */
-    color: #e5e7eb;
+    background: var(--color-background); /* Match headbox background */
+    color: var(--color-text);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
 
@@ -549,7 +526,7 @@
     /* Remove extra margins that cause spacing issues */
     margin: 0;
     flex: 0 0 auto; /* Don't grow or shrink, maintain size */
-    color: #e5e7eb; /* Light icons on dark toolbar */
+    color: var(--color-text); /* Match theme text color */
 
     /* Better visual feedback on mobile */
     font-size: 18px; /* Slightly larger icons */
@@ -559,11 +536,10 @@
   }
   
   .toolbarButton:hover {
-    /* Enhanced mobile hover effects */
-    background: var(--color-accent, #3b82f6);
-    color: white;
-    /* transform: none; */ /* No scale on mobile - can interfere with touch */
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); /* Subtle shadow */
+    /* Keep hover minimal on mobile too: color only */
+    background: transparent;
+    color: var(--color-accent, #3b82f6);
+    box-shadow: none;
   }
   
   .toolbarButton:active {
@@ -592,8 +568,8 @@
     z-index: 4000 !important; /* Above the toolbar and other UI */
 
     /* Match toolbar visual style */
-    background: #1f1f1f; /* Same dark background as toolbar */
-    color: #e5e7eb;
+    background: var(--color-background); /* Match headbox background */
+    color: var(--color-text);
     border-radius: 0;
     border: none;
     border-top: 1px solid #333;
@@ -675,7 +651,7 @@
     background: transparent;
     border: none;
     border-radius: var(--radius-lg);
-    color: #e5e7eb;
+    color: var(--color-text);
     font-weight: 600;
     white-space: nowrap;
     flex: 0 0 auto;
@@ -778,8 +754,8 @@
 
 @media (prefers-color-scheme: dark) {
   .floatingToolbar {
-    background: var(--color-background-secondary, #1f2937);
-    border-color: var(--color-border, #374151);
+    background: var(--color-background) !important;
+    border: none !important;
   }
   
   .toolbarButton {
@@ -798,7 +774,7 @@
   }
   
   .dropdownItem {
-    color: #e5e7eb; /* Light gray text in dark mode */
+    color: var(--color-text); /* Match theme text color */
   }
   
   .dropdownItem:hover {
