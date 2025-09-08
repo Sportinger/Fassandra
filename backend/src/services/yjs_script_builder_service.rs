@@ -11,6 +11,7 @@ use uuid::Uuid;
 use anyhow::{Result, anyhow};
 use tracing::{info, error, debug};
 use yrs::{Doc, Options, Transact, ReadTxn, WriteTxn, StateVector};
+use yrs::updates::encoder::Encode; // for encode_v1 on StateVector and updates
 use yrs::{XmlElementPrelim, XmlTextPrelim, Text, XmlFragment as _};
 // use yrs::updates::encoder::Encode; // Not needed; we use encode via transact
 
