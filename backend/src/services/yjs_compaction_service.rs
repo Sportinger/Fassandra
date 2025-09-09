@@ -6,6 +6,7 @@ use yrs::updates::encoder::Encode;
 use tokio::time::{Duration, interval};
 use tracing::{info, error, debug, warn};
 use anyhow::Result;
+use anyhow::anyhow;
 
 /// Service responsible for compacting YJS updates into base states
 pub struct CompactionService {
@@ -344,13 +345,113 @@ pub async fn load_document(pool: &PgPool, script_id: Uuid) -> Result<Doc> {
                 applied += 1;
             }
             Err(e) => {
-                warn!("Failed to decode recent update: {} (skipping)", e);
+                // Fallback: some legacy rows may contain a full y-protocol Sync frame
+                // Try to decode as yrs::sync::Message and extract the inner Update payload
+                warn!("Failed to decode recent update via Update::decode_v1: {} (attempting sync fallback)", e);
+                use yrs::updates::decoder::{Decode as _, DecoderV1};
+                use yrs::encoding::read::Cursor as YrsCursor;
+                use yrs::sync::{Message as SyncEnvelope, SyncMessage as SyncInner};
+
+                let mut dec = DecoderV1::new(YrsCursor::new(&update.update_data));
+                match <SyncEnvelope as yrs::updates::decoder::Decode>::decode(&mut dec) {
+                    Ok(SyncEnvelope::Sync(inner)) => {
+                        let bytes_opt = match inner {
+                            SyncInner::Update(bytes) => Some(bytes),
+                            SyncInner::SyncStep2(bytes) => Some(bytes),
+                            _ => None,
+                        };
+                        if let Some(bytes) = bytes_opt {
+                            match Update::decode_v1(&bytes) {
+                                Ok(yjs_update) => {
+                                    doc.transact_mut().apply_update(yjs_update);
+                                    applied += 1;
+                                    debug!("Applied legacy sync-encoded update ({} bytes)", bytes.len());
+                                }
+                                Err(e2) => {
+                                    warn!("Failed to decode inner Update payload from sync frame: {} (skipping)", e2);
+                                }
+                            }
+                        } else {
+                            warn!("Sync frame was not an Update/SyncStep2 payload; skipping");
+                        }
+                    }
+                    Ok(_other) => {
+                        warn!("Decoded a non-Sync message variant; skipping");
+                    }
+                    Err(e_sync) => {
+                        warn!("Fallback sync decode failed: {} (skipping update)", e_sync);
+                    }
+                }
             }
         }
     }
     
     debug!("Document loaded with {} recent updates applied", applied);
     Ok(doc)
+}
+
+/// Compact base state immediately by folding all recent updates into yjs_base_states
+pub async fn compact_now(pool: &PgPool, script_id: Uuid) -> Result<()> {
+    use yrs::updates::encoder::Encode;
+    use yrs::Transact;
+
+    // Load current document (base + recent updates)
+    let doc = load_document(pool, script_id).await?;
+    let new_base = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
+    let state_vector = doc.transact().state_vector().encode_v1();
+
+    // Persist new base and roll up metadata
+    let last_update_id: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(MAX(id), 0) FROM yjs_recent_updates WHERE script_id = $1"
+    )
+    .bind(script_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    let update_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM yjs_recent_updates WHERE script_id = $1"
+    )
+    .bind(script_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    let size_after = new_base.len() as i32;
+    let update_count_i32 = (update_count as i32).max(0);
+
+    sqlx::query(
+        r#"
+        INSERT INTO yjs_base_states (script_id, base_state, state_vector, last_compacted_update_id, update_count, document_size)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (script_id)
+        DO UPDATE SET 
+            base_state = EXCLUDED.base_state,
+            state_vector = EXCLUDED.state_vector,
+            last_compacted_update_id = EXCLUDED.last_compacted_update_id,
+            update_count = yjs_base_states.update_count + EXCLUDED.update_count,
+            document_size = EXCLUDED.document_size,
+            compacted_at = NOW()
+        "#
+    )
+    .bind(script_id)
+    .bind(new_base.as_slice())
+    .bind(state_vector.as_slice())
+    .bind(last_update_id)
+    .bind(update_count_i32)
+    .bind(size_after)
+    .execute(pool)
+    .await?;
+
+    // Mark updates as compacted
+    sqlx::query(
+        "UPDATE yjs_recent_updates SET is_compacted = true WHERE script_id = $1 AND is_compacted = false"
+    )
+    .bind(script_id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
 }
 
 /// Compute current state vector bytes for a script's document (base + recent updates)
@@ -410,4 +511,134 @@ pub async fn cleanup_old_updates(pool: &PgPool, days_to_keep: i64) -> Result<()>
     }
     
     Ok(())
+}
+
+/// Migrate a script's Yjs document by rebuilding a clean TipTap-compatible
+/// structure from legacy plaintext markers. This removes hidden legacy nodes
+/// (e.g., cueBlock) and produces visible content in the `default` fragment.
+///
+/// Strategy:
+/// - Extract text via `extract_text_content` (prefers `content`, then `prosemirror`, then `default`).
+/// - Parse simple markers emitted by the importer: [PAGE] N, [SCENE] Title, and
+///   dialogue blocks in the form `Speaker: line1\nline2...`.
+/// - Build a fresh Y.Doc with pageIndicator, sceneBlock, dialogueBlock, and paragraph nodes.
+/// - Overwrite `yjs_base_states` for the script and mark recent updates compacted.
+pub async fn migrate_legacy_to_structured(pool: &PgPool, script_id: Uuid) -> Result<(i32, i64)> {
+    use yrs::{Transact, WriteTxn};
+    use yrs::updates::encoder::Encode;
+    use yrs::{XmlElementPrelim, XmlTextPrelim, XmlFragment as _};
+
+    // Load current document (base + updates)
+    let doc = load_document(pool, script_id).await?;
+    let legacy_text = extract_text_content(&doc);
+    if legacy_text.trim().is_empty() {
+        return Err(anyhow!("Legacy text content is empty; nothing to migrate"));
+    }
+
+    // Build a fresh structured document
+    let new_doc = Doc::with_options(Options::default());
+    {
+        let mut txn = new_doc.transact_mut();
+        let frag = txn.get_or_insert_xml_fragment("default");
+        txn.get_or_insert_text("prosemirror");
+        txn.get_or_insert_map("metadata");
+
+        // Split into blocks by blank line
+        for raw_block in legacy_text.split("\n\n") {
+            let block = raw_block.trim();
+            if block.is_empty() { continue; }
+
+            // [PAGE] N
+            if let Some(rest) = block.strip_prefix("[PAGE] ") {
+                let n = rest.split_whitespace().next().unwrap_or("");
+                let page_el = XmlElementPrelim::empty("pageIndicator");
+                let page_ref = frag.push_back(&mut txn, page_el);
+                page_ref.push_back(&mut txn, XmlTextPrelim::new(format!("Page {}", n)));
+                continue;
+            }
+
+            // [SCENE] Title
+            if let Some(title) = block.strip_prefix("[SCENE] ") {
+                let scene_el = XmlElementPrelim::empty("sceneBlock");
+                let scene_ref = frag.push_back(&mut txn, scene_el);
+                let t = title.trim();
+                scene_ref.push_back(&mut txn, XmlTextPrelim::new(if t.is_empty() { "Untitled Scene".to_string() } else { t.to_string() }));
+                continue;
+            }
+
+            // Dialogue: First line "Speaker: text", subsequent non-empty lines are more paragraphs
+            let mut lines = block.lines();
+            if let Some(first) = lines.next() {
+                if let Some((speaker, first_text)) = first.split_once(':') {
+                    let dlg = frag.push_back(&mut txn, XmlElementPrelim::empty("dialogueBlock"));
+                    let sp = dlg.push_back(&mut txn, XmlElementPrelim::empty("speaker"));
+                    let name = speaker.trim();
+                    if !name.is_empty() {
+                        sp.push_back(&mut txn, XmlTextPrelim::new(name.to_string()));
+                    }
+                    let dtext = dlg.push_back(&mut txn, XmlElementPrelim::empty("dialogueText"));
+                    let t0 = first_text.trim();
+                    if !t0.is_empty() {
+                        let p = dtext.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                        p.push_back(&mut txn, XmlTextPrelim::new(t0.to_string()));
+                    }
+                    for l in lines {
+                        let lt = l.trim();
+                        if lt.is_empty() { continue; }
+                        let p = dtext.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                        p.push_back(&mut txn, XmlTextPrelim::new(lt.to_string()));
+                    }
+                    continue;
+                }
+            }
+
+            // Plain paragraph
+            let p = frag.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+            p.push_back(&mut txn, XmlTextPrelim::new(block.to_string()));
+        }
+    }
+
+    // Persist as new base state
+    let new_base = new_doc.transact().encode_state_as_update_v1(&StateVector::default());
+    let state_vector = new_doc.transact().state_vector().encode_v1();
+
+    // Figure out current last update id for bookkeeping
+    let last_update_id: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(MAX(id), 0) FROM yjs_recent_updates WHERE script_id = $1"
+    )
+    .bind(script_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    sqlx::query(
+        r#"
+        INSERT INTO yjs_base_states (script_id, base_state, state_vector, last_compacted_update_id, update_count, document_size)
+        VALUES ($1, $2, $3, $4, 0, $5)
+        ON CONFLICT (script_id)
+        DO UPDATE SET 
+            base_state = EXCLUDED.base_state,
+            state_vector = EXCLUDED.state_vector,
+            last_compacted_update_id = EXCLUDED.last_compacted_update_id,
+            document_size = EXCLUDED.document_size,
+            compacted_at = NOW()
+        "#
+    )
+    .bind(script_id)
+    .bind(new_base.as_slice())
+    .bind(state_vector.as_slice())
+    .bind(last_update_id)
+    .bind(new_base.len() as i32)
+    .execute(pool)
+    .await?;
+
+    // Mark all recent updates compacted (we fully replaced base)
+    let updated = sqlx::query(
+        "UPDATE yjs_recent_updates SET is_compacted = true WHERE script_id = $1 AND is_compacted = false"
+    )
+    .bind(script_id)
+    .execute(pool)
+    .await?;
+
+    Ok((new_base.len() as i32, updated.rows_affected() as i64))
 }

@@ -17,7 +17,8 @@
   /* Occupy vertical space to bottom with padding */
   bottom: var(--space-md);
   transform: none;
-  z-index: var(--z-index-fixed);
+  /* Ensure toolbar and its dropdowns sit above page content and header */
+  z-index: 1100;
 
   display: flex;
   flex-direction: column;
@@ -29,7 +30,8 @@
   /* Make it a true sidebar with internal scroll when taller than viewport */
   max-height: none;
   height: auto;
-  overflow-y: auto;
+  /* Allow dropdowns/submenus to overflow in both directions (avoid clipping) */
+  overflow-y: visible;
   overflow-x: visible; /* allow dropdowns */
 
   /* Subtle rail surface (match headbox gray) */

@@ -223,6 +223,7 @@ fn api_routes_with_services(
         .route("/scripts/:id/yjs", get(get_script_yjs_state))
         .route("/scripts/:id/updates", get(get_script_recent_updates))
         .route("/scripts/:id/compact", post(trigger_script_compaction))
+        .route("/scripts/:id/migrate_legacy", post(trigger_script_migration))
         // Parsing status endpoint
         .route("/parsing/:session_id/status", get(get_parsing_status))
         .with_state(script_services);
@@ -352,16 +353,33 @@ async fn trigger_script_compaction(
     auth_user: AuthUser,
 ) -> Result<Json<serde_json::Value>, crate::error::AppError> {
     let pool = services.script_service.get_pool();
-    
-    // Create compaction service and trigger compaction
-    // Note: Compaction happens automatically in the background service
-    // This endpoint is just for manual triggering if needed
-    
-    // Note: In production, this would be better handled by the background service
-    // This is just for manual triggering if needed
+    // Manual compaction: fold recent updates into base state now
+    crate::services::yjs_compaction_service::compact_now(&pool, script_id)
+        .await
+        .map_err(|e| crate::error::AppError::Internal(e.into()))?;
+
     Ok(Json(serde_json::json!({
-        "message": "Compaction triggered",
+        "message": "Compaction completed",
         "script_id": script_id
+    })))
+}
+
+/// Trigger server-side migration to normalize legacy content into visible TipTap nodes
+async fn trigger_script_migration(
+    State(services): State<crate::handlers::script::ScriptServices>,
+    Path(script_id): Path<Uuid>,
+    auth_user: AuthUser,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let pool = services.script_service.get_pool();
+    let (new_size, updates_marked) = crate::services::yjs_compaction_service::migrate_legacy_to_structured(&pool, script_id)
+        .await
+        .map_err(|e| crate::error::AppError::Internal(e.into()))?;
+
+    Ok(Json(serde_json::json!({
+        "message": "Migration completed",
+        "script_id": script_id,
+        "new_base_size": new_size,
+        "updates_marked_compacted": updates_marked
     })))
 }
 
