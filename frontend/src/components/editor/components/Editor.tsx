@@ -111,6 +111,7 @@ export const Editor: React.FC<EditorProps> = ({
   const [activeSidebarCueId, setActiveSidebarCueId] = useState<string | null>(null);
   const [expandedCueId, setExpandedCueId] = useState<string | null>(null);
   const [activeSidebarCommentId, setActiveSidebarCommentId] = useState<string | null>(null);
+  const [cueDescriptions, setCueDescriptions] = useState<Record<string, string>>({});
   const [sidebarPanel, setSidebarPanel] = useState<
     | { type: 'cue'; cueId: string; cueType: string; cueNumber: string; cueName?: string | null; draftName: string }
     | { type: 'comment'; id: string; draft: string }
@@ -1496,43 +1497,94 @@ export const Editor: React.FC<EditorProps> = ({
                               setExpandedCueId(prev => prev === c.cueId ? null : c.cueId);
                             }}
                           >
-                            <div className="rs-cue-row">
-                              <span className="rs-cue-emoji" aria-hidden>{CUE_TYPE_ICONS[c.cueType as keyof typeof CUE_TYPE_ICONS] || '🎛️'}</span>
-                              <span className="rs-cue-number">Q{c.cueNumber}</span>
-                              <span className="rs-cue-name" title={c.cueName || (c.cueType?.toUpperCase?.() || '')}>
-                                {c.cueName || (c.cueType?.toUpperCase?.() || '')}
-                              </span>
-                              <button
-                                className="rs-btn rs-cue-edit"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSidebarPanel(prev => (
-                                    prev && prev.type === 'cue' && prev.cueId === c.cueId
-                                      ? null
-                                      : { type: 'cue', cueId: c.cueId, cueType: c.cueType, cueNumber: c.cueNumber, cueName: c.cueName || '', draftName: c.cueName || '' }
-                                  ));
-                                }}
-                              >
-                                Edit
-                              </button>
-                            </div>
+                          <div className="rs-cue-row">
+                            <span className="rs-cue-emoji" aria-hidden>{CUE_TYPE_ICONS[c.cueType as keyof typeof CUE_TYPE_ICONS] || '🎛️'}</span>
+                            <span className="rs-cue-number">Q{c.cueNumber}</span>
+                            <span
+                              className={`rs-cue-name ${sidebarPanel && sidebarPanel.type==='cue' && sidebarPanel.cueId===c.cueId ? 'editable-hint' : ''}`}
+                              title={c.cueName || (c.cueType?.toUpperCase?.() || '')}
+                              contentEditable={Boolean(sidebarPanel && sidebarPanel.type==='cue' && sidebarPanel.cueId===c.cueId)}
+                              suppressContentEditableWarning
+                              data-cue-id={c.cueId}
+                              onMouseDown={(e) => {
+                                // prevent parent card toggle while editing
+                                if (sidebarPanel && sidebarPanel.type==='cue' && sidebarPanel.cueId===c.cueId) e.stopPropagation();
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const el = e.currentTarget as HTMLElement;
+                                  const newName = (el.innerText || '').trim();
+                                  if (editor) (editor as any).commands.updateCueById(c.cueId, { cueName: newName });
+                                  (el as HTMLElement).blur();
+                                }
+                              }}
+                              onBlur={(e) => {
+                                const el = e.currentTarget as HTMLElement;
+                                const newName = (el.innerText || '').trim();
+                                if (editor) (editor as any).commands.updateCueById(c.cueId, { cueName: newName });
+                              }}
+                            >
+                              {c.cueName || (c.cueType?.toUpperCase?.() || '')}
+                            </span>
+                            <button
+                              className="rs-btn rs-cue-edit"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSidebarPanel(prev => (
+                                  prev && prev.type === 'cue' && prev.cueId === c.cueId
+                                    ? null
+                                    : { type: 'cue', cueId: c.cueId, cueType: c.cueType, cueNumber: c.cueNumber, cueName: c.cueName || '', draftName: c.cueName || '' }
+                                ));
+                                setExpandedCueId(c.cueId);
+                                setTimeout(() => {
+                                  try {
+                                    const el = document.querySelector(`.rs-cue-name[data-cue-id="${c.cueId}"]`) as HTMLElement | null;
+                                    if (el) {
+                                      el.focus();
+                                      const range = document.createRange();
+                                      range.selectNodeContents(el);
+                                      range.collapse(false);
+                                      const sel = window.getSelection();
+                                      sel?.removeAllRanges();
+                                      sel?.addRange(range);
+                                    }
+                                  } catch {}
+                                }, 0);
+                              }}
+                            >
+                              Edit
+                            </button>
+                          </div>
                             {/* Expanded details */}
                             {expandedCueId === c.cueId && (
                               <div className="rs-cue-details">
                                 <div className="row"><span className="k">Type</span><span className="v">{c.cueType.toUpperCase()}</span></div>
                                 <div className="row"><span className="k">Number</span><span className="v">{c.cueNumber}</span></div>
                                 {c.cueName && <div className="row"><span className="k">Name</span><span className="v">{c.cueName}</span></div>}
-                                {c.text && <div className="row"><span className="k">Snippet</span><span className="v">{c.text}</span></div>}
+                                {c.text && (
+                                  <div className="row">
+                                    <span className="k">Stichwort</span>
+                                    <span className="v">{"\u0022..." + c.text + "...\u0022"}</span>
+                                  </div>
+                                )}
                               </div>
                             )}
-                            {/* Inline edit panel retains behavior */}
+                            {/* Inline edit actions and description */}
                             {sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === c.cueId && (
                               <div style={{ marginTop: 10 }}>
-                                <input value={sidebarPanel.draftName} onChange={(e) => setSidebarPanel(p => p && p.type === 'cue' ? { ...p, draftName: e.target.value } : p)} placeholder="Cue name" style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--color-border)' }} />
-                                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                                  <button className="rs-btn primary" onClick={(e) => { e.stopPropagation(); if (!editor) return; (editor as any).commands.updateCueById(c.cueId, { cueName: (sidebarPanel as any).draftName }); setSidebarPanel(null); }}>Save</button>
+                                <div style={{ display: 'flex', gap: 8 }}>
                                   <button className="rs-btn" onClick={(e) => { e.stopPropagation(); if (!editor) return; (editor as any).commands.startCueExtend?.(c.cueId); }}>Move Link</button>
                                   <button className="rs-btn" style={{ color: '#dc2626', borderColor: '#7f1d1d' }} onClick={(e) => { e.stopPropagation(); if (!editor) return; (editor as any).commands.removeCueConnection(c.cueId); setSidebarPanel(null); }}>Delete</button>
+                                </div>
+                                <div style={{ marginTop: 8 }}>
+                                  <label style={{ display: 'block', fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Description (temporary, frontend only)</label>
+                                  <textarea
+                                    value={cueDescriptions[c.cueId] || ''}
+                                    onChange={(e) => setCueDescriptions(prev => ({ ...prev, [c.cueId]: e.target.value }))}
+                                    placeholder="Add details for technicians, stage directions, timing…"
+                                    style={{ width: '100%', minHeight: 80, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-text)' }}
+                                  />
                                 </div>
                               </div>
                             )}
@@ -1561,7 +1613,30 @@ export const Editor: React.FC<EditorProps> = ({
                               <div className="rs-cue-row">
                                 <span className="rs-cue-emoji" aria-hidden>{CUE_TYPE_ICONS[c.cueType as keyof typeof CUE_TYPE_ICONS] || '🎛️'}</span>
                                 <span className="rs-cue-number">Q{c.cueNumber}</span>
-                                <span className="rs-cue-name" title={c.cueName || (c.cueType?.toUpperCase?.() || '')}>
+                                <span
+                                  className={`rs-cue-name ${sidebarPanel && sidebarPanel.type==='cue' && sidebarPanel.cueId===c.cueId ? 'editable-hint' : ''}`}
+                                  title={c.cueName || (c.cueType?.toUpperCase?.() || '')}
+                                  contentEditable={Boolean(sidebarPanel && sidebarPanel.type==='cue' && sidebarPanel.cueId===c.cueId)}
+                                  suppressContentEditableWarning
+                                  data-cue-id={c.cueId}
+                                  onMouseDown={(e) => {
+                                    if (sidebarPanel && sidebarPanel.type==='cue' && sidebarPanel.cueId===c.cueId) e.stopPropagation();
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      const el = e.currentTarget as HTMLElement;
+                                      const newName = (el.innerText || '').trim();
+                                      if (editor) (editor as any).commands.updateCueById(c.cueId, { cueName: newName });
+                                      (el as HTMLElement).blur();
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    const el = e.currentTarget as HTMLElement;
+                                    const newName = (el.innerText || '').trim();
+                                    if (editor) (editor as any).commands.updateCueById(c.cueId, { cueName: newName });
+                                  }}
+                                >
                                   {c.cueName || (c.cueType?.toUpperCase?.() || '')}
                                 </span>
                                 <button
@@ -1573,6 +1648,21 @@ export const Editor: React.FC<EditorProps> = ({
                                         ? null
                                         : { type: 'cue', cueId: c.cueId, cueType: c.cueType, cueNumber: c.cueNumber, cueName: c.cueName || '', draftName: c.cueName || '' }
                                     ));
+                                    setExpandedCueId(c.cueId);
+                                    setTimeout(() => {
+                                      try {
+                                        const el = document.querySelector(`.rs-cue-name[data-cue-id="${c.cueId}"]`) as HTMLElement | null;
+                                        if (el) {
+                                          el.focus();
+                                          const range = document.createRange();
+                                          range.selectNodeContents(el);
+                                          range.collapse(false);
+                                          const sel = window.getSelection();
+                                          sel?.removeAllRanges();
+                                          sel?.addRange(range);
+                                        }
+                                      } catch {}
+                                    }, 0);
                                   }}
                                 >
                                   Edit
@@ -1584,17 +1674,29 @@ export const Editor: React.FC<EditorProps> = ({
                                   <div className="row"><span className="k">Type</span><span className="v">{c.cueType.toUpperCase()}</span></div>
                                   <div className="row"><span className="k">Number</span><span className="v">{c.cueNumber}</span></div>
                                   {c.cueName && <div className="row"><span className="k">Name</span><span className="v">{c.cueName}</span></div>}
-                                  {c.text && <div className="row"><span className="k">Snippet</span><span className="v">{c.text}</span></div>}
+                                  {c.text && (
+                                    <div className="row">
+                                      <span className="k">Stichwort</span>
+                                      <span className="v">{"\u0022..." + c.text + "...\u0022"}</span>
+                                    </div>
+                                  )}
                                 </div>
                               )}
-                              {/* Inline edit panel retains behavior */}
+                              {/* Inline edit actions and description */}
                               {sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === c.cueId && (
                                 <div style={{ marginTop: 10 }}>
-                                  <input value={sidebarPanel.draftName} onChange={(e) => setSidebarPanel(p => p && p.type === 'cue' ? { ...p, draftName: e.target.value } : p)} placeholder="Cue name" style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--color-border)' }} />
-                                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                                    <button className="rs-btn primary" onClick={(e) => { e.stopPropagation(); if (!editor) return; (editor as any).commands.updateCueById(c.cueId, { cueName: (sidebarPanel as any).draftName }); setSidebarPanel(null); }}>Save</button>
+                                  <div style={{ display: 'flex', gap: 8 }}>
                                     <button className="rs-btn" onClick={(e) => { e.stopPropagation(); if (!editor) return; (editor as any).commands.startCueExtend?.(c.cueId); }}>Move Link</button>
                                     <button className="rs-btn" style={{ color: '#dc2626', borderColor: '#7f1d1d' }} onClick={(e) => { e.stopPropagation(); if (!editor) return; (editor as any).commands.removeCueConnection(c.cueId); setSidebarPanel(null); }}>Delete</button>
+                                  </div>
+                                  <div style={{ marginTop: 8 }}>
+                                    <label style={{ display: 'block', fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Description (temporary, frontend only)</label>
+                                    <textarea
+                                      value={cueDescriptions[c.cueId] || ''}
+                                      onChange={(e) => setCueDescriptions(prev => ({ ...prev, [c.cueId]: e.target.value }))}
+                                      placeholder="Add details for technicians, stage directions, timing…"
+                                      style={{ width: '100%', minHeight: 80, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-text)' }}
+                                    />
                                   </div>
                                 </div>
                               )}

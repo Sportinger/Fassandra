@@ -85,6 +85,16 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+.rs-cue-name[contenteditable="true"] {
+  outline: none;
+  border-bottom: 1px dashed var(--color-border);
+  color: var(--color-text);
+  cursor: text;
+}
+.rs-cue-name.editable-hint::after {
+  content: ' \270E'; /* pencil hint */
+  opacity: 0.5;
+}
 .rs-cue-edit { flex: 0 0 auto; }
 
 /* Expanded details panel under a cue row */
