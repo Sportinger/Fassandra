@@ -21,6 +21,8 @@ interface FloatingCuesLayerProps {
   offsetY?: number;
   // Optional: toggle visibility (default: true)
   visible?: boolean;
+  // Optional: external open handler (e.g., right sidebar)
+  onOpenCue?: (payload: { cueId: string; cueType: string; cueNumber: string; cueName?: string | null }) => void;
 }
 
 // Helper: find first DOM element per unique cue (type+number)
@@ -45,7 +47,7 @@ function collectCueAnchors(_container: HTMLElement | null): Array<{ el: HTMLElem
   return anchors;
 }
 
-export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, offsetX = 8, offsetY = -20, visible = true }) => {
+export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, offsetX = 8, offsetY = -20, visible = true, onOpenCue }) => {
   const [items, setItems] = useState<FloatingCueItem[]>([]);
 
   const computePositions = useCallback(() => {
@@ -200,13 +202,20 @@ export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, of
             <div
               className={`floating-cue floating-cue-${item.cueType}`}
               title={`${item.cueType.toUpperCase()} Q${item.cueNumber || ''}`}
-              onClick={(e) => { e.stopPropagation(); openFor(item.cueId, item.cueName); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpenCue) {
+                  onOpenCue({ cueId: item.cueId, cueType: item.cueType, cueNumber: item.cueNumber, cueName: item.cueName });
+                } else {
+                  openFor(item.cueId, item.cueName);
+                }
+              }}
             >
               <span className="floating-cue-icon" aria-hidden>{CUE_TYPE_ICONS[item.cueType as keyof typeof CUE_TYPE_ICONS] || '🎛️'}</span>
               <span className="floating-cue-number">Q{item.cueNumber}</span>
               {item.cueName ? <span className="floating-cue-name">{item.cueName}</span> : null}
             </div>
-            {isOpen && (
+            {!onOpenCue && isOpen && (
               isMobile ? (
                 <div className="floating-cue-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
                   <div className="popover-inner">

@@ -28,6 +28,9 @@ import '../styles/floating-cues.css';
 import '../styles/ruler-overlay.css';
 import '../styles/comments.css';
 import '../styles/print.css';
+import '../styles/right-sidebar.css';
+import { CUE_TYPE_ICONS } from '../../../types/cue';
+import type { CueType } from '../../../types/cue';
 /**
  * Main Editor Component
  * Orchestrates all editor sub-systems with responsive design
@@ -93,6 +96,74 @@ export const Editor: React.FC<EditorProps> = ({
   const isLiveRenamingRef = useRef<boolean>(false);
   const [rulerOverlayActive, setRulerOverlayActive] = useState(false);
   const [insertSubmenu, setInsertSubmenu] = useState<{open:boolean;x:number;y:number}>({ open: false, x: 0, y: 0 });
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+  // Sidebar collections and UI state
+  const [sidebarCues, setSidebarCues] = useState<Array<{ cueId: string; cueType: string; cueNumber: string; cueName?: string|null; y: number; x: number }>>([]);
+  const [sidebarComments, setSidebarComments] = useState<Array<{ id: string; text: string }>>([]);
+  const [cuesCollapsed, setCuesCollapsed] = useState(false);
+  const [commentsCollapsed, setCommentsCollapsed] = useState(false);
+  const [cueFilters, setCueFilters] = useState<Record<CueType, boolean>>({
+    light: true,
+    video: true,
+    sound: true,
+    props: true,
+  });
+  const [sidebarPanel, setSidebarPanel] = useState<
+    | { type: 'cue'; cueId: string; cueType: string; cueNumber: string; cueName?: string | null; draftName: string }
+    | { type: 'comment'; id: string; draft: string }
+    | null
+  >(null);
+  // Compute sidebar data from current editor DOM
+  useEffect(() => {
+    if (!editor) return;
+    const recompute = () => {
+      const cues: Array<{ cueId: string; cueType: string; cueNumber: string; cueName?: string|null }> = [];
+      const seen = new Set<string>();
+      const container = document.querySelector('.singlePageContainer') as HTMLElement | null;
+      const cRect = container ? container.getBoundingClientRect() : null;
+      const cScrollTop = container ? (container.scrollTop || 0) : 0;
+      const cScrollLeft = container ? ((container as any).scrollLeft || 0) : 0;
+      document.querySelectorAll('.cue-connection[data-cue-id][data-cue-type]').forEach((el) => {
+        const he = el as HTMLElement;
+        const id = he.getAttribute('data-cue-id') || '';
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+        const r = he.getBoundingClientRect();
+        const y = cRect ? (r.top - cRect.top) + cScrollTop : r.top;
+        const x = cRect ? (r.left - cRect.left) + cScrollLeft : r.left;
+        cues.push({
+          cueId: id,
+          cueType: he.getAttribute('data-cue-type') || 'props',
+          cueNumber: he.getAttribute('data-cue-number') || '',
+          cueName: he.getAttribute('data-cue-name') || '',
+          y,
+          x,
+        });
+      });
+      setSidebarCues(cues);
+      const comments: Array<{ id: string; text: string }> = [];
+      const seenC = new Set<string>();
+      document.querySelectorAll('.comment-annotation[data-comment-id]').forEach((el) => {
+        const he = el as HTMLElement;
+        const id = he.getAttribute('data-comment-id') || '';
+        if (!id || seenC.has(id)) return;
+        seenC.add(id);
+        comments.push({ id, text: he.getAttribute('data-comment-text') || '' });
+      });
+      setSidebarComments(comments);
+    };
+    recompute();
+    editor.on('update', recompute);
+    editor.on('selectionUpdate', recompute);
+    window.addEventListener('resize', recompute);
+    window.addEventListener('scroll', recompute, true);
+    return () => {
+      editor.off('update', recompute);
+      editor.off('selectionUpdate', recompute);
+      window.removeEventListener('resize', recompute);
+      window.removeEventListener('scroll', recompute, true);
+    };
+  }, [editor]);
   
   // Removed demo mode state - development utility
   // Removed demo-related state - development utility
@@ -802,11 +873,23 @@ export const Editor: React.FC<EditorProps> = ({
               // Floating cues overlay anchored to connected words
               <>
                 {/* eslint-disable-next-line react/jsx-no-useless-fragment */}
-                <FloatingCuesLayer editor={editor} />
+                <FloatingCuesLayer
+                  editor={editor}
+                  onOpenCue={(payload) => {
+                    setRightSidebarOpen(true);
+                    setSidebarPanel({ type: 'cue', ...payload, draftName: payload.cueName || '' });
+                  }}
+                />
                 {/* Ruler overlay */}
                 <RulerOverlay active={rulerOverlayActive} onClose={() => setRulerOverlayActive(false)} />
                 {/* Comments overlay */}
-                <FloatingCommentsLayer editor={editor} />
+                <FloatingCommentsLayer
+                  editor={editor}
+                  onOpenComment={({ id, text }) => {
+                    setRightSidebarOpen(true);
+                    setSidebarPanel({ type: 'comment', id, draft: text });
+                  }}
+                />
                 {/* Rehearsal word highlight box */}
                 {rehearsalMode && rehearsalWordBox && (
                   <div
@@ -1291,6 +1374,189 @@ export const Editor: React.FC<EditorProps> = ({
           }
         }}
       />
+      {/* Right Sidebar */}
+      <div className={`rightSidebar ${rightSidebarOpen ? 'open' : 'collapsed'}`}>
+        <div
+          className="rightSidebarToggle"
+          role="button"
+          aria-label={rightSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+          title={rightSidebarOpen ? 'Collapse' : 'Expand'}
+          onClick={() => setRightSidebarOpen(v => !v)}
+        >
+          {rightSidebarOpen ? '<' : '>'}
+        </div>
+        {/* Sidebar information sections */}
+        {rightSidebarOpen && (
+          <div className="rightSidebarInner">
+            {/* Cues */}
+            <div className="rs-section">
+              <div className="rs-header">
+                <span>Cues</span>
+                <button onClick={() => setCuesCollapsed(v => !v)}>{cuesCollapsed ? '▸' : '▾'}</button>
+              </div>
+              {!cuesCollapsed && (
+                <div className="rs-list">
+                  {/* Cue type filter chips (emoji-only squares) */}
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    {(['light','video','sound','props'] as CueType[]).map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        className={`rs-chip ${cueFilters[t] ? 'active' : ''}`}
+                        onClick={() => setCueFilters(prev => ({ ...prev, [t]: !prev[t] }))}
+                        aria-pressed={cueFilters[t]}
+                        title={t}
+                      >
+                        <span aria-hidden>{CUE_TYPE_ICONS[t]}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {(() => {
+                    const filtered = sidebarCues.filter(c => cueFilters[c.cueType as CueType]).sort((a,b) => a.y - b.y);
+                    const groups: Array<{ y:number; x:number; items: typeof filtered }> = [] as any;
+                    const bandY = 6, bandX = 12;
+                    filtered.forEach(c => {
+                      let g = groups.find(gr => Math.abs(gr.y - c.y) <= bandY && Math.abs(gr.x - c.x) <= bandX);
+                      if (!g) { g = { y: c.y, x: c.x, items: [] as any }; groups.push(g); }
+                      (g.items as any).push(c);
+                    });
+                    return groups.map((g, gi) => (
+                      <div key={`g-${gi}`} className="rs-group">
+                        {g.items.map(c => (
+                     <div
+                        key={c.cueId}
+                        className={`rs-card clickable`}
+                        onClick={() => {
+                          const el = document.querySelector('.cue-connection[data-cue-id="' + c.cueId + '"]');
+                          if (el) {
+                            (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            (el as HTMLElement).classList.add('hover-highlight');
+                            setTimeout(() => (el as HTMLElement).classList.remove('hover-highlight'), 800);
+                          }
+                        }}
+                      >
+                        <div className="title"><span aria-hidden>{CUE_TYPE_ICONS[c.cueType as keyof typeof CUE_TYPE_ICONS] || '🎛️'}</span> {c.cueName || (c.cueType.toUpperCase() + ' Q' + c.cueNumber)}</div>
+                        {c.cueName ? <div className="subtitle">{c.cueType.toUpperCase()} • Q{c.cueNumber}</div> : null}
+                        <div className="actions">
+                          <button className="rs-btn primary" onClick={(e) => { e.stopPropagation(); const el = document.querySelector('.cue-connection[data-cue-id="' + c.cueId + '"]'); if (el) { (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' }); (el as HTMLElement).classList.add('hover-highlight'); setTimeout(() => (el as HTMLElement).classList.remove('hover-highlight'), 800); } }}>▶ Trigger</button>
+                          <button className="rs-btn" onClick={(e) => { e.stopPropagation(); setSidebarPanel({ type: 'cue', cueId: c.cueId, cueType: c.cueType, cueNumber: c.cueNumber, cueName: c.cueName || '', draftName: c.cueName || '' }); }}>Edit</button>
+                        </div>
+                        {sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === c.cueId && (
+                          <div style={{ marginTop: 10 }}>
+                            <input value={sidebarPanel.draftName} onChange={(e) => setSidebarPanel(p => p && p.type === 'cue' ? { ...p, draftName: e.target.value } : p)} placeholder="Cue name" style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--color-border)' }} />
+                            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                              <button className="rs-btn primary" onClick={(e) => { e.stopPropagation(); if (!editor) return; (editor as any).commands.updateCueById(c.cueId, { cueName: (sidebarPanel as any).draftName }); }}>Save</button>
+                              <button className="rs-btn" onClick={(e) => { e.stopPropagation(); if (!editor) return; (editor as any).commands.startCueExtend?.(c.cueId); }}>Move Link</button>
+                              <button className="rs-btn" style={{ color: '#dc2626', borderColor: '#7f1d1d' }} onClick={(e) => { e.stopPropagation(); if (!editor) return; (editor as any).commands.removeCueConnection(c.cueId); setSidebarPanel(null); }}>Delete</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                        ))}
+                      </div>
+                    ));
+                  })()}
+                  {sidebarCues.length === 0 && <div style={{ opacity: 0.5, fontSize: 12 }}>No cues in this script yet.</div>}
+                </div>
+              )}
+            </div>
+            {/* Comments */}
+            <div className="rs-section">
+              <div className="rs-header">
+                <span>Comments</span>
+                <button onClick={() => setCommentsCollapsed(v => !v)}>{commentsCollapsed ? '▸' : '▾'}</button>
+              </div>
+              {!commentsCollapsed && (
+                <div className="rs-list">
+                  {sidebarComments.map(cm => (
+                    <div key={cm.id} className="rs-card">
+                      <div className="rs-comment">
+                        <div className="rs-avatar">💬</div>
+                        <div className="content">
+                          <div className="name">Comment</div>
+                          <div className="text">{cm.text || 'No text yet'}</div>
+                          {(sidebarPanel && sidebarPanel.type === 'comment' && sidebarPanel.id === cm.id) ? (
+                            <div style={{ marginTop: 8 }}>
+                              <textarea value={(sidebarPanel as any).draft} onChange={(e) => setSidebarPanel(p => p && p.type === 'comment' ? { ...p, draft: e.target.value } : p)} style={{ width: '100%', minHeight: 90, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)' }} />
+                              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                <button className="rs-btn primary" onClick={() => { if (!editor) return; (editor as any).commands.updateCommentById(cm.id, { commentText: (sidebarPanel as any).draft }); }}>Save</button>
+                                <button className="rs-btn" style={{ color: '#dc2626', borderColor: '#7f1d1d' }} onClick={() => { if (!editor) return; (editor as any).commands.removeCommentById(cm.id); setSidebarPanel(null); }}>Delete</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="actions" style={{ marginTop: 8 }}>
+                              <button className="rs-btn" onClick={() => setSidebarPanel({ type: 'comment', id: cm.id, draft: cm.text })}>Edit</button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {sidebarComments.length === 0 && <div style={{ opacity: 0.5, fontSize: 12 }}>No comments yet.</div>}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {/* Sidebar content */}
+        {rightSidebarOpen && sidebarPanel && (
+          <div style={{ padding: '12px', color: 'var(--color-text)' }}>
+            {sidebarPanel.type === 'cue' ? (
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>Cue</div>
+                <div style={{ opacity: 0.8, marginBottom: 8 }}>Type: {sidebarPanel.cueType.toUpperCase()} • Q{sidebarPanel.cueNumber}</div>
+                <input
+                  value={sidebarPanel.draftName}
+                  onChange={(e) => setSidebarPanel(p => p && p.type === 'cue' ? { ...p, draftName: e.target.value } : p)}
+                  placeholder="Cue name"
+                  style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--color-border)' }}
+                />
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <button type="button" onClick={() => {
+                    if (!editor || !sidebarPanel || sidebarPanel.type !== 'cue') return;
+                    (editor as any).commands.updateCueById(sidebarPanel.cueId, { cueName: sidebarPanel.draftName });
+                  }}>Save</button>
+                  <button type="button" onClick={() => {
+                    if (!editor || !sidebarPanel || sidebarPanel.type !== 'cue') return;
+                    const el = document.querySelector(`.cue-connection[data-cue-id="${sidebarPanel.cueId}"]`);
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}>Jump</button>
+                  <button type="button" onClick={() => {
+                    if (!editor || !sidebarPanel || sidebarPanel.type !== 'cue') return;
+                    (editor as any).commands.startCueExtend?.(sidebarPanel.cueId);
+                  }}>Move Link</button>
+                  <button type="button" style={{ color: '#dc2626' }} onClick={() => {
+                    if (!editor || !sidebarPanel || sidebarPanel.type !== 'cue') return;
+                    (editor as any).commands.removeCueConnection(sidebarPanel.cueId);
+                    setSidebarPanel(null);
+                  }}>Delete</button>
+                </div>
+              </div>
+            ) : sidebarPanel.type === 'comment' ? (
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>Comment</div>
+                <textarea
+                  value={sidebarPanel.draft}
+                  onChange={(e) => setSidebarPanel(p => p && p.type === 'comment' ? { ...p, draft: e.target.value } : p)}
+                  placeholder="Write a comment..."
+                  style={{ width: '100%', minHeight: 120, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)' }}
+                />
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <button type="button" onClick={() => {
+                    if (!editor || !sidebarPanel || sidebarPanel.type !== 'comment') return;
+                    (editor as any).commands.updateCommentById(sidebarPanel.id, { commentText: sidebarPanel.draft });
+                  }}>Save</button>
+                  <button type="button" style={{ color: '#dc2626' }} onClick={() => {
+                    if (!editor || !sidebarPanel || sidebarPanel.type !== 'comment') return;
+                    (editor as any).commands.removeCommentById(sidebarPanel.id);
+                    setSidebarPanel(null);
+                  }}>Delete</button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
       
       {/* Audio Transcription removed per request */}
     </div>
