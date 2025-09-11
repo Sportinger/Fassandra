@@ -454,11 +454,34 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     {
       id: 'clear-speaker',
       icon: <Trash2Icon />,
-      title: 'Clear Speaker Name',
+      title: 'Delete Speaker + Dialogue',
       action: () => {
-        logger.debug('Toolbar', 'Clearing speaker name');
-        // Clear the speaker text
+        logger.debug('Toolbar', 'Deleting speaker and dialogue block');
         focusIfNeeded();
+        try {
+          if (!editor) return;
+          const { state } = editor;
+          const $from = state.selection.$from;
+          let blockPos: number | null = null;
+          let blockNode: any = null;
+          for (let d = $from.depth; d >= 0; d--) {
+            const n = $from.node(d);
+            if (n.type?.name === 'dialogueBlock') {
+              blockPos = $from.before(d);
+              blockNode = n;
+              break;
+            }
+          }
+          if (typeof blockPos === 'number' && blockNode) {
+            const endPos = blockPos + blockNode.nodeSize;
+            editor.chain().deleteRange({ from: blockPos, to: endPos }).run();
+            // Switch toolbar to default immediately
+            setForceDefaultContext(true);
+            setTimeout(() => setForceDefaultContext(false), 250);
+            return;
+          }
+        } catch {}
+        // Fallback: if not inside a dialogue block, just clear current selection
         editor?.chain().deleteSelection().insertContent('').run();
       },
       contexts: ['speaker-select'],
