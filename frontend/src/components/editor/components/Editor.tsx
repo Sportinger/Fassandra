@@ -78,6 +78,9 @@ export const Editor: React.FC<EditorProps> = ({
   const [rehearsalDocPos, setRehearsalDocPos] = useState<number | null>(null);
   const [suppressRehearsalAutoScroll, setSuppressRehearsalAutoScroll] = useState(false);
   const [shouldCenterOnRehearsalChange, setShouldCenterOnRehearsalChange] = useState(false);
+  const lastCenteredRehearsalPosRef = useRef<number | null>(null);
+  // Explicit flag to center only when a change actually occurred
+  const pendingCenterRef = useRef(false);
   // Prevent feedback loops when applying remote awareness updates
   const isApplyingRemoteRehearsalRef = useRef(false);
   const [editAllSpeakers, setEditAllSpeakers] = useState(false);
@@ -164,52 +167,29 @@ export const Editor: React.FC<EditorProps> = ({
 
     const handleAwarenessChange = () => {
       const states = provider.awareness.getStates();
-      
-      // Check all other users' states for rehearsal line position only
+
       states.forEach((state, clientId) => {
-        if (clientId !== provider.awareness.clientID) {
-          // Sync rehearsal line position
-          if (state.rehearsalLinePosition !== undefined) {
-            debugLog('[Rehearsal Sync] Received position from other user:', state.rehearsalLinePosition);
-            const newPosition = state.rehearsalLinePosition;
-            // Mark that we are applying a remote value so we don't rebroadcast it
-            isApplyingRemoteRehearsalRef.current = true;
-            setRehearsalLinePosition(newPosition);
-            
-            // Scroll to the new position for remote updates when in rehearsal mode and single-page view
-            // Note: For remote awareness changes we always scroll so all clients stay in sync.
-            if (rehearsalMode && viewMode === 'single-page' && newPosition > 0) {
-              debugLog('[Rehearsal Sync] Scrolling to synced position:', newPosition);
-              
-              // Find the container element
-              const containerElement = document.querySelector('.singlePageContainer');
-              if (containerElement) {
-                const containerRect = containerElement.getBoundingClientRect();
-                const absoluteLinePosition = containerRect.top + window.scrollY + newPosition;
-                const targetScrollPosition = absoluteLinePosition - (window.innerHeight / 2);
-                
-                // Smooth scroll to center the line
-                window.scrollTo({
-                  top: Math.max(0, targetScrollPosition),
-                  behavior: 'smooth'
-                });
-                
-                debugLog('[Rehearsal Sync] Scrolled to position:', targetScrollPosition);
-              }
-            }
-            // Release the remote-apply flag on next tick
-            setTimeout(() => { isApplyingRemoteRehearsalRef.current = false; }, 0);
-          }
-        }
+        if (clientId === provider.awareness.clientID) return; // ignore local
+        const remotePos = state?.rehearsalLinePosition;
+        if (typeof remotePos !== 'number') return;
+
+        // Only react if the remote position actually differs (tolerate tiny diffs)
+        if (Math.abs(remotePos - rehearsalLinePosition) <= 0.5) return;
+
+        debugLog('[Rehearsal Sync] Received new position from other user:', remotePos);
+        isApplyingRemoteRehearsalRef.current = true;
+        setRehearsalLinePosition(remotePos);
+        // Request a single center due to position change
+        pendingCenterRef.current = true;
+
+        // Release the remote-apply flag on next tick
+        setTimeout(() => { isApplyingRemoteRehearsalRef.current = false; }, 0);
       });
     };
 
     provider.awareness.on('change', handleAwarenessChange);
-
-    return () => {
-      provider.awareness.off('change', handleAwarenessChange);
-    };
-  }, [provider, debugLog, rehearsalMode, viewMode, suppressRehearsalAutoScroll, shouldCenterOnRehearsalChange]);
+    return () => { provider.awareness.off('change', handleAwarenessChange); };
+  }, [provider, debugLog, rehearsalMode, viewMode, rehearsalLinePosition]);
 
   // Initialize/broadcast rehearsal line position when changed locally (avoid rebroadcast on remote apply)
   useEffect(() => {
@@ -220,13 +200,24 @@ export const Editor: React.FC<EditorProps> = ({
     }
   }, [provider, rehearsalLinePosition]); // Run when provider becomes available or position changes
 
-  // Smooth scroll to keep rehearsal line centered
+  // Smooth scroll to keep rehearsal line centered ONLY when explicitly requested
   useEffect(() => {
     debugLog('[Rehearsal Line State] Position:', rehearsalLinePosition, 'Mode:', rehearsalMode, 'View:', viewMode);
     
     if (suppressRehearsalAutoScroll) return;
-    if (!shouldCenterOnRehearsalChange) return;
+    if (!pendingCenterRef.current) return;
     if (!rehearsalMode || viewMode !== 'single-page') return;
+
+    // Only center if the position actually changed since last center
+    const alreadyCentered = (
+      lastCenteredRehearsalPosRef.current !== null &&
+      Math.abs(lastCenteredRehearsalPosRef.current - rehearsalLinePosition) <= 0.5
+    );
+    if (alreadyCentered) {
+      // Consume the request even if nothing to do to avoid stray future triggers
+      pendingCenterRef.current = false;
+      return;
+    }
 
     // Find the container element
     const containerElement = document.querySelector('.singlePageContainer');
@@ -247,6 +238,9 @@ export const Editor: React.FC<EditorProps> = ({
     });
 
     debugLog('[Rehearsal Scroll] Scrolling to center line at position:', rehearsalLinePosition);
+    lastCenteredRehearsalPosRef.current = rehearsalLinePosition;
+    // Consume the pending center request so subsequent clicks do not re-center
+    pendingCenterRef.current = false;
   }, [rehearsalLinePosition, rehearsalMode, viewMode, suppressRehearsalAutoScroll, shouldCenterOnRehearsalChange, debugLog]);
 
   // Highlight all speakers when editAllSpeakers mode changes
@@ -470,6 +464,14 @@ export const Editor: React.FC<EditorProps> = ({
               jumpedDocPos = pos;
             }
           } catch {}
+
+          // Only proceed if the position actually changes
+          const changed = Math.abs(newPosition - rehearsalLinePosition) > 0.5;
+          if (!changed) {
+            debugLog('[Jump Action] Ignored — position unchanged:', newPosition);
+            break;
+          }
+
           debugLog('[Jump Action] Setting rehearsal line position to:', newPosition);
           setRehearsalLinePosition(newPosition);
           
@@ -485,19 +487,11 @@ export const Editor: React.FC<EditorProps> = ({
             }
           }
           
-          // Scroll viewport to center the new line position for precision
-          setTimeout(() => {
-            const containerElement = document.querySelector('.singlePageContainer') as HTMLElement | null;
-            if (containerElement) {
-              const containerRect = containerElement.getBoundingClientRect();
-              const absoluteLinePosition = containerRect.top + window.scrollY + newPosition;
-              const targetScrollPosition = Math.max(0, absoluteLinePosition - (window.innerHeight / 2));
-              window.scrollTo({ top: targetScrollPosition, behavior: 'smooth' });
-            }
-          }, 80);
-          // Re-enable auto-scroll after executing jump
+          // Mark that we should center once due to a real position change
+          pendingCenterRef.current = true;
+          // Re-enable auto-scroll after executing jump, but do not keep centering on subsequent clicks
           setSuppressRehearsalAutoScroll(false);
-          setShouldCenterOnRehearsalChange(true);
+          setShouldCenterOnRehearsalChange(false);
         }
         break;
       default:
@@ -516,7 +510,11 @@ export const Editor: React.FC<EditorProps> = ({
     const handleClickOutside = () => {
       if (localContextMenu.visible) {
         setLocalContextMenu(prev => ({ ...prev, visible: false }));
+        // Re-enable auto-scroll, but ensure we do NOT recentre
+        // the rehearsal line when the menu was closed without a jump.
         setSuppressRehearsalAutoScroll(false);
+        setShouldCenterOnRehearsalChange(false);
+        pendingCenterRef.current = false;
         setInsertSubmenu({ open: false, x: 0, y: 0 });
       }
     };
@@ -716,6 +714,10 @@ export const Editor: React.FC<EditorProps> = ({
               onClick={(e) => {
                 // Close context menu on click
                 setLocalContextMenu(prev => ({ ...prev, visible: false }));
+                // When closing without choosing an action, do not recenter
+                setSuppressRehearsalAutoScroll(false);
+                setShouldCenterOnRehearsalChange(false);
+                pendingCenterRef.current = false;
                 
                 // Handle editor click for context detection
                 const target = e.target as HTMLElement;
@@ -1101,6 +1103,11 @@ export const Editor: React.FC<EditorProps> = ({
                   }
                 });
                 if (sharedPos !== null) {
+                  // Only act if position differs from current
+                  if (Math.abs(sharedPos - rehearsalLinePosition) <= 0.5) {
+                    // No change → don't scroll/center
+                    return;
+                  }
                   // Adopt shared position locally without rebroadcasting
                   isApplyingRemoteRehearsalRef.current = true;
                   setRehearsalLinePosition(sharedPos);
@@ -1123,18 +1130,8 @@ export const Editor: React.FC<EditorProps> = ({
                   } catch {}
                   // Release the remote-apply guard shortly after applying
                   setTimeout(() => { isApplyingRemoteRehearsalRef.current = false; }, 0);
-                  // Center on that position in single-page view
-                  if (viewMode === 'single-page') {
-                    setTimeout(() => {
-                      const containerElement = document.querySelector('.singlePageContainer');
-                      if (containerElement) {
-                        const containerRect = containerElement.getBoundingClientRect();
-                        const absoluteLinePosition = containerRect.top + window.scrollY + sharedPos!;
-                        const targetScrollPosition = Math.max(0, absoluteLinePosition - (window.innerHeight / 2));
-                        window.scrollTo({ top: targetScrollPosition, behavior: 'smooth' });
-                      }
-                    }, 120);
-                  }
+                  // Request centering once
+                  pendingCenterRef.current = true;
                 } else {
                   // No shared position → start at beginning and publish 0
                   // Do not broadcast 0 to avoid resetting others; keep local default
