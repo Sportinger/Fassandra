@@ -10,9 +10,10 @@ interface CommentItem {
 
 interface FloatingCommentsLayerProps {
   editor: TipTapEditor | null;
+  onOpenComment?: (payload: { id: string; text: string }) => void;
 }
 
-export const FloatingCommentsLayer: React.FC<FloatingCommentsLayerProps> = ({ editor }) => {
+export const FloatingCommentsLayer: React.FC<FloatingCommentsLayerProps> = ({ editor, onOpenComment }) => {
   const [items, setItems] = useState<CommentItem[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [draft, setDraft] = useState<string>('');
@@ -104,20 +105,24 @@ export const FloatingCommentsLayer: React.FC<FloatingCommentsLayerProps> = ({ ed
             className="floating-comment"
             onClick={(e) => {
               e.stopPropagation();
-              setOpenId(it.id);
-              setDraft(it.text || '');
-              // highlight while editing
-              highlight(it.id, true);
-              // compute panel under the highlighted range with same width
-              const container = document.querySelector('.singlePageContainer') as HTMLElement | null;
-              const anchor = document.querySelector(`.comment-annotation[data-comment-id="${it.id}"]`) as HTMLElement | null;
-              if (container && anchor) {
-                const cr = container.getBoundingClientRect();
-                const ar = anchor.getBoundingClientRect();
-                const top = (ar.bottom - cr.top) + (container.scrollTop || 0) + 6;
-                const left = (ar.left - cr.left);
-                const width = ar.width;
-                setPanel({ id: it.id, left, top, width });
+              if (onOpenComment) {
+                onOpenComment({ id: it.id, text: it.text || '' });
+              } else {
+                setOpenId(it.id);
+                setDraft(it.text || '');
+                // highlight while editing
+                highlight(it.id, true);
+                // compute panel under the highlighted range with same width
+                const container = document.querySelector('.singlePageContainer') as HTMLElement | null;
+                const anchor = document.querySelector(`.comment-annotation[data-comment-id="${it.id}"]`) as HTMLElement | null;
+                if (container && anchor) {
+                  const cr = container.getBoundingClientRect();
+                  const ar = anchor.getBoundingClientRect();
+                  const top = (ar.bottom - cr.top) + (container.scrollTop || 0) + 6;
+                  const left = (ar.left - cr.left);
+                  const width = ar.width;
+                  setPanel({ id: it.id, left, top, width });
+                }
               }
             }}
             onMouseEnter={() => { highlight(it.id, true); setPreview(p => ({...p, text: it.text || ''})); }}
@@ -129,7 +134,7 @@ export const FloatingCommentsLayer: React.FC<FloatingCommentsLayerProps> = ({ ed
           </div>
         </div>
       ))}
-      {panel.id && (
+      {!onOpenComment && panel.id && (
         <div className="comment-popover" style={{ position: 'absolute', top: panel.top, left: panel.left, width: panel.width, zIndex: 10 }} onClick={(e) => e.stopPropagation()}>
           <div className="inner">
             <textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Write a comment..." />
