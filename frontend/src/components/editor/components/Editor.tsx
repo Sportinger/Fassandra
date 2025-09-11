@@ -1560,7 +1560,30 @@ export const Editor: React.FC<EditorProps> = ({
               {!commentsCollapsed && (
                 <div className="rs-list">
                   {sidebarComments.map(cm => (
-                    <div key={cm.id} className={`rs-card ${activeSidebarCommentId===cm.id ? 'active' : ''}`} data-comment-id={cm.id}>
+                    <div
+                      key={cm.id}
+                      className={`rs-card ${activeSidebarCommentId===cm.id ? 'active' : ''}`}
+                      data-comment-id={cm.id}
+                      onMouseEnter={() => {
+                        document.querySelectorAll(`.comment-annotation[data-comment-id="${cm.id}"]`).forEach(el => {
+                          el.classList.add('connected-highlight');
+                        });
+                      }}
+                      onMouseLeave={() => {
+                        document.querySelectorAll(`.comment-annotation[data-comment-id="${cm.id}"]`).forEach(el => {
+                          el.classList.remove('connected-highlight');
+                        });
+                      }}
+                      onClick={() => {
+                        const el = document.querySelector(`.comment-annotation[data-comment-id="${cm.id}"]`) as HTMLElement | null;
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          el.classList.add('connected-highlight');
+                          setTimeout(() => el.classList.remove('connected-highlight'), 800);
+                        }
+                        setActiveSidebarCommentId(cm.id);
+                      }}
+                    >
                       <div className="rs-comment">
                         <div className="rs-avatar">💬</div>
                         <div className="content">
@@ -1576,7 +1599,7 @@ export const Editor: React.FC<EditorProps> = ({
                             </div>
                           ) : (
                             <div className="actions" style={{ marginTop: 8 }}>
-                              <button className="rs-btn" onClick={() => setSidebarPanel(prev => (prev && prev.type==='comment' && prev.id===cm.id) ? null : { type: 'comment', id: cm.id, draft: cm.text })}>Edit</button>
+                              <button className="rs-btn" onClick={(e) => { e.stopPropagation(); setSidebarPanel(prev => (prev && prev.type==='comment' && prev.id===cm.id) ? null : { type: 'comment', id: cm.id, draft: cm.text }); }}>Edit</button>
                             </div>
                           )}
                         </div>
