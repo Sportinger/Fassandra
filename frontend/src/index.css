@@ -151,7 +151,7 @@ button:focus-visible {
 /* Strike-through styling for dialogue blocks */
 .ProseMirror [data-type="dialogue-block"][data-struck-through="true"] {
   position: relative;
-  opacity: 0.5;
+  opacity: 0.3; /* Dim speaker and text to 30% */
 }
 
 .ProseMirror [data-type="dialogue-block"][data-struck-through="true"]::after {
@@ -163,10 +163,10 @@ button:focus-visible {
   bottom: 0;
   background: linear-gradient(
     to bottom right,
-    transparent 47.5%,
-    #ff0000 47.5%,
-    #ff0000 52.5%,
-    transparent 52.5%
+    transparent 49.6%,
+    rgba(128, 128, 128, 0.5) 49.6%,
+    rgba(128, 128, 128, 0.5) 50.4%,
+    transparent 50.4%
   );
   pointer-events: none;
   z-index: 1;
