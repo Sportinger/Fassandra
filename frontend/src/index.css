@@ -176,7 +176,8 @@ button:focus-visible {
 .ProseMirror [data-type="speaker"] {
   transition: border-color 150ms ease, opacity 150ms ease;
   border-radius: 4px;
-  border: 1px solid transparent; /* Always has border to prevent layout shift */
+  /* Keep a constant border width to avoid any layout shift when selected */
+  border: 2px solid transparent; /* Fixed width; color changes on hover/selection */
   padding: 2px 4px;
   cursor: grab; /* Indicate draggable */
 }
@@ -202,15 +203,15 @@ button:focus-visible {
 
 /* Persistent selection box for speaker when clicked */
 .ProseMirror [data-type="speaker"].speaker-selected {
-  /* Strong, persistent highlight around the speaker only */
+  /* Strong, persistent highlight around the speaker only, without moving it */
   position: relative !important;
-  display: inline-block !important;
-  margin-left: 0 !important; /* avoid clipping the border */
-  padding: 2px 6px !important;
+  /* Do not change padding to prevent reflow */
   background-color: rgba(100, 108, 255, 0.08) !important;
-  border: 2px dotted var(--color-accent, #646cff) !important;
+  /* Do not change border width; only color/style to avoid shifting */
+  border-color: var(--color-accent, #646cff) !important;
+  border-style: dotted !important;
   outline: 2px dotted var(--color-accent, #646cff) !important;
-  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.25) !important; /* fallback ring to ensure visibility */
+  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.25) !important; /* visual ring without layout change */
   border-radius: 6px !important;
   z-index: 1;
 }
@@ -218,25 +219,24 @@ button:focus-visible {
 /* Attribute-based persistent highlight (set via node attributes) */
 .ProseMirror [data-type="speaker"][data-speaker-selected="true"] {
   position: relative !important;
-  display: inline-block !important;
-  margin-left: 0 !important;
-  padding: 2px 6px !important;
+  /* Do not change padding to prevent reflow */
   background-color: rgba(100, 108, 255, 0.08) !important;
-  border: 2px dotted var(--color-accent, #646cff) !important;
+  /* Do not change border width; only color/style */
+  border-color: var(--color-accent, #646cff) !important;
+  border-style: dotted !important;
   outline: 2px dotted var(--color-accent, #646cff) !important;
   box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.25) !important;
   border-radius: 6px !important;
   z-index: 1;
 }
 .ProseMirror [data-type="speaker"][data-speaker-selected="true"] > p {
+  /* Avoid layout change inside; use outline only */
   display: inline-block !important;
   margin: 0 !important;
   background-color: inherit !important;
-  border: 2px dotted var(--color-accent, #646cff) !important;
   outline: 2px dotted var(--color-accent, #646cff) !important;
   box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.25) !important;
   border-radius: 6px !important;
-  padding: 0 2px !important;
 }
 
 /* Multi-select highlight when Edit All Speakers is ON */
@@ -261,19 +261,18 @@ button:focus-visible {
   display: inline-block !important; /* shrink to text width */
   margin: 0 !important;
   background-color: inherit !important;
-  border: 2px dotted var(--color-accent, #646cff) !important;
+  /* Only outline/box-shadow for visuals; do not adjust border width */
   outline: 2px dotted var(--color-accent, #646cff) !important;
   box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.25) !important; /* fallback ring */
   border-radius: 6px !important;
-  padding: 0 2px !important;
 }
 
 /* Highly-specific fallback to ensure border wins in cascade */
 .ProseMirror [data-type="dialogue-block"] [data-type="speaker"].speaker-selected,
 .ProseMirror [data-type="dialogue-block"] [data-type="speaker"].speaker-selected > p {
+  /* Ensure accent color without changing border width */
   border-color: var(--color-accent, #646cff) !important;
   border-style: dotted !important;
-  border-width: 2px !important;
 }
 
 .ProseMirror [data-type="speaker"].speaker-selected::after {
@@ -712,8 +711,8 @@ body.mobile-device.portrait {
 }
 .ProseMirror [data-type="speaker"][data-speaker-selected="true"],
 .ProseMirror [data-type="speaker"][data-speaker-selected="true"] > p {
-  border: 1px dashed var(--color-accent, #646cff) !important;
-  outline: none !important;
-  box-shadow: none !important;
+  /* Unify with fixed-width border: change only color/style */
+  border-color: var(--color-accent, #646cff) !important;
+  border-style: dashed !important;
 }
 .ProseMirror [data-type="speaker"][data-speaker-selected="true"] { cursor: text !important; }

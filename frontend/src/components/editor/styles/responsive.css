@@ -374,6 +374,12 @@ html, body {
   max-width: 60%;
 }
 
+/* Keep speaker centered even when highlighted/selected */
+.ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="speaker"].speaker-selected,
+.ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="speaker"][data-speaker-selected="true"] {
+  margin: 0 auto !important;
+}
+
 /* Ensure legacy wrapped content aligns right as well */
 .ProseMirror [data-type="dialogue-block"][data-layout="centered"] [data-type="speaker"] p {
   text-align: center !important; /* ensure wrapped content is centered */
@@ -628,9 +634,9 @@ html, body {
   .single-page-view,
   .multi-page-view,
   .pageCanvas {
-    /* Reserve only the icon rail width + a small gap */
-    padding-left: calc(var(--toolbar-button-size) + var(--space-md));
-    padding-right: var(--content-padding-x);
+    /* Reserve space for left toolbar rail and right sidebar, keeping page centered between them */
+    padding-left: calc(var(--content-padding-x) + var(--toolbar-button-size) + var(--space-md));
+    padding-right: calc(var(--content-padding-x) + (var(--toolbar-button-size) * 5) + var(--space-md));
   }
   
   /* Side-by-side dialogue layout on desktop */
