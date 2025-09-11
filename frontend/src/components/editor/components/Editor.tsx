@@ -83,6 +83,8 @@ export const Editor: React.FC<EditorProps> = ({
   const pendingCenterRef = useRef(false);
   // Prevent feedback loops when applying remote awareness updates
   const isApplyingRemoteRehearsalRef = useRef(false);
+  // Track last seen remote positions per client to avoid repeated triggers
+  const lastAwarenessPosRef = useRef<Map<number, number>>(new Map());
   const [editAllSpeakers, setEditAllSpeakers] = useState(false);
   const [currentSpeakerName, setCurrentSpeakerName] = useState<string | null>(null);
   const liveRenameBaseRef = useRef<string | null>(null);
@@ -100,6 +102,8 @@ export const Editor: React.FC<EditorProps> = ({
     onPageBackground: boolean;
     rehearsalClickY?: number;
     rehearsalDocPos?: number;
+    hasWordTarget?: boolean;
+    wordLineY?: number;
   }>({
     x: 0,
     y: 0,
@@ -173,8 +177,10 @@ export const Editor: React.FC<EditorProps> = ({
         const remotePos = state?.rehearsalLinePosition;
         if (typeof remotePos !== 'number') return;
 
-        // Only react if the remote position actually differs (tolerate tiny diffs)
-        if (Math.abs(remotePos - rehearsalLinePosition) <= 0.5) return;
+        // Only react if the remote position changed vs our last seen for this client
+        const lastForClient = lastAwarenessPosRef.current.get(clientId);
+        if (typeof lastForClient === 'number' && Math.abs(lastForClient - remotePos) <= 0.5) return;
+        lastAwarenessPosRef.current.set(clientId, remotePos);
 
         debugLog('[Rehearsal Sync] Received new position from other user:', remotePos);
         isApplyingRemoteRehearsalRef.current = true;
@@ -371,6 +377,59 @@ export const Editor: React.FC<EditorProps> = ({
             }
           }
         } catch {}
+        // Determine if the right-click is on a word box and compute its bottom Y
+        let hasWordTarget = false;
+        let wordLineY: number | undefined = undefined;
+        let wordDocPos: number | undefined = undefined;
+        try {
+          // Use caret range at click to find the word boundaries
+          let caretRange: Range | null = null;
+          const anyDoc: any = document as any;
+          if (typeof (document as any).caretRangeFromPoint === 'function') {
+            caretRange = (document as any).caretRangeFromPoint(e.clientX, e.clientY);
+          } else if (typeof anyDoc.caretPositionFromPoint === 'function') {
+            const cp = anyDoc.caretPositionFromPoint(e.clientX, e.clientY);
+            if (cp && cp.offsetNode) {
+              caretRange = document.createRange();
+              caretRange.setStart(cp.offsetNode, cp.offset);
+              caretRange.collapse(true);
+            }
+          }
+          if (caretRange && caretRange.startContainer && caretRange.startContainer.nodeType === Node.TEXT_NODE) {
+            const textNode = caretRange.startContainer as Text;
+            const data = textNode.data || '';
+            const offset = Math.min(Math.max(caretRange.startOffset || 0, 0), data.length);
+            // Expand to word boundaries (letters, numbers, apostrophes, umlauts)
+            const isWordChar = (ch: string) => /[\p{L}\p{N}'’_-]/u.test(ch);
+            let start = offset;
+            while (start > 0 && isWordChar(data.charAt(start - 1))) start--;
+            let end = offset;
+            while (end < data.length && isWordChar(data.charAt(end))) end++;
+            if (end > start) {
+              // Compute bounding rect for the word segment
+              const wordRange = document.createRange();
+              wordRange.setStart(textNode, start);
+              wordRange.setEnd(textNode, end);
+              const rect = wordRange.getBoundingClientRect();
+              if (rect && rect.width >= 0 && rect.height >= 0) {
+                hasWordTarget = true;
+                wordLineY = rect.bottom - containerRect.top + containerScrollTop;
+                // Derive a doc position from the middle of the word box for better accuracy
+                try {
+                  const midX = rect.left + rect.width / 2;
+                  const midY = rect.top + rect.height / 2;
+                  const view: any = (editor as any)?.view;
+                  if (view && typeof view.posAtCoords === 'function') {
+                    const res = view.posAtCoords({ left: midX, top: midY });
+                    if (res && typeof res.pos === 'number') {
+                      wordDocPos = res.pos;
+                    }
+                  }
+                } catch {}
+              }
+            }
+          }
+        } catch {}
         
         debugLog('[Rehearsal Click] Container height:', containerElement.scrollHeight, 'Click Y:', clickY, 'ScrollTop:', containerScrollTop);
         
@@ -383,8 +442,10 @@ export const Editor: React.FC<EditorProps> = ({
           visible: true,
           onSpeakerName: !!speakerElement,
           onPageBackground: !speakerElement,
-          rehearsalClickY: clickY, // Position in container coordinates
-          rehearsalDocPos: docPos,
+          rehearsalClickY: clickY, // fallback Position in container coordinates
+          rehearsalDocPos: typeof wordDocPos === 'number' ? wordDocPos : docPos,
+          hasWordTarget,
+          wordLineY,
         });
         return;
       }
@@ -444,22 +505,13 @@ export const Editor: React.FC<EditorProps> = ({
         setViewMode(prev => prev === 'single-page' ? 'multiple-pages' : 'single-page');
         break;
       case 'jump':
-        if (localContextMenu.rehearsalClickY !== undefined) {
+        if (localContextMenu.hasWordTarget && typeof localContextMenu.wordLineY === 'number') {
           // Prefer precise mapping via ProseMirror doc position if available
-          let newPosition = localContextMenu.rehearsalClickY;
+          let newPosition = localContextMenu.wordLineY;
           let jumpedDocPos: number | undefined = undefined;
           try {
             if (editor && typeof localContextMenu.rehearsalDocPos === 'number') {
               const pos = localContextMenu.rehearsalDocPos;
-              // Convert doc position to DOM coordinates to get exact Y in container
-              const view: any = (editor as any).view;
-              const coords = view.coordsAtPos(pos);
-              const containerElement = document.querySelector('.singlePageContainer') as HTMLElement | null;
-              if (coords && containerElement) {
-                const containerRect = containerElement.getBoundingClientRect();
-                const containerScrollTop = containerElement.scrollTop || 0;
-                newPosition = coords.top - containerRect.top + containerScrollTop;
-              }
               setRehearsalDocPos(pos);
               jumpedDocPos = pos;
             }
@@ -503,7 +555,7 @@ export const Editor: React.FC<EditorProps> = ({
     setSuppressRehearsalAutoScroll(false);
     setShouldCenterOnRehearsalChange(false);
     setInsertSubmenu({ open: false, x: 0, y: 0 });
-  }, [editor, debugLog, localContextMenu.rehearsalClickY, provider]);
+  }, [editor, debugLog, localContextMenu.wordLineY, localContextMenu.hasWordTarget, localContextMenu.rehearsalDocPos, provider, rehearsalLinePosition]);
 
   // Close context menu on click outside
   useEffect(() => {
@@ -952,7 +1004,7 @@ export const Editor: React.FC<EditorProps> = ({
             overflow: 'hidden',
           }}
         >
-          {rehearsalMode && localContextMenu.rehearsalClickY !== undefined && (
+          {rehearsalMode && localContextMenu.hasWordTarget && (
             <div 
               className="context-menu-item"
               style={{
