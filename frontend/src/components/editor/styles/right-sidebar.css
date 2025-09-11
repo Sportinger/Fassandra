@@ -30,7 +30,7 @@
   justify-content: center;
   background: var(--color-background);
   color: var(--color-text);
-  border: 1px solid var(--color-accent); /* tie into bluish theme */
+  border: 1px solid var(--color-border); /* neutral theme */
   border-right: none;
   border-top-left-radius: 6px;
   border-bottom-left-radius: 6px;
@@ -50,31 +50,31 @@
   color: var(--color-text);
   font-weight: 700; font-size: 14px;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(100, 108, 255, 0.25); /* bluish divider */
+  border-bottom: 1px solid var(--color-border);
 }
 .rs-header button {
-  border: none; background: transparent; color: var(--color-accent); cursor: pointer;
+  border: none; background: transparent; color: var(--color-text); cursor: pointer;
   font-size: 14px; padding: 2px 4px; border-radius: 4px;
 }
 .rs-list { margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
 .rs-card {
   background: var(--color-background);
-  border: 1px solid rgba(100, 108, 255, 0.18);
+  border: 1px solid rgba(255,255,255,0.10);
   border-radius: 10px;
   padding: 10px;
   color: var(--color-text);
 }
 .rs-card.clickable { cursor: pointer; }
-.rs-card.clickable:hover { border-color: var(--color-accent); background: rgba(100, 108, 255, 0.08); }
+.rs-card.clickable:hover { border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.03); }
 .rs-card .title { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
 .rs-card .subtitle { font-size: 12px; opacity: 0.6; margin-top: 4px; }
 .rs-card .actions { display: flex; gap: 8px; margin-top: 10px; }
 .rs-btn {
   background: var(--color-button-bg); color: var(--color-text);
-  border: 1px solid rgba(100,108,255,0.25); border-radius: 8px;
+  border: 1px solid var(--color-border); border-radius: 8px;
   padding: 6px 10px; cursor: pointer; font-size: 12px;
 }
-.rs-btn.primary { background: var(--color-accent); color: #fff; border-color: var(--color-accent-hover); }
+.rs-btn.primary { background: var(--color-button-bg-hover); color: var(--color-text); border-color: var(--color-border); }
 .rs-btn:hover { filter: brightness(1.05); }
 
 /* Type chips color accents */
@@ -94,3 +94,17 @@
     display: none !important;
   }
 }
+.rs-filter { display: flex; gap: 8px; }
+.rs-chip {
+  width: 32px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 6px; background: var(--color-button-bg); color: var(--color-text);
+  cursor: pointer;
+}
+.rs-chip.active { background: var(--color-button-bg-hover); color: var(--color-text); border-color: var(--color-border); }
+.rs-group { border: 1px dashed var(--color-border); border-radius: 10px; padding: 8px; margin-bottom: 12px; transition: background-color .15s ease, border-color .15s ease; }
+.rs-group .rs-card { margin: 6px 0; }
+.rs-group:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.35); }
+.rs-group:hover .rs-card { border-color: rgba(255,255,255,0.35); }
+.rs-card.active { border-color: rgba(255,255,255,0.55); box-shadow: 0 0 0 2px rgba(255,255,255,0.12) inset; }
