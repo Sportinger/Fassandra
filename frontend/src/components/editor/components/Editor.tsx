@@ -76,6 +76,7 @@ export const Editor: React.FC<EditorProps> = ({
   const [rehearsalMode, setRehearsalMode] = useState(false);
   const [rehearsalLinePosition, setRehearsalLinePosition] = useState<number>(0);
   const [rehearsalDocPos, setRehearsalDocPos] = useState<number | null>(null);
+  const [rehearsalWordBox, setRehearsalWordBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const [suppressRehearsalAutoScroll, setSuppressRehearsalAutoScroll] = useState(false);
   const [shouldCenterOnRehearsalChange, setShouldCenterOnRehearsalChange] = useState(false);
   const lastCenteredRehearsalPosRef = useRef<number | null>(null);
@@ -85,6 +86,7 @@ export const Editor: React.FC<EditorProps> = ({
   const isApplyingRemoteRehearsalRef = useRef(false);
   // Track last seen remote positions per client to avoid repeated triggers
   const lastAwarenessPosRef = useRef<Map<number, number>>(new Map());
+  const lastAwarenessRectRef = useRef<Map<number, string>>(new Map());
   const [editAllSpeakers, setEditAllSpeakers] = useState(false);
   const [currentSpeakerName, setCurrentSpeakerName] = useState<string | null>(null);
   const liveRenameBaseRef = useRef<string | null>(null);
@@ -104,6 +106,7 @@ export const Editor: React.FC<EditorProps> = ({
     rehearsalDocPos?: number;
     hasWordTarget?: boolean;
     wordLineY?: number;
+    wordRect?: { left: number; top: number; width: number; height: number };
   }>({
     x: 0,
     y: 0,
@@ -175,21 +178,85 @@ export const Editor: React.FC<EditorProps> = ({
       states.forEach((state, clientId) => {
         if (clientId === provider.awareness.clientID) return; // ignore local
         const remotePos = state?.rehearsalLinePosition;
-        if (typeof remotePos !== 'number') return;
+        const hadRemotePos = typeof remotePos === 'number';
+        if (hadRemotePos) {
+          const lastForClient = lastAwarenessPosRef.current.get(clientId);
+          if (!(typeof lastForClient === 'number' && Math.abs(lastForClient - remotePos) <= 0.5)) {
+            lastAwarenessPosRef.current.set(clientId, remotePos);
+            debugLog('[Rehearsal Sync] New position from', clientId, ':', remotePos);
+            isApplyingRemoteRehearsalRef.current = true;
+            setRehearsalLinePosition(remotePos);
+            // Request a single center due to position change
+            pendingCenterRef.current = true;
+            setTimeout(() => { isApplyingRemoteRehearsalRef.current = false; }, 0);
+          }
+        }
 
-        // Only react if the remote position changed vs our last seen for this client
-        const lastForClient = lastAwarenessPosRef.current.get(clientId);
-        if (typeof lastForClient === 'number' && Math.abs(lastForClient - remotePos) <= 0.5) return;
-        lastAwarenessPosRef.current.set(clientId, remotePos);
-
-        debugLog('[Rehearsal Sync] Received new position from other user:', remotePos);
-        isApplyingRemoteRehearsalRef.current = true;
-        setRehearsalLinePosition(remotePos);
-        // Request a single center due to position change
-        pendingCenterRef.current = true;
-
-        // Release the remote-apply flag on next tick
-        setTimeout(() => { isApplyingRemoteRehearsalRef.current = false; }, 0);
+        // Process word rectangle update independently (even if position unchanged)
+        try {
+          const advState: any = state;
+          const rect = advState?.rehearsalWordRect;
+          if (rect && typeof rect.left === 'number') {
+            const key = JSON.stringify({ l: rect.left, t: rect.top, w: rect.width, h: rect.height });
+            const lastKey = lastAwarenessRectRef.current.get(clientId);
+            if (key !== lastKey) {
+              lastAwarenessRectRef.current.set(clientId, key);
+              setRehearsalWordBox({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+              // If we did not get a remotePos (some clients may only send rect), align line under the rect
+              if (!hadRemotePos && typeof rect.top === 'number' && typeof rect.height === 'number') {
+                setRehearsalLinePosition(rect.top + rect.height);
+              }
+            }
+          } else if (typeof advState?.rehearsalDocPos === 'number' && editor) {
+            // Fallback: compute rect from doc pos
+            const pos = advState.rehearsalDocPos as number;
+            setRehearsalDocPos(pos);
+            const view: any = (editor as any).view;
+            const containerElement = document.querySelector('.singlePageContainer') as HTMLElement | null;
+            if (view && containerElement && typeof view.domAtPos === 'function') {
+              let domInfo = view.domAtPos(pos);
+              let node: any = domInfo.node;
+              let offset: number = (domInfo.offset || 0) as number;
+              if (node && node.nodeType !== Node.TEXT_NODE) {
+                const child = node.childNodes?.[Math.min(offset, node.childNodes.length - 1)] || node.firstChild;
+                if (child && child.nodeType === Node.TEXT_NODE) {
+                  node = child;
+                  offset = Math.max(0, Math.min((node as Text).data.length, 0));
+                }
+              }
+              if (node && node.nodeType === Node.TEXT_NODE) {
+                const textNode = node as Text;
+                const data = textNode.data || '';
+                const isWordChar = (ch: string) => /[\p{L}\p{N}'’_-]/u.test(ch);
+                let start = Math.max(0, Math.min(offset, data.length));
+                while (start > 0 && isWordChar(data.charAt(start - 1))) start--;
+                let end = Math.max(0, Math.min(offset, data.length));
+                while (end < data.length && isWordChar(data.charAt(end))) end++;
+                if (end > start) {
+                  const range = document.createRange();
+                  range.setStart(textNode, start);
+                  range.setEnd(textNode, end);
+                  const rect = range.getBoundingClientRect();
+                  const containerRect = containerElement.getBoundingClientRect();
+                  const scrollTop = containerElement.scrollTop || 0;
+                  const scrollLeft = containerElement.scrollLeft || 0;
+                  const mapped = {
+                    left: rect.left - containerRect.left + scrollLeft,
+                    top: rect.top - containerRect.top + scrollTop,
+                    width: rect.width,
+                    height: rect.height,
+                  };
+                  const key2 = JSON.stringify({ l: mapped.left, t: mapped.top, w: mapped.width, h: mapped.height });
+                  if (key2 !== lastAwarenessRectRef.current.get(clientId)) {
+                    lastAwarenessRectRef.current.set(clientId, key2);
+                  }
+                  setRehearsalWordBox(mapped);
+                  if (!hadRemotePos) setRehearsalLinePosition(mapped.top + mapped.height);
+                }
+              }
+            }
+          }
+        } catch {}
       });
     };
 
@@ -414,6 +481,13 @@ export const Editor: React.FC<EditorProps> = ({
               if (rect && rect.width >= 0 && rect.height >= 0) {
                 hasWordTarget = true;
                 wordLineY = rect.bottom - containerRect.top + containerScrollTop;
+                // Compute word rectangle relative to container
+                const containerScrollLeft = (containerElement as any).scrollLeft || 0;
+                const wordTop = rect.top - containerRect.top + containerScrollTop;
+                const wordLeft = rect.left - containerRect.left + containerScrollLeft;
+                const wordWidth = rect.width;
+                const wordHeight = rect.height;
+                var computedWordRect = { left: wordLeft, top: wordTop, width: wordWidth, height: wordHeight };
                 // Derive a doc position from the middle of the word box for better accuracy
                 try {
                   const midX = rect.left + rect.width / 2;
@@ -446,6 +520,7 @@ export const Editor: React.FC<EditorProps> = ({
           rehearsalDocPos: typeof wordDocPos === 'number' ? wordDocPos : docPos,
           hasWordTarget,
           wordLineY,
+          wordRect: (typeof computedWordRect !== 'undefined') ? computedWordRect : undefined,
         });
         return;
       }
@@ -526,17 +601,24 @@ export const Editor: React.FC<EditorProps> = ({
 
           debugLog('[Jump Action] Setting rehearsal line position to:', newPosition);
           setRehearsalLinePosition(newPosition);
+          // Set word box from localContextMenu if available
+          if (localContextMenu.wordRect) {
+            setRehearsalWordBox(localContextMenu.wordRect);
+          } else {
+            setRehearsalWordBox(null);
+          }
           
           // Sync the position with other users via awareness
-          if (provider && provider.awareness) {
-            debugLog('[Jump Action] Syncing position via awareness:', newPosition);
-            provider.awareness.setLocalStateField('rehearsalLinePosition', newPosition);
-            // Also broadcast precise doc position if we have it (ephemeral)
-            if (typeof jumpedDocPos === 'number') {
-              try {
-                (provider.awareness as any).setLocalStateField('rehearsalDocPos', jumpedDocPos);
-              } catch {}
-            }
+          if (provider && (provider as any).awareness) {
+            try {
+              const awareness: any = (provider as any).awareness;
+              const current = awareness.getLocalState?.() || {};
+              const next = { ...current, rehearsalLinePosition: newPosition } as any;
+              if (typeof jumpedDocPos === 'number') next.rehearsalDocPos = jumpedDocPos;
+              if (localContextMenu.wordRect) next.rehearsalWordRect = localContextMenu.wordRect;
+              debugLog('[Jump Action] Syncing via awareness (atomic):', next);
+              awareness.setLocalState?.(next);
+            } catch {}
           }
           
           // Mark that we should center once due to a real position change
@@ -725,6 +807,18 @@ export const Editor: React.FC<EditorProps> = ({
                 <RulerOverlay active={rulerOverlayActive} onClose={() => setRulerOverlayActive(false)} />
                 {/* Comments overlay */}
                 <FloatingCommentsLayer editor={editor} />
+                {/* Rehearsal word highlight box */}
+                {rehearsalMode && rehearsalWordBox && (
+                  <div
+                    className="rehearsal-word-box"
+                    style={{
+                      left: `${rehearsalWordBox.left}px`,
+                      top: `${rehearsalWordBox.top}px`,
+                      width: `${rehearsalWordBox.width}px`,
+                      height: `${rehearsalWordBox.height}px`,
+                    }}
+                  />
+                )}
               </>
             ) : null
           }
@@ -1165,8 +1259,12 @@ export const Editor: React.FC<EditorProps> = ({
                   setRehearsalLinePosition(sharedPos);
                   // If a precise doc pos is advertised, use it to compute Y locally
                   try {
-                    const adv = Array.from(states.values()).find((s: any) => s && typeof s.rehearsalDocPos === 'number');
-                    if (editor && adv && typeof adv.rehearsalDocPos === 'number') {
+                    const adv = Array.from(states.values()).find((s: any) => s && (s.rehearsalWordRect || typeof s.rehearsalDocPos === 'number'));
+                    if (adv?.rehearsalWordRect) {
+                      const r = adv.rehearsalWordRect;
+                      if (typeof r.top === 'number') setRehearsalLinePosition(r.top + (r.height || 0));
+                      setRehearsalWordBox({ left: r.left, top: r.top, width: r.width, height: r.height });
+                    } else if (editor && typeof adv?.rehearsalDocPos === 'number') {
                       const pos = adv.rehearsalDocPos;
                       const view: any = (editor as any).view;
                       const coords = view.coordsAtPos(pos);

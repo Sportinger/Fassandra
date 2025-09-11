@@ -1,10 +1,15 @@
+:root {
+  --rehearsal-red: #ff0000;
+  --rehearsal-thickness: 2px;
+}
+
 /* Rehearsal Line Styles */
 .rehearsal-line {
   position: absolute;
   left: 0;
   right: 0;
-  height: 2px;
-  background-color: #ff0000;
+  height: var(--rehearsal-thickness);
+  background-color: var(--rehearsal-red);
   z-index: 100; /* Above content but below modals and context menus */
   pointer-events: none; /* Don't interfere with text selection */
   transition: top 0.3s ease-out; /* Smooth movement when position changes */
@@ -15,8 +20,8 @@
 .rehearsal-line::after {
   content: '';
   position: absolute;
-  height: 2px;
-  background-color: #ff0000;
+  height: var(--rehearsal-thickness);
+  background-color: var(--rehearsal-red);
   top: 0;
 }
 
@@ -33,4 +38,15 @@
 /* Hide when rehearsal mode is off */
 .rehearsal-line.hidden {
   display: none;
+}
+
+/* Rehearsal selected word box (same red and thickness as line) */
+.rehearsal-word-box {
+  position: absolute;
+  border: var(--rehearsal-thickness) solid var(--rehearsal-red); /* match line */
+  border-radius: 2px;
+  box-sizing: border-box;
+  z-index: 101; /* above the line */
+  pointer-events: none; /* do not block interaction */
+  transition: top 0.2s ease-out, left 0.2s ease-out, width 0.2s ease-out, height 0.2s ease-out;
 }
