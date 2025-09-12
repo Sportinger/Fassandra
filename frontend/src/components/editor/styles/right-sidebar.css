@@ -11,7 +11,8 @@
   z-index: 1050; /* below toolbar dropdowns but above page */
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* Allow the toggle handle to protrude outside when open */
+  overflow: visible;
   transition: transform 200ms ease, width 200ms ease, border-left-color 200ms ease;
 }
 
@@ -28,7 +29,7 @@
   left: -18px; /* small handle outside sidebar */
   top: 0;
   width: 18px;
-  height: 24px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -40,6 +41,20 @@
   border-bottom-left-radius: 6px;
   cursor: pointer;
   user-select: none;
+  z-index: 2;
+}
+
+/* When collapsed, move the handle to the visible edge (right side) */
+.rightSidebar.collapsed .rightSidebarToggle {
+  /* Place handle at the visible left edge of the collapsed sidebar */
+  left: 0;
+  right: auto;
+  border-left: none;
+  border-right: 1px solid var(--color-border);
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .rightSidebarInner {
