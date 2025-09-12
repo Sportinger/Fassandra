@@ -27,6 +27,7 @@ class LoggingService {
   private isDevelopment: boolean;
   private logBuffer: LogEntry[] = [];
   private maxBufferSize = 100;
+  private yjsDebug: boolean;
 
   constructor() {
     // Determine environment
@@ -42,6 +43,9 @@ class LoggingService {
       // Temporarily enable INFO level logging in production to debug issues
       this.logLevel = this.isDevelopment ? LogLevel.DEBUG : LogLevel.INFO;
     }
+
+    // Optional fine-grained toggle for very chatty Yjs/WS logs
+    this.yjsDebug = (import.meta.env.VITE_YJS_DEBUG === 'true');
   }
 
   private shouldLog(level: LogLevel): boolean {
@@ -62,6 +66,11 @@ class LoggingService {
   }
 
   private log(level: LogLevel, category: string, message: string, data?: LogData): void {
+    // Suppress very verbose YJS WS send logs unless explicitly enabled
+    if (!this.yjsDebug && category === 'useEditorCore' && message.includes('[WS_SEND]')) {
+      return;
+    }
+
     const entry: LogEntry = {
       level,
       timestamp: new Date(),

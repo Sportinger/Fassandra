@@ -174,6 +174,7 @@ export const Editor: React.FC<EditorProps> = ({
   const [autoFollowActive, setAutoFollowActive] = useState(false);
   const autoFollowRef = useRef<any>(null);
   const [lastAsrText, setLastAsrText] = useState<string>("");
+  const asrTrailTimerRef = useRef<number | null>(null);
   const startAutoFollow = useCallback(async () => {
     if (!editor || autoFollowRef.current) return;
     const { AutoFollowService } = await import('../../../services/AutoFollowService');
@@ -184,6 +185,20 @@ export const Editor: React.FC<EditorProps> = ({
         }
         if (msg && msg.type === 'progress' && typeof msg.docPos === 'number') {
           setRehearsalDocPos(msg.docPos);
+        }
+        // Animate per-word if provided
+        if (msg && Array.isArray(msg.wordDocPos) && msg.wordDocPos.length > 0) {
+          // Cancel previous trail
+          if (asrTrailTimerRef.current) { window.clearTimeout(asrTrailTimerRef.current); asrTrailTimerRef.current = null; }
+          const trail = msg.wordDocPos.slice(-6); // limit to last few for smoothness
+          let i = 0;
+          const step = () => {
+            if (i >= trail.length) return;
+            setRehearsalDocPos(trail[i]);
+            i += 1;
+            asrTrailTimerRef.current = window.setTimeout(step, 60);
+          };
+          step();
         }
       } catch {}
     });
@@ -200,6 +215,81 @@ export const Editor: React.FC<EditorProps> = ({
     setAutoFollowActive(false);
     setLastAsrText("");
   }, []);
+
+  // When backend sends a precise document position, compute Y and move the rehearsal line locally
+  useEffect(() => {
+    if (!editor) return;
+    if (typeof rehearsalDocPos !== 'number') return;
+    try {
+      const view: any = (editor as any).view;
+      const container = document.querySelector('.singlePageContainer') as HTMLElement | null;
+      if (!view || !container) return;
+
+      // Try to compute the bounding box of the word at docPos
+      let mappedY: number | null = null;
+      let mappedRect: { left: number; top: number; width: number; height: number } | null = null;
+      try {
+        const domInfo = view.domAtPos(rehearsalDocPos);
+        let node: any = domInfo.node;
+        let offset: number = (domInfo.offset || 0) as number;
+        if (node && node.nodeType !== Node.TEXT_NODE) {
+          const child = node.childNodes?.[Math.min(offset, node.childNodes.length - 1)] || node.firstChild;
+          if (child && child.nodeType === Node.TEXT_NODE) {
+            node = child;
+            offset = Math.max(0, Math.min((node as Text).data.length, 0));
+          }
+        }
+        if (node && node.nodeType === Node.TEXT_NODE) {
+          const textNode = node as Text;
+          const data = textNode.data || '';
+          const isWordChar = (ch: string) => /[\p{L}\p{N}'’_-]/u.test(ch);
+          let start = Math.max(0, Math.min(offset, data.length));
+          while (start > 0 && isWordChar(data.charAt(start - 1))) start--;
+          let end = Math.max(0, Math.min(offset, data.length));
+          while (end < data.length && isWordChar(data.charAt(end))) end++;
+          if (end > start) {
+            const range = document.createRange();
+            range.setStart(textNode, start);
+            range.setEnd(textNode, end);
+            const rect = range.getBoundingClientRect();
+            const cRect = container.getBoundingClientRect();
+            const scrollTop = container.scrollTop || 0;
+            mappedRect = {
+              left: rect.left - cRect.left + (container as any).scrollLeft || 0,
+              top: rect.top - cRect.top + scrollTop,
+              width: rect.width,
+              height: rect.height,
+            };
+            mappedY = mappedRect.top + mappedRect.height; // line UNDER the word
+          }
+        }
+      } catch {}
+
+      if (mappedY === null) {
+        // Fallback: use coordsAtPos and place line a bit below
+        const coords = view.coordsAtPos(rehearsalDocPos);
+        if (coords) {
+          const cRect = container.getBoundingClientRect();
+          mappedY = coords.top - cRect.top + (container.scrollTop || 0) + 16;
+        }
+      }
+
+      if (mappedY !== null) {
+        setRehearsalLinePosition(mappedY);
+        if (mappedRect) setRehearsalWordBox(mappedRect); else setRehearsalWordBox(null);
+        // request a center once when we get a new mapping
+        pendingCenterRef.current = true;
+        // Publish to awareness so other clients can follow
+        if (provider && (provider as any).awareness) {
+          const awareness: any = (provider as any).awareness;
+          const current = awareness.getLocalState?.() || {};
+          const next: any = { ...current, rehearsalDocPos };
+          if (mappedRect) next.rehearsalWordRect = mappedRect;
+          awareness.setLocalState?.(next);
+        }
+      }
+    } catch {}
+  }, [rehearsalDocPos, editor, provider]);
 
   // Collapse expanded cue panel when clicking outside the sidebar
   useEffect(() => {
