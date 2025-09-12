@@ -47,7 +47,7 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
       dragMode === 'right'
         ? startInnerWidth + delta
         : startInnerWidth - delta;
-    const page = document.querySelector('.dinA4Page') as HTMLElement | null;
+    const page = (document.querySelector('.dinA4Page') || document.querySelector('.borderlessPanel')) as HTMLElement | null;
     const pageRect = page?.getBoundingClientRect();
     const pageWidth = pageRect?.width || 0;
     const maxInner = pageWidth - 16; // keep at least 8px padding each side
@@ -105,8 +105,8 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
   if (!active) return null;
 
   // Read current geometry
-  const page = document.querySelector('.dinA4Page') as HTMLElement | null;
-  const inner = page?.querySelector('.pageInner') as HTMLElement | null;
+  const page = (document.querySelector('.dinA4Page') || document.querySelector('.borderlessPanel')) as HTMLElement | null;
+  const inner = (page?.querySelector('.pageInner') as HTMLElement | null) || (document.querySelector('.borderlessPanel .pageInner') as HTMLElement | null);
   const pageRect = page?.getBoundingClientRect();
   const innerRect = inner?.getBoundingClientRect();
 

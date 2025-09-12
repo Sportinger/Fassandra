@@ -21,8 +21,8 @@ export const FloatingCommentsLayer: React.FC<FloatingCommentsLayerProps> = ({ ed
 
   const compute = useCallback(() => {
     const container = document.querySelector('.singlePageContainer') as HTMLElement | null;
-    const page = document.querySelector('.dinA4Page') as HTMLElement | null;
-    const inner = page?.querySelector('.pageInner') as HTMLElement | null;
+    const page = (document.querySelector('.dinA4Page') || document.querySelector('.borderlessPanel')) as HTMLElement | null;
+    const inner = (page?.querySelector('.pageInner') as HTMLElement | null) || (document.querySelector('.borderlessPanel .pageInner') as HTMLElement | null);
     if (!container || !page || !inner) return;
     const containerRect = container.getBoundingClientRect();
     const innerRect = inner.getBoundingClientRect();

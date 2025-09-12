@@ -58,10 +58,13 @@ export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, of
     const scrollTop = container.scrollTop || 0; // container rarely scrolls; window scroll is in rects
 
     const anchors = collectCueAnchors(container);
-    // Get page bounds to place badges in the right margin
-    const page = container.querySelector('.dinA4Page') as HTMLElement | null;
-    const pageRect = page ? page.getBoundingClientRect() : containerRect;
-    const rightEdge = pageRect.right - containerRect.left; // relative to container
+    // Get content bounds to place badges in the right margin
+    const page = (container.querySelector('.dinA4Page') || container.querySelector('.borderlessPanel')) as HTMLElement | null;
+    const inner = (page?.querySelector('.pageInner') as HTMLElement | null) || (container.querySelector('.borderlessPanel .pageInner') as HTMLElement | null);
+    const refRect = (inner || page)?.getBoundingClientRect() || containerRect;
+    const cs = inner ? getComputedStyle(inner) : null;
+    const padR = cs ? (parseFloat(cs.paddingRight || '0') || 0) : 0;
+    const rightEdge = (refRect.right - padR) - containerRect.left; // relative to container content edge
     const isMobile = window.matchMedia('(max-width: 768px)').matches;
     const sideOffset = isMobile ? -12 : 16; // on mobile, tuck slightly inside the page edge
     type Temp = FloatingCueItem & { rawTop: number; col: number };

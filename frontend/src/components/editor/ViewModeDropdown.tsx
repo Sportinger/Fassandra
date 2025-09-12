@@ -13,14 +13,16 @@ interface ViewModeDropdownProps {
 const VIEW_MODE_LABELS = {
   'single-page': 'Single Page View',
   'multiple-pages': 'Multiple Pages View',
-  'virtual-page': 'Virtual Page View'
-};
+  'virtual-page': 'Virtual Page View',
+  'borderless': 'Borderless View',
+} as const;
 
 const VIEW_MODE_ICONS = {
   'single-page': <LayoutPanelTopIcon />,
   'multiple-pages': <LayoutPanelTopIcon />,
-  'virtual-page': '📄'
-};
+  'virtual-page': '📄',
+  'borderless': '▭',
+} as const;
 
 export const ViewModeDropdown: React.FC<ViewModeDropdownProps> = ({
   viewMode,
@@ -59,10 +61,10 @@ export const ViewModeDropdown: React.FC<ViewModeDropdownProps> = ({
     setIsOpen(false);
   };
 
-  const viewModes: ViewMode[] = ['single-page', 'multiple-pages'];
+  const viewModes: ViewMode[] = ['single-page', 'borderless'];
 
-  const currentIcon = VIEW_MODE_ICONS[viewMode];
-  const currentLabel = VIEW_MODE_LABELS[viewMode];
+  const currentIcon = VIEW_MODE_ICONS[viewMode] ?? VIEW_MODE_ICONS['single-page'];
+  const currentLabel = VIEW_MODE_LABELS[viewMode] ?? VIEW_MODE_LABELS['single-page'];
 
   return (
     <div

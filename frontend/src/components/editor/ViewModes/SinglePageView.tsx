@@ -161,7 +161,7 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-button-bg-hover)'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-background)'}
           >
-            📄 Switch to Multiple Pages View
+            📄 Switch to Borderless View
           </div>
           {/* Dummy Comment option for right-click menu */}
           <div 
