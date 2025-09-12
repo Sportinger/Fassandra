@@ -3,6 +3,7 @@ import type { Editor as TiptapEditor } from '@tiptap/react';
 export type ProgressMsg = {
   type: 'progress' | 'asr' | 'ready' | 'error';
   docPos?: number;
+  wordDocPos?: number[];
   confidence?: number;
   asr?: {
     text: string;

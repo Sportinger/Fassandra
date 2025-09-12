@@ -26,6 +26,8 @@ pub struct ProgressMsg {
     pub r#type: String, // "progress"
     pub docPos: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub wordDocPos: Option<Vec<u32>>, // mapping for matched words in order
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub wordRect: Option<serde_json::Value>,
     pub confidence: f32,
     pub asr: Option<AsrPartial>,
@@ -36,4 +38,3 @@ pub struct TokenMap {
     pub tokens: Vec<String>,
     pub offsets: Vec<u32>,
 }
-

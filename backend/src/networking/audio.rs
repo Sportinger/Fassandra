@@ -56,7 +56,7 @@ async fn handle_audio_socket(mut socket: WebSocket, _auth: WsAuth, config: Arc<C
                         tracing::info!("[audio] received script init: tokens={} ", init.tokens.len());
                         let tokens_norm = init.tokens.iter().map(|t| CorridorAligner::normalize_token(t)).collect();
                         token_map = Some(TokenMap { tokens: tokens_norm, offsets: init.offsets.clone() });
-                        aligner = Some(CorridorAligner::new(token_map.as_ref().unwrap().clone(), 25, 250));
+                        aligner = Some(CorridorAligner::new(token_map.as_ref().unwrap().clone(), 40, 400, 2));
                         let _ = socket.send(Message::Text("{\"type\":\"ready\"}".into())).await;
                     }
                 } else if let Ok(v) = serde_json::from_str::<serde_json::Value>(&txt) {
@@ -79,13 +79,14 @@ async fn handle_audio_socket(mut socket: WebSocket, _auth: WsAuth, config: Arc<C
                 // Send raw ASR for debugging
                 if let Some(first) = partial.words.first() { tracing::debug!("[audio] asr partial: text='{}' first='{}'", partial.text, first.w); } else { tracing::debug!("[audio] asr partial: text='{}'", partial.text); }
                 let _ = socket.send(Message::Text(
-                    serde_json::to_string(&ProgressMsg{ r#type:"asr".into(), docPos: None, wordRect: None, confidence: 0.0, asr: Some(partial.clone())}).unwrap_or_default()
+                    serde_json::to_string(&ProgressMsg{ r#type:"asr".into(), docPos: None, wordDocPos: None, wordRect: None, confidence: 0.0, asr: Some(partial.clone())}).unwrap_or_default()
                 )).await;
                 // Try align
                 if let Some(al) = aligner.as_mut() {
                     if let Some(doc_pos) = al.update_with_asr(&partial) {
+                        let trail = al.take_last_word_doc_positions();
                         let _ = socket.send(Message::Text(
-                            serde_json::to_string(&ProgressMsg{ r#type:"progress".into(), docPos: Some(doc_pos), wordRect: None, confidence: 0.7, asr: Some(partial) }).unwrap_or_default()
+                            serde_json::to_string(&ProgressMsg{ r#type:"progress".into(), docPos: Some(doc_pos), wordDocPos: if trail.is_empty() { None } else { Some(trail) }, wordRect: None, confidence: 0.7, asr: Some(partial) }).unwrap_or_default()
                         )).await;
                     }
                 }
