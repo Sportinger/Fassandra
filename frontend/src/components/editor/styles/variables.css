@@ -64,6 +64,8 @@
   /* Toolbar dimensions - responsive */
   --toolbar-width: clamp(60px, 8vw, 80px);
   --toolbar-button-size: clamp(40px, 6vw, 56px);
+  /* Right sidebar width derived from toolbar button size (5 columns) */
+  --right-sidebar-width: calc(var(--toolbar-button-size) * 5);
   --toolbar-padding: var(--space-md);
   --toolbar-gap: var(--space-sm);
   
@@ -118,24 +120,16 @@
   }
 }
 
-/* Tablet adjustments */
-@media (min-width: 768px) and (max-width: 1023px) {
+/* Normal view (tablet and desktop) — fixed sizes for stability */
+@media (min-width: 768px) {
   :root {
-    /* Balanced sizing for tablet */
-    --page-width: clamp(400px, 80vw, 600px);
-    --toolbar-button-size: 48px;
+    /* Keep toolbar/sidebar at a consistent, comfortable size */
+    --toolbar-button-size: 56px;
   }
 }
 
-/* Desktop and above */
-@media (min-width: 1024px) {
-  :root {
-    /* Full DIN A4 experience */
-    --page-width: var(--din-a4-width);
-    --content-padding-x: 2.5cm;
-    --content-padding-y: 2cm;
-  }
-}
+/* Desktop and above — keep paddings continuous to avoid jumps */
+/* No additional overrides at 1024px to prevent layout snapping. */
 
 /* High DPI displays */
 @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 2dppx) {

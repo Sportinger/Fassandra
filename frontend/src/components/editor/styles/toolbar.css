@@ -13,9 +13,9 @@
   position: fixed;
   left: 0; /* flush with window edge */
   /* Sit below the fixed header with a little breathing room */
-  top: calc(var(--header-height) + env(safe-area-inset-top, 0px) + var(--space-md));
-  /* Occupy vertical space to bottom with padding */
-  bottom: var(--space-md);
+  top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+  /* Extend to bottom edge without extra gap */
+  bottom: 0;
   transform: none;
   /* Ensure toolbar and its dropdowns sit above page content and header */
   z-index: 1100;
