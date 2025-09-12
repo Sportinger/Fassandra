@@ -533,7 +533,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     {
       id: 'view-mode-dropdown',
       icon: <LayoutPanelTopIcon />,
-      title: viewMode === 'single-page' ? 'Single Page View' : 'Multiple Pages View',
+      title: viewMode === 'single-page' ? 'Single Page View' : (viewMode === 'borderless' ? 'Borderless View' : 'Multiple Pages View'),
       action: () => {}, // Handled by dropdown component
       contexts: ['default'],
       order: 1,

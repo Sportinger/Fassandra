@@ -6,7 +6,7 @@ import { useEditorCore } from '../hooks/useEditorCore';
 import { Toolbar } from './toolbar/Toolbar';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { StatusIndicator } from './ui/StatusIndicator';
-import { SinglePageView } from '../ViewModes';
+import { SinglePageView, BorderlessView } from '../ViewModes';
 import { FloatingCuesLayer } from './FloatingCuesLayer';
 import { FloatingCommentsLayer } from './FloatingCommentsLayer';
 import RulerOverlay from './RulerOverlay';
@@ -175,6 +175,12 @@ export const Editor: React.FC<EditorProps> = ({
     const handleDocClick = (e: MouseEvent) => {
       const currentId = expandedCueId;
       if (!currentId) return;
+
+      // If we're actively editing this cue, keep it visible
+      if (sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === currentId) {
+        return;
+      }
+
       const card = document.querySelector(`.rightSidebar [data-cue-id="${currentId}"]`);
       const target = e.target as Node | null;
       if (card && target && !card.contains(target)) {
@@ -183,7 +189,7 @@ export const Editor: React.FC<EditorProps> = ({
     };
     document.addEventListener('click', handleDocClick, true);
     return () => document.removeEventListener('click', handleDocClick, true);
-  }, [expandedCueId]);
+  }, [expandedCueId, sidebarPanel]);
   
   // Removed demo mode state - development utility
   // Removed demo-related state - development utility
@@ -370,7 +376,7 @@ export const Editor: React.FC<EditorProps> = ({
     
     if (suppressRehearsalAutoScroll) return;
     if (!pendingCenterRef.current) return;
-    if (!rehearsalMode || viewMode !== 'single-page') return;
+    if (!rehearsalMode || (viewMode !== 'single-page' && viewMode !== 'borderless')) return;
 
     // Only center if the position actually changed since last center
     const alreadyCentered = (
@@ -668,7 +674,7 @@ export const Editor: React.FC<EditorProps> = ({
         editor.chain().focus().insertSceneBlock().run();
         break;
       case 'toggle-view':
-        setViewMode(prev => prev === 'single-page' ? 'multiple-pages' : 'single-page');
+        setViewMode(prev => (prev === 'single-page' ? 'borderless' : 'single-page'));
         break;
       case 'jump':
         if (localContextMenu.hasWordTarget && typeof localContextMenu.wordLineY === 'number') {
@@ -878,14 +884,131 @@ export const Editor: React.FC<EditorProps> = ({
       
       {/* Removed demo mode status indicator - development utility */}
       
-      {/* Main editor content (multipage removed; always single page) */}
-      {
+      {/* Main editor content */}
+      {viewMode === 'borderless' ? (
+        <BorderlessView
+          showRuler={false}
+          onToggleRuler={() => setShowRuler(!showRuler)}
+          onToggleViewMode={() => setViewMode('single-page')}
+          rehearsalMode={rehearsalMode}
+          rehearsalLinePosition={rehearsalLinePosition}
+          overlay={
+            editor ? (
+              <>
+                <FloatingCuesLayer
+                  editor={editor}
+                  onOpenCue={(payload) => {
+                    try {
+                      const el = document.querySelector(`.cue-connection[data-cue-id="${payload.cueId}"]`);
+                      if (el) {
+                        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        (el as HTMLElement).classList.add('hover-highlight');
+                        setTimeout(() => (el as HTMLElement).classList.remove('hover-highlight'), 800);
+                      }
+                    } catch {}
+                    setRightSidebarOpen(true);
+                    setCuesCollapsed(false);
+                    setActiveSidebarCueId(payload.cueId);
+                    setSidebarPanel(null);
+                    setTimeout(() => {
+                      const container = document.querySelector('.rightSidebar .rightSidebarInner') as HTMLElement | null;
+                      const card = document.querySelector(`.rightSidebar [data-cue-id="${payload.cueId}"]`) as HTMLElement | null;
+                      if (container && card) {
+                        card.scrollIntoView({ block: 'nearest' });
+                      }
+                    }, 50);
+                  }}
+                />
+                {/* Disable ruler overlay in borderless to keep a stable left column */}
+                {viewMode !== 'borderless' && (
+                  <RulerOverlay active={rulerOverlayActive} onClose={() => setRulerOverlayActive(false)} />
+                )}
+                <FloatingCommentsLayer
+                  editor={editor}
+                  onOpenComment={({ id, text }) => {
+                    try {
+                      const el = document.querySelector(`.comment-annotation[data-comment-id="${id}"]`);
+                      if (el) {
+                        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        (el as HTMLElement).classList.add('connected-highlight');
+                        setTimeout(() => (el as HTMLElement).classList.remove('connected-highlight'), 800);
+                      }
+                    } catch {}
+                    setRightSidebarOpen(true);
+                    setCommentsCollapsed(false);
+                    setActiveSidebarCommentId(id);
+                    setSidebarPanel(null);
+                    setTimeout(() => {
+                      const container = document.querySelector('.rightSidebar .rightSidebarInner') as HTMLElement | null;
+                      const card = document.querySelector(`.rightSidebar [data-comment-id="${id}"]`) as HTMLElement | null;
+                      if (container && card) card.scrollIntoView({ block: 'nearest' });
+                    }, 50);
+                  }}
+                />
+                {rehearsalMode && rehearsalWordBox && (
+                  <div
+                    className="rehearsal-word-box"
+                    style={{
+                      left: `${rehearsalWordBox.left}px`,
+                      top: `${rehearsalWordBox.top}px`,
+                      width: `${rehearsalWordBox.width}px`,
+                      height: `${rehearsalWordBox.height}px`,
+                    }}
+                  />
+                )}
+              </>
+            ) : null
+          }
+        >
+          {editor ? (
+            <div
+              onClick={(e) => {
+                const target = e.target as HTMLElement;
+                const speakerElement = target.closest('[data-type="speaker"]') as HTMLElement | null;
+                const dialogueBlockElement = target.closest('[data-type="dialogue-block"]') as HTMLElement | null;
+                const sceneBlockElement = target.closest('[data-type="scene-block"]') as HTMLElement | null;
+                if (speakerElement) {
+                  e.stopPropagation();
+                }
+                if (dialogueBlockElement && speakerElement) {
+                  e.stopPropagation();
+                }
+                if (sceneBlockElement) {
+                  e.stopPropagation();
+                }
+              }}
+            >
+              <div
+                ref={(node) => {
+                  if (node && editor && !node.contains(editor.options.element)) {
+                    node.appendChild(editor.options.element);
+                  }
+                }}
+              />
+            </div>
+          ) : (
+            <div className="editor-loading">
+              <LoadingSpinner size="lg" />
+              <div>
+                <p>Initializing collaborative editor...</p>
+                {ydoc && provider ? (
+                  <p style={{ fontSize: '14px', opacity: 0.7 }}>✅ Collaboration ready - Creating editor...</p>
+                ) : (
+                  <p style={{ fontSize: '14px', opacity: 0.7 }}>
+                    🔄 Status: {connectionStatus} - Setting up real-time sync...
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </BorderlessView>
+      ) : (
         <SinglePageView 
           showRuler={false}
           pageNumber={pageNumber}
           pageCount={pageCount}
           onToggleRuler={() => setShowRuler(!showRuler)}
-          onToggleViewMode={() => setViewMode(viewMode === 'single-page' ? 'multiple-pages' : 'single-page')}
+          onToggleViewMode={() => setViewMode(viewMode === 'single-page' ? 'borderless' : 'single-page')}
           rehearsalMode={rehearsalMode}
           rehearsalLinePosition={rehearsalLinePosition}
           overlay={
@@ -921,7 +1044,9 @@ export const Editor: React.FC<EditorProps> = ({
                   }}
                 />
                 {/* Ruler overlay */}
-                <RulerOverlay active={rulerOverlayActive} onClose={() => setRulerOverlayActive(false)} />
+                {viewMode !== 'borderless' && (
+                  <RulerOverlay active={rulerOverlayActive} onClose={() => setRulerOverlayActive(false)} />
+                )}
                 {/* Comments overlay */}
                 <FloatingCommentsLayer
                   editor={editor}
@@ -1218,7 +1343,7 @@ export const Editor: React.FC<EditorProps> = ({
             </div>
           )}
         </SinglePageView>
-      }
+      )}
       
       {/* Context Menu */}
       {localContextMenu.visible && (
@@ -1527,34 +1652,41 @@ export const Editor: React.FC<EditorProps> = ({
                             >
                               {c.cueName || (c.cueType?.toUpperCase?.() || '')}
                             </span>
-                            <button
-                              className="rs-btn rs-cue-edit"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSidebarPanel(prev => (
-                                  prev && prev.type === 'cue' && prev.cueId === c.cueId
-                                    ? null
-                                    : { type: 'cue', cueId: c.cueId, cueType: c.cueType, cueNumber: c.cueNumber, cueName: c.cueName || '', draftName: c.cueName || '' }
-                                ));
-                                setExpandedCueId(c.cueId);
-                                setTimeout(() => {
-                                  try {
-                                    const el = document.querySelector(`.rs-cue-name[data-cue-id="${c.cueId}"]`) as HTMLElement | null;
-                                    if (el) {
-                                      el.focus();
-                                      const range = document.createRange();
-                                      range.selectNodeContents(el);
-                                      range.collapse(false);
-                                      const sel = window.getSelection();
-                                      sel?.removeAllRanges();
-                                      sel?.addRange(range);
-                                    }
-                                  } catch {}
-                                }, 0);
-                              }}
-                            >
-                              Edit
-                            </button>
+                              <button
+                                className="rs-btn rs-cue-edit"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const isEditing = !!(sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === c.cueId);
+                                  if (isEditing) {
+                                    // Save inline name and exit edit mode
+                                    try {
+                                      const el = document.querySelector(`.rs-cue-name[data-cue-id="${c.cueId}"]`) as HTMLElement | null;
+                                      const newName = (el?.innerText || '').trim();
+                                      if (editor) (editor as any).commands.updateCueById(c.cueId, { cueName: newName });
+                                    } catch {}
+                                    setSidebarPanel(null);
+                                  } else {
+                                    setSidebarPanel({ type: 'cue', cueId: c.cueId, cueType: c.cueType, cueNumber: c.cueNumber, cueName: c.cueName || '', draftName: c.cueName || '' });
+                                    setExpandedCueId(c.cueId);
+                                    setTimeout(() => {
+                                      try {
+                                        const el = document.querySelector(`.rs-cue-name[data-cue-id="${c.cueId}"]`) as HTMLElement | null;
+                                        if (el) {
+                                          el.focus();
+                                          const range = document.createRange();
+                                          range.selectNodeContents(el);
+                                          range.collapse(false);
+                                          const sel = window.getSelection();
+                                          sel?.removeAllRanges();
+                                          sel?.addRange(range);
+                                        }
+                                      } catch {}
+                                    }, 0);
+                                  }
+                                }}
+                              >
+                                {(sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === c.cueId) ? 'Save' : 'Edit'}
+                              </button>
                           </div>
                             {/* Expanded details */}
                             {expandedCueId === c.cueId && (
@@ -1643,29 +1775,35 @@ export const Editor: React.FC<EditorProps> = ({
                                   className="rs-btn rs-cue-edit"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSidebarPanel(prev => (
-                                      prev && prev.type === 'cue' && prev.cueId === c.cueId
-                                        ? null
-                                        : { type: 'cue', cueId: c.cueId, cueType: c.cueType, cueNumber: c.cueNumber, cueName: c.cueName || '', draftName: c.cueName || '' }
-                                    ));
-                                    setExpandedCueId(c.cueId);
-                                    setTimeout(() => {
+                                    const isEditing = !!(sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === c.cueId);
+                                    if (isEditing) {
                                       try {
-                                        const el = document.querySelector(`.rs-cue-name[data-cue-id="${c.cueId}"]`) as HTMLElement | null;
-                                        if (el) {
-                                          el.focus();
-                                          const range = document.createRange();
-                                          range.selectNodeContents(el);
-                                          range.collapse(false);
-                                          const sel = window.getSelection();
-                                          sel?.removeAllRanges();
-                                          sel?.addRange(range);
-                                        }
+                                        const el = document.querySelector(`.rs-cue-name[data-cue-id=\"${c.cueId}\"]`) as HTMLElement | null;
+                                        const newName = (el?.innerText || '').trim();
+                                        if (editor) (editor as any).commands.updateCueById(c.cueId, { cueName: newName });
                                       } catch {}
-                                    }, 0);
+                                      setSidebarPanel(null);
+                                    } else {
+                                      setSidebarPanel({ type: 'cue', cueId: c.cueId, cueType: c.cueType, cueNumber: c.cueNumber, cueName: c.cueName || '', draftName: c.cueName || '' });
+                                      setExpandedCueId(c.cueId);
+                                      setTimeout(() => {
+                                        try {
+                                          const el = document.querySelector(`.rs-cue-name[data-cue-id=\"${c.cueId}\"]`) as HTMLElement | null;
+                                          if (el) {
+                                            el.focus();
+                                            const range = document.createRange();
+                                            range.selectNodeContents(el);
+                                            range.collapse(false);
+                                            const sel = window.getSelection();
+                                            sel?.removeAllRanges();
+                                            sel?.addRange(range);
+                                          }
+                                        } catch {}
+                                      }, 0);
+                                    }
                                   }}
                                 >
-                                  Edit
+                                  {(sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === c.cueId) ? 'Save' : 'Edit'}
                                 </button>
                               </div>
                               {/* Expanded details */}
