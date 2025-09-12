@@ -3,26 +3,30 @@
 .rightSidebar {
   position: fixed;
   right: 0;
-  top: calc(var(--header-height) + env(safe-area-inset-top, 0px) + var(--space-md));
-  bottom: var(--space-md);
-  width: calc(var(--toolbar-button-size) * 5);
+  top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+  bottom: 0;
+  width: var(--right-sidebar-width);
   background: var(--color-background);
   border-left: 1px solid #000; /* thin black indicator line */
   z-index: 1050; /* below toolbar dropdowns but above page */
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: transform 200ms ease, width 200ms ease, border-left-color 200ms ease;
 }
 
+.rightSidebar.open { transform: translateX(0); }
 .rightSidebar.collapsed {
-  width: 0;
-  border-left: none;
+  /* Slide the sidebar off-screen to the right but keep a 18px handle visible */
+  transform: translateX(calc(100% - 18px));
+  width: var(--right-sidebar-width); /* keep intrinsic width for smooth slide */
+  border-left-color: transparent;
 }
 
 .rightSidebarToggle {
   position: absolute;
   left: -18px; /* small handle outside sidebar */
-  top: 6px;
+  top: 0;
   width: 18px;
   height: 24px;
   display: flex;
@@ -126,8 +130,8 @@
 .rs-comment .name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
 .rs-comment .text { font-size: 12px; opacity: 0.85; }
 
-/* Hide sidebar on small screens */
-@media (max-width: 1023px) {
+/* Hide sidebar on mobile screens only */
+@media (max-width: 767px) {
   .rightSidebar,
   .rightSidebarToggle {
     display: none !important;

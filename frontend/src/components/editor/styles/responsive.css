@@ -197,23 +197,31 @@ html, body {
   max-width: var(--page-width);
 }
 
-/* Center page between toolbar rail (left) and right sidebar (right) */
+/* Center page with stable gutters so it sits between
+   the left toolbar and the LEFT edge of the right sidebar. */
 .single-page-view {
-  /* create gutters so centering accounts for fixed toolbar and sidebar */
-  padding-left: var(--toolbar-button-size); /* no extra gap on the left */
-  padding-right: 0; /* no extra gap by default */
+  /* Center between LEFT edge of toolbar (window left) and LEFT edge of sidebar */
+  padding-left: 0;                           /* allow toolbar to overlap on the left */
+  padding-right: 0;                          /* no sidebar gutter by default */
 }
 
+/* When the right sidebar is open, reserve its width on the right
+   so the page is centered between toolbar and sidebar-left edge. */
 .single-page-view.sidebar-open {
-  /* right gutter equals sidebar width */
-  padding-right: calc(var(--toolbar-button-size) * 5);
+  padding-right: var(--right-sidebar-width);
 }
 
-/* Ensure content area remains centered between gutters */
+/* Ensure content area remains centered between toolbar (left) and sidebar (right) */
 .single-page-view .singlePageContainer { margin: 0 auto; }
 
+/* Keep centering even when the right sidebar is open.
+   We intentionally DO NOT snap the page to the sidebar, so the
+   DIN A4 page stays visually centered in the available space
+   between the left toolbar and the right sidebar. */
+/* .single-page-view.sidebar-open .singlePageContainer { margin-left: auto; margin-right: 0; } */
+
 /* Mobile: no sidebar, no rail offset; use full width */
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
   .single-page-view,
   .single-page-view.sidebar-open,
   .single-page-view.sidebar-collapsed {
@@ -275,6 +283,8 @@ html, body {
   border-radius: 0;
   border: 1px solid var(--color-border);
   position: relative;
+  /* Keep a consistent vertical position across breakpoints */
+  margin: 0 auto;
   
   /* Content padding: vertical only; horizontal via inner wrapper for perfect symmetry */
   padding-left: 0;
@@ -779,17 +789,15 @@ html, body {
 
 @media (min-width: 1024px) {
   .dinA4Page {
-    /* Full DIN A4 experience on desktop */
-    margin: var(--space-2xl) auto;
+    /* Keep the same vertical margin to avoid jumps */
+    margin: 0 auto;
   }
 
   /* Adjust for toolbar on desktop */
   .single-page-view,
   .multi-page-view,
   .pageCanvas {
-    /* Reserve space for left toolbar rail and right sidebar, keeping page centered between them */
-    padding-left: calc(var(--content-padding-x) + var(--toolbar-button-size) + var(--space-md));
-    padding-right: calc(var(--content-padding-x) + (var(--toolbar-button-size) * 5) + var(--space-md));
+    /* On desktop/tablet keep the same gutter rules declared above */
   }
   
   /* Side-by-side dialogue layout on desktop */
