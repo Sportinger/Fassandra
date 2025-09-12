@@ -8,6 +8,7 @@ import { LoadingSpinner } from './ui/LoadingSpinner';
 import { StatusIndicator } from './ui/StatusIndicator';
 import { SinglePageView, BorderlessView } from '../ViewModes';
 import { FloatingCuesLayer } from './FloatingCuesLayer';
+import { CueConnectors } from './CueConnectors';
 import { FloatingCommentsLayer } from './FloatingCommentsLayer';
 import RulerOverlay from './RulerOverlay';
 import { MessageSquareQuoteIcon } from '../icons';
@@ -1091,6 +1092,9 @@ export const Editor: React.FC<EditorProps> = ({
                     }, 50);
                   }}
                 />
+                {editor && (
+                  <CueConnectors editor={editor} expandedCueId={expandedCueId} />
+                )}
                 {/* Disable ruler overlay in borderless to keep a stable left column */}
                 {viewMode !== 'borderless' && (
                   <RulerOverlay active={rulerOverlayActive} onClose={() => setRulerOverlayActive(false)} />
@@ -1158,6 +1162,7 @@ export const Editor: React.FC<EditorProps> = ({
         </BorderlessView>
       ) : (
         <SinglePageView 
+          className={rightSidebarOpen ? 'sidebar-open' : 'sidebar-collapsed'}
           showRuler={false}
           pageNumber={pageNumber}
           pageCount={pageCount}
@@ -1197,6 +1202,9 @@ export const Editor: React.FC<EditorProps> = ({
                     }, 50);
                   }}
                 />
+                {editor && (
+                  <CueConnectors editor={editor} expandedCueId={expandedCueId} />
+                )}
                 {/* Ruler overlay */}
                 {viewMode !== 'borderless' && (
                   <RulerOverlay active={rulerOverlayActive} onClose={() => setRulerOverlayActive(false)} />
