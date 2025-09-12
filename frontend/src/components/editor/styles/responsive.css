@@ -197,6 +197,31 @@ html, body {
   max-width: var(--page-width);
 }
 
+/* Center page between toolbar rail (left) and right sidebar (right) */
+.single-page-view {
+  /* create gutters so centering accounts for fixed toolbar and sidebar */
+  padding-left: var(--toolbar-button-size); /* no extra gap on the left */
+  padding-right: 0; /* no extra gap by default */
+}
+
+.single-page-view.sidebar-open {
+  /* right gutter equals sidebar width */
+  padding-right: calc(var(--toolbar-button-size) * 5);
+}
+
+/* Ensure content area remains centered between gutters */
+.single-page-view .singlePageContainer { margin: 0 auto; }
+
+/* Mobile: no sidebar, no rail offset; use full width */
+@media (max-width: 1023px) {
+  .single-page-view,
+  .single-page-view.sidebar-open,
+  .single-page-view.sidebar-collapsed {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
 .multiplePagesContainer {
   display: flex;
   flex-direction: column;
