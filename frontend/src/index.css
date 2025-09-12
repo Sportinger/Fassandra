@@ -26,6 +26,7 @@
   --bubble-speaker-bg: rgba(255, 255, 255, 0.08);
   --bubble-text-bg: rgba(255, 255, 255, 0.06);
   --bubble-border: rgba(255, 255, 255, 0.12);
+  --bubble-speaker-active-bg: rgba(100, 108, 255, 0.12);
   /* Max width for content in borderless mode */
   --borderless-content-max-width: 820px;
 }
@@ -45,6 +46,7 @@
   --bubble-speaker-bg: #e9ebff;
   --bubble-text-bg: #f2f4ff;
   --bubble-border: #d0d5ff;
+  --bubble-speaker-active-bg: #e1e4ff;
   --borderless-content-max-width: 820px;
 }
 

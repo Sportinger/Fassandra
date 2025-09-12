@@ -190,6 +190,57 @@ export const Editor: React.FC<EditorProps> = ({
     document.addEventListener('click', handleDocClick, true);
     return () => document.removeEventListener('click', handleDocClick, true);
   }, [expandedCueId, sidebarPanel]);
+
+  // In borderless view, ensure clicking a speaker bubble opens the speaker toolbar
+  useEffect(() => {
+    if (!editor || viewMode !== 'borderless') return;
+    const root: HTMLElement = (editor as any).options.element as HTMLElement;
+    if (!root) return;
+    const onClick = (evt: MouseEvent) => {
+      const target = evt.target as HTMLElement | null;
+      if (!target) return;
+      const speakerEl = target.closest('[data-type="speaker"]') as HTMLElement | null;
+      if (speakerEl) {
+        try { setCurrentSpeakerName((speakerEl.textContent || '').trim()); } catch {}
+        // Persist selection on the underlying speaker node and place caret at end
+        try {
+          const view: any = (editor as any).view;
+          const { state } = editor as any;
+          let targetPos: number | null = null;
+          state.doc.descendants((node: any, position: number) => {
+            if (node.type?.name === 'speaker') {
+              const domForNode = view.nodeDOM(position) as HTMLElement | null;
+              if (domForNode && (domForNode === speakerEl || domForNode.contains(speakerEl))) {
+                targetPos = position;
+                return false;
+              }
+            }
+            return true;
+          });
+          if (typeof targetPos === 'number') {
+            const nodeAt = state.doc.nodeAt(targetPos);
+            if (nodeAt) {
+              let tr = state.tr;
+              state.doc.descendants((node: any, position: number) => {
+                if (node.type?.name === 'speaker' && node.attrs?.selected) {
+                  tr = tr.setNodeMarkup(position, undefined, { ...node.attrs, selected: false });
+                }
+                return true;
+              });
+              tr = tr.setNodeMarkup(targetPos, undefined, { ...nodeAt.attrs, selected: true });
+              view.dispatch(tr);
+              const end = targetPos + 1 + (nodeAt.content?.size || 0);
+              try { (editor as any).chain().setTextSelection(end).focus().run(); } catch {}
+            }
+          }
+        } catch {}
+        showContextMenu(evt.clientX, evt.clientY, 'speaker-select');
+        evt.stopPropagation();
+      }
+    };
+    root.addEventListener('click', onClick, true);
+    return () => { root.removeEventListener('click', onClick, true); };
+  }, [editor, viewMode, showContextMenu]);
   
   // Removed demo mode state - development utility
   // Removed demo-related state - development utility
@@ -962,30 +1013,12 @@ export const Editor: React.FC<EditorProps> = ({
         >
           {editor ? (
             <div
-              onClick={(e) => {
-                const target = e.target as HTMLElement;
-                const speakerElement = target.closest('[data-type="speaker"]') as HTMLElement | null;
-                const dialogueBlockElement = target.closest('[data-type="dialogue-block"]') as HTMLElement | null;
-                const sceneBlockElement = target.closest('[data-type="scene-block"]') as HTMLElement | null;
-                if (speakerElement) {
-                  e.stopPropagation();
-                }
-                if (dialogueBlockElement && speakerElement) {
-                  e.stopPropagation();
-                }
-                if (sceneBlockElement) {
-                  e.stopPropagation();
+              ref={(node) => {
+                if (node && editor && !node.contains(editor.options.element)) {
+                  node.appendChild(editor.options.element);
                 }
               }}
-            >
-              <div
-                ref={(node) => {
-                  if (node && editor && !node.contains(editor.options.element)) {
-                    node.appendChild(editor.options.element);
-                  }
-                }}
-              />
-            </div>
+            />
           ) : (
             <div className="editor-loading">
               <LoadingSpinner size="lg" />
