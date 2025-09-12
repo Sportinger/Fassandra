@@ -15,6 +15,7 @@ use uuid::Uuid;
 use anyhow::{Context, Result};
 
 use crate::networking::websocket;
+use crate::networking::audio;
 use crate::handlers::script::{script_routes, claude_session_routes};
 use crate::handlers::auth::{health_with_service_manager, register, login, login_with_google, receive_console_logs, get_current_user, logout, get_csrf_token, get_ws_token};
 use crate::auth::{rate_limit_middleware, AuthUser, create_csrf_store};
@@ -114,7 +115,7 @@ pub fn create_router(
     let cors = create_cors_layer().expect("Failed to create CORS layer");
     let csrf_store = create_csrf_store();
     
-    Router::new()
+    let base = Router::new()
         .route("/health", get(health_with_service_manager))
         .route("/register", post(register))
         .route("/login", post(login))
@@ -132,7 +133,11 @@ pub fn create_router(
                 .layer(axum::middleware::from_fn_with_state(service_manager.get_rate_limiter(), rate_limit_middleware))
                 .layer(RequestBodyLimitLayer::new(MAX_REQUEST_BODY_SIZE)),
         )
-        .layer(axum::middleware::from_fn(create_security_headers_middleware(config)))
+        .layer(axum::middleware::from_fn(create_security_headers_middleware(config.clone())));
+
+    // Add audio WebSocket routes
+    let audio_router = audio::audio_routes(config.clone());
+    base.merge(audio_router)
 }
 
 /// Wrapper functions for API endpoints that need AuthUser extraction

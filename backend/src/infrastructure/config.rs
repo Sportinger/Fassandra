@@ -22,6 +22,11 @@ pub struct Config {
     pub x_frame_options: String,
     pub referrer_policy: String,
     pub permissions_policy: String,
+    // ASR/Auto-follow config
+    pub asr_provider: String,          // local|deepgram
+    pub asr_language: String,          // e.g., de-DE
+    pub asr_sample_rate: u32,          // e.g., 16000 or 48000
+    pub deepgram_api_key: Option<String>,
 }
 
 impl Config {
@@ -55,6 +60,14 @@ impl Config {
                 .unwrap_or_else(|_| "strict-origin-when-cross-origin".to_string()),
             permissions_policy: env::var("PERMISSIONS_POLICY")
                 .unwrap_or_else(|_| "geolocation=(), microphone=(), camera=()".to_string()),
+            // Auto-follow defaults
+            asr_provider: env::var("ASR_PROVIDER").unwrap_or_else(|_| "deepgram".to_string()),
+            asr_language: env::var("ASR_LANGUAGE").unwrap_or_else(|_| "de".to_string()),
+            asr_sample_rate: env::var("ASR_SAMPLE_RATE")
+                .map(|v| v.parse::<u32>())
+                .unwrap_or(Ok(48000))
+                .context("Invalid ASR_SAMPLE_RATE value")?,
+            deepgram_api_key: env::var("DEEPGRAM_API_KEY").ok(),
         })
     }
 }

@@ -33,7 +33,7 @@ serde_qs = "0.12"
 # Removed docx-rs as it's no longer needed with PDF-only processing
 reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
 async-trait = "0.1"
-tokio-tungstenite = "0.24"
+tokio-tungstenite = { version = "0.24", features = ["native-tls", "connect"] }
 url = "2.5"
 futures-util = "0.3"
 once_cell = "1.19"
@@ -46,6 +46,9 @@ yrs = { version = "0.24.0", features = ["sync"] }
 hex = "0.4.3"
 zip = "0.6"
 async-stream = "0.3"
+tokio-stream = "0.1"
+tokio-util = { version = "0.7", features = ["codec"] }
+native-tls = "0.2"
 
 # Added for to_string_lossy suggestion
 rustix = "0.38"
