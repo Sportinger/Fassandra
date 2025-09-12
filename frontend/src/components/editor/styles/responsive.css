@@ -80,6 +80,9 @@ html, body {
   -webkit-overflow-scrolling: touch;
   /* Fill with page background color to create a flat canvas */
   background: var(--color-page-background, #242424);
+  /* Fix paddings to avoid responsive jumps */
+  --content-padding-x: 24px;
+  --content-padding-y: 24px;
 }
 
 /* Use same container class name to keep existing selectors and overlays working */
@@ -119,29 +122,71 @@ html, body {
 }
 
 .borderless-view .ProseMirror [data-type="dialogue-block"] [data-type="speaker"] {
-  display: block; /* full column width */
+  display: inline-block; /* shrink to content */
   background: var(--bubble-speaker-bg, rgba(255,255,255,0.06));
   color: var(--color-text);
   border: 1px solid var(--bubble-border, rgba(255,255,255,0.12));
   border-radius: 14px 14px 14px 6px;
   padding: 6px 10px;
   font-weight: 600;
-  width: 100%;
+  width: auto;
+  max-width: min(48ch, 92%);
+}
+
+/* Active/selected speaker visual without dotted lines */
+.borderless-view .ProseMirror [data-type="dialogue-block"] [data-type="speaker"].speaker-selected,
+.borderless-view .ProseMirror [data-type="dialogue-block"] [data-type="speaker"][data-speaker-selected="true"] {
+  border-color: var(--color-accent);
+  background: var(--bubble-speaker-active-bg, rgba(100,108,255,0.12));
+  box-shadow: 0 0 0 2px rgba(100,108,255,0.12);
 }
 
 .borderless-view .ProseMirror [data-type="dialogue-block"] [data-type="dialogue-text"] {
-  display: block; /* full column width */
+  display: inline-block; /* shrink to content */
   background: var(--bubble-text-bg, rgba(255,255,255,0.04));
   color: var(--color-text);
   border: 1px solid var(--bubble-border, rgba(255,255,255,0.12));
   border-radius: 14px 14px 14px 6px;
   padding: 8px 12px;
-  width: 100%;
+  width: auto;
+  max-width: min(72ch, 96%);
 }
 
 /* Remove default margins inside bubbles to keep compact */
 .borderless-view .ProseMirror [data-type="dialogue-block"] [data-type="dialogue-text"] p {
   margin: 0.4em 0;
+}
+
+/* Override generic left indent for dialogue text in borderless */
+.borderless-view .ProseMirror [data-type="dialogue-text"] {
+  margin-left: 0 !important;
+}
+
+/* Borderless: remove dotted hover/selection outlines and drag handles */
+.borderless-view .ProseMirror [data-type="dialogue-block"]:has([data-type="speaker"]:hover) {
+  outline: none !important;
+}
+.borderless-view .ProseMirror [data-type="speaker"],
+.borderless-view .ProseMirror [data-type="speaker"]:hover,
+.borderless-view .ProseMirror [data-type="speaker"].speaker-selected,
+.borderless-view .ProseMirror [data-type="speaker"][data-speaker-selected="true"],
+.borderless-view .ProseMirror [data-type="speaker"].speaker-selected > p,
+.borderless-view .ProseMirror [data-type="speaker"][data-speaker-selected="true"] > p {
+  outline: none !important;
+  box-shadow: none !important;
+  border-style: solid !important; /* keep bubble border only */
+}
+.borderless-view .ProseMirror [data-type="speaker"].speaker-selected::after {
+  content: none !important;
+}
+.borderless-view .dialogue-drag-handle,
+.borderless-view .drag-handle {
+  display: none !important;
+}
+
+.borderless-view .ProseMirror [data-type="dialogue-block"].ProseMirror-selectednode {
+  outline: none !important;
+  background: transparent !important;
 }
 
 .singlePageContainer {
@@ -641,9 +686,9 @@ html, body {
   }
 
   .borderless-view {
-    padding-left: var(--content-padding-x);
-    padding: var(--space-md);
-    padding-bottom: calc(var(--space-md) + 90px);
+    /* Fixed paddings on mobile too for stability */
+    padding: 16px;
+    padding-bottom: calc(16px + 90px);
   }
 
   .singlePageContainer {
@@ -997,3 +1042,13 @@ html, body {
     line-height: 1.5;
   }
 } 
+.borderless-view .ProseMirror {
+  /* Fix typography to a stable size to prevent reflow on resize */
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+  word-break: normal !important;
+  overflow-wrap: break-word;
+  hyphens: manual;
+  -webkit-hyphens: manual;
+  -moz-hyphens: manual;
+}
