@@ -15,6 +15,7 @@ pub mod auth;
 pub mod error;
 pub mod external;
 pub mod networking;
+pub mod audio;
 pub mod infrastructure;
 pub mod services;
 pub mod utils;

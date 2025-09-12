@@ -170,6 +170,37 @@ export const Editor: React.FC<EditorProps> = ({
     };
   }, [editor]);
 
+  // Auto-Follow MVP: mic capture + WS progress
+  const [autoFollowActive, setAutoFollowActive] = useState(false);
+  const autoFollowRef = useRef<any>(null);
+  const [lastAsrText, setLastAsrText] = useState<string>("");
+  const startAutoFollow = useCallback(async () => {
+    if (!editor || autoFollowRef.current) return;
+    const { AutoFollowService } = await import('../../../services/AutoFollowService');
+    const svc = new AutoFollowService(editor as any, scriptId, token || 'authenticated', (msg: any) => {
+      try {
+        if (msg && msg.asr && typeof msg.asr.text === 'string') {
+          setLastAsrText(msg.asr.text);
+        }
+        if (msg && msg.type === 'progress' && typeof msg.docPos === 'number') {
+          setRehearsalDocPos(msg.docPos);
+        }
+      } catch {}
+    });
+    autoFollowRef.current = svc;
+    await svc.start();
+    setAutoFollowActive(true);
+    setRehearsalMode(true);
+  }, [editor, scriptId, token]);
+  const stopAutoFollow = useCallback(async () => {
+    if (autoFollowRef.current) {
+      await autoFollowRef.current.stop();
+      autoFollowRef.current = null;
+    }
+    setAutoFollowActive(false);
+    setLastAsrText("");
+  }, []);
+
   // Collapse expanded cue panel when clicking outside the sidebar
   useEffect(() => {
     const handleDocClick = (e: MouseEvent) => {
@@ -1586,6 +1617,15 @@ export const Editor: React.FC<EditorProps> = ({
                 }
               }
             } catch {}
+          }
+        }}
+        autoFollowActive={autoFollowActive}
+        asrPreviewText={lastAsrText}
+        onToggleAutoFollow={async () => {
+          if (autoFollowActive) {
+            await stopAutoFollow();
+          } else {
+            await startAutoFollow();
           }
         }}
       />

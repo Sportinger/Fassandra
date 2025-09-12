@@ -16,6 +16,7 @@
 
 pub mod websocket;
 pub mod yjs_protocol;
+pub mod audio;
 
 // Re-export the main networking functions
 pub use websocket::{

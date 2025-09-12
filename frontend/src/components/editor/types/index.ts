@@ -99,6 +99,10 @@ export interface ToolbarProps {
   className?: string;
   rehearsalMode?: boolean;
   onToggleRehearsalMode?: () => void;
+  // Auto-follow control
+  autoFollowActive?: boolean;
+  onToggleAutoFollow?: () => void;
+  asrPreviewText?: string;
 }
 
 // ===== DROPDOWN TYPES =====

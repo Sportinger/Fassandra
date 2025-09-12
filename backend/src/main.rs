@@ -35,10 +35,12 @@ static MIGRATOR: Migrator = sqlx::migrate!();
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize structured logging with environment-based configuration
+    // Reduce global noise; keep audio pipelines verbose by default.
+    // Override with RUST_LOG env if needed.
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info,backend=debug,tower_http=debug".into())
+                .unwrap_or_else(|_| "warn,backend::networking::audio=debug,backend::audio=debug,tower_http=warn".into())
         )
         .with(tracing_subscriber::fmt::layer())
         .init();

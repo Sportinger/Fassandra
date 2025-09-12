@@ -46,7 +46,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onSetViewMode,
   className = '',
   rehearsalMode = false,
-  onToggleRehearsalMode
+  onToggleRehearsalMode,
+  autoFollowActive = false,
+  onToggleAutoFollow,
+  asrPreviewText
 }) => {
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -316,6 +319,16 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   const allButtons = useMemo((): ToolbarButton[] => [
+    // Auto-Follow toggle (always visible)
+    {
+      id: 'auto-follow',
+      icon: autoFollowActive ? '🎤⏹' : '🎤▶',
+      title: autoFollowActive ? 'Stop Auto-Follow' : 'Start Auto-Follow',
+      action: () => { onToggleAutoFollow && onToggleAutoFollow(); },
+      isActive: autoFollowActive,
+      contexts: ['default','text-formatting','dialogue-layout','speaker-select','empty-page','cue-select','scene-select'],
+      order: 0,
+    },
     // Text formatting buttons (text-formatting context)
     {
       id: 'bold',
@@ -954,6 +967,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             ) : button.isSpecial && button.id === 'ruler-adjust' ? (
               <RulerAdjustDropdown isVisible={isVisible} />
             ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
                 onClick={button.action}
                 className={[
@@ -967,6 +981,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                   {typeof button.icon === 'string' ? button.icon : button.icon}
                 </span>
               </button>
+              </div>
             )}
             
             {shouldShowSeparatorAfter(button, index) && (
@@ -993,6 +1008,30 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           }}
           aria-hidden="true"
         />
+      )}
+
+      {/* Fixed-position ASR preview pill next to the toolbar */}
+      {autoFollowActive && (
+        <div
+          style={{
+            position: 'fixed',
+            left: 'calc(var(--toolbar-button-size) + 12px)',
+            top: 'calc(var(--header-height) + env(safe-area-inset-top, 0px) + var(--space-md))',
+            maxWidth: 480,
+            padding: '6px 10px',
+            borderRadius: 8,
+            background: 'rgba(0,0,0,0.6)',
+            color: '#fff',
+            fontSize: 13,
+            lineHeight: 1.25,
+            zIndex: 1110,
+            pointerEvents: 'none',
+            backdropFilter: 'blur(2px)'
+          }}
+          title={asrPreviewText || ''}
+        >
+          {asrPreviewText || 'Listening…'}
+        </div>
       )}
 
       {/* Floating round Keyboard toggle FAB (mobile only) */}
