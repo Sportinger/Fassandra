@@ -4,6 +4,7 @@ import { Decoration, DecorationSet, EditorView } from '@tiptap/pm/view';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { CueType } from '../../../types/cue';
+import { CUE_TYPE_ICONS, CUE_TYPE_LABELS } from '../../../types/cue';
 
 const cueSelectKey = new PluginKey<CueSelectState>('cueSelectMode');
 
@@ -176,6 +177,90 @@ export const CueSelectTool = Extension.create({
   },
 
   addProseMirrorPlugins() {
+    const indicator = {
+      el: null as HTMLDivElement | null,
+      iconEl: null as HTMLSpanElement | null,
+      textEl: null as HTMLSpanElement | null,
+      coarsePointer: false,
+      lastPointer: { x: 0, y: 0 },
+    };
+
+    const handleGlobalPointerMove = (event: PointerEvent) => {
+      updateIndicatorPosition(event);
+    };
+
+    const ensureIndicator = () => {
+      if (indicator.el || typeof document === 'undefined') return;
+      const el = document.createElement('div');
+      el.className = 'cue-select-indicator';
+
+      const iconEl = document.createElement('span');
+      iconEl.className = 'cue-select-indicator__icon';
+      const textEl = document.createElement('span');
+      textEl.className = 'cue-select-indicator__text';
+      el.append(iconEl, textEl);
+
+      indicator.el = el;
+      indicator.iconEl = iconEl;
+      indicator.textEl = textEl;
+      indicator.coarsePointer = typeof window !== 'undefined'
+        ? window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 767
+        : false;
+
+      if (indicator.coarsePointer) {
+        el.classList.add('cue-select-indicator--mobile');
+      }
+
+      document.body.appendChild(el);
+    };
+
+    const teardownIndicator = () => {
+      if (indicator.el) {
+        indicator.el.remove();
+      }
+      indicator.el = null;
+      indicator.iconEl = null;
+      indicator.textEl = null;
+    };
+
+    const showIndicator = (cueType: CueType) => {
+      ensureIndicator();
+      if (!indicator.el || !indicator.iconEl || !indicator.textEl) return;
+      indicator.iconEl.textContent = CUE_TYPE_ICONS[cueType] || '';
+      indicator.textEl.textContent = indicator.coarsePointer
+        ? `Tap a word to place a ${CUE_TYPE_LABELS[cueType]} cue`
+        : `Click a word to place a ${CUE_TYPE_LABELS[cueType]} cue`;
+      indicator.el.dataset.cueType = cueType;
+      indicator.el.classList.add('active');
+
+      if (!indicator.coarsePointer) {
+        const { x, y } = indicator.lastPointer;
+        if (x && y) {
+          indicator.el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        }
+        window.addEventListener('pointermove', handleGlobalPointerMove, { passive: true });
+      } else {
+        indicator.el.style.transform = 'translate3d(-50%, 0, 0)';
+      }
+    };
+
+    const hideIndicator = () => {
+      if (!indicator.el) return;
+      indicator.el.classList.remove('active');
+      indicator.el.style.transform = 'translate3d(-9999px, -9999px, 0)';
+      window.removeEventListener('pointermove', handleGlobalPointerMove);
+    };
+
+    const updateIndicatorPosition = (event: MouseEvent | PointerEvent) => {
+      if (!indicator.el || indicator.coarsePointer) return;
+      const offsetX = 20;
+      const offsetY = 28;
+      const x = event.clientX + offsetX;
+      const y = event.clientY - offsetY;
+      indicator.lastPointer = { x, y };
+      indicator.el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    };
+
     return [
       new Plugin<CueSelectState>({
         key: cueSelectKey,
@@ -204,13 +289,25 @@ export const CueSelectTool = Extension.create({
                 const tr = view.state.tr;
                 tr.setMeta(cueSelectKey, { active: false, cueType: null, cueId: null, decorations: DecorationSet.empty });
                 view.dispatch(tr);
+                hideIndicator();
                 return true;
               }
               return false;
             },
+            contextmenu: (view, event) => {
+              const ps = cueSelectKey.getState(view.state);
+              if (!ps?.active) return false;
+              event.preventDefault();
+              const tr = view.state.tr;
+              tr.setMeta(cueSelectKey, { active: false, cueType: null, cueId: null, decorations: DecorationSet.empty });
+              view.dispatch(tr);
+              hideIndicator();
+              return true;
+            },
             mousemove: (view, event) => {
               const ps = cueSelectKey.getState(view.state);
               if (!ps?.active) return false;
+              updateIndicatorPosition(event as MouseEvent);
               const pos = view.posAtCoords({ left: (event as MouseEvent).clientX, top: (event as MouseEvent).clientY });
               if (!pos) return false;
               const word = getWordAtPosition(view.state.doc, pos.pos);
@@ -249,6 +346,7 @@ export const CueSelectTool = Extension.create({
               tr.addMark(word.from, word.to, tempMark);
               tr.setMeta(cueSelectKey, { active: false, cueType: null, cueId: null, decorations: DecorationSet.empty });
               view.dispatch(tr);
+              hideIndicator();
               setTimeout(() => renumberCuesByMarks(view), 0);
               return true;
             },
@@ -259,15 +357,20 @@ export const CueSelectTool = Extension.create({
             renumberCuesByMarks(innerView);
             try {
               const ps = cueSelectKey.getState(innerView.state);
-              if (ps?.active) {
+              if (ps?.active && ps.cueType) {
                 document.body.classList.add('cue-select-active');
+                showIndicator(ps.cueType);
               } else {
                 document.body.classList.remove('cue-select-active');
+                hideIndicator();
               }
             } catch {}
           },
           destroy: () => {
             try { document.body.classList.remove('cue-select-active'); } catch {}
+            hideIndicator();
+            teardownIndicator();
+            window.removeEventListener('pointermove', handleGlobalPointerMove);
           },
         }),
       }),
