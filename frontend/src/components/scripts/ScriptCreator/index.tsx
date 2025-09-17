@@ -11,7 +11,7 @@ export const ScriptCreator: React.FC<ScriptCreatorProps> = ({ onCreate, onUpload
   const [state, setState] = useState<'plus' | 'options' | 'input'>('plus');
   const [scriptName, setScriptName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   
   const tilt = useCssTiltWithAccelerometer({
     maxTilt: 10,

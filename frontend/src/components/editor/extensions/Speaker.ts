@@ -21,7 +21,7 @@ export const Speaker = Node.create({
           return {};
         },
       },
-    } as any;
+    };
   },
 
   parseHTML() {
@@ -29,7 +29,7 @@ export const Speaker = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    const isSelected = (HTMLAttributes as any)['data-speaker-selected'] === 'true';
+    const isSelected = HTMLAttributes['data-speaker-selected'] === 'true';
     return ['div', mergeAttributes(HTMLAttributes, { 
       'data-type': 'speaker',
       'contenteditable': isSelected ? 'true' : 'false'

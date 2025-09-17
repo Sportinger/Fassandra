@@ -6,8 +6,6 @@ import { LayoutPanelTopIcon } from './icons';
 interface ViewModeDropdownProps {
   viewMode: ViewMode;
   onSetViewMode: (mode: ViewMode) => void;
-  isVisible?: boolean;
-  transitionDelay?: string;
 }
 
 const VIEW_MODE_LABELS = {
@@ -27,8 +25,6 @@ const VIEW_MODE_ICONS = {
 export const ViewModeDropdown: React.FC<ViewModeDropdownProps> = ({
   viewMode,
   onSetViewMode,
-  isVisible = true,
-  transitionDelay = '0ms'
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

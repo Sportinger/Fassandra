@@ -222,7 +222,7 @@ export const useEditorCore = ({
           }
           // Call original handler if exists
           if (originalError) {
-            return originalError(message, source, lineno, colno, error);
+            return originalError.call(window, message, source as string, lineno ?? 0, colno ?? 0, error as Error);
           }
           return false;
         };
@@ -238,7 +238,7 @@ export const useEditorCore = ({
             return;
           }
           if (originalUnhandledRejection) {
-            return originalUnhandledRejection(event);
+            return originalUnhandledRejection.call(window, event);
           }
         };
         
@@ -364,7 +364,7 @@ export const useEditorCore = ({
         });
         
         // Monitor WebSocket connection events
-        websocketProvider.on('synced', (synced: boolean) => {
+        websocketProvider.on('sync', (synced: boolean) => {
           logger.info('useEditorCore', '[WS_SYNCED] WebSocket sync state changed:', { synced });
           if (synced) {
             const defaultField = doc.getXmlFragment('default');
@@ -429,22 +429,6 @@ export const useEditorCore = ({
         }, 2000);
       });
       
-      // Handle sync errors (like "Unexpected end of array")
-      websocketProvider.on('sync-error', (error: any) => {
-        logger.error('useEditorCore', '[Editor] YJS sync error:', error);
-        // Don't crash, just log and try to recover
-        setConnectionStatus('error');
-        setErrorMessage('Sync error. Reconnecting...');
-        
-        // Force reconnection to get clean state
-        setTimeout(() => {
-          if (websocketProvider) {
-            websocketProvider.disconnect();
-            setTimeout(() => websocketProvider.connect(), 500);
-          }
-        }, 1000);
-      });
-
       // 🔧 NEW: Track active users from awareness
       const trackAwareness = () => {
         if (websocketProvider.awareness) {
@@ -575,9 +559,7 @@ export const useEditorCore = ({
             FontSize,
             FontFamilyExtension,
             Color,
-            TextStyle.configure({
-              types: ['textStyle'],
-            }),
+            TextStyle,
             TextAlign.configure({
               types: ['heading', 'paragraph'],
             }),
@@ -644,9 +626,7 @@ export const useEditorCore = ({
             FontSize,
             FontFamilyExtension,
             Color,
-            TextStyle.configure({
-              types: ['textStyle'],
-            }),
+            TextStyle,
             TextAlign.configure({
               types: ['heading', 'paragraph'],
             }),

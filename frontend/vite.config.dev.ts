@@ -61,7 +61,7 @@ export default defineConfig(() => {
                 res.setHeader('set-cookie', setCookieHeader);
               }
             });
-            proxy.on('upgrade', (req: any, socket: any, head: any) => {
+            (proxy as any).on('upgrade', (req: any, _socket: any, _head: any) => {
               // Handle WebSocket upgrade for collaboration
               console.log('[Vite Proxy] WebSocket upgrade request:', req.url);
             });

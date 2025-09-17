@@ -86,7 +86,9 @@ export const SinglePageView: React.FC<SinglePageViewProps> = ({
       <div className="singlePageContainer" style={{ position: 'relative' }}>
         <div className="dinA4Page">
           {/* Simple page indicator badge for single page view */}
-          <div className="page-number-indicator" aria-label="Page number">{`Page ${Math.max(1, pageNumber)}`}</div>
+          <div className="page-number-indicator" aria-label="Page number">
+            {`Page ${Math.max(1, pageNumber)}${pageCount ? ` of ${Math.max(1, pageCount)}` : ''}`}
+          </div>
           <div className="pageInner">
             {children}
           </div>

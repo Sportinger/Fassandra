@@ -10,11 +10,7 @@ interface CueDropdownProps {
   transitionDelay?: string;
 }
 
-export const CueDropdown: React.FC<CueDropdownProps> = ({ 
-  editor, 
-  isVisible = true,
-  transitionDelay = '0ms'
-}) => {
+export const CueDropdown: React.FC<CueDropdownProps> = ({ editor }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuPortalRef = useRef<HTMLDivElement>(null);
