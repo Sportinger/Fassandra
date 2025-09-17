@@ -191,7 +191,7 @@ export const useEditorCanvasClick = ({
     }
 
     try {
-      if (editor) {
+      if (editor && !clickedInsideProseMirror) {
         const { state } = editor;
         const { selection } = state;
         if (selection && !selection.empty) {
@@ -199,23 +199,21 @@ export const useEditorCanvasClick = ({
           editor.chain().setTextSelection(pos).run();
         }
 
-        if (!clickedInsideProseMirror) {
-          editor.commands.blur();
-          try {
-            const anyEditor = editor as any;
-            const { state: s, view } = anyEditor;
-            let tr = s.tr;
-            let changed = false;
-            s.doc.descendants((node: any, position: number) => {
-              if (node.type?.name === 'speaker' && node.attrs?.selected) {
-                tr = tr.setNodeMarkup(position, undefined, { ...node.attrs, selected: false });
-                changed = true;
-              }
-              return true;
-            });
-            if (changed) view.dispatch(tr);
-          } catch {}
-        }
+        editor.commands.blur();
+        try {
+          const anyEditor = editor as any;
+          const { state: s, view } = anyEditor;
+          let tr = s.tr;
+          let changed = false;
+          s.doc.descendants((node: any, position: number) => {
+            if (node.type?.name === 'speaker' && node.attrs?.selected) {
+              tr = tr.setNodeMarkup(position, undefined, { ...node.attrs, selected: false });
+              changed = true;
+            }
+            return true;
+          });
+          if (changed) view.dispatch(tr);
+        } catch {}
       }
     } catch {}
 

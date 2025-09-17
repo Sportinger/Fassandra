@@ -1,7 +1,5 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useEditor } from '@tiptap/react';
-import * as Y from 'yjs';
-import { WebsocketProvider } from 'y-websocket';
 
 import Collaboration from '@tiptap/extension-collaboration';
 import { CollaborationCursor } from '@tiptap/extension-collaboration-cursor';
@@ -36,18 +34,15 @@ import { PageIndicator } from '../extensions/PageIndicator';
 import { FontSize } from '../FontSizeExtension';
 import { FontFamilyExtension } from '../extensions/FontFamilyExtension';
 import { extractSpeakerNames } from '../utils/contentConverters';
-import { scriptEventBus } from '../../../services/ScriptEventBus';
-import { isYDocEmpty } from '../utils/formatters';
-import { yjsDocumentManager } from '../../../services/yjsDocumentManager';
 import { useContentMigration } from './useContentMigration';
-import { getYjsState, getScriptWithYjs, getYjsUpdates } from '../../../api';
-import type { 
-  UseEditorCoreProps, 
-  UseEditorCoreReturn, 
-  ConnectionStatus, 
-  ContextMenu, 
-  ToolbarContext 
-} from '../types/index';
+import type {
+  UseEditorCoreProps,
+  UseEditorCoreReturn,
+  ConnectionStatus,
+  ContextMenu,
+  ToolbarContext,
+} from '../types';
+import { useCollaborativeConnection } from './useCollaborativeConnection';
 
 /**
  * useEditorCore Hook  
@@ -93,17 +88,6 @@ const debugLog = (message: string, ...args: any[]) => {
   }
 };
 
-// Helper function to clean cue block UI elements from HTML
-const cleanCueBlockHTML = (html: string): string => {
-  let cleaned = html;
-  cleaned = cleaned.replace(/<div[^>]*class="cue-connection-drag-area"[^>]*>[\s\S]*?<\/div>/g, '');
-  cleaned = cleaned.replace(/<div[^>]*class="cue-move-drag-area"[^>]*>[\s\S]*?<\/div>/g, '');
-  cleaned = cleaned.replace(/<span[^>]*class="drag-handle"[^>]*>⋮⋮<\/span>/g, '');
-  cleaned = cleaned.replace(/<span[^>]*class="cue-label"[^>]*>[^<]*:<\/span>/g, '');
-  cleaned = cleaned.replace(/<span[^>]*class="cue-number"[^>]*>Q\d*<\/span>/g, '');
-  return cleaned;
-};
-
 export const useEditorCore = ({
   scriptId,
   user,
@@ -117,387 +101,26 @@ export const useEditorCore = ({
   const { token } = useAuth();
   const stableToken = useMemo(() => token, [token]);
 
-  // State management
-  const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
-  const [provider, setProvider] = useState<WebsocketProvider | null>(null);
   const [editor, setEditor] = useState<any>(null);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const [availableSpeakers, setAvailableSpeakers] = useState<string[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
   const [toolbarContext, setToolbarContext] = useState<ToolbarContext>('default');
   const [isYjsSynced, setIsYjsSynced] = useState<boolean>(false);
-  const [activeUserCount, setActiveUserCount] = useState<number>(0);
-  
-  // Track provider ref for cleanup
-  const providerRef = useRef<WebsocketProvider | null>(null);
-  const previousScriptIdRef = useRef<string | null>(null);
 
-  // 🔧 FIXED: Initialize Yjs document and WebSocket provider with proper dependencies
-  useEffect(() => {
-    // Skip initialization if already initialized for this script
-    if (providerRef.current && previousScriptIdRef.current === stableScriptId) {
-      debugLog(`[Editor Core] Skipping re-initialization for script: ${stableScriptId}`);
-      return;
-    }
-
-    if (!stableScriptId || !stableUser || !stableHasToken || !stableToken) {
-      setConnectionStatus('authenticating');
-      return;
-    }
-
-    logger.info('useEditorCore', `[EDITOR_INIT] Initializing for script: ${stableScriptId}, user: ${stableUser.username}`);
-
-    // 🔧 FIX: Detect script changes to force new document only when switching scripts
-    const isScriptChange = previousScriptIdRef.current !== null && previousScriptIdRef.current !== stableScriptId;
-    previousScriptIdRef.current = stableScriptId;
-
-    // 🔧 FIX: Reuse existing document on refresh to maintain WebSocket stability
-    // Only force new document when switching to a different script
-    const doc = yjsDocumentManager.getDocument(stableScriptId, isScriptChange); // Force new only on script change
-    const docInfo = yjsDocumentManager.getDocumentInfo(stableScriptId);
-    
-    logger.info('useEditorCore', `[EDITOR_DOC] Using persistent Y.Doc from manager:`, {
-      scriptId: stableScriptId,
-      clientID: doc.clientID,
-      refCount: docInfo.refCount,
-      isNew: docInfo.refCount === 1
-    });
-    
-    // Log initial document state
-    const defaultField = doc.getXmlFragment('default');
-    logger.info('useEditorCore', `[EDITOR_DOC_STATE] Initial document state:`, {
-      defaultFieldExists: !!defaultField,
-      defaultFieldLength: defaultField.length,
-      defaultFieldType: defaultField.constructor.name
-    });
-    
-    setYdoc(doc);
-
-    // 🔧 DISABLED: Offline storage - removed IndexedDB persistence
-    debugLog(`[Editor Core] Skipping IndexedDB persistence - always fetching from backend`);
-
-    // Function to fetch WebSocket token and create provider
-    const initializeWebSocket = async () => {
-      // Fetch the actual JWT token for WebSocket authentication
-      let wsToken = stableToken;
-      if (stableToken === 'authenticated') {
-        try {
-          const response = await fetch('/api/ws-token', {
-            credentials: 'include',
-          });
-          if (response.ok) {
-            const data = await response.json();
-            wsToken = data.token;
-          } else {
-            logger.error('useEditorCore', '[Editor Core] Failed to get WebSocket token:', response.status);
-          }
-        } catch (error) {
-          logger.error('useEditorCore', '[Editor Core] Error fetching WebSocket token:', error);
-        }
-      }
-
-    // 🔧 FIXED: Create WebSocket provider with error handling
-      let websocketProvider: WebsocketProvider;
-      try {
-        // Don't clear the document when connecting - YJS will handle sync properly
-        // The server sends the full state and YJS merges it correctly with local state
-        if (providerRef.current) {
-          logger.debug('useEditorCore', '[Editor Core] Reconnecting to existing document');
-        }
-        
-        // Add global error handler for YJS decode errors
-        const originalError = window.onerror;
-        const originalUnhandledRejection = window.onunhandledrejection;
-        
-        window.onerror = (message, source, lineno, colno, error) => {
-          if (message && message.toString().includes('Unexpected end of array')) {
-            logger.error('useEditorCore', '[YJS_DECODE_ERROR] YJS decode error caught:', {
-              message,
-              source,
-              error: error?.toString()
-            });
-            // Prevent the error from crashing the app
-            return true;
-          }
-          // Call original handler if exists
-          if (originalError) {
-            return originalError.call(window, message, source as string, lineno ?? 0, colno ?? 0, error as Error);
-          }
-          return false;
-        };
-        
-        // Also catch unhandled promise rejections
-        window.onunhandledrejection = (event) => {
-          if (event.reason && event.reason.message && event.reason.message.includes('Unexpected end of array')) {
-            logger.error('useEditorCore', '[YJS_DECODE_ERROR] YJS decode error in promise:', {
-              reason: event.reason.message,
-              stack: event.reason.stack
-            });
-            event.preventDefault();
-            return;
-          }
-          if (originalUnhandledRejection) {
-            return originalUnhandledRejection.call(window, event);
-          }
-        };
-        
-        // Detect Firefox browser
-        const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
-
-        // Bootstrap Y.Doc from REST state before opening WebSocket
-        let bootstrapped = false;
-        try {
-          // Ensure auth context is ready by pinging /api/me via ApiService base URL
-          try {
-            const baseUrl = (await import('../../../services/ApiService')).apiService.getBaseUrl();
-            await fetch(`${baseUrl}/api/me`, { credentials: 'include' });
-          } catch {}
-
-          const stateBuffer = await getYjsState(stableScriptId);
-          const state = new Uint8Array(stateBuffer);
-          if (state.byteLength > 0) {
-            Y.applyUpdate(doc, state);
-            bootstrapped = true;
-            logger.info('useEditorCore', '[BOOTSTRAP] Applied server Yjs state', { bytes: state.byteLength });
-          } else {
-            logger.info('useEditorCore', '[BOOTSTRAP] Server Yjs state empty');
-          }
-        } catch (e) {
-          logger.warn('useEditorCore', '[BOOTSTRAP] Binary state fetch failed, will fallback:', e);
-        }
-        if (!bootstrapped) {
-          try {
-            const scriptData: any = await getScriptWithYjs(stableScriptId);
-            const b64 = scriptData?.yjs_state as string | undefined;
-            if (b64 && b64.length > 0) {
-              const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-              if (bytes.byteLength > 0) {
-                Y.applyUpdate(doc, bytes);
-                bootstrapped = true;
-                logger.info('useEditorCore', '[BOOTSTRAP] Applied base64 Yjs state from /api/scripts/:id');
-              }
-            }
-          } catch (e) {
-            logger.error('useEditorCore', '[BOOTSTRAP] Fallback base64 state fetch failed:', e);
-          }
-        }
-
-        // Always fetch recent updates and apply on top (covers non-compacted updates)
-        try {
-          const updatesResp = await getYjsUpdates(stableScriptId);
-          if (updatesResp && Array.isArray(updatesResp.updates)) {
-            let applied = 0;
-            for (const u of updatesResp.updates) {
-              if (u?.data) {
-                const bytes = Uint8Array.from(atob(u.data), c => c.charCodeAt(0));
-                if (bytes.byteLength > 0) {
-                  try { Y.applyUpdate(doc, bytes); applied++; } catch {}
-                }
-              }
-            }
-            if (applied > 0) {
-              logger.info('useEditorCore', `[BOOTSTRAP] Applied ${applied} recent updates from /api/scripts/:id/updates`);
-              bootstrapped = true;
-            }
-          }
-        } catch (e) {
-          logger.warn('useEditorCore', '[BOOTSTRAP] Failed to apply recent updates:', e);
-        }
-
-        logger.info('useEditorCore', `[WS_PROVIDER_CREATE] Creating WebSocket provider for script: ${stableScriptId}`);
-        
-        websocketProvider = new WebsocketProvider(
-          WS_BASE_URL,
-          stableScriptId,
-          doc,
-          {
-            params: {
-              token: wsToken?.trim() || '',
-            },
-            // Prevent aggressive reconnection that might cause browser refresh
-            maxBackoffTime: 30000, // Max 30 seconds between reconnection attempts
-            resyncInterval: 5000, // Standard resync interval
-            // Add WebSocket options to prevent connection issues
-            WebSocketPolyfill: WebSocket,
-            connect: true,
-            // Removed disableBc option - it may interfere with proper YJS binary encoding
-          }
-        );
-        
-        logger.info('useEditorCore', `[WS_PROVIDER_CREATED] WebSocket provider created`, {
-          url: WS_BASE_URL,
-          scriptId: stableScriptId,
-          hasDoc: !!doc,
-          docClientId: doc.clientID
-        });
-        
-        // Add message interceptor for debugging once WebSocket connects
-        const setupMessageInterceptor = () => {
-          if (websocketProvider.ws && websocketProvider.ws.send) {
-            const originalSend = websocketProvider.ws.send.bind(websocketProvider.ws);
-            websocketProvider.ws.send = function(data: any) {
-              if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
-                const bytes = new Uint8Array(data);
-                const hex = Array.from(bytes.slice(0, Math.min(50, bytes.length)))
-                  .map(b => b.toString(16).padStart(2, '0'))
-                  .join(' ');
-                logger.info('useEditorCore', '[WS_SEND] Sending binary message:', {
-                  size: bytes.length,
-                  firstBytes: hex,
-                  msgType: bytes[0],
-                  isAwareness: bytes[0] === 0x04
-                });
-              }
-              return originalSend(data);
-            };
-            logger.info('useEditorCore', '[WS_INTERCEPTOR] Message interceptor installed');
-          }
-        };
-        
-        // Try to set up interceptor immediately and on connection
-        setupMessageInterceptor();
-        websocketProvider.on('status', (event: { status: string }) => {
-          if (event.status === 'connected') {
-            setupMessageInterceptor();
-          }
-        });
-        
-        // Monitor WebSocket connection events
-        websocketProvider.on('sync', (synced: boolean) => {
-          logger.info('useEditorCore', '[WS_SYNCED] WebSocket sync state changed:', { synced });
-          if (synced) {
-            const defaultField = doc.getXmlFragment('default');
-            logger.info('useEditorCore', '[WS_SYNCED_CONTENT] Content after sync:', {
-              defaultFieldLength: defaultField.length,
-              hasContent: defaultField.length > 0
-            });
-            
-            // CRITICAL FIX: Force a sync step after connection is established
-            // This ensures the YJS document state is properly communicated to the server
-            setTimeout(() => {
-              doc.transact(() => {
-                // This transaction will trigger YJS to send its current state
-                logger.info('useEditorCore', '[WS_SYNC_INIT] Forcing initial sync after connection');
-              }, 'syncInit');
-            }, 100);
-          }
-        });
-
-        setProvider(websocketProvider);
-        providerRef.current = websocketProvider;
-      } catch (error) {
-        logger.error('useEditorCore', '[Editor Core] Failed to create WebSocket provider:', error);
-        setConnectionStatus('error');
-        setErrorMessage('Failed to initialize collaboration');
-        return;
-      }
-
-      // Connection status handlers
-      websocketProvider.on('status', (event: { status: string }) => {
-        switch (event.status) {
-          case 'connecting':
-            setConnectionStatus('connecting');
-            setErrorMessage(null);
-            break;
-          case 'connected':
-            setConnectionStatus('connected');
-            setErrorMessage(null);
-            debugLog('[Editor] WebSocket connected successfully');
-            break;
-          case 'disconnected':
-            setConnectionStatus('disconnected');
-            // Don't set error for normal disconnection - provider will reconnect
-            break;
-          default:
-            setConnectionStatus('error');
-            setErrorMessage(`Connection error: ${event.status}`);
-        }
-      });
-
-      websocketProvider.on('connection-error', (error: any) => {
-        logger.error('useEditorCore', '[Editor] WebSocket connection error:', error);
-        setConnectionStatus('error');
-        setErrorMessage('Connection lost. Retrying...');
-        
-        // Auto-reconnect after a delay
-        setTimeout(() => {
-          if (websocketProvider && !websocketProvider.wsconnected) {
-            debugLog('[Editor] Attempting to reconnect WebSocket...');
-            websocketProvider.connect();
-          }
-        }, 2000);
-      });
-      
-      // 🔧 NEW: Track active users from awareness
-      const trackAwareness = () => {
-        if (websocketProvider.awareness) {
-          const awarenessStates = websocketProvider.awareness.getStates();
-          // Count all awareness states except our own
-          const userCount = Math.max(0, awarenessStates.size - 1);
-          setActiveUserCount(userCount);
-          debugLog(`[Collaboration] Active users: ${userCount} (excluding self)`);
-          
-          // 🎭 THEATER PRIORITY: Enhanced collaboration awareness for theater teams
-          const activeUsers = Array.from(awarenessStates.values())
-            .filter((state: any) => state.user && state.user.name !== stableUser?.username)
-            .map((state: any) => ({
-              name: state.user.name,
-              color: state.user.color,
-              lastSeen: Date.now(),
-              isTyping: state.cursor ? true : false
-            }));
-          
-          if (activeUsers.length > 0) {
-            logger.debug('useEditorCore', '🎭 [Theater Collaboration] Active team members:', activeUsers.map(u => `${u.name}${u.isTyping ? ' (typing)' : ''}`).join(', '));
-          }
-        }
-      };
-
-      // Set up awareness tracking
-      if (websocketProvider.awareness) {
-        websocketProvider.awareness.on('change', trackAwareness);
-        trackAwareness(); // Initial count
-      }
-    };
-
-    // Call the async function to initialize WebSocket
-    initializeWebSocket();
-
-    // 🔧 FIXED: Clean up properly to prevent memory leaks
-    return () => {
-      debugLog('[Editor Core] Cleaning up WebSocket provider (keeping Yjs doc persistent)...');
-      
-      // 🔧 FIX: Disconnect provider gracefully before destroying
-      if (providerRef.current) {
-        debugLog('[Editor Core] Disconnecting and destroying WebSocket provider, but keeping document');
-        providerRef.current.disconnect();
-        // Small delay to allow proper disconnect before destroy
-        setTimeout(() => {
-          if (providerRef.current) {
-            providerRef.current.destroy();
-            providerRef.current = null;
-          }
-        }, 100);
-      }
-      
-      // 🔧 FIX: Release document reference but don't destroy it on unmount
-      // Document persists for quick reconnection on refresh
-      if (stableScriptId) {
-        yjsDocumentManager.releaseDocument(stableScriptId);
-        const docInfo = yjsDocumentManager.getDocumentInfo(stableScriptId);
-        debugLog('[Editor Core] Released document reference (keeping for refresh):', {
-          scriptId: stableScriptId,
-          remainingRefCount: docInfo.refCount,
-          stillExists: docInfo.exists
-        });
-      }
-      
-      setProvider(null);
-      setYdoc(null);
-      setActiveUserCount(0);
-    };
-  }, [stableScriptId, stableUser, stableHasToken, stableToken]);
+  const {
+    ydoc,
+    provider,
+    connectionStatus,
+    errorMessage,
+    activeUserCount,
+  } = useCollaborativeConnection({
+    scriptId: stableScriptId,
+    user: stableUser,
+    hasToken: stableHasToken,
+    token: stableToken,
+    wsBaseUrl: WS_BASE_URL,
+    debugLog,
+  });
 
   // Log editor configuration state
   useEffect(() => {
