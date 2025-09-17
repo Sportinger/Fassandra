@@ -161,7 +161,7 @@ export const EditorContent: React.FC<EditorContentProps> = ({
             try { speakerElement.setAttribute('data-speaker-selected', 'true'); } catch {}
           }
 
-          showContextMenu(e.clientX, e.clientY, 'speaker');
+          showContextMenu(e.clientX, e.clientY, 'speaker-select');
           e.stopPropagation();
         } else if (dialogueTextElement && dialogueBlockElement) {
           debugLog('[Editor] Clicked on dialogue text element:', dialogueTextElement);
