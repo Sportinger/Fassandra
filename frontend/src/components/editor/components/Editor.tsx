@@ -99,10 +99,13 @@ export const Editor: React.FC<EditorProps> = ({
   const [insertSubmenu, setInsertSubmenu] = useState<{open:boolean;x:number;y:number}>({ open: false, x: 0, y: 0 });
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   // Sidebar collections and UI state
+  const [sidebarScenes, setSidebarScenes] = useState<Array<{ id: string; sceneNumber: string; sceneName: string; y: number; index: number }>>([]);
   const [sidebarCues, setSidebarCues] = useState<Array<{ cueId: string; cueType: string; cueNumber: string; cueName?: string|null; y: number; x: number; text?: string }>>([]);
   const [sidebarComments, setSidebarComments] = useState<Array<{ id: string; text: string }>>([]);
+  const [activeSidebarSceneId, setActiveSidebarSceneId] = useState<string | null>(null);
   const [cuesCollapsed, setCuesCollapsed] = useState(false);
   const [commentsCollapsed, setCommentsCollapsed] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<'scenes' | 'cues' | 'comments'>('cues');
   const [cueFilters, setCueFilters] = useState<Record<CueType, boolean>>({
     light: true,
     video: true,
@@ -128,6 +131,23 @@ export const Editor: React.FC<EditorProps> = ({
       const cRect = container ? container.getBoundingClientRect() : null;
       const cScrollTop = container ? (container.scrollTop || 0) : 0;
       const cScrollLeft = container ? ((container as any).scrollLeft || 0) : 0;
+
+      const scenes: Array<{ id: string; sceneNumber: string; sceneName: string; y: number; index: number }> = [];
+      document.querySelectorAll('[data-type="scene-block"]').forEach((el, index) => {
+        const he = el as HTMLElement;
+        const rect = he.getBoundingClientRect();
+        const y = cRect ? (rect.top - cRect.top) + cScrollTop : rect.top;
+        const sceneNumber = he.getAttribute('data-scene-number') || `${index + 1}`;
+        const sceneName = he.getAttribute('data-scene-name') || (he.textContent || '').trim() || `Scene ${sceneNumber}`;
+        scenes.push({
+          id: `${sceneNumber}-${index}`,
+          sceneNumber,
+          sceneName,
+          y,
+          index,
+        });
+      });
+      setSidebarScenes(scenes);
       document.querySelectorAll('.cue-connection[data-cue-id][data-cue-type]').forEach((el) => {
         const he = el as HTMLElement;
         const id = he.getAttribute('data-cue-id') || '';
@@ -1080,6 +1100,7 @@ export const Editor: React.FC<EditorProps> = ({
                       }
                     } catch {}
                     setRightSidebarOpen(true);
+                    setSidebarTab('cues');
                     setCuesCollapsed(false);
                     setActiveSidebarCueId(payload.cueId);
                     setSidebarPanel(null);
@@ -1111,6 +1132,7 @@ export const Editor: React.FC<EditorProps> = ({
                       }
                     } catch {}
                     setRightSidebarOpen(true);
+                    setSidebarTab('comments');
                     setCommentsCollapsed(false);
                     setActiveSidebarCommentId(id);
                     setSidebarPanel(null);
@@ -1189,6 +1211,7 @@ export const Editor: React.FC<EditorProps> = ({
                     } catch {}
                     // Highlight in sidebar and reveal
                     setRightSidebarOpen(true);
+                    setSidebarTab('cues');
                     setCuesCollapsed(false);
                     setActiveSidebarCueId(payload.cueId);
                     setSidebarPanel(null);
@@ -1224,6 +1247,7 @@ export const Editor: React.FC<EditorProps> = ({
                     } catch {}
                     // Highlight in sidebar and reveal
                     setRightSidebarOpen(true);
+                    setSidebarTab('comments');
                     setCommentsCollapsed(false);
                     setActiveSidebarCommentId(id);
                     setSidebarPanel(null);
@@ -1741,8 +1765,78 @@ export const Editor: React.FC<EditorProps> = ({
         {/* Sidebar information sections */}
         {rightSidebarOpen && (
           <div className="rightSidebarInner">
-            {/* Cues */}
-            <div className="rs-section">
+            <div className="rs-tablist" role="tablist" aria-label="Sidebar sections">
+              <button
+                type="button"
+                id="rs-tab-scenes"
+                role="tab"
+                aria-selected={sidebarTab === 'scenes'}
+                aria-controls="rs-panel-scenes"
+                className={`rs-tab ${sidebarTab === 'scenes' ? 'active' : ''}`}
+                onClick={() => setSidebarTab('scenes')}
+              >
+                Szenen
+              </button>
+              <button
+                type="button"
+                id="rs-tab-cues"
+                role="tab"
+                aria-selected={sidebarTab === 'cues'}
+                aria-controls="rs-panel-cues"
+                className={`rs-tab ${sidebarTab === 'cues' ? 'active' : ''}`}
+                onClick={() => setSidebarTab('cues')}
+              >
+                Cues
+              </button>
+              <button
+                type="button"
+                id="rs-tab-comments"
+                role="tab"
+                aria-selected={sidebarTab === 'comments'}
+                aria-controls="rs-panel-comments"
+                className={`rs-tab ${sidebarTab === 'comments' ? 'active' : ''}`}
+                onClick={() => setSidebarTab('comments')}
+              >
+                Comments
+              </button>
+            </div>
+            {sidebarTab === 'scenes' && (
+              <div className="rs-tabpanel" role="tabpanel" id="rs-panel-scenes" aria-labelledby="rs-tab-scenes">
+                <div className="rs-list">
+                  {sidebarScenes.map(scene => (
+                    <div
+                      key={scene.id}
+                      className={`rs-card clickable ${activeSidebarSceneId===scene.id ? 'active' : ''}`}
+                      onClick={() => {
+                        const sceneNodes = document.querySelectorAll('[data-type="scene-block"]');
+                        const target = sceneNodes[scene.index] as HTMLElement | undefined;
+                        if (target) {
+                          sceneNodes.forEach(node => {
+                            if (node instanceof HTMLElement) {
+                              node.classList.remove('sidebar-scene-highlight');
+                            }
+                          });
+                          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          target.classList.add('sidebar-scene-highlight');
+                          window.setTimeout(() => target.classList.remove('sidebar-scene-highlight'), 1200);
+                        }
+                        setActiveSidebarSceneId(scene.id);
+                        setSidebarPanel(null);
+                      }}
+                    >
+                      <div className="rs-scene-row">
+                        <span className="rs-scene-number">Szene {scene.sceneNumber}</span>
+                        <span className="rs-scene-name">{scene.sceneName}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {sidebarScenes.length === 0 && <div className="rs-empty">No scenes in this script yet.</div>}
+                </div>
+              </div>
+            )}
+            {sidebarTab === 'cues' && (
+              <div className="rs-tabpanel" role="tabpanel" id="rs-panel-cues" aria-labelledby="rs-tab-cues">
+                <div className="rs-section">
               <div className="rs-header">
                 <span>Cues</span>
                 <button onClick={() => setCuesCollapsed(v => !v)}>{cuesCollapsed ? '▸' : '▾'}</button>
@@ -2019,65 +2113,70 @@ export const Editor: React.FC<EditorProps> = ({
                 </div>
               )}
             </div>
-            {/* Comments */}
-            <div className="rs-section">
-              <div className="rs-header">
-                <span>Comments</span>
-                <button onClick={() => setCommentsCollapsed(v => !v)}>{commentsCollapsed ? '▸' : '▾'}</button>
-              </div>
-              {!commentsCollapsed && (
-                <div className="rs-list">
-                  {sidebarComments.map(cm => (
-                    <div
-                      key={cm.id}
-                      className={`rs-card ${activeSidebarCommentId===cm.id ? 'active' : ''}`}
-                      data-comment-id={cm.id}
-                      onMouseEnter={() => {
-                        document.querySelectorAll(`.comment-annotation[data-comment-id="${cm.id}"]`).forEach(el => {
-                          el.classList.add('connected-highlight');
-                        });
-                      }}
-                      onMouseLeave={() => {
-                        document.querySelectorAll(`.comment-annotation[data-comment-id="${cm.id}"]`).forEach(el => {
-                          el.classList.remove('connected-highlight');
-                        });
-                      }}
-                      onClick={() => {
-                        const el = document.querySelector(`.comment-annotation[data-comment-id="${cm.id}"]`) as HTMLElement | null;
-                        if (el) {
-                          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          el.classList.add('connected-highlight');
-                          setTimeout(() => el.classList.remove('connected-highlight'), 800);
-                        }
-                        setActiveSidebarCommentId(cm.id);
-                      }}
-                    >
-                      <div className="rs-comment">
-                        <div className="rs-avatar">💬</div>
-                        <div className="content">
-                          <div className="name">Comment</div>
-                          <div className="text">{cm.text || 'No text yet'}</div>
-                          {(sidebarPanel && sidebarPanel.type === 'comment' && sidebarPanel.id === cm.id) ? (
-                            <div style={{ marginTop: 8 }}>
-                              <textarea value={(sidebarPanel as any).draft} onChange={(e) => setSidebarPanel(p => p && p.type === 'comment' ? { ...p, draft: e.target.value } : p)} style={{ width: '100%', minHeight: 90, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)' }} />
-                              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                                <button className="rs-btn primary" onClick={() => { if (!editor) return; (editor as any).commands.updateCommentById(cm.id, { commentText: (sidebarPanel as any).draft }); setSidebarPanel(null); }}>Save</button>
-                                <button className="rs-btn" style={{ color: '#dc2626', borderColor: '#7f1d1d' }} onClick={() => { if (!editor) return; (editor as any).commands.removeCommentById(cm.id); setSidebarPanel(null); }}>Delete</button>
-                              </div>
+          </div>
+        )}
+            {sidebarTab === 'comments' && (
+              <div className="rs-tabpanel" role="tabpanel" id="rs-panel-comments" aria-labelledby="rs-tab-comments">
+                <div className="rs-section">
+                  <div className="rs-header">
+                    <span>Comments</span>
+                    <button onClick={() => setCommentsCollapsed(v => !v)}>{commentsCollapsed ? '▸' : '▾'}</button>
+                  </div>
+                  {!commentsCollapsed && (
+                    <div className="rs-list">
+                      {sidebarComments.map(cm => (
+                        <div
+                          key={cm.id}
+                          className={`rs-card ${activeSidebarCommentId===cm.id ? 'active' : ''}`}
+                          data-comment-id={cm.id}
+                          onMouseEnter={() => {
+                            document.querySelectorAll(`.comment-annotation[data-comment-id="${cm.id}"]`).forEach(el => {
+                              el.classList.add('connected-highlight');
+                            });
+                          }}
+                          onMouseLeave={() => {
+                            document.querySelectorAll(`.comment-annotation[data-comment-id="${cm.id}"]`).forEach(el => {
+                              el.classList.remove('connected-highlight');
+                            });
+                          }}
+                          onClick={() => {
+                            const el = document.querySelector(`.comment-annotation[data-comment-id="${cm.id}"]`) as HTMLElement | null;
+                            if (el) {
+                              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              el.classList.add('connected-highlight');
+                              setTimeout(() => el.classList.remove('connected-highlight'), 800);
+                            }
+                            setActiveSidebarCommentId(cm.id);
+                          }}
+                        >
+                          <div className="rs-comment">
+                            <div className="rs-avatar">💬</div>
+                            <div className="content">
+                              <div className="name">Comment</div>
+                              <div className="text">{cm.text || 'No text yet'}</div>
+                              {(sidebarPanel && sidebarPanel.type === 'comment' && sidebarPanel.id === cm.id) ? (
+                                <div style={{ marginTop: 8 }}>
+                                  <textarea value={(sidebarPanel as any).draft} onChange={(e) => setSidebarPanel(p => p && p.type === 'comment' ? { ...p, draft: e.target.value } : p)} style={{ width: '100%', minHeight: 90, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)' }} />
+                                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                    <button className="rs-btn primary" onClick={() => { if (!editor) return; (editor as any).commands.updateCommentById(cm.id, { commentText: (sidebarPanel as any).draft }); setSidebarPanel(null); }}>Save</button>
+                                    <button className="rs-btn" style={{ color: '#dc2626', borderColor: '#7f1d1d' }} onClick={() => { if (!editor) return; (editor as any).commands.removeCommentById(cm.id); setSidebarPanel(null); }}>Delete</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="actions" style={{ marginTop: 8 }}>
+                                  <button className="rs-btn" onClick={(e) => { e.stopPropagation(); setSidebarPanel(prev => (prev && prev.type==='comment' && prev.id===cm.id) ? null : { type: 'comment', id: cm.id, draft: cm.text }); }}>Edit</button>
+                                </div>
+                              )}
                             </div>
-                          ) : (
-                            <div className="actions" style={{ marginTop: 8 }}>
-                              <button className="rs-btn" onClick={(e) => { e.stopPropagation(); setSidebarPanel(prev => (prev && prev.type==='comment' && prev.id===cm.id) ? null : { type: 'comment', id: cm.id, draft: cm.text }); }}>Edit</button>
-                            </div>
-                          )}
+                          </div>
                         </div>
-                      </div>
+                      ))}
+                      {sidebarComments.length === 0 && <div style={{ opacity: 0.5, fontSize: 12 }}>No comments yet.</div>}
                     </div>
-                  ))}
-                  {sidebarComments.length === 0 && <div style={{ opacity: 0.5, fontSize: 12 }}>No comments yet.</div>}
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
       </div>
