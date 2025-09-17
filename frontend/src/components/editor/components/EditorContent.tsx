@@ -1,21 +1,9 @@
-import React, { MutableRefObject } from 'react';
+import React from 'react';
 import type { Editor } from '@tiptap/react';
 import type { ConnectionStatus } from '../types';
 import type { WebsocketProvider } from 'y-websocket';
 import { LoadingSpinner } from './ui/LoadingSpinner';
-
-type ContextMenuSetter = React.Dispatch<React.SetStateAction<{
-  x: number;
-  y: number;
-  visible: boolean;
-  onSpeakerName: boolean;
-  onPageBackground: boolean;
-  rehearsalClickY?: number;
-  rehearsalDocPos?: number;
-  hasWordTarget?: boolean;
-  wordLineY?: number;
-  wordRect?: { left: number; top: number; width: number; height: number };
-}>>;
+import type { CloseContextMenu } from './context-menu/contextMenuTypes';
 
 interface EditorContentProps {
   editor: Editor | null;
@@ -23,16 +11,12 @@ interface EditorContentProps {
   ydoc: any;
   provider: WebsocketProvider | null;
   onContextMenu: (event: React.MouseEvent) => void;
-  setLocalContextMenu: ContextMenuSetter;
-  setSuppressRehearsalAutoScroll: React.Dispatch<React.SetStateAction<boolean>>;
-  setShouldCenterOnRehearsalChange: React.Dispatch<React.SetStateAction<boolean>>;
-  pendingCenterRef: MutableRefObject<boolean>;
+  closeContextMenu: CloseContextMenu;
   debugLog: (...args: any[]) => void;
   editAllSpeakers: boolean;
   setEditAllSpeakers: React.Dispatch<React.SetStateAction<boolean>>;
   setCurrentSpeakerName: (name: string | null) => void;
   liveRenameBaseRef: React.MutableRefObject<string | null>;
-  isLiveRenamingRef: React.MutableRefObject<boolean>;
   hideContextMenu: () => void;
   showContextMenu: (x: number, y: number, context: any) => void;
 }
@@ -43,16 +27,12 @@ export const EditorContent: React.FC<EditorContentProps> = ({
   ydoc,
   provider,
   onContextMenu,
-  setLocalContextMenu,
-  setSuppressRehearsalAutoScroll,
-  setShouldCenterOnRehearsalChange,
-  pendingCenterRef,
+  closeContextMenu,
   debugLog,
   editAllSpeakers,
   setEditAllSpeakers,
   setCurrentSpeakerName,
   liveRenameBaseRef,
-  isLiveRenamingRef,
   hideContextMenu,
   showContextMenu,
 }) => {
@@ -81,13 +61,8 @@ export const EditorContent: React.FC<EditorContentProps> = ({
       className="editor-content"
       onContextMenu={onContextMenu}
       onClick={(e) => {
-        // Close context menu on click
-        setLocalContextMenu(prev => ({ ...prev, visible: false }));
-        // When closing without choosing an action, do not recenter
-        setSuppressRehearsalAutoScroll(false);
-        setShouldCenterOnRehearsalChange(false);
-        pendingCenterRef.current = false;
-        
+        closeContextMenu();
+
         const target = e.target as HTMLElement;
         const speakerElement = target.closest('[data-type="speaker"]');
         const dialogueTextElement = target.closest('[data-type="dialogue-text"]');
