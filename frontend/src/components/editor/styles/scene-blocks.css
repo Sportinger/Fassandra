@@ -89,6 +89,18 @@
   border: 1px solid rgba(59, 130, 246, 0.5);
 }
 
+.scene-block.sidebar-scene-highlight {
+  background-color: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  .scene-block.sidebar-scene-highlight {
+    background-color: rgba(59, 130, 246, 0.25);
+    border: 1px solid rgba(59, 130, 246, 0.55);
+  }
+}
+
 /* First scene block */
 .scene-block:first-of-type {
   margin-top: 1rem;
