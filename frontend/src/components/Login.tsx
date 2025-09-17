@@ -23,6 +23,10 @@ export const Login: React.FC = () => {
   const [remember, setRemember] = useState(false);
   const { setToken, theme, setTheme, language = 'de', setLanguage } = useAuth();
   const { setShowLogin } = useUIState();
+  const navigate = (path: string) => {
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
 
   /**
    * Handles form submission for login.
@@ -252,6 +256,15 @@ export const Login: React.FC = () => {
               <button type="button" className={authStyles.link} onClick={() => setShowLogin(false)}>
                 {language === 'de' ? 'Jetzt registrieren' : 'Create an account'}
               </button>
+            </div>
+            <div className={authStyles.legalLinks}>
+              <a href="/privacy">
+                {language === 'de' ? 'Datenschutz' : 'Privacy'}
+              </a>
+              &nbsp;·&nbsp;
+              <a href="/imprint">
+                {language === 'de' ? 'Impressum' : 'Imprint'}
+              </a>
             </div>
           </div>
         </section>

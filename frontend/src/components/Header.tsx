@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from './Header.module.css';
 import { useAuth } from '../AuthContext';
-import { regenerateAllThumbnails } from '../api';
+import { regenerateAllThumbnails, exportAccountData, deleteMyAccount } from '../api';
 import { ScriptLayout, CreateScriptLayoutRequest } from '../types';
 import { StatusIndicator } from './editor/components/ui/StatusIndicator';
 import type { ConnectionStatus } from './editor/types';
@@ -175,6 +175,40 @@ export const Header: React.FC<HeaderProps> = ({
     // 🔧 FIXED: Immediately clear URL on logout to prevent persistence
     window.history.replaceState({ view: 'auth' }, '', '/');
     setToken(null);
+  };
+
+  const handleExportData = async () => {
+    try {
+      const data = await exportAccountData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-');
+      a.download = `fassandra-export-${ts}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert((language === 'de' ? 'Export fehlgeschlagen: ' : 'Export failed: ') + (e?.message || 'Unknown error'));
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const sure1 = confirm(language === 'de' ? 'Willst du dein Konto wirklich löschen? Dies kann nicht rückgängig gemacht werden.' : 'Are you sure you want to delete your account? This cannot be undone.');
+    if (!sure1) return;
+    const sure2 = confirm(language === 'de' ? 'Letzte Bestätigung: Alle deine Skripte werden gelöscht.' : 'Final confirmation: All your scripts will be deleted.');
+    if (!sure2) return;
+    try {
+      await deleteMyAccount();
+      // Clear session and go to auth
+      window.history.replaceState({ view: 'auth' }, '', '/');
+      setToken(null);
+      alert(language === 'de' ? 'Konto gelöscht.' : 'Account deleted.');
+    } catch (e: any) {
+      alert((language === 'de' ? 'Löschen fehlgeschlagen: ' : 'Deletion failed: ') + (e?.message || 'Unknown error'));
+    }
   };
 
   const handleThemeToggle = () => {
@@ -367,6 +401,13 @@ export const Header: React.FC<HeaderProps> = ({
               {language === 'de' ? '🌐 Sprache: Deutsch' : '🌐 Language: English'}
             </button>
             <button onClick={() => alert('Details clicked!')}>Details</button>
+            <div className={styles.submenuSeparator} />
+            <button onClick={handleExportData}>
+              {language === 'de' ? '📦 Daten exportieren' : '📦 Export Data'}
+            </button>
+            <button onClick={handleDeleteAccount}>
+              {language === 'de' ? '🗑️ Konto löschen' : '🗑️ Delete Account'}
+            </button>
             <button onClick={handleLogout}>{language === 'de' ? 'Abmelden' : 'Logout'}</button>
           </div>
         )}

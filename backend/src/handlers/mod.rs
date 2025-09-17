@@ -9,3 +9,4 @@ pub mod auth;
 pub mod script_upload_handler;
 pub mod claude_session_handler;
 pub mod claude_websocket; 
+pub mod account;
