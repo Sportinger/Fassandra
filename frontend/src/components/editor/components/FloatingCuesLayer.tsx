@@ -17,7 +17,6 @@ interface FloatingCueItem {
 interface FloatingCuesLayerProps {
   editor: TipTapEditor | null;
   // Optional: place badges to the right of the connected word by this many pixels
-  offsetX?: number;
   offsetY?: number;
   // Optional: toggle visibility (default: true)
   visible?: boolean;
@@ -47,7 +46,7 @@ function collectCueAnchors(_container: HTMLElement | null): Array<{ el: HTMLElem
   return anchors;
 }
 
-export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, offsetX = 8, offsetY = -20, visible = true, onOpenCue }) => {
+export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, offsetY = -20, visible = true, onOpenCue }) => {
   const [items, setItems] = useState<FloatingCueItem[]>([]);
 
   const computePositions = useCallback(() => {

@@ -21,6 +21,7 @@ import { useSpeakerSelection } from '../hooks/useSpeakerSelection';
 import { useBorderlessSpeakerInteractions } from '../hooks/useBorderlessSpeakerInteractions';
 import { useEditorContextMenu } from '../hooks/useEditorContextMenu';
 import { EditorContextMenu } from './context-menu/EditorContextMenu';
+import { highlightAndScroll, scrollSidebarItemIntoView } from '../utils/domHelpers';
 
 import logger from '../../../services/LoggingService';
 import '../styles/variables.css';
@@ -175,45 +176,23 @@ export const Editor: React.FC<EditorProps> = ({
   const editorHasSelection = Boolean(editor?.state?.selection && !editor.state.selection.empty);
 
   const handleCueOpen = useCallback((payload: { cueId: string }) => {
-    try {
-      const el = document.querySelector(`.cue-connection[data-cue-id="${payload.cueId}"]`);
-      if (el) {
-        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-        (el as HTMLElement).classList.add('hover-highlight');
-        setTimeout(() => (el as HTMLElement).classList.remove('hover-highlight'), 800);
-      }
-    } catch {}
+    highlightAndScroll(`.cue-connection[data-cue-id="${payload.cueId}"]`, 'hover-highlight');
     setRightSidebarOpen(true);
     setSidebarTab('cues');
     setCuesCollapsed(false);
     setActiveSidebarCueId(payload.cueId);
     setSidebarPanel(null);
-    setTimeout(() => {
-      const container = document.querySelector('.rightSidebar .rightSidebarInner') as HTMLElement | null;
-      const card = document.querySelector(`.rightSidebar [data-cue-id="${payload.cueId}"]`) as HTMLElement | null;
-      if (container && card) card.scrollIntoView({ block: 'nearest' });
-    }, 50);
+    scrollSidebarItemIntoView(`.rightSidebar [data-cue-id="${payload.cueId}"]`);
   }, [setRightSidebarOpen, setCuesCollapsed, setActiveSidebarCueId, setSidebarPanel]);
 
   const handleCommentOpen = useCallback(({ id }: { id: string; text: string }) => {
-    try {
-      const el = document.querySelector(`.comment-annotation[data-comment-id="${id}"]`);
-      if (el) {
-        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-        (el as HTMLElement).classList.add('connected-highlight');
-        setTimeout(() => (el as HTMLElement).classList.remove('connected-highlight'), 800);
-      }
-    } catch {}
+    highlightAndScroll(`.comment-annotation[data-comment-id="${id}"]`, 'connected-highlight');
     setRightSidebarOpen(true);
     setSidebarTab('comments');
     setCommentsCollapsed(false);
     setActiveSidebarCommentId(id);
     setSidebarPanel(null);
-    setTimeout(() => {
-      const container = document.querySelector('.rightSidebar .rightSidebarInner') as HTMLElement | null;
-      const card = document.querySelector(`.rightSidebar [data-comment-id="${id}"]`) as HTMLElement | null;
-      if (container && card) card.scrollIntoView({ block: 'nearest' });
-    }, 50);
+    scrollSidebarItemIntoView(`.rightSidebar [data-comment-id="${id}"]`);
   }, [setRightSidebarOpen, setCommentsCollapsed, setActiveSidebarCommentId, setSidebarPanel]);
 
   // Collapse expanded cue panel when clicking outside the sidebar

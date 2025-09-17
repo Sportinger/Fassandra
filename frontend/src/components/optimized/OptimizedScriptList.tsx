@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useMemo } from 'react';
-import { ScriptList, ScriptListRef } from '../ScriptList';
+import { ScriptList, ScriptListRef } from '../scripts/ScriptList';
 
 /**
  * Optimized ScriptList with React.memo to prevent unnecessary re-renders

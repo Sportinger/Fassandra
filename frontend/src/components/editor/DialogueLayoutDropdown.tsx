@@ -8,8 +8,6 @@ import logger from '../../services/LoggingService';
 interface DialogueLayoutDropdownProps {
   editor: EditorInstance | null;
   isVisible: boolean;
-  editAllSpeakers?: boolean;
-  currentSpeakerName?: string | null;
 }
 
 type LayoutType = 'default' | 'side-by-side' | 'centered';
@@ -45,8 +43,6 @@ const LAYOUT_OPTIONS: LayoutOption[] = [
 export const DialogueLayoutDropdown: React.FC<DialogueLayoutDropdownProps> = ({ 
   editor, 
   isVisible,
-  editAllSpeakers = false,
-  currentSpeakerName = null
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentLayout, setCurrentLayout] = useState<LayoutType>('default');

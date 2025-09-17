@@ -955,17 +955,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <DialogueLayoutDropdown
                 editor={editor}
                 isVisible={isVisible}
-                editAllSpeakers={editAllSpeakers}
-                currentSpeakerName={currentSpeakerName}
               />
             ) : button.isSpecial && button.id === 'view-mode-dropdown' ? (
               <ViewModeDropdown
                 viewMode={viewMode}
                 onSetViewMode={onSetViewMode}
-                isVisible={isVisible}
               />
             ) : button.isSpecial && button.id === 'ruler-adjust' ? (
-              <RulerAdjustDropdown isVisible={isVisible} />
+              <RulerAdjustDropdown />
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button

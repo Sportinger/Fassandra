@@ -32,7 +32,7 @@ export const useCssTiltWithAccelerometer = (options: TiltOptions = {}) => {
     invert = false,
   } = options;
 
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement | null>(null);
   const [isMobile] = useState(() => isMobileDevice());
   const { orientation, isSupported, permissionGranted, requestPermission, debug } = useDeviceOrientation();
   const lastOrientationRef = useRef({ beta: 0, gamma: 0 });

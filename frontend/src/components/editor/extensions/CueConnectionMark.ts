@@ -1,4 +1,5 @@
 import { Mark, mergeAttributes } from '@tiptap/core';
+import type { Mark as ProseMirrorMark, Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { CueType } from '../../../types/cue';
 
 export interface CueConnectionAttributes {
@@ -141,13 +142,13 @@ export const CueConnectionMark = Mark.create({
         },
       removeCueConnection:
         (cueId: string) =>
-        ({ state, tr, dispatch }) => {
+        ({ state, tr, dispatch }: { state: any; tr: any; dispatch?: (tr: any) => void }) => {
           let removed = false;
-          const { doc, selection } = state;
+          const { doc } = state;
 
-          doc.nodesBetween(0, doc.content.size, (node, pos) => {
+          doc.nodesBetween(0, doc.content.size, (node: ProseMirrorNode, pos: number) => {
             if (node.isText && node.marks.length) {
-              const marks = node.marks.filter(mark => {
+              const marks = node.marks.filter((mark: ProseMirrorMark) => {
                 if (mark.type.name === this.name && mark.attrs.cueId === cueId) {
                   removed = true;
                   return false;
@@ -157,7 +158,7 @@ export const CueConnectionMark = Mark.create({
 
               if (marks.length !== node.marks.length) {
                 tr.removeMark(pos, pos + node.nodeSize, this.type);
-                marks.forEach(mark => {
+                marks.forEach((mark: ProseMirrorMark) => {
                   tr.addMark(pos, pos + node.nodeSize, mark);
                 });
               }
@@ -172,15 +173,15 @@ export const CueConnectionMark = Mark.create({
         },
       updateCueById:
         (cueId: string, attrs: Partial<CueConnectionAttributes>) =>
-        ({ state, tr, dispatch }) => {
+        ({ state, tr, dispatch }: { state: any; tr: any; dispatch?: (tr: any) => void }) => {
           let changed = false;
           const { doc } = state;
           const markType = this.type;
-          doc.nodesBetween(0, doc.content.size, (node, pos) => {
+          doc.nodesBetween(0, doc.content.size, (node: ProseMirrorNode, pos: number) => {
             if (!node.isText || !node.marks.length) return;
-            const cueMarks = node.marks.filter(m => m.type.name === this.name);
+            const cueMarks = node.marks.filter((m: ProseMirrorMark) => m.type.name === this.name);
             if (!cueMarks.length) return;
-            const newMarks = cueMarks.map(m => {
+            const newMarks = cueMarks.map((m: ProseMirrorMark) => {
               if (m.attrs.cueId === cueId) {
                 changed = true;
                 return markType.create({ ...m.attrs, ...attrs });
@@ -190,7 +191,7 @@ export const CueConnectionMark = Mark.create({
             if (changed) {
               // Rebuild the cue marks for this node only
               tr.removeMark(pos, pos + node.nodeSize, markType);
-              newMarks.forEach(nm => tr.addMark(pos, pos + node.nodeSize, nm));
+              newMarks.forEach((nm: ProseMirrorMark) => tr.addMark(pos, pos + node.nodeSize, nm));
             }
           });
           if (changed && dispatch) dispatch(tr);

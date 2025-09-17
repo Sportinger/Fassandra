@@ -44,7 +44,7 @@ interface CuesTabProps {
   activeCueId: string | null;
   setActiveCueId: (id: string | null) => void;
   expandedCueId: string | null;
-  setExpandedCueId: (id: string | null) => void;
+  setExpandedCueId: React.Dispatch<React.SetStateAction<string | null>>;
   sidebarPanel: SidebarPanelState;
   setSidebarPanel: React.Dispatch<React.SetStateAction<SidebarPanelState>>;
   cueDescriptions: Record<string, string>;
@@ -78,11 +78,11 @@ const CuesTab: React.FC<CuesTabProps> = ({
       setTimeout(() => (el as HTMLElement).classList.remove('hover-highlight'), 800);
     }
     setActiveCueId(cueId);
-    setExpandedCueId(prev => prev === cueId ? null : cueId);
+    setExpandedCueId((prev: string | null) => (prev === cueId ? null : cueId));
   };
 
   const handleDescriptionChange = (cueId: string, text: string) => {
-    setCueDescriptions(prev => ({ ...prev, [cueId]: text }));
+    setCueDescriptions((prev: Record<string, string>) => ({ ...prev, [cueId]: text }));
   };
 
   return (

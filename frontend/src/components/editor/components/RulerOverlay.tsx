@@ -110,7 +110,7 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
   const pageRect = page?.getBoundingClientRect();
   const innerRect = inner?.getBoundingClientRect();
 
-  if (!pageRect || !innerRect) return null;
+  if (!pageRect || !innerRect || !inner) return null;
 
   const overlayStyle: React.CSSProperties = {
     position: 'absolute',
@@ -121,7 +121,8 @@ export const RulerOverlay: React.FC<RulerOverlayProps> = ({ active, onClose }) =
     pointerEvents: 'none',
   };
 
-  const containerEl = document.querySelector('.singlePageContainer') as HTMLElement;
+  const containerEl = document.querySelector('.singlePageContainer') as HTMLElement | null;
+  if (!containerEl) return null;
   const containerRect = containerEl.getBoundingClientRect();
   const innerCS = getComputedStyle(inner);
   const padL = parseFloat(innerCS.paddingLeft || '0') || 0;

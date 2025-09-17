@@ -132,7 +132,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
               appendLog(placeholder.id, update.line);
             }
           },
-          (scriptId) => {
+          () => {
             updateUpload(placeholder.id, {
               uploadStatus: 'completed' as UploadStatus,
               uploadProgress: 100,
@@ -207,7 +207,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
       for (const u of uploads) {
         // Only placeholders have uploadStatus; skip completed/errored
         if (!u.uploadStatus || u.uploadStatus === 'completed' || u.uploadStatus === 'error') continue;
-        const sid = getSessionId(u.id);
+        const sid = UploadStateManager.getSessionId(u.id);
         if (!sid) continue;
         await attachToSession(u as unknown as PlaceholderScript, sid);
       }
@@ -507,7 +507,7 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
             }
           }
         },
-        (scriptId) => {
+        () => {
           // Completed: backend has created the script
           updateUploadStatus({
             uploadStatus: 'completed' as UploadStatus,

@@ -62,15 +62,14 @@ export const use3DTiltEffect = (options: Use3DTiltEffectOptions = {}) => {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  const calculateTilt = useCallback((e: MouseEvent | Touch) => {
+  const calculateTilt = useCallback((point: { clientX: number; clientY: number }) => {
     if (!elementRef.current || prefersReducedMotion) return;
 
     const rect = elementRef.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
     
-    const clientX = 'clientX' in e ? e.clientX : e.clientX;
-    const clientY = 'clientY' in e ? e.clientY : e.clientY;
+    const { clientX, clientY } = point;
     
     const percentX = (clientX - centerX) / (rect.width / 2);
     const percentY = (clientY - centerY) / (rect.height / 2);

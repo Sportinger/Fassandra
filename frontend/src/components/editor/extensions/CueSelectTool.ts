@@ -1,11 +1,28 @@
-import { Extension } from '@tiptap/core';
+import { Extension, type CommandProps, type RawCommands } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet, EditorView } from '@tiptap/pm/view';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { CueType } from '../../../types/cue';
 
-const cueSelectKey = new PluginKey('cueSelectMode');
+const cueSelectKey = new PluginKey<CueSelectState>('cueSelectMode');
+
+type CueSelectState = {
+  active: boolean;
+  cueType: CueType | null;
+  cueId: string | null;
+  decorations: DecorationSet;
+};
+
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    cueSelectTool: {
+      startCueSelect: (cueType: CueType) => ReturnType;
+      startCueExtend: (cueId: string) => ReturnType;
+      stopCueSelect: () => ReturnType;
+    };
+  }
+}
 
 // Find the word boundaries at a position (similar to prior helper)
 function getWordAtPosition(doc: ProseMirrorNode, pos: number): { from: number; to: number; text: string } | null {
@@ -44,9 +61,9 @@ function renumberCuesByMarks(view: EditorView) {
   const markType = state.schema.marks['cueConnection'];
 
   // First pass: find first occurrence and scene/type
-  state.doc.nodesBetween(0, state.doc.content.size, (node, pos) => {
+  state.doc.nodesBetween(0, state.doc.content.size, (node: ProseMirrorNode, pos: number) => {
     if (!node.isText || !node.marks?.length) return;
-    node.marks.forEach(mark => {
+    node.marks.forEach((mark) => {
       if (mark.type.name !== 'cueConnection') return;
       const cueId = mark.attrs.cueId as string;
       const cueType = (mark.attrs.cueType || 'light') as CueType;
@@ -77,11 +94,11 @@ function renumberCuesByMarks(view: EditorView) {
 
   // Second pass: update all marks to have consistent cueNumber
   let changed = false;
-  state.doc.nodesBetween(0, state.doc.content.size, (node, pos) => {
+  state.doc.nodesBetween(0, state.doc.content.size, (node: ProseMirrorNode, pos: number) => {
     if (!node.isText || !node.marks?.length) return;
-    const cueMarks = node.marks.filter(m => m.type.name === 'cueConnection');
+    const cueMarks = node.marks.filter(mark => mark.type.name === 'cueConnection');
     if (!cueMarks.length) return;
-    const rebuilt: any[] = [];
+    const rebuilt: typeof cueMarks = [];
     cueMarks.forEach(mark => {
       const cueId = mark.attrs.cueId as string;
       if (!cueId) return;
@@ -117,17 +134,19 @@ export const CueSelectTool = Extension.create({
   addCommands() {
     return {
       startCueSelect:
-        (cueType: CueType) => ({ tr, state, dispatch, editor }) => {
-          const pluginState = { active: true, cueType, cueId: null, decorations: DecorationSet.empty } as any;
+        (cueType: CueType) => ({ state, dispatch, editor }: CommandProps) => {
+          const tr = state.tr;
+          const pluginState: CueSelectState = { active: true, cueType, cueId: null, decorations: DecorationSet.empty };
           tr.setMeta(cueSelectKey, pluginState);
-          if (dispatch) editor.view.dispatch(tr);
+          if (dispatch) dispatch(tr);
+          else editor.view.dispatch(tr);
           return true;
         },
       startCueExtend:
-        (cueId: string) => ({ tr, state, dispatch, editor }) => {
-          // Find cue type from the first occurrence of this cueId
+        (cueId: string) => ({ state, dispatch, editor }: CommandProps) => {
+          const tr = state.tr;
           let cueType: CueType | null = null;
-          state.doc.nodesBetween(0, state.doc.content.size, (node, pos) => {
+          state.doc.nodesBetween(0, state.doc.content.size, (node: ProseMirrorNode, _pos: number) => {
             if (cueType) return false;
             if (node.isText && node.marks.length) {
               node.marks.forEach(mark => {
@@ -138,31 +157,33 @@ export const CueSelectTool = Extension.create({
             }
           });
           if (!cueType) cueType = 'light';
-          const pluginState = { active: true, cueType, cueId, decorations: DecorationSet.empty } as any;
+          const pluginState: CueSelectState = { active: true, cueType, cueId, decorations: DecorationSet.empty };
           tr.setMeta(cueSelectKey, pluginState);
-          if (dispatch) editor.view.dispatch(tr);
+          if (dispatch) dispatch(tr);
+          else editor.view.dispatch(tr);
           return true;
         },
       stopCueSelect:
-        () => ({ tr, state, dispatch, editor }) => {
-          const pluginState = { active: false, cueType: null, cueId: null, decorations: DecorationSet.empty } as any;
+        () => ({ state, dispatch, editor }: CommandProps) => {
+          const tr = state.tr;
+          const pluginState: CueSelectState = { active: false, cueType: null, cueId: null, decorations: DecorationSet.empty };
           tr.setMeta(cueSelectKey, pluginState);
-          if (dispatch) editor.view.dispatch(tr);
+          if (dispatch) dispatch(tr);
+          else editor.view.dispatch(tr);
           return true;
         },
-    } as any;
+    } as Partial<RawCommands>;
   },
 
   addProseMirrorPlugins() {
     return [
-      new Plugin<{ active: boolean; cueType: CueType | null; decorations: DecorationSet }>({
+      new Plugin<CueSelectState>({
         key: cueSelectKey,
         state: {
-          init: () => ({ active: false, cueType: null, decorations: DecorationSet.empty }),
-          apply(tr, value) {
-            const meta = tr.getMeta(cueSelectKey);
+          init: (): CueSelectState => ({ active: false, cueType: null, cueId: null, decorations: DecorationSet.empty }),
+          apply(tr: Transaction, value: CueSelectState) {
+            const meta = tr.getMeta(cueSelectKey) as CueSelectState | undefined;
             if (meta) return meta;
-            // Map decorations through doc changes
             if (value.decorations && tr.docChanged) {
               return { ...value, decorations: value.decorations.map(tr.mapping, tr.doc) };
             }
@@ -170,8 +191,8 @@ export const CueSelectTool = Extension.create({
           },
         },
         props: {
-          decorations(state) {
-            const ps = this.getState(state);
+          decorations(state: EditorState) {
+            const ps = cueSelectKey.getState(state);
             return ps?.decorations || DecorationSet.empty;
           },
           handleDOMEvents: {
@@ -181,7 +202,7 @@ export const CueSelectTool = Extension.create({
               const e = event as KeyboardEvent;
               if (e.key === 'Escape') {
                 const tr = view.state.tr;
-                tr.setMeta(cueSelectKey, { active: false, cueType: null, decorations: DecorationSet.empty });
+                tr.setMeta(cueSelectKey, { active: false, cueType: null, cueId: null, decorations: DecorationSet.empty });
                 view.dispatch(tr);
                 return true;
               }
@@ -209,43 +230,35 @@ export const CueSelectTool = Extension.create({
               if (!pos) return false;
               const word = getWordAtPosition(view.state.doc, pos.pos);
               if (!word) return false;
-              // Create mark: reuse cueId in extend mode or create a new one
               const cueId = ps.cueId || `cue-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-              // Temporary number; renumber after insert
               const markType = view.state.schema.marks['cueConnection'];
-            if (!markType) return false;
-            const tr = view.state.tr;
-            // If we are moving an existing cue, remove only that cue's mark(s) but keep other cues on the same word
-            if (ps.cueId) {
-              view.state.doc.nodesBetween(0, view.state.doc.content.size, (node, pos) => {
-                if (!node.isText || !node.marks.length) return;
-                const cueMarks = node.marks.filter(m => m.type.name === 'cueConnection');
-                const keep = cueMarks.filter(m => m.attrs.cueId !== cueId);
-                const hasToRemove = keep.length !== cueMarks.length;
-                if (hasToRemove) {
-                  tr.removeMark(pos, pos + node.nodeSize, markType);
-                  keep.forEach(m => tr.addMark(pos, pos + node.nodeSize, m));
-                }
-              });
-            }
-            const tmpMark = markType.create({ cueId, cueType: ps.cueType, cueNumber: '0' });
-            tr.addMark(word.from, word.to, tmpMark);
-              // Exit select mode and clear highlight
+              if (!markType) return false;
+              const tr = view.state.tr;
+              if (ps.cueId) {
+                view.state.doc.nodesBetween(0, view.state.doc.content.size, (node: ProseMirrorNode, pos: number) => {
+                  if (!node.isText || !node.marks.length) return;
+                  const cueMarks = node.marks.filter(mark => mark.type.name === 'cueConnection');
+                  const keep = cueMarks.filter(mark => mark.attrs.cueId !== cueId);
+                  if (keep.length !== cueMarks.length) {
+                    tr.removeMark(pos, pos + node.nodeSize, markType);
+                    keep.forEach(mark => tr.addMark(pos, pos + node.nodeSize, mark));
+                  }
+                });
+              }
+              const tempMark = markType.create({ cueId, cueType: ps.cueType, cueNumber: '0' });
+              tr.addMark(word.from, word.to, tempMark);
               tr.setMeta(cueSelectKey, { active: false, cueType: null, cueId: null, decorations: DecorationSet.empty });
               view.dispatch(tr);
-              // Renumber all cues based on scene/type order
               setTimeout(() => renumberCuesByMarks(view), 0);
               return true;
             },
           },
         },
-        view: (view) => ({
-          update: (view) => {
-            // On any doc change, ensure numbering stays consistent
-            renumberCuesByMarks(view);
-            // Toggle body class for pointer behavior during select mode
+        view: (_view) => ({
+          update: (innerView: EditorView) => {
+            renumberCuesByMarks(innerView);
             try {
-              const ps = cueSelectKey.getState(view.state) as any;
+              const ps = cueSelectKey.getState(innerView.state);
               if (ps?.active) {
                 document.body.classList.add('cue-select-active');
               } else {
