@@ -3,9 +3,10 @@ import { useAuth } from '../../../AuthContext';
 import { Header } from '../../Header';
 import { useResponsiveDesign } from '../hooks/useResponsiveDesign';
 import { useEditorCore } from '../hooks/useEditorCore';
+import { useSidebarData } from '../hooks/useSidebarData';
+import { useRehearsalMode } from '../hooks/useRehearsalMode';
 import { Toolbar } from './toolbar/Toolbar';
 import { LoadingSpinner } from './ui/LoadingSpinner';
-import { StatusIndicator } from './ui/StatusIndicator';
 import { SinglePageView, BorderlessView } from '../ViewModes';
 import { FloatingCuesLayer } from './FloatingCuesLayer';
 import { CueConnectors } from './CueConnectors';
@@ -14,6 +15,9 @@ import RulerOverlay from './RulerOverlay';
 import { MessageSquareQuoteIcon } from '../icons';
 import { TextSelection } from '@tiptap/pm/state';
 import type { EditorProps, ViewMode } from '../types';
+import { EditorContent } from './EditorContent';
+import { EditorShell } from './EditorShell';
+import { RightSidebar } from './RightSidebar';
 
 import logger from '../../../services/LoggingService';
 import '../styles/variables.css';
@@ -77,20 +81,34 @@ export const Editor: React.FC<EditorProps> = ({
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [pageCount, setPageCount] = useState<number>(1);
   const [showRuler, setShowRuler] = useState(false);
-  const [rehearsalMode, setRehearsalMode] = useState(false);
-  const [rehearsalLinePosition, setRehearsalLinePosition] = useState<number>(0);
-  const [rehearsalDocPos, setRehearsalDocPos] = useState<number | null>(null);
-  const [rehearsalWordBox, setRehearsalWordBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
-  const [suppressRehearsalAutoScroll, setSuppressRehearsalAutoScroll] = useState(false);
-  const [shouldCenterOnRehearsalChange, setShouldCenterOnRehearsalChange] = useState(false);
-  const lastCenteredRehearsalPosRef = useRef<number | null>(null);
-  // Explicit flag to center only when a change actually occurred
-  const pendingCenterRef = useRef(false);
-  // Prevent feedback loops when applying remote awareness updates
-  const isApplyingRemoteRehearsalRef = useRef(false);
-  // Track last seen remote positions per client to avoid repeated triggers
-  const lastAwarenessPosRef = useRef<Map<number, number>>(new Map());
-  const lastAwarenessRectRef = useRef<Map<number, string>>(new Map());
+  const {
+    rehearsalMode,
+    setRehearsalMode,
+    rehearsalLinePosition,
+    setRehearsalLinePosition,
+    rehearsalDocPos,
+    setRehearsalDocPos,
+    rehearsalWordBox,
+    setRehearsalWordBox,
+    suppressRehearsalAutoScroll,
+    setSuppressRehearsalAutoScroll,
+    setShouldCenterOnRehearsalChange,
+    pendingCenterRef,
+    isApplyingRemoteRehearsalRef,
+    autoFollowActive,
+    lastAsrText,
+    startAutoFollow,
+    stopAutoFollow,
+    broadcastRehearsalState,
+    adoptRemotePosition,
+  } = useRehearsalMode({
+    editor,
+    provider,
+    scriptId,
+    token: token || null,
+    viewMode,
+    debugLog,
+  });
   const [editAllSpeakers, setEditAllSpeakers] = useState(false);
   const [currentSpeakerName, setCurrentSpeakerName] = useState<string | null>(null);
   const liveRenameBaseRef = useRef<string | null>(null);
@@ -99,218 +117,73 @@ export const Editor: React.FC<EditorProps> = ({
   const [insertSubmenu, setInsertSubmenu] = useState<{open:boolean;x:number;y:number}>({ open: false, x: 0, y: 0 });
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   // Sidebar collections and UI state
-  const [sidebarScenes, setSidebarScenes] = useState<Array<{ id: string; sceneNumber: string; sceneName: string; y: number; index: number }>>([]);
-  const [sidebarCues, setSidebarCues] = useState<Array<{ cueId: string; cueType: string; cueNumber: string; cueName?: string|null; y: number; x: number; text?: string }>>([]);
-  const [sidebarComments, setSidebarComments] = useState<Array<{ id: string; text: string }>>([]);
-  const [activeSidebarSceneId, setActiveSidebarSceneId] = useState<string | null>(null);
-  const [cuesCollapsed, setCuesCollapsed] = useState(false);
-  const [commentsCollapsed, setCommentsCollapsed] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<'scenes' | 'cues' | 'comments'>('cues');
-  const [cueFilters, setCueFilters] = useState<Record<CueType, boolean>>({
-    light: true,
-    video: true,
-    sound: true,
-    props: true,
-  });
-  const [activeSidebarCueId, setActiveSidebarCueId] = useState<string | null>(null);
-  const [expandedCueId, setExpandedCueId] = useState<string | null>(null);
-  const [activeSidebarCommentId, setActiveSidebarCommentId] = useState<string | null>(null);
-  const [cueDescriptions, setCueDescriptions] = useState<Record<string, string>>({});
-  const [sidebarPanel, setSidebarPanel] = useState<
-    | { type: 'cue'; cueId: string; cueType: string; cueNumber: string; cueName?: string | null; draftName: string }
-    | { type: 'comment'; id: string; draft: string }
-    | null
-  >(null);
-  // Compute sidebar data from current editor DOM
-  useEffect(() => {
-    if (!editor) return;
-    const recompute = () => {
-      const cues: Array<{ cueId: string; cueType: string; cueNumber: string; cueName?: string|null; y: number; x: number; text?: string }> = [];
-      const seen = new Set<string>();
-      const container = document.querySelector('.singlePageContainer') as HTMLElement | null;
-      const cRect = container ? container.getBoundingClientRect() : null;
-      const cScrollTop = container ? (container.scrollTop || 0) : 0;
-      const cScrollLeft = container ? ((container as any).scrollLeft || 0) : 0;
+  const {
+    sidebarScenes,
+    sidebarCues,
+    sidebarComments,
+    sidebarTab,
+    setSidebarTab,
+    cuesCollapsed,
+    setCuesCollapsed,
+    commentsCollapsed,
+    setCommentsCollapsed,
+    cueFilters,
+    setCueFilters,
+    activeSidebarSceneId,
+    setActiveSidebarSceneId,
+    activeSidebarCueId,
+    setActiveSidebarCueId,
+    expandedCueId,
+    setExpandedCueId,
+    activeSidebarCommentId,
+    setActiveSidebarCommentId,
+    cueDescriptions,
+    setCueDescriptions,
+    sidebarPanel,
+    setSidebarPanel,
+  } = useSidebarData(editor);
 
-      const scenes: Array<{ id: string; sceneNumber: string; sceneName: string; y: number; index: number }> = [];
-      document.querySelectorAll('[data-type="scene-block"]').forEach((el, index) => {
-        const he = el as HTMLElement;
-        const rect = he.getBoundingClientRect();
-        const y = cRect ? (rect.top - cRect.top) + cScrollTop : rect.top;
-        const sceneNumber = he.getAttribute('data-scene-number') || `${index + 1}`;
-        const sceneName = he.getAttribute('data-scene-name') || (he.textContent || '').trim() || `Scene ${sceneNumber}`;
-        scenes.push({
-          id: `${sceneNumber}-${index}`,
-          sceneNumber,
-          sceneName,
-          y,
-          index,
-        });
-      });
-      setSidebarScenes(scenes);
-      document.querySelectorAll('.cue-connection[data-cue-id][data-cue-type]').forEach((el) => {
-        const he = el as HTMLElement;
-        const id = he.getAttribute('data-cue-id') || '';
-        if (!id || seen.has(id)) return;
-        seen.add(id);
-        const r = he.getBoundingClientRect();
-        const y = cRect ? (r.top - cRect.top) + cScrollTop : r.top;
-        const x = cRect ? (r.left - cRect.left) + cScrollLeft : r.left;
-        cues.push({
-          cueId: id,
-          cueType: he.getAttribute('data-cue-type') || 'props',
-          cueNumber: he.getAttribute('data-cue-number') || '',
-          cueName: he.getAttribute('data-cue-name') || '',
-          text: (he.textContent || '').trim(),
-          y,
-          x,
-        });
-      });
-      setSidebarCues(cues);
-      const comments: Array<{ id: string; text: string }> = [];
-      const seenC = new Set<string>();
-      document.querySelectorAll('.comment-annotation[data-comment-id]').forEach((el) => {
-        const he = el as HTMLElement;
-        const id = he.getAttribute('data-comment-id') || '';
-        if (!id || seenC.has(id)) return;
-        seenC.add(id);
-        comments.push({ id, text: he.getAttribute('data-comment-text') || '' });
-      });
-      setSidebarComments(comments);
-    };
-    recompute();
-    editor.on('update', recompute);
-    editor.on('selectionUpdate', recompute);
-    window.addEventListener('resize', recompute);
-    window.addEventListener('scroll', recompute, true);
-    return () => {
-      editor.off('update', recompute);
-      editor.off('selectionUpdate', recompute);
-      window.removeEventListener('resize', recompute);
-      window.removeEventListener('scroll', recompute, true);
-    };
-  }, [editor]);
-
-  // Auto-Follow MVP: mic capture + WS progress
-  const [autoFollowActive, setAutoFollowActive] = useState(false);
-  const autoFollowRef = useRef<any>(null);
-  const [lastAsrText, setLastAsrText] = useState<string>("");
-  const asrTrailTimerRef = useRef<number | null>(null);
-  const startAutoFollow = useCallback(async () => {
-    if (!editor || autoFollowRef.current) return;
-    const { AutoFollowService } = await import('../../../services/AutoFollowService');
-    const svc = new AutoFollowService(editor as any, scriptId, token || 'authenticated', (msg: any) => {
-      try {
-        if (msg && msg.asr && typeof msg.asr.text === 'string') {
-          setLastAsrText(msg.asr.text);
-        }
-        if (msg && msg.type === 'progress' && typeof msg.docPos === 'number') {
-          setRehearsalDocPos(msg.docPos);
-        }
-        // Animate per-word if provided
-        if (msg && Array.isArray(msg.wordDocPos) && msg.wordDocPos.length > 0) {
-          // Cancel previous trail
-          if (asrTrailTimerRef.current) { window.clearTimeout(asrTrailTimerRef.current); asrTrailTimerRef.current = null; }
-          const trail = msg.wordDocPos.slice(-6); // limit to last few for smoothness
-          let i = 0;
-          const step = () => {
-            if (i >= trail.length) return;
-            setRehearsalDocPos(trail[i]);
-            i += 1;
-            asrTrailTimerRef.current = window.setTimeout(step, 60);
-          };
-          step();
-        }
-      } catch {}
-    });
-    autoFollowRef.current = svc;
-    await svc.start();
-    setAutoFollowActive(true);
-    setRehearsalMode(true);
-  }, [editor, scriptId, token]);
-  const stopAutoFollow = useCallback(async () => {
-    if (autoFollowRef.current) {
-      await autoFollowRef.current.stop();
-      autoFollowRef.current = null;
-    }
-    setAutoFollowActive(false);
-    setLastAsrText("");
-  }, []);
-
-  // When backend sends a precise document position, compute Y and move the rehearsal line locally
-  useEffect(() => {
-    if (!editor) return;
-    if (typeof rehearsalDocPos !== 'number') return;
+  const handleCueOpen = useCallback((payload: { cueId: string }) => {
     try {
-      const view: any = (editor as any).view;
-      const container = document.querySelector('.singlePageContainer') as HTMLElement | null;
-      if (!view || !container) return;
-
-      // Try to compute the bounding box of the word at docPos
-      let mappedY: number | null = null;
-      let mappedRect: { left: number; top: number; width: number; height: number } | null = null;
-      try {
-        const domInfo = view.domAtPos(rehearsalDocPos);
-        let node: any = domInfo.node;
-        let offset: number = (domInfo.offset || 0) as number;
-        if (node && node.nodeType !== Node.TEXT_NODE) {
-          const child = node.childNodes?.[Math.min(offset, node.childNodes.length - 1)] || node.firstChild;
-          if (child && child.nodeType === Node.TEXT_NODE) {
-            node = child;
-            offset = Math.max(0, Math.min((node as Text).data.length, 0));
-          }
-        }
-        if (node && node.nodeType === Node.TEXT_NODE) {
-          const textNode = node as Text;
-          const data = textNode.data || '';
-          const isWordChar = (ch: string) => /[\p{L}\p{N}'’_-]/u.test(ch);
-          let start = Math.max(0, Math.min(offset, data.length));
-          while (start > 0 && isWordChar(data.charAt(start - 1))) start--;
-          let end = Math.max(0, Math.min(offset, data.length));
-          while (end < data.length && isWordChar(data.charAt(end))) end++;
-          if (end > start) {
-            const range = document.createRange();
-            range.setStart(textNode, start);
-            range.setEnd(textNode, end);
-            const rect = range.getBoundingClientRect();
-            const cRect = container.getBoundingClientRect();
-            const scrollTop = container.scrollTop || 0;
-            mappedRect = {
-              left: rect.left - cRect.left + (container as any).scrollLeft || 0,
-              top: rect.top - cRect.top + scrollTop,
-              width: rect.width,
-              height: rect.height,
-            };
-            mappedY = mappedRect.top + mappedRect.height; // line UNDER the word
-          }
-        }
-      } catch {}
-
-      if (mappedY === null) {
-        // Fallback: use coordsAtPos and place line a bit below
-        const coords = view.coordsAtPos(rehearsalDocPos);
-        if (coords) {
-          const cRect = container.getBoundingClientRect();
-          mappedY = coords.top - cRect.top + (container.scrollTop || 0) + 16;
-        }
-      }
-
-      if (mappedY !== null) {
-        setRehearsalLinePosition(mappedY);
-        if (mappedRect) setRehearsalWordBox(mappedRect); else setRehearsalWordBox(null);
-        // request a center once when we get a new mapping
-        pendingCenterRef.current = true;
-        // Publish to awareness so other clients can follow
-        if (provider && (provider as any).awareness) {
-          const awareness: any = (provider as any).awareness;
-          const current = awareness.getLocalState?.() || {};
-          const next: any = { ...current, rehearsalDocPos };
-          if (mappedRect) next.rehearsalWordRect = mappedRect;
-          awareness.setLocalState?.(next);
-        }
+      const el = document.querySelector(`.cue-connection[data-cue-id="${payload.cueId}"]`);
+      if (el) {
+        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (el as HTMLElement).classList.add('hover-highlight');
+        setTimeout(() => (el as HTMLElement).classList.remove('hover-highlight'), 800);
       }
     } catch {}
-  }, [rehearsalDocPos, editor, provider]);
+    setRightSidebarOpen(true);
+    setSidebarTab('cues');
+    setCuesCollapsed(false);
+    setActiveSidebarCueId(payload.cueId);
+    setSidebarPanel(null);
+    setTimeout(() => {
+      const container = document.querySelector('.rightSidebar .rightSidebarInner') as HTMLElement | null;
+      const card = document.querySelector(`.rightSidebar [data-cue-id="${payload.cueId}"]`) as HTMLElement | null;
+      if (container && card) card.scrollIntoView({ block: 'nearest' });
+    }, 50);
+  }, [setRightSidebarOpen, setCuesCollapsed, setActiveSidebarCueId, setSidebarPanel]);
+
+  const handleCommentOpen = useCallback(({ id }: { id: string; text: string }) => {
+    try {
+      const el = document.querySelector(`.comment-annotation[data-comment-id="${id}"]`);
+      if (el) {
+        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (el as HTMLElement).classList.add('connected-highlight');
+        setTimeout(() => (el as HTMLElement).classList.remove('connected-highlight'), 800);
+      }
+    } catch {}
+    setRightSidebarOpen(true);
+    setSidebarTab('comments');
+    setCommentsCollapsed(false);
+    setActiveSidebarCommentId(id);
+    setSidebarPanel(null);
+    setTimeout(() => {
+      const container = document.querySelector('.rightSidebar .rightSidebarInner') as HTMLElement | null;
+      const card = document.querySelector(`.rightSidebar [data-comment-id="${id}"]`) as HTMLElement | null;
+      if (container && card) card.scrollIntoView({ block: 'nearest' });
+    }, 50);
+  }, [setRightSidebarOpen, setCommentsCollapsed, setActiveSidebarCommentId, setSidebarPanel]);
 
   // Collapse expanded cue panel when clicking outside the sidebar
   useEffect(() => {
@@ -457,154 +330,6 @@ export const Editor: React.FC<EditorProps> = ({
     editor.on('update', recompute);
     return () => { editor.off('update', recompute); };
   }, [editor]);
-
-  // Sync rehearsal line position with other users via awareness
-  useEffect(() => {
-    if (!provider || !provider.awareness) return;
-
-    const handleAwarenessChange = () => {
-      const states = provider.awareness.getStates();
-
-      states.forEach((state, clientId) => {
-        if (clientId === provider.awareness.clientID) return; // ignore local
-        const remotePos = state?.rehearsalLinePosition;
-        const hadRemotePos = typeof remotePos === 'number';
-        if (hadRemotePos) {
-          const lastForClient = lastAwarenessPosRef.current.get(clientId);
-          if (!(typeof lastForClient === 'number' && Math.abs(lastForClient - remotePos) <= 0.5)) {
-            lastAwarenessPosRef.current.set(clientId, remotePos);
-            debugLog('[Rehearsal Sync] New position from', clientId, ':', remotePos);
-            isApplyingRemoteRehearsalRef.current = true;
-            setRehearsalLinePosition(remotePos);
-            // Request a single center due to position change
-            pendingCenterRef.current = true;
-            setTimeout(() => { isApplyingRemoteRehearsalRef.current = false; }, 0);
-          }
-        }
-
-        // Process word rectangle update independently (even if position unchanged)
-        try {
-          const advState: any = state;
-          const rect = advState?.rehearsalWordRect;
-          if (rect && typeof rect.left === 'number') {
-            const key = JSON.stringify({ l: rect.left, t: rect.top, w: rect.width, h: rect.height });
-            const lastKey = lastAwarenessRectRef.current.get(clientId);
-            if (key !== lastKey) {
-              lastAwarenessRectRef.current.set(clientId, key);
-              setRehearsalWordBox({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
-              // If we did not get a remotePos (some clients may only send rect), align line under the rect
-              if (!hadRemotePos && typeof rect.top === 'number' && typeof rect.height === 'number') {
-                setRehearsalLinePosition(rect.top + rect.height);
-              }
-            }
-          } else if (typeof advState?.rehearsalDocPos === 'number' && editor) {
-            // Fallback: compute rect from doc pos
-            const pos = advState.rehearsalDocPos as number;
-            setRehearsalDocPos(pos);
-            const view: any = (editor as any).view;
-            const containerElement = document.querySelector('.singlePageContainer') as HTMLElement | null;
-            if (view && containerElement && typeof view.domAtPos === 'function') {
-              let domInfo = view.domAtPos(pos);
-              let node: any = domInfo.node;
-              let offset: number = (domInfo.offset || 0) as number;
-              if (node && node.nodeType !== Node.TEXT_NODE) {
-                const child = node.childNodes?.[Math.min(offset, node.childNodes.length - 1)] || node.firstChild;
-                if (child && child.nodeType === Node.TEXT_NODE) {
-                  node = child;
-                  offset = Math.max(0, Math.min((node as Text).data.length, 0));
-                }
-              }
-              if (node && node.nodeType === Node.TEXT_NODE) {
-                const textNode = node as Text;
-                const data = textNode.data || '';
-                const isWordChar = (ch: string) => /[\p{L}\p{N}'’_-]/u.test(ch);
-                let start = Math.max(0, Math.min(offset, data.length));
-                while (start > 0 && isWordChar(data.charAt(start - 1))) start--;
-                let end = Math.max(0, Math.min(offset, data.length));
-                while (end < data.length && isWordChar(data.charAt(end))) end++;
-                if (end > start) {
-                  const range = document.createRange();
-                  range.setStart(textNode, start);
-                  range.setEnd(textNode, end);
-                  const rect = range.getBoundingClientRect();
-                  const containerRect = containerElement.getBoundingClientRect();
-                  const scrollTop = containerElement.scrollTop || 0;
-                  const scrollLeft = containerElement.scrollLeft || 0;
-                  const mapped = {
-                    left: rect.left - containerRect.left + scrollLeft,
-                    top: rect.top - containerRect.top + scrollTop,
-                    width: rect.width,
-                    height: rect.height,
-                  };
-                  const key2 = JSON.stringify({ l: mapped.left, t: mapped.top, w: mapped.width, h: mapped.height });
-                  if (key2 !== lastAwarenessRectRef.current.get(clientId)) {
-                    lastAwarenessRectRef.current.set(clientId, key2);
-                  }
-                  setRehearsalWordBox(mapped);
-                  if (!hadRemotePos) setRehearsalLinePosition(mapped.top + mapped.height);
-                }
-              }
-            }
-          }
-        } catch {}
-      });
-    };
-
-    provider.awareness.on('change', handleAwarenessChange);
-    return () => { provider.awareness.off('change', handleAwarenessChange); };
-  }, [provider, debugLog, rehearsalMode, viewMode, rehearsalLinePosition]);
-
-  // Initialize/broadcast rehearsal line position when changed locally (avoid rebroadcast on remote apply)
-  useEffect(() => {
-    if (!provider || !provider.awareness) return;
-    if (isApplyingRemoteRehearsalRef.current) return; // skip rebroadcasting remote updates
-    if (rehearsalLinePosition > 0) {
-      provider.awareness.setLocalStateField('rehearsalLinePosition', rehearsalLinePosition);
-    }
-  }, [provider, rehearsalLinePosition]); // Run when provider becomes available or position changes
-
-  // Smooth scroll to keep rehearsal line centered ONLY when explicitly requested
-  useEffect(() => {
-    debugLog('[Rehearsal Line State] Position:', rehearsalLinePosition, 'Mode:', rehearsalMode, 'View:', viewMode);
-    
-    if (suppressRehearsalAutoScroll) return;
-    if (!pendingCenterRef.current) return;
-    if (!rehearsalMode || (viewMode !== 'single-page' && viewMode !== 'borderless')) return;
-
-    // Only center if the position actually changed since last center
-    const alreadyCentered = (
-      lastCenteredRehearsalPosRef.current !== null &&
-      Math.abs(lastCenteredRehearsalPosRef.current - rehearsalLinePosition) <= 0.5
-    );
-    if (alreadyCentered) {
-      // Consume the request even if nothing to do to avoid stray future triggers
-      pendingCenterRef.current = false;
-      return;
-    }
-
-    // Find the container element
-    const containerElement = document.querySelector('.singlePageContainer');
-    if (!containerElement) {
-      debugLog('[Rehearsal Scroll] ERROR: Container element not found!');
-      return;
-    }
-
-    // Calculate the position to scroll to (line position minus half viewport height)
-    const containerRect = containerElement.getBoundingClientRect();
-    const absoluteLinePosition = containerRect.top + window.scrollY + rehearsalLinePosition;
-    const targetScrollPosition = absoluteLinePosition - (window.innerHeight / 2);
-
-    // Smooth scroll to center the line
-    window.scrollTo({
-      top: targetScrollPosition,
-      behavior: 'smooth'
-    });
-
-    debugLog('[Rehearsal Scroll] Scrolling to center line at position:', rehearsalLinePosition);
-    lastCenteredRehearsalPosRef.current = rehearsalLinePosition;
-    // Consume the pending center request so subsequent clicks do not re-center
-    pendingCenterRef.current = false;
-  }, [rehearsalLinePosition, rehearsalMode, viewMode, suppressRehearsalAutoScroll, shouldCenterOnRehearsalChange, debugLog]);
 
   // Highlight all speakers when editAllSpeakers mode changes
   useEffect(() => {
@@ -899,17 +624,11 @@ export const Editor: React.FC<EditorProps> = ({
           }
           
           // Sync the position with other users via awareness
-          if (provider && (provider as any).awareness) {
-            try {
-              const awareness: any = (provider as any).awareness;
-              const current = awareness.getLocalState?.() || {};
-              const next = { ...current, rehearsalLinePosition: newPosition } as any;
-              if (typeof jumpedDocPos === 'number') next.rehearsalDocPos = jumpedDocPos;
-              if (localContextMenu.wordRect) next.rehearsalWordRect = localContextMenu.wordRect;
-              debugLog('[Jump Action] Syncing via awareness (atomic):', next);
-              awareness.setLocalState?.(next);
-            } catch {}
-          }
+          const payload: Record<string, any> = { rehearsalLinePosition: newPosition };
+          if (typeof jumpedDocPos === 'number') payload.rehearsalDocPos = jumpedDocPos;
+          if (localContextMenu.wordRect) payload.rehearsalWordRect = localContextMenu.wordRect;
+          debugLog('[Jump Action] Syncing via awareness (atomic):', payload);
+          broadcastRehearsalState(payload);
           
           // Mark that we should center once due to a real position change
           pendingCenterRef.current = true;
@@ -1057,21 +776,23 @@ export const Editor: React.FC<EditorProps> = ({
   }
 
   return (
-    <div className="editorContainer">
-      {/* Header */}
-      <Header 
-        currentView="editor" 
-        scriptTitle={initialTitle} 
-        onNavigateToScripts={handleAnimatedNavigation}
-        layouts={[]} // TODO: Implement layout management
-        currentLayout={null}
-        onLayoutChange={() => {}} // TODO: Implement
-        onCreateNewLayout={async () => {}} // TODO: Implement
-        onSaveLayout={async () => {}} // TODO: Implement
-        activeUserCount={activeUserCount} // Removed demo bot count
-        connectionStatus={connectionStatus} // Pass connection status to header
-        // Removed demo mode props - development utility
-      />
+    <EditorShell
+      header={(
+        <Header 
+          currentView="editor" 
+          scriptTitle={initialTitle} 
+          onNavigateToScripts={handleAnimatedNavigation}
+          layouts={[]} // TODO: Implement layout management
+          currentLayout={null}
+          onLayoutChange={() => {}} // TODO: Implement
+          onCreateNewLayout={async () => {}} // TODO: Implement
+          onSaveLayout={async () => {}} // TODO: Implement
+          activeUserCount={activeUserCount} // Removed demo bot count
+          connectionStatus={connectionStatus} // Pass connection status to header
+          // Removed demo mode props - development utility
+        />
+      )}
+    >
       
       {/* Status indicator removed - now shown in header as sphere */}
       
@@ -1090,28 +811,7 @@ export const Editor: React.FC<EditorProps> = ({
               <>
                 <FloatingCuesLayer
                   editor={editor}
-                  onOpenCue={(payload) => {
-                    try {
-                      const el = document.querySelector(`.cue-connection[data-cue-id="${payload.cueId}"]`);
-                      if (el) {
-                        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        (el as HTMLElement).classList.add('hover-highlight');
-                        setTimeout(() => (el as HTMLElement).classList.remove('hover-highlight'), 800);
-                      }
-                    } catch {}
-                    setRightSidebarOpen(true);
-                    setSidebarTab('cues');
-                    setCuesCollapsed(false);
-                    setActiveSidebarCueId(payload.cueId);
-                    setSidebarPanel(null);
-                    setTimeout(() => {
-                      const container = document.querySelector('.rightSidebar .rightSidebarInner') as HTMLElement | null;
-                      const card = document.querySelector(`.rightSidebar [data-cue-id="${payload.cueId}"]`) as HTMLElement | null;
-                      if (container && card) {
-                        card.scrollIntoView({ block: 'nearest' });
-                      }
-                    }, 50);
-                  }}
+                  onOpenCue={handleCueOpen}
                 />
                 {editor && (
                   <CueConnectors editor={editor} expandedCueId={expandedCueId} />
@@ -1122,26 +822,7 @@ export const Editor: React.FC<EditorProps> = ({
                 )}
                 <FloatingCommentsLayer
                   editor={editor}
-                  onOpenComment={({ id, text }) => {
-                    try {
-                      const el = document.querySelector(`.comment-annotation[data-comment-id="${id}"]`);
-                      if (el) {
-                        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        (el as HTMLElement).classList.add('connected-highlight');
-                        setTimeout(() => (el as HTMLElement).classList.remove('connected-highlight'), 800);
-                      }
-                    } catch {}
-                    setRightSidebarOpen(true);
-                    setSidebarTab('comments');
-                    setCommentsCollapsed(false);
-                    setActiveSidebarCommentId(id);
-                    setSidebarPanel(null);
-                    setTimeout(() => {
-                      const container = document.querySelector('.rightSidebar .rightSidebarInner') as HTMLElement | null;
-                      const card = document.querySelector(`.rightSidebar [data-comment-id="${id}"]`) as HTMLElement | null;
-                      if (container && card) card.scrollIntoView({ block: 'nearest' });
-                    }, 50);
-                  }}
+                  onOpenComment={handleCommentOpen}
                 />
                 {rehearsalMode && rehearsalWordBox && (
                   <div
@@ -1158,29 +839,25 @@ export const Editor: React.FC<EditorProps> = ({
             ) : null
           }
         >
-          {editor ? (
-            <div
-              ref={(node) => {
-                if (node && editor && !node.contains(editor.options.element)) {
-                  node.appendChild(editor.options.element);
-                }
-              }}
-            />
-          ) : (
-            <div className="editor-loading">
-              <LoadingSpinner size="lg" />
-              <div>
-                <p>Initializing collaborative editor...</p>
-                {ydoc && provider ? (
-                  <p style={{ fontSize: '14px', opacity: 0.7 }}>✅ Collaboration ready - Creating editor...</p>
-                ) : (
-                  <p style={{ fontSize: '14px', opacity: 0.7 }}>
-                    🔄 Status: {connectionStatus} - Setting up real-time sync...
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
+          <EditorContent
+            editor={editor}
+            connectionStatus={connectionStatus}
+            ydoc={ydoc}
+            provider={provider}
+            onContextMenu={handleContextMenu}
+            setLocalContextMenu={setLocalContextMenu}
+            setSuppressRehearsalAutoScroll={setSuppressRehearsalAutoScroll}
+            setShouldCenterOnRehearsalChange={setShouldCenterOnRehearsalChange}
+            pendingCenterRef={pendingCenterRef}
+            debugLog={debugLog}
+            editAllSpeakers={editAllSpeakers}
+            setEditAllSpeakers={setEditAllSpeakers}
+            setCurrentSpeakerName={setCurrentSpeakerName}
+            liveRenameBaseRef={liveRenameBaseRef}
+            isLiveRenamingRef={isLiveRenamingRef}
+            hideContextMenu={hideContextMenu}
+            showContextMenu={showContextMenu}
+          />
         </BorderlessView>
       ) : (
         <SinglePageView 
@@ -1199,31 +876,7 @@ export const Editor: React.FC<EditorProps> = ({
                 {/* eslint-disable-next-line react/jsx-no-useless-fragment */}
                 <FloatingCuesLayer
                   editor={editor}
-                  onOpenCue={(payload) => {
-                    // Jump to cue in editor
-                    try {
-                      const el = document.querySelector(`.cue-connection[data-cue-id="${payload.cueId}"]`);
-                      if (el) {
-                        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        (el as HTMLElement).classList.add('hover-highlight');
-                        setTimeout(() => (el as HTMLElement).classList.remove('hover-highlight'), 800);
-                      }
-                    } catch {}
-                    // Highlight in sidebar and reveal
-                    setRightSidebarOpen(true);
-                    setSidebarTab('cues');
-                    setCuesCollapsed(false);
-                    setActiveSidebarCueId(payload.cueId);
-                    setSidebarPanel(null);
-                    // Scroll the sidebar list to the card
-                    setTimeout(() => {
-                      const container = document.querySelector('.rightSidebar .rightSidebarInner') as HTMLElement | null;
-                      const card = document.querySelector(`.rightSidebar [data-cue-id="${payload.cueId}"]`) as HTMLElement | null;
-                      if (container && card) {
-                        card.scrollIntoView({ block: 'nearest' });
-                      }
-                    }, 50);
-                  }}
+                  onOpenCue={handleCueOpen}
                 />
                 {editor && (
                   <CueConnectors editor={editor} expandedCueId={expandedCueId} />
@@ -1235,28 +888,7 @@ export const Editor: React.FC<EditorProps> = ({
                 {/* Comments overlay */}
                 <FloatingCommentsLayer
                   editor={editor}
-                  onOpenComment={({ id, text }) => {
-                    // Jump to comment
-                    try {
-                      const el = document.querySelector(`.comment-annotation[data-comment-id="${id}"]`);
-                      if (el) {
-                        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        (el as HTMLElement).classList.add('connected-highlight');
-                        setTimeout(() => (el as HTMLElement).classList.remove('connected-highlight'), 800);
-                      }
-                    } catch {}
-                    // Highlight in sidebar and reveal
-                    setRightSidebarOpen(true);
-                    setSidebarTab('comments');
-                    setCommentsCollapsed(false);
-                    setActiveSidebarCommentId(id);
-                    setSidebarPanel(null);
-                    setTimeout(() => {
-                      const container = document.querySelector('.rightSidebar .rightSidebarInner') as HTMLElement | null;
-                      const card = document.querySelector(`.rightSidebar [data-comment-id="${id}"]`) as HTMLElement | null;
-                      if (container && card) card.scrollIntoView({ block: 'nearest' });
-                    }, 50);
-                  }}
+                  onOpenComment={handleCommentOpen}
                 />
                 {/* Rehearsal word highlight box */}
                 {rehearsalMode && rehearsalWordBox && (
@@ -1304,233 +936,28 @@ export const Editor: React.FC<EditorProps> = ({
                 setCurrentSpeakerName(null);
               }}
         >
-          {editor ? (
-            <div 
-              className="editor-content"
-              onContextMenu={handleContextMenu}
-              onClick={(e) => {
-                // Close context menu on click
-                setLocalContextMenu(prev => ({ ...prev, visible: false }));
-                // When closing without choosing an action, do not recenter
-                setSuppressRehearsalAutoScroll(false);
-                setShouldCenterOnRehearsalChange(false);
-                pendingCenterRef.current = false;
-                
-                // Handle editor click for context detection
-                const target = e.target as HTMLElement;
-                const speakerElement = target.closest('[data-type="speaker"]');
-                const dialogueTextElement = target.closest('[data-type="dialogue-text"]');
-                const dialogueBlockElement = target.closest('[data-type="dialogue-block"]');
-                const cueBlockElement = target.closest('[data-type="cue-block"]');
-                const sceneBlockElement = target.closest('[data-type="scene-block"]');
-                
-                
-                // Remove any existing selection classes first
-                // Preserve speaker selection if clicking inside the same dialogue block
-                const previouslySelectedSpeaker = document.querySelector('[data-type="speaker"].speaker-selected') as HTMLElement | null;
-                const prevSpeakerBlock = previouslySelectedSpeaker?.closest('[data-type="dialogue-block"]');
-                const currentClickBlock = target.closest('[data-type="dialogue-block"]');
-                if (!previouslySelectedSpeaker || !prevSpeakerBlock || prevSpeakerBlock !== currentClickBlock) {
-                  document.querySelectorAll('[data-type="speaker"].speaker-selected').forEach(el => {
-                    el.classList.remove('speaker-selected');
-                    try { (el as HTMLElement).removeAttribute('data-speaker-selected'); } catch {}
-                    try {
-                      const hel = el as HTMLElement;
-                      hel.style.removeProperty('border');
-                      hel.style.removeProperty('outline');
-                      hel.style.removeProperty('outline-offset');
-                      hel.style.removeProperty('padding');
-                      hel.style.removeProperty('box-shadow');
-                    } catch {}
-                  });
-                  // Also clear the node attributes from the document
-                  try {
-                    if (editor) {
-                      const { state, view } = editor as any;
-                      let tr = state.tr;
-                      let changed = false;
-                      state.doc.descendants((node: any, position: number) => {
-                        if (node.type?.name === 'speaker' && node.attrs?.selected) {
-                          tr = tr.setNodeMarkup(position, undefined, { ...node.attrs, selected: false });
-                          changed = true;
-                        }
-                        return true;
-                      });
-                      if (changed) view.dispatch(tr);
-                    }
-                  } catch {}
-                }
-                document.querySelectorAll('[data-type="cue-block"].cue-selected').forEach(el => {
-                  el.classList.remove('cue-selected');
-                });
-                document.querySelectorAll('[data-type="scene-block"].scene-selected').forEach(el => {
-                  el.classList.remove('scene-selected');
-                });
-                
-                if (speakerElement) {
-                  // Clicked on speaker - show SPEAKER menu
-                  debugLog('[Editor] Clicked on speaker element:', speakerElement);
-                  
-                  const speakerName = speakerElement.textContent?.trim() || '';
-                  setCurrentSpeakerName(speakerName);
-                  if (editAllSpeakers) liveRenameBaseRef.current = speakerName;
-                  
-                  // Persist selection by updating node attribute on the speaker node
-                  try {
-                    if (editor) {
-                      const view: any = (editor as any).view;
-                      const { state } = editor;
-                      let targetPos: number | null = null;
-                      state.doc.descendants((node, position) => {
-                        if (node.type.name === 'speaker') {
-                          const domForNode = view.nodeDOM(position) as HTMLElement | null;
-                          if (domForNode && (domForNode === speakerElement || domForNode.contains(speakerElement))) {
-                            targetPos = position;
-                            return false;
-                          }
-                        }
-                        return true;
-                      });
-                      if (typeof targetPos === 'number') {
-                        const nodeAt = state.doc.nodeAt(targetPos);
-                        if (nodeAt) {
-                          let tr = state.tr;
-                          state.doc.descendants((node, position) => {
-                            if (node.type.name === 'speaker' && node.attrs.selected) {
-                              tr = tr.setNodeMarkup(position, undefined, { ...node.attrs, selected: false });
-                            }
-                            return true;
-                          });
-                          tr = tr.setNodeMarkup(targetPos, undefined, { ...nodeAt.attrs, selected: true });
-                          view.dispatch(tr);
-                          // Place caret at end of speaker name
-                          const end = targetPos + 1 + nodeAt.content.size;
-                          try {
-                            (editor as any).chain().setTextSelection(end).focus().run();
-                          } catch {}
-                        }
-                      }
-                    }
-                  } catch {}
-                  
-                  // If editAllSpeakers is true, highlight all speakers with the same name
-                  if (editAllSpeakers) {
-                    document.querySelectorAll('[data-type="speaker"]').forEach(el => {
-                      if (el.textContent?.trim() === speakerName) {
-                        el.classList.add('speaker-selected');
-                      }
-                    });
-                  }
-                  
-                  // Show speaker-select toolbar
-                  showContextMenu(e.clientX, e.clientY, 'speaker-select');
-                  // Prevent default toolbar switching
-                  e.stopPropagation();
-                } else if (dialogueTextElement && dialogueBlockElement) {
-                  // Clicked inside dialogue text - show TEXT FORMATTING toolbar
-                  debugLog('[Editor] Clicked on dialogue text element:', dialogueTextElement);
-                  
-                  // Find and highlight the speaker element within the same dialogue block
-                  const speakerInBlock = dialogueBlockElement.querySelector('[data-type="speaker"]');
-                  if (speakerInBlock) {
-                    const speakerName = speakerInBlock.textContent?.trim() || '';
-                    setCurrentSpeakerName(speakerName);
-                    
-                    // Do not switch speaker into editable mode for dialogue text click
-                    
-                    // If editAllSpeakers is true, highlight all speakers with the same name
-                    if (editAllSpeakers) {
-                      document.querySelectorAll('[data-type="speaker"]').forEach(el => {
-                        if (el.textContent?.trim() === speakerName) {
-                          el.classList.add('speaker-selected');
-                        }
-                      });
-                    }
-                  }
-                  
-                  showContextMenu(e.clientX, e.clientY, 'text-formatting');
-                  e.stopPropagation(); // Prevent default toolbar from showing
-                } else if (cueBlockElement) {
-                  // Clicked on cue block - show cue-select context
-                  debugLog('[Editor] Clicked on cue block element:', cueBlockElement);
-                  
-                  // Add selected class to clicked cue block
-                  cueBlockElement.classList.add('cue-selected');
-                  
-                  showContextMenu(e.clientX, e.clientY, 'cue-select');
-                  e.stopPropagation(); // Prevent default toolbar from showing
-                } else if (sceneBlockElement) {
-                  // Clicked on scene block - show scene-select context
-                  debugLog('[Editor] Clicked on scene block element:', sceneBlockElement);
-                  
-                  // Add selected class to clicked scene block
-                  sceneBlockElement.classList.add('scene-selected');
-                  // Move ProseMirror selection inside the clicked scene block
-                  try {
-                    if (editor) {
-                      const view: any = (editor as any).view;
-                      const posInNode = view.posAtDOM(sceneBlockElement, 0);
-                      if (typeof posInNode === 'number' && posInNode >= 0) {
-                        // place cursor at start+1 (inside node content)
-                        editor.chain().setTextSelection(Math.min(posInNode + 1, editor.state.doc.content.size - 1)).run();
-                      }
-                    }
-                  } catch {}
-                  
-                  showContextMenu(e.clientX, e.clientY, 'scene-select');
-                  e.stopPropagation(); // Prevent default toolbar from showing
-                } else {
-                  // Clicked elsewhere - hide any special context and clear speaker selection
-                  // This allows the toolbar to show text-formatting when text is selected
-                  hideContextMenu();
-                  setEditAllSpeakers(false);
-                  setCurrentSpeakerName(null);
-                  // Clear any selected speaker node attribute
-                  try {
-                    if (editor) {
-                      const { state, view } = editor as any;
-                      let tr = state.tr;
-                      let changed = false;
-                      state.doc.descendants((node: any, position: number) => {
-                        if (node.type?.name === 'speaker' && node.attrs?.selected) {
-                          tr = tr.setNodeMarkup(position, undefined, { ...node.attrs, selected: false });
-                          changed = true;
-                        }
-                        return true;
-                      });
-                      if (changed) view.dispatch(tr);
-                    }
-                  } catch {}
-                }
-}}
-            >
-              {/* This is where the TipTap editor content will render */}
-              <div ref={(node) => {
-                if (node && editor && !node.contains(editor.options.element)) {
-                  node.appendChild(editor.options.element);
-                }
-              }} />
-            </div>
-          ) : (
-            <div className="editor-loading">
-              <LoadingSpinner size="lg" />
-              <div>
-                <p>Initializing collaborative editor...</p>
-                {ydoc && provider ? (
-                  <p style={{ fontSize: '14px', opacity: 0.7 }}>
-                    ✅ Collaboration ready - Creating editor...
-                  </p>
-                ) : (
-                  <p style={{ fontSize: '14px', opacity: 0.7 }}>
-                    🔄 Status: {connectionStatus} - Setting up real-time sync...
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
+          <EditorContent
+            editor={editor}
+            connectionStatus={connectionStatus}
+            ydoc={ydoc}
+            provider={provider}
+            onContextMenu={handleContextMenu}
+            setLocalContextMenu={setLocalContextMenu}
+            setSuppressRehearsalAutoScroll={setSuppressRehearsalAutoScroll}
+            setShouldCenterOnRehearsalChange={setShouldCenterOnRehearsalChange}
+            pendingCenterRef={pendingCenterRef}
+            debugLog={debugLog}
+            editAllSpeakers={editAllSpeakers}
+            setEditAllSpeakers={setEditAllSpeakers}
+            setCurrentSpeakerName={setCurrentSpeakerName}
+            liveRenameBaseRef={liveRenameBaseRef}
+            isLiveRenamingRef={isLiveRenamingRef}
+            hideContextMenu={hideContextMenu}
+            showContextMenu={showContextMenu}
+          />
         </SinglePageView>
       )}
-      
+
       {/* Context Menu */}
       {localContextMenu.visible && (
         <div 
@@ -1689,54 +1116,8 @@ export const Editor: React.FC<EditorProps> = ({
           // If turning ON rehearsal mode: try to adopt another user's position via Yjs awareness
           if (newMode) {
             try {
-              if (provider && (provider as any).awareness) {
-                const awareness: any = (provider as any).awareness;
-                const clientId = awareness.clientID;
-                const states: Map<number, any> = awareness.getStates();
-                let sharedPos: number | null = null;
-                states.forEach((state: any, id: number) => {
-                  if (id !== clientId && state && typeof state.rehearsalLinePosition === 'number' && state.rehearsalLinePosition > 0) {
-                    if (sharedPos === null) sharedPos = state.rehearsalLinePosition;
-                  }
-                });
-                if (sharedPos !== null) {
-                  // Only act if position differs from current
-                  if (Math.abs(sharedPos - rehearsalLinePosition) <= 0.5) {
-                    // No change → don't scroll/center
-                    return;
-                  }
-                  // Adopt shared position locally without rebroadcasting
-                  isApplyingRemoteRehearsalRef.current = true;
-                  setRehearsalLinePosition(sharedPos);
-                  // If a precise doc pos is advertised, use it to compute Y locally
-                  try {
-                    const adv = Array.from(states.values()).find((s: any) => s && (s.rehearsalWordRect || typeof s.rehearsalDocPos === 'number'));
-                    if (adv?.rehearsalWordRect) {
-                      const r = adv.rehearsalWordRect;
-                      if (typeof r.top === 'number') setRehearsalLinePosition(r.top + (r.height || 0));
-                      setRehearsalWordBox({ left: r.left, top: r.top, width: r.width, height: r.height });
-                    } else if (editor && typeof adv?.rehearsalDocPos === 'number') {
-                      const pos = adv.rehearsalDocPos;
-                      const view: any = (editor as any).view;
-                      const coords = view.coordsAtPos(pos);
-                      const containerElement = document.querySelector('.singlePageContainer') as HTMLElement | null;
-                      if (coords && containerElement) {
-                        const containerRect = containerElement.getBoundingClientRect();
-                        const containerScrollTop = containerElement.scrollTop || 0;
-                        const y = coords.top - containerRect.top + containerScrollTop;
-                        setRehearsalLinePosition(y);
-                        setRehearsalDocPos(pos);
-                      }
-                    }
-                  } catch {}
-                  // Release the remote-apply guard shortly after applying
-                  setTimeout(() => { isApplyingRemoteRehearsalRef.current = false; }, 0);
-                  // Request centering once
-                  pendingCenterRef.current = true;
-                } else {
-                  // No shared position → start at beginning and publish 0
-                  // Do not broadcast 0 to avoid resetting others; keep local default
-                }
+              if (adoptRemotePosition()) {
+                return;
               }
             } catch {}
           }
@@ -1752,438 +1133,38 @@ export const Editor: React.FC<EditorProps> = ({
         }}
       />
       {/* Right Sidebar */}
-      <div className={`rightSidebar ${rightSidebarOpen ? 'open' : 'collapsed'}`}>
-        <div
-          className="rightSidebarToggle"
-          role="button"
-          aria-label={rightSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-          title={rightSidebarOpen ? 'Collapse' : 'Expand'}
-          onClick={() => setRightSidebarOpen(v => !v)}
-        >
-          {rightSidebarOpen ? '<' : '>'}
-        </div>
-        {/* Sidebar information sections */}
-        {rightSidebarOpen && (
-          <div className="rightSidebarInner">
-            <div className="rs-tablist" role="tablist" aria-label="Sidebar sections">
-              <button
-                type="button"
-                id="rs-tab-scenes"
-                role="tab"
-                aria-selected={sidebarTab === 'scenes'}
-                aria-controls="rs-panel-scenes"
-                className={`rs-tab ${sidebarTab === 'scenes' ? 'active' : ''}`}
-                onClick={() => setSidebarTab('scenes')}
-              >
-                Szenen
-              </button>
-              <button
-                type="button"
-                id="rs-tab-cues"
-                role="tab"
-                aria-selected={sidebarTab === 'cues'}
-                aria-controls="rs-panel-cues"
-                className={`rs-tab ${sidebarTab === 'cues' ? 'active' : ''}`}
-                onClick={() => setSidebarTab('cues')}
-              >
-                Cues
-              </button>
-              <button
-                type="button"
-                id="rs-tab-comments"
-                role="tab"
-                aria-selected={sidebarTab === 'comments'}
-                aria-controls="rs-panel-comments"
-                className={`rs-tab ${sidebarTab === 'comments' ? 'active' : ''}`}
-                onClick={() => setSidebarTab('comments')}
-              >
-                Comments
-              </button>
-            </div>
-            {sidebarTab === 'scenes' && (
-              <div className="rs-tabpanel" role="tabpanel" id="rs-panel-scenes" aria-labelledby="rs-tab-scenes">
-                <div className="rs-list">
-                  {sidebarScenes.map(scene => (
-                    <div
-                      key={scene.id}
-                      className={`rs-card clickable ${activeSidebarSceneId===scene.id ? 'active' : ''}`}
-                      onClick={() => {
-                        const sceneNodes = document.querySelectorAll('[data-type="scene-block"]');
-                        const target = sceneNodes[scene.index] as HTMLElement | undefined;
-                        if (target) {
-                          sceneNodes.forEach(node => {
-                            if (node instanceof HTMLElement) {
-                              node.classList.remove('sidebar-scene-highlight');
-                            }
-                          });
-                          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                          target.classList.add('sidebar-scene-highlight');
-                          window.setTimeout(() => target.classList.remove('sidebar-scene-highlight'), 1200);
-                        }
-                        setActiveSidebarSceneId(scene.id);
-                        setSidebarPanel(null);
-                      }}
-                    >
-                      <div className="rs-scene-row">
-                        <span className="rs-scene-number">Szene {scene.sceneNumber}</span>
-                        <span className="rs-scene-name">{scene.sceneName}</span>
-                      </div>
-                    </div>
-                  ))}
-                  {sidebarScenes.length === 0 && <div className="rs-empty">No scenes in this script yet.</div>}
-                </div>
-              </div>
-            )}
-            {sidebarTab === 'cues' && (
-              <div className="rs-tabpanel" role="tabpanel" id="rs-panel-cues" aria-labelledby="rs-tab-cues">
-                <div className="rs-section">
-              <div className="rs-header">
-                <span>Cues</span>
-                <button onClick={() => setCuesCollapsed(v => !v)}>{cuesCollapsed ? '▸' : '▾'}</button>
-              </div>
-              {!cuesCollapsed && (
-                <div className="rs-list">
-                  {/* Cue type filter chips (emoji-only squares) */}
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    {(['light','video','sound','props'] as CueType[]).map(t => (
-                      <button
-                        key={t}
-                        type="button"
-                        className={`rs-chip ${cueFilters[t] ? 'active' : ''}`}
-                        onClick={() => setCueFilters(prev => ({ ...prev, [t]: !prev[t] }))}
-                        aria-pressed={cueFilters[t]}
-                        title={t}
-                      >
-                        <span aria-hidden>{CUE_TYPE_ICONS[t]}</span>
-                      </button>
-                    ))}
-                  </div>
-                  {(() => {
-                    const filtered = sidebarCues.filter(c => cueFilters[c.cueType as CueType]).sort((a,b) => a.y - b.y);
-                    const groups: Array<{ y:number; x:number; items: typeof filtered }> = [] as any;
-                    const bandY = 6, bandX = 12;
-                    filtered.forEach(c => {
-                      let g = groups.find(gr => Math.abs(gr.y - c.y) <= bandY && Math.abs(gr.x - c.x) <= bandX);
-                      if (!g) { g = { y: c.y, x: c.x, items: [] as any }; groups.push(g); }
-                      (g.items as any).push(c);
-                    });
-                    return groups.flatMap((g, gi) => {
-                      // If the group has only one item, render just the card (no dashed group box)
-                      if ((g.items as any).length === 1) {
-                        const c = (g.items as any)[0];
-                        return [
-                          <div
-                            key={c.cueId}
-                            data-cue-id={c.cueId}
-                            className={`rs-card clickable ${activeSidebarCueId===c.cueId ? 'active' : ''}`}
-                            onClick={() => {
-                              const el = document.querySelector('.cue-connection[data-cue-id="' + c.cueId + '"]');
-                              if (el) {
-                                (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                (el as HTMLElement).classList.add('hover-highlight');
-                                setTimeout(() => (el as HTMLElement).classList.remove('hover-highlight'), 800);
-                              }
-                              setActiveSidebarCueId(c.cueId);
-                              setExpandedCueId(prev => prev === c.cueId ? null : c.cueId);
-                            }}
-                          >
-                          <div className="rs-cue-row">
-                            <span className="rs-cue-emoji" aria-hidden>{CUE_TYPE_ICONS[c.cueType as keyof typeof CUE_TYPE_ICONS] || '🎛️'}</span>
-                            <span className="rs-cue-number">Q{c.cueNumber}</span>
-                            <span
-                              className={`rs-cue-name ${sidebarPanel && sidebarPanel.type==='cue' && sidebarPanel.cueId===c.cueId ? 'editable-hint' : ''}`}
-                              title={c.cueName || (c.cueType?.toUpperCase?.() || '')}
-                              contentEditable={Boolean(sidebarPanel && sidebarPanel.type==='cue' && sidebarPanel.cueId===c.cueId)}
-                              suppressContentEditableWarning
-                              data-cue-id={c.cueId}
-                              onMouseDown={(e) => {
-                                // prevent parent card toggle while editing
-                                if (sidebarPanel && sidebarPanel.type==='cue' && sidebarPanel.cueId===c.cueId) e.stopPropagation();
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  const el = e.currentTarget as HTMLElement;
-                                  const newName = (el.innerText || '').trim();
-                                  if (editor) (editor as any).commands.updateCueById(c.cueId, { cueName: newName });
-                                  (el as HTMLElement).blur();
-                                }
-                              }}
-                              onBlur={(e) => {
-                                const el = e.currentTarget as HTMLElement;
-                                const newName = (el.innerText || '').trim();
-                                if (editor) (editor as any).commands.updateCueById(c.cueId, { cueName: newName });
-                              }}
-                            >
-                              {c.cueName || (c.cueType?.toUpperCase?.() || '')}
-                            </span>
-                              <button
-                                className="rs-btn rs-cue-edit"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const isEditing = !!(sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === c.cueId);
-                                  if (isEditing) {
-                                    // Save inline name and exit edit mode
-                                    try {
-                                      const el = document.querySelector(`.rs-cue-name[data-cue-id="${c.cueId}"]`) as HTMLElement | null;
-                                      const newName = (el?.innerText || '').trim();
-                                      if (editor) (editor as any).commands.updateCueById(c.cueId, { cueName: newName });
-                                    } catch {}
-                                    setSidebarPanel(null);
-                                  } else {
-                                    setSidebarPanel({ type: 'cue', cueId: c.cueId, cueType: c.cueType, cueNumber: c.cueNumber, cueName: c.cueName || '', draftName: c.cueName || '' });
-                                    setExpandedCueId(c.cueId);
-                                    setTimeout(() => {
-                                      try {
-                                        const el = document.querySelector(`.rs-cue-name[data-cue-id="${c.cueId}"]`) as HTMLElement | null;
-                                        if (el) {
-                                          el.focus();
-                                          const range = document.createRange();
-                                          range.selectNodeContents(el);
-                                          range.collapse(false);
-                                          const sel = window.getSelection();
-                                          sel?.removeAllRanges();
-                                          sel?.addRange(range);
-                                        }
-                                      } catch {}
-                                    }, 0);
-                                  }
-                                }}
-                              >
-                                {(sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === c.cueId) ? 'Save' : 'Edit'}
-                              </button>
-                          </div>
-                            {/* Expanded details */}
-                            {expandedCueId === c.cueId && (
-                              <div className="rs-cue-details">
-                                <div className="row"><span className="k">Type</span><span className="v">{c.cueType.toUpperCase()}</span></div>
-                                <div className="row"><span className="k">Number</span><span className="v">{c.cueNumber}</span></div>
-                                {c.cueName && <div className="row"><span className="k">Name</span><span className="v">{c.cueName}</span></div>}
-                                {c.text && (
-                                  <div className="row">
-                                    <span className="k">Stichwort</span>
-                                    <span className="v">{"\u0022..." + c.text + "...\u0022"}</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            {/* Inline edit actions and description */}
-                            {sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === c.cueId && (
-                              <div style={{ marginTop: 10 }}>
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                  <button className="rs-btn" onClick={(e) => { e.stopPropagation(); if (!editor) return; (editor as any).commands.startCueExtend?.(c.cueId); }}>Move Link</button>
-                                  <button className="rs-btn" style={{ color: '#dc2626', borderColor: '#7f1d1d' }} onClick={(e) => { e.stopPropagation(); if (!editor) return; (editor as any).commands.removeCueConnection(c.cueId); setSidebarPanel(null); }}>Delete</button>
-                                </div>
-                                <div style={{ marginTop: 8 }}>
-                                  <label style={{ display: 'block', fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Description (temporary, frontend only)</label>
-                                  <textarea
-                                    value={cueDescriptions[c.cueId] || ''}
-                                    onChange={(e) => setCueDescriptions(prev => ({ ...prev, [c.cueId]: e.target.value }))}
-                                    placeholder="Add details for technicians, stage directions, timing…"
-                                    style={{ width: '100%', minHeight: 80, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-text)' }}
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ];
-                      }
-                      // Otherwise render grouped container
-                      return [
-                        <div key={`g-${gi}`} className="rs-group">
-                          {(g.items as any).map((c: any) => (
-                          <div
-                            key={c.cueId}
-                            data-cue-id={c.cueId}
-                            className={`rs-card clickable ${activeSidebarCueId===c.cueId ? 'active' : ''}`}
-                            onClick={() => {
-                              const el = document.querySelector('.cue-connection[data-cue-id="' + c.cueId + '"]');
-                              if (el) {
-                                (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                (el as HTMLElement).classList.add('hover-highlight');
-                                setTimeout(() => (el as HTMLElement).classList.remove('hover-highlight'), 800);
-                              }
-                              setActiveSidebarCueId(c.cueId);
-                              setExpandedCueId(prev => prev === c.cueId ? null : c.cueId);
-                            }}
-                          >
-                              <div className="rs-cue-row">
-                                <span className="rs-cue-emoji" aria-hidden>{CUE_TYPE_ICONS[c.cueType as keyof typeof CUE_TYPE_ICONS] || '🎛️'}</span>
-                                <span className="rs-cue-number">Q{c.cueNumber}</span>
-                                <span
-                                  className={`rs-cue-name ${sidebarPanel && sidebarPanel.type==='cue' && sidebarPanel.cueId===c.cueId ? 'editable-hint' : ''}`}
-                                  title={c.cueName || (c.cueType?.toUpperCase?.() || '')}
-                                  contentEditable={Boolean(sidebarPanel && sidebarPanel.type==='cue' && sidebarPanel.cueId===c.cueId)}
-                                  suppressContentEditableWarning
-                                  data-cue-id={c.cueId}
-                                  onMouseDown={(e) => {
-                                    if (sidebarPanel && sidebarPanel.type==='cue' && sidebarPanel.cueId===c.cueId) e.stopPropagation();
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      const el = e.currentTarget as HTMLElement;
-                                      const newName = (el.innerText || '').trim();
-                                      if (editor) (editor as any).commands.updateCueById(c.cueId, { cueName: newName });
-                                      (el as HTMLElement).blur();
-                                    }
-                                  }}
-                                  onBlur={(e) => {
-                                    const el = e.currentTarget as HTMLElement;
-                                    const newName = (el.innerText || '').trim();
-                                    if (editor) (editor as any).commands.updateCueById(c.cueId, { cueName: newName });
-                                  }}
-                                >
-                                  {c.cueName || (c.cueType?.toUpperCase?.() || '')}
-                                </span>
-                                <button
-                                  className="rs-btn rs-cue-edit"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const isEditing = !!(sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === c.cueId);
-                                    if (isEditing) {
-                                      try {
-                                        const el = document.querySelector(`.rs-cue-name[data-cue-id=\"${c.cueId}\"]`) as HTMLElement | null;
-                                        const newName = (el?.innerText || '').trim();
-                                        if (editor) (editor as any).commands.updateCueById(c.cueId, { cueName: newName });
-                                      } catch {}
-                                      setSidebarPanel(null);
-                                    } else {
-                                      setSidebarPanel({ type: 'cue', cueId: c.cueId, cueType: c.cueType, cueNumber: c.cueNumber, cueName: c.cueName || '', draftName: c.cueName || '' });
-                                      setExpandedCueId(c.cueId);
-                                      setTimeout(() => {
-                                        try {
-                                          const el = document.querySelector(`.rs-cue-name[data-cue-id=\"${c.cueId}\"]`) as HTMLElement | null;
-                                          if (el) {
-                                            el.focus();
-                                            const range = document.createRange();
-                                            range.selectNodeContents(el);
-                                            range.collapse(false);
-                                            const sel = window.getSelection();
-                                            sel?.removeAllRanges();
-                                            sel?.addRange(range);
-                                          }
-                                        } catch {}
-                                      }, 0);
-                                    }
-                                  }}
-                                >
-                                  {(sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === c.cueId) ? 'Save' : 'Edit'}
-                                </button>
-                              </div>
-                              {/* Expanded details */}
-                              {expandedCueId === c.cueId && (
-                                <div className="rs-cue-details">
-                                  <div className="row"><span className="k">Type</span><span className="v">{c.cueType.toUpperCase()}</span></div>
-                                  <div className="row"><span className="k">Number</span><span className="v">{c.cueNumber}</span></div>
-                                  {c.cueName && <div className="row"><span className="k">Name</span><span className="v">{c.cueName}</span></div>}
-                                  {c.text && (
-                                    <div className="row">
-                                      <span className="k">Stichwort</span>
-                                      <span className="v">{"\u0022..." + c.text + "...\u0022"}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              {/* Inline edit actions and description */}
-                              {sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === c.cueId && (
-                                <div style={{ marginTop: 10 }}>
-                                  <div style={{ display: 'flex', gap: 8 }}>
-                                    <button className="rs-btn" onClick={(e) => { e.stopPropagation(); if (!editor) return; (editor as any).commands.startCueExtend?.(c.cueId); }}>Move Link</button>
-                                    <button className="rs-btn" style={{ color: '#dc2626', borderColor: '#7f1d1d' }} onClick={(e) => { e.stopPropagation(); if (!editor) return; (editor as any).commands.removeCueConnection(c.cueId); setSidebarPanel(null); }}>Delete</button>
-                                  </div>
-                                  <div style={{ marginTop: 8 }}>
-                                    <label style={{ display: 'block', fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Description (temporary, frontend only)</label>
-                                    <textarea
-                                      value={cueDescriptions[c.cueId] || ''}
-                                      onChange={(e) => setCueDescriptions(prev => ({ ...prev, [c.cueId]: e.target.value }))}
-                                      placeholder="Add details for technicians, stage directions, timing…"
-                                      style={{ width: '100%', minHeight: 80, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-text)' }}
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ];
-                    });
-                  })()}
-                  {sidebarCues.length === 0 && <div style={{ opacity: 0.5, fontSize: 12 }}>No cues in this script yet.</div>}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-            {sidebarTab === 'comments' && (
-              <div className="rs-tabpanel" role="tabpanel" id="rs-panel-comments" aria-labelledby="rs-tab-comments">
-                <div className="rs-section">
-                  <div className="rs-header">
-                    <span>Comments</span>
-                    <button onClick={() => setCommentsCollapsed(v => !v)}>{commentsCollapsed ? '▸' : '▾'}</button>
-                  </div>
-                  {!commentsCollapsed && (
-                    <div className="rs-list">
-                      {sidebarComments.map(cm => (
-                        <div
-                          key={cm.id}
-                          className={`rs-card ${activeSidebarCommentId===cm.id ? 'active' : ''}`}
-                          data-comment-id={cm.id}
-                          onMouseEnter={() => {
-                            document.querySelectorAll(`.comment-annotation[data-comment-id="${cm.id}"]`).forEach(el => {
-                              el.classList.add('connected-highlight');
-                            });
-                          }}
-                          onMouseLeave={() => {
-                            document.querySelectorAll(`.comment-annotation[data-comment-id="${cm.id}"]`).forEach(el => {
-                              el.classList.remove('connected-highlight');
-                            });
-                          }}
-                          onClick={() => {
-                            const el = document.querySelector(`.comment-annotation[data-comment-id="${cm.id}"]`) as HTMLElement | null;
-                            if (el) {
-                              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                              el.classList.add('connected-highlight');
-                              setTimeout(() => el.classList.remove('connected-highlight'), 800);
-                            }
-                            setActiveSidebarCommentId(cm.id);
-                          }}
-                        >
-                          <div className="rs-comment">
-                            <div className="rs-avatar">💬</div>
-                            <div className="content">
-                              <div className="name">Comment</div>
-                              <div className="text">{cm.text || 'No text yet'}</div>
-                              {(sidebarPanel && sidebarPanel.type === 'comment' && sidebarPanel.id === cm.id) ? (
-                                <div style={{ marginTop: 8 }}>
-                                  <textarea value={(sidebarPanel as any).draft} onChange={(e) => setSidebarPanel(p => p && p.type === 'comment' ? { ...p, draft: e.target.value } : p)} style={{ width: '100%', minHeight: 90, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)' }} />
-                                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                                    <button className="rs-btn primary" onClick={() => { if (!editor) return; (editor as any).commands.updateCommentById(cm.id, { commentText: (sidebarPanel as any).draft }); setSidebarPanel(null); }}>Save</button>
-                                    <button className="rs-btn" style={{ color: '#dc2626', borderColor: '#7f1d1d' }} onClick={() => { if (!editor) return; (editor as any).commands.removeCommentById(cm.id); setSidebarPanel(null); }}>Delete</button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="actions" style={{ marginTop: 8 }}>
-                                  <button className="rs-btn" onClick={(e) => { e.stopPropagation(); setSidebarPanel(prev => (prev && prev.type==='comment' && prev.id===cm.id) ? null : { type: 'comment', id: cm.id, draft: cm.text }); }}>Edit</button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      {sidebarComments.length === 0 && <div style={{ opacity: 0.5, fontSize: 12 }}>No comments yet.</div>}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <RightSidebar
+        open={rightSidebarOpen}
+        onToggleOpen={() => setRightSidebarOpen(v => !v)}
+        tab={sidebarTab}
+        setTab={setSidebarTab}
+        scenes={sidebarScenes}
+        activeSceneId={activeSidebarSceneId}
+        setActiveSceneId={setActiveSidebarSceneId}
+        sidebarPanel={sidebarPanel}
+        setSidebarPanel={setSidebarPanel}
+        cuesCollapsed={cuesCollapsed}
+        setCuesCollapsed={setCuesCollapsed}
+        sidebarCues={sidebarCues}
+        cueFilters={cueFilters}
+        setCueFilters={setCueFilters}
+        activeCueId={activeSidebarCueId}
+        setActiveCueId={setActiveSidebarCueId}
+        expandedCueId={expandedCueId}
+        setExpandedCueId={setExpandedCueId}
+        cueDescriptions={cueDescriptions}
+        setCueDescriptions={setCueDescriptions}
+        commentsCollapsed={commentsCollapsed}
+        setCommentsCollapsed={setCommentsCollapsed}
+        sidebarComments={sidebarComments}
+        activeCommentId={activeSidebarCommentId}
+        setActiveCommentId={setActiveSidebarCommentId}
+        editor={editor}
+      />
       {/* Sidebar content */}
         {/* Inline editor removed (handled inline per card) */}
       
       {/* Audio Transcription removed per request */}
-    </div>
+    </EditorShell>
   );
-}; 
+};
