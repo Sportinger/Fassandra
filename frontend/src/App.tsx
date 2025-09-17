@@ -10,6 +10,9 @@ import { Editor } from './components/editor'
 import ScriptUploader from './components/ScriptUploader'
 import { PlaceholderScript } from './types'
 import { Header } from './components/Header';
+import Footer from './components/Footer';
+import Privacy from './components/Privacy';
+import Imprint from './components/Imprint';
 import { getScriptWithYjs } from './api';
 import { YjsDocumentProvider } from './contexts/YjsDocumentContext';
 import { logDebugInfo } from './utils/debug';
@@ -38,6 +41,18 @@ import './App.css'
  */
 function App(): JSX.Element {
   const { token, language = 'de' } = useAuth()
+  const getPath = () => {
+    const hash = window.location.hash || '';
+    if (hash.startsWith('#/')) return hash.slice(1);
+    return window.location.pathname;
+  };
+  const [path, setPath] = React.useState<string>(() => getPath())
+  React.useEffect(() => {
+    const onPop = () => setPath(getPath())
+    window.addEventListener('popstate', onPop)
+    window.addEventListener('hashchange', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
   const {
     currentView,
     selectedScriptId,
@@ -129,6 +144,28 @@ function App(): JSX.Element {
     // Trigger a refresh in the ScriptList component
     triggerRefresh();
   };
+
+  // Static pages (always accessible)
+  if (path === '/privacy' || path === '/datenschutz') {
+    return (
+      <div className="App">
+        <main className={'appContent appContentFull appContentNoHeader'}>
+          <Privacy />
+        </main>
+        <Footer language={language} />
+      </div>
+    );
+  }
+  if (path === '/imprint' || path === '/impressum') {
+    return (
+      <div className="App">
+        <main className={'appContent appContentFull appContentNoHeader'}>
+          <Imprint />
+        </main>
+        <Footer language={language} />
+      </div>
+    );
+  }
 
   // Determine view based on auth state
   let viewComponent
@@ -224,6 +261,7 @@ function App(): JSX.Element {
               </ErrorBoundary>
             )}
           </main>
+          {!token && <Footer language={language} />}
         </div>
       </YjsDocumentProvider>
     </ErrorBoundary>

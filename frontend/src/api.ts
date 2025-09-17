@@ -60,6 +60,16 @@ export const getCurrentUser = async (): Promise<{ id: string; email: string; use
     return apiService.get('/api/me');
 };
 
+// --- Account (Privacy/GDPR) --- //
+
+export const exportAccountData = async (): Promise<any> => {
+    return apiService.get('/api/account/export');
+};
+
+export const deleteMyAccount = async (): Promise<void> => {
+    await apiService.delete('/api/account');
+};
+
 // --- Scripts --- //
 
 export const getScripts = async (forceRefresh = false): Promise<Script[]> => {

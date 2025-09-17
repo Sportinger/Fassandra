@@ -263,6 +263,26 @@
   text-decoration: underline;
 }
 
+/* Legal links shown on auth screens */
+.legalLinks {
+  margin-top: 8px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+.legalLinks button {
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  padding: 0 4px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.legalLinks a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
 /* Password requirements popover */
 .relativeGroup {
   position: relative;
