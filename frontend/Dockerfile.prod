@@ -8,6 +8,9 @@ ARG VITE_GOOGLE_CLIENT_ID
 
 WORKDIR /app
 
+# Upgrade npm to mitigate recent supply-chain incidents
+RUN npm install -g npm@11.6.0
+
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
 
