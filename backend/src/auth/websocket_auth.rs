@@ -1,11 +1,11 @@
+use crate::auth::{decode_token, AuthUser};
+use crate::error::AppError;
 use axum::{
     async_trait,
     extract::{FromRequestParts, Query},
     http::request::Parts,
 };
 use serde::Deserialize;
-use crate::auth::{decode_token, AuthUser};
-use crate::error::AppError;
 
 #[derive(Debug, Deserialize)]
 pub struct WebSocketAuthQuery {
@@ -33,14 +33,15 @@ where
             .await
             .map_err(|_| AppError::Unauthorized("Missing token parameter".to_string()))?;
 
-        let token = query.token
+        let token = query
+            .token
             .ok_or_else(|| AppError::Unauthorized("Missing token parameter".to_string()))?;
 
         // Decode and validate the token
         let claims = decode_token(&token)?;
-        
-        Ok(WebSocketAuth(AuthUser { 
-            user_id: claims.sub
+
+        Ok(WebSocketAuth(AuthUser {
+            user_id: claims.sub,
         }))
     }
 }

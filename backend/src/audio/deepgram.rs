@@ -1,8 +1,11 @@
 use anyhow::{anyhow, Result};
-use futures_util::{StreamExt, SinkExt};
+use futures_util::{SinkExt, StreamExt};
 use serde_json::Value;
 use tokio::sync::mpsc;
-use tokio_tungstenite::{connect_async, tungstenite::{protocol::Message, client::IntoClientRequest, http::HeaderValue}};
+use tokio_tungstenite::{
+    connect_async,
+    tungstenite::{client::IntoClientRequest, http::HeaderValue, protocol::Message},
+};
 
 use crate::audio::types::{AsrPartial, ProgressWord};
 
@@ -18,7 +21,10 @@ pub struct DeepgramAdapter {
 }
 
 impl DeepgramAdapter {
-    pub async fn connect(cfg: DeepgramConfig, mut result_tx: mpsc::Sender<AsrPartial>) -> Result<Self> {
+    pub async fn connect(
+        cfg: DeepgramConfig,
+        mut result_tx: mpsc::Sender<AsrPartial>,
+    ) -> Result<Self> {
         let url = format!(
             "wss://api.deepgram.com/v1/listen?model=nova-2&language={}&encoding=linear16&sample_rate={}&punctuate=true&interim_results=true",
             cfg.language, cfg.sample_rate
@@ -53,21 +59,57 @@ impl DeepgramAdapter {
                         if let Ok(v) = serde_json::from_str::<Value>(&txt) {
                             if let Some(_is_final) = v.get("is_final").and_then(|b| b.as_bool()) {
                                 // We accept interim and final partials
-                                if let Some(alts) = v.pointer("/channel/alternatives").and_then(|a| a.as_array()) {
+                                if let Some(alts) = v
+                                    .pointer("/channel/alternatives")
+                                    .and_then(|a| a.as_array())
+                                {
                                     if let Some(first) = alts.first() {
-                                        let text = first.get("transcript").and_then(|t| t.as_str()).unwrap_or("").to_string();
-                                        if !text.is_empty() { tracing::debug!("[deepgram] transcript: {}", text); }
+                                        let text = first
+                                            .get("transcript")
+                                            .and_then(|t| t.as_str())
+                                            .unwrap_or("")
+                                            .to_string();
+                                        if !text.is_empty() {
+                                            tracing::debug!("[deepgram] transcript: {}", text);
+                                        }
                                         let mut words_vec: Vec<ProgressWord> = Vec::new();
-                                        if let Some(words) = first.get("words").and_then(|w| w.as_array()) {
+                                        if let Some(words) =
+                                            first.get("words").and_then(|w| w.as_array())
+                                        {
                                             for w in words {
-                                                let wtxt = w.get("word").and_then(|t| t.as_str()).unwrap_or("").to_string();
-                                                let start = w.get("start").and_then(|n| n.as_f64()).unwrap_or(0.0) as f32;
-                                                let end = w.get("end").and_then(|n| n.as_f64()).unwrap_or(0.0) as f32;
-                                                let conf = w.get("confidence").and_then(|n| n.as_f64()).map(|f| f as f32);
-                                                words_vec.push(ProgressWord { w: wtxt, start, end, conf });
+                                                let wtxt = w
+                                                    .get("word")
+                                                    .and_then(|t| t.as_str())
+                                                    .unwrap_or("")
+                                                    .to_string();
+                                                let start = w
+                                                    .get("start")
+                                                    .and_then(|n| n.as_f64())
+                                                    .unwrap_or(0.0)
+                                                    as f32;
+                                                let end = w
+                                                    .get("end")
+                                                    .and_then(|n| n.as_f64())
+                                                    .unwrap_or(0.0)
+                                                    as f32;
+                                                let conf = w
+                                                    .get("confidence")
+                                                    .and_then(|n| n.as_f64())
+                                                    .map(|f| f as f32);
+                                                words_vec.push(ProgressWord {
+                                                    w: wtxt,
+                                                    start,
+                                                    end,
+                                                    conf,
+                                                });
                                             }
                                         }
-                                        let _ = result_tx.send(AsrPartial { text, words: words_vec }).await;
+                                        let _ = result_tx
+                                            .send(AsrPartial {
+                                                text,
+                                                words: words_vec,
+                                            })
+                                            .await;
                                     }
                                 }
                             }

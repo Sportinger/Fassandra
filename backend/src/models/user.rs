@@ -20,4 +20,4 @@ pub struct User {
     pub role: String,
     /// Timestamp when the user was created
     pub created_at: Option<DateTime<Utc>>,
-} 
+}

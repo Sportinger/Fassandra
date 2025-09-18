@@ -3,12 +3,12 @@
 //! Contains the core business logic for script operations, independent of
 //! infrastructure concerns like database access or HTTP handling.
 
-use std::sync::Arc;
-use uuid::Uuid;
 use crate::error::AppError;
 use crate::models::script::Script;
 use crate::repositories::script_repository::ScriptRepository;
 use crate::repositories::user_repository::UserRepository;
+use std::sync::Arc;
+use uuid::Uuid;
 
 /// Request for creating a new script
 #[derive(Debug, Clone)]
@@ -58,35 +58,39 @@ pub struct ScriptService {
 }
 
 impl ScriptService {
-    pub fn new(
-        script_repo: Arc<dyn ScriptRepository>,
-        user_repo: Arc<dyn UserRepository>,
-    ) -> Self {
+    pub fn new(script_repo: Arc<dyn ScriptRepository>, user_repo: Arc<dyn UserRepository>) -> Self {
         Self {
             script_repo,
             user_repo,
         }
     }
-    
+
     /// Create a new script
-    pub async fn create_script(&self, request: CreateScriptRequest) -> Result<ScriptResponse, AppError> {
+    pub async fn create_script(
+        &self,
+        request: CreateScriptRequest,
+    ) -> Result<ScriptResponse, AppError> {
         // Validate user exists
         let user = self.user_repo.find_by_id(request.user_id).await?;
         if user.is_none() {
             return Err(AppError::NotFound("User not found".to_string()));
         }
-        
+
         // Business rule: Title must not be empty
         if request.title.trim().is_empty() {
-            return Err(AppError::BadRequest("Script title cannot be empty".to_string()));
+            return Err(AppError::BadRequest(
+                "Script title cannot be empty".to_string(),
+            ));
         }
-        
+
         // Business rule: Title must be unique for the user
         let existing_scripts = self.script_repo.find_by_user_id(request.user_id).await?;
         if existing_scripts.iter().any(|s| s.title == request.title) {
-            return Err(AppError::Conflict("Script with this title already exists".to_string()));
+            return Err(AppError::Conflict(
+                "Script with this title already exists".to_string(),
+            ));
         }
-        
+
         // Create the script
         let now = chrono::Utc::now();
         let script = Script {
@@ -97,12 +101,12 @@ impl ScriptService {
             is_public: Some(false),
             thumbnail: None,
         };
-        
+
         self.script_repo.create(&script).await?;
-        
+
         Ok(ScriptResponse::from(script))
     }
-    
+
     /// Get a script by ID
     pub async fn get_script(&self, id: Uuid) -> Result<ScriptResponse, AppError> {
         let script = self.script_repo.find_by_id(id).await?;
@@ -111,41 +115,53 @@ impl ScriptService {
             None => Err(AppError::NotFound("Script not found".to_string())),
         }
     }
-    
+
     /// Update a script
-    pub async fn update_script(&self, request: UpdateScriptRequest) -> Result<ScriptResponse, AppError> {
+    pub async fn update_script(
+        &self,
+        request: UpdateScriptRequest,
+    ) -> Result<ScriptResponse, AppError> {
         // Get existing script
         let script = self.script_repo.find_by_id(request.id).await?;
         let mut script = match script {
             Some(script) => script,
             None => return Err(AppError::NotFound("Script not found".to_string())),
         };
-        
+
         // Business rule: Only the owner can update the script
         if script.created_by != Some(request.user_id) {
-            return Err(AppError::Forbidden("You can only update your own scripts".to_string()));
+            return Err(AppError::Forbidden(
+                "You can only update your own scripts".to_string(),
+            ));
         }
-        
+
         // Update fields if provided
         if let Some(title) = request.title {
             if title.trim().is_empty() {
-                return Err(AppError::BadRequest("Script title cannot be empty".to_string()));
+                return Err(AppError::BadRequest(
+                    "Script title cannot be empty".to_string(),
+                ));
             }
-            
+
             // Business rule: Title must be unique for the user (excluding current script)
             let existing_scripts = self.script_repo.find_by_user_id(request.user_id).await?;
-            if existing_scripts.iter().any(|s| s.title == title && s.id != request.id) {
-                return Err(AppError::Conflict("Script with this title already exists".to_string()));
+            if existing_scripts
+                .iter()
+                .any(|s| s.title == title && s.id != request.id)
+            {
+                return Err(AppError::Conflict(
+                    "Script with this title already exists".to_string(),
+                ));
             }
-            
+
             script.title = title;
         }
-        
+
         self.script_repo.update(&script).await?;
-        
+
         Ok(ScriptResponse::from(script))
     }
-    
+
     /// Delete a script
     pub async fn delete_script(&self, id: Uuid, user_id: Uuid) -> Result<(), AppError> {
         // Get existing script
@@ -154,23 +170,25 @@ impl ScriptService {
             Some(script) => script,
             None => return Err(AppError::NotFound("Script not found".to_string())),
         };
-        
+
         // Business rule: Only the owner can delete the script
         if script.created_by != Some(user_id) {
-            return Err(AppError::Forbidden("You can only delete your own scripts".to_string()));
+            return Err(AppError::Forbidden(
+                "You can only delete your own scripts".to_string(),
+            ));
         }
-        
+
         self.script_repo.delete(id).await?;
-        
+
         Ok(())
     }
-    
+
     /// List scripts for a user
     pub async fn list_user_scripts(&self, user_id: Uuid) -> Result<Vec<ScriptResponse>, AppError> {
         let scripts = self.script_repo.find_by_user_id(user_id).await?;
         Ok(scripts.into_iter().map(ScriptResponse::from).collect())
     }
-    
+
     /// Search scripts by title pattern
     pub async fn search_scripts(&self, pattern: &str) -> Result<Vec<ScriptResponse>, AppError> {
         let scripts = self.script_repo.find_by_title_pattern(pattern).await?;
@@ -195,7 +213,11 @@ impl ScriptService {
     }
 
     /// Verifies that a user owns a script
-    pub async fn verify_script_ownership(&self, script_id: Uuid, user_id: Uuid) -> Result<(), AppError> {
+    pub async fn verify_script_ownership(
+        &self,
+        script_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), AppError> {
         let script = self.script_repo.find_by_id(script_id).await?;
         let script = match script {
             Some(script) => script,
@@ -203,14 +225,21 @@ impl ScriptService {
         };
 
         if script.created_by != Some(user_id) {
-            return Err(AppError::Forbidden("You don't have permission to access this script".to_string()));
+            return Err(AppError::Forbidden(
+                "You don't have permission to access this script".to_string(),
+            ));
         }
 
         Ok(())
     }
 
     /// Validates script sharing business rules
-    pub async fn validate_script_sharing(&self, script_id: Uuid, user_id: Uuid, target_username: &str) -> Result<(), AppError> {
+    pub async fn validate_script_sharing(
+        &self,
+        script_id: Uuid,
+        user_id: Uuid,
+        target_username: &str,
+    ) -> Result<(), AppError> {
         // Verify script exists and user owns it
         self.verify_script_ownership(script_id, user_id).await?;
 
@@ -221,51 +250,75 @@ impl ScriptService {
         }
 
         // Business rule: Cannot share with yourself (handled in application service)
-        
+
         Ok(())
     }
 
     /// Validates public toggle business rules
-    pub async fn validate_public_toggle(&self, script_id: Uuid, user_id: Uuid) -> Result<(), AppError> {
+    pub async fn validate_public_toggle(
+        &self,
+        script_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), AppError> {
         // Verify ownership
         self.verify_script_ownership(script_id, user_id).await?;
 
         // Additional business rules for public scripts can be added here
         // For example: check if script meets quality standards, has minimum content, etc.
-        
+
         Ok(())
     }
 
     /// Verifies that a user has access to a script (ownership, sharing, or public)
-    pub async fn verify_script_access(&self, script_id: Uuid, user_id: Uuid) -> Result<(), AppError> {
+    pub async fn verify_script_access(
+        &self,
+        script_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), AppError> {
         // Check ownership first
-        if self.verify_script_ownership(script_id, user_id).await.is_ok() {
+        if self
+            .verify_script_ownership(script_id, user_id)
+            .await
+            .is_ok()
+        {
             return Ok(());
         }
 
         // For now, we'll just check ownership
         // In a real implementation, this would check sharing permissions and public status
         // through the database or additional repositories
-        
+
         Err(AppError::Forbidden("Access denied".to_string()))
     }
 
     /// Verifies that a user has write access to a script
-    pub async fn verify_script_write_access(&self, script_id: Uuid, user_id: Uuid) -> Result<(), AppError> {
+    pub async fn verify_script_write_access(
+        &self,
+        script_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), AppError> {
         // Check ownership first
-        if self.verify_script_ownership(script_id, user_id).await.is_ok() {
+        if self
+            .verify_script_ownership(script_id, user_id)
+            .await
+            .is_ok()
+        {
             return Ok(());
         }
 
         // For now, we'll just check ownership
         // In a real implementation, this would check write sharing permissions
         // through the database or additional repositories
-        
+
         Err(AppError::Forbidden("Write access denied".to_string()))
     }
 
     /// Validates thumbnail generation business rules
-    pub async fn validate_thumbnail_generation(&self, script_id: Uuid, user_id: Uuid) -> Result<(), AppError> {
+    pub async fn validate_thumbnail_generation(
+        &self,
+        script_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), AppError> {
         // Verify script access
         self.verify_script_access(script_id, user_id).await?;
 
@@ -288,12 +341,15 @@ impl ScriptService {
 
         // Business rule: Only admins can generate bulk thumbnails
         // This is a placeholder - in a real implementation, check user role
-        
+
         Ok(())
     }
 
     /// Validates bulk thumbnail regeneration business rules
-    pub async fn validate_bulk_thumbnail_regeneration(&self, user_id: Uuid) -> Result<(), AppError> {
+    pub async fn validate_bulk_thumbnail_regeneration(
+        &self,
+        user_id: Uuid,
+    ) -> Result<(), AppError> {
         // Verify user exists
         let user = self.user_repo.find_by_id(user_id).await?;
         if user.is_none() {
@@ -302,7 +358,7 @@ impl ScriptService {
 
         // Business rule: Only admins can regenerate all thumbnails
         // This is a placeholder - in a real implementation, check user role
-        
+
         Ok(())
     }
 }
@@ -312,10 +368,10 @@ pub mod tests {
     use super::*;
     use crate::repositories::script_repository::tests::MockScriptRepository;
     use crate::repositories::user_repository::tests::MockUserRepository;
-    
+
     use crate::models::user::User;
     use chrono::Utc;
-    
+
     fn create_test_user() -> User {
         User {
             id: Uuid::new_v4(),
@@ -326,60 +382,60 @@ pub mod tests {
             created_at: Some(Utc::now()),
         }
     }
-    
+
     #[tokio::test]
     async fn test_create_script_success() {
         let user = create_test_user();
         let user_repo = Arc::new(MockUserRepository::with_users(vec![user.clone()]));
         let script_repo = Arc::new(MockScriptRepository::new());
         let service = ScriptService::new(script_repo, user_repo);
-        
+
         let request = CreateScriptRequest {
             title: "Test Script".to_string(),
             content: Some("Test content".to_string()),
             user_id: user.id,
         };
-        
+
         let result = service.create_script(request).await;
         assert!(result.is_ok());
-        
+
         let response = result.unwrap();
         assert_eq!(response.title, "Test Script");
         assert_eq!(response.created_by, Some(user.id));
     }
-    
+
     #[tokio::test]
     async fn test_create_script_empty_title() {
         let user = create_test_user();
         let user_repo = Arc::new(MockUserRepository::with_users(vec![user.clone()]));
         let script_repo = Arc::new(MockScriptRepository::new());
         let service = ScriptService::new(script_repo, user_repo);
-        
+
         let request = CreateScriptRequest {
             title: "".to_string(),
             content: Some("Test content".to_string()),
             user_id: user.id,
         };
-        
+
         let result = service.create_script(request).await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), AppError::BadRequest(_)));
     }
-    
+
     #[tokio::test]
     async fn test_create_script_user_not_found() {
         let user_repo = Arc::new(MockUserRepository::new());
         let script_repo = Arc::new(MockScriptRepository::new());
         let service = ScriptService::new(script_repo, user_repo);
-        
+
         let request = CreateScriptRequest {
             title: "Test Script".to_string(),
             content: Some("Test content".to_string()),
             user_id: Uuid::new_v4(),
         };
-        
+
         let result = service.create_script(request).await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), AppError::NotFound(_)));
     }
-} 
+}

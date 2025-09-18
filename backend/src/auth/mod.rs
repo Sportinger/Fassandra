@@ -14,27 +14,24 @@
 //! - IP-based rate limiting with spoofing protection
 //! - Comprehensive input validation and sanitization
 
+pub mod cookies;
 pub mod core;
 pub mod helpers;
 pub mod websocket_auth;
-pub mod cookies;
 
 // Re-export the main authentication types and functions
 pub use core::{
-    Claims, AuthUser, WsAuthUser, RateLimiter, RegisterPayload, LoginRequest,
-    generate_token, verify_token, decode_token, hash_password, verify_password,
-    logout, handle_error, rate_limit_middleware
+    decode_token, generate_token, handle_error, hash_password, logout, rate_limit_middleware,
+    verify_password, verify_token, AuthUser, Claims, LoginRequest, RateLimiter, RegisterPayload,
+    WsAuthUser,
 };
 
-pub use helpers::{
-    check_script_access, check_script_ownership
-};
+pub use helpers::{check_script_access, check_script_ownership};
 
 pub use websocket_auth::WebSocketAuth;
 
 pub use cookies::{
-    set_auth_cookie, remove_auth_cookie, get_auth_token_from_cookie,
-    generate_csrf_token, set_csrf_cookie, get_csrf_token_from_cookie,
-    store_csrf_token, validate_csrf_token, create_csrf_store,
-    CsrfTokenStore
+    create_csrf_store, generate_csrf_token, get_auth_token_from_cookie, get_csrf_token_from_cookie,
+    remove_auth_cookie, set_auth_cookie, set_csrf_cookie, store_csrf_token, validate_csrf_token,
+    CsrfTokenStore,
 };

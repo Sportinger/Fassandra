@@ -7,4 +7,4 @@ pub enum AnalysisError {
     Io(#[from] std::io::Error),
     #[error("Script format error: {0}")]
     Format(String),
-} 
+}

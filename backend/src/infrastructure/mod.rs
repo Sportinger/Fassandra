@@ -18,5 +18,5 @@ pub mod config;
 pub mod middleware;
 
 // Re-export the main infrastructure components
-pub use config::{Config, update_admin_user_password};
+pub use config::{update_admin_user_password, Config};
 pub use middleware::create_security_headers_middleware;

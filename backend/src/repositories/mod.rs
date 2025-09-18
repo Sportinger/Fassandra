@@ -10,4 +10,4 @@ pub mod yjs_update_repository;
 // Re-export traits for easier importing
 pub use script_repository::ScriptRepository;
 pub use user_repository::UserRepository;
-pub use yjs_update_repository::YjsUpdateRepository; 
+pub use yjs_update_repository::YjsUpdateRepository;

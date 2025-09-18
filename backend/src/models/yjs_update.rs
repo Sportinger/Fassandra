@@ -7,7 +7,7 @@ use uuid::Uuid;
 pub struct YjsDocumentUpdate {
     pub id: i64, // Corresponds to BIGSERIAL
     pub script_id: Uuid,
-    pub user_id: Option<Uuid>, // Nullable
-    pub update_data: Vec<u8>, // Corresponds to BYTEA
+    pub user_id: Option<Uuid>,     // Nullable
+    pub update_data: Vec<u8>,      // Corresponds to BYTEA
     pub created_at: DateTime<Utc>, // Corresponds to TIMESTAMPTZ
-} 
+}

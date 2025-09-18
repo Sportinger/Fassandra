@@ -1,13 +1,13 @@
+use crate::auth::AuthUser;
+use crate::error::AppError;
+use crate::services::claude_session_service::ClaudeSessionService;
 use axum::{
-    extract::{State, Path},
+    extract::{Path, State},
     response::Json,
 };
-use uuid::Uuid;
-use crate::error::AppError;
-use crate::auth::AuthUser;
-use crate::services::claude_session_service::ClaudeSessionService;
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use uuid::Uuid;
 
 #[derive(Serialize)]
 pub struct SessionStatusResponse {
@@ -43,7 +43,9 @@ pub async fn get_session_status(
     State(claude_service): State<Arc<ClaudeSessionService>>,
     _auth_user: AuthUser,
 ) -> Result<Json<SessionStatusResponse>, AppError> {
-    let session_info = claude_service.get_session(session_id).await
+    let session_info = claude_service
+        .get_session(session_id)
+        .await
         .ok_or_else(|| AppError::NotFound(format!("Session {} not found", session_id)))?;
 
     Ok(Json(SessionStatusResponse {
@@ -65,15 +67,14 @@ pub async fn get_session_logs(
     State(claude_service): State<Arc<ClaudeSessionService>>,
     _auth_user: AuthUser,
 ) -> Result<Json<SessionLogsResponse>, AppError> {
-    let logs = claude_service.get_session_logs(session_id, query.since_line).await
+    let logs = claude_service
+        .get_session_logs(session_id, query.since_line)
+        .await
         .ok_or_else(|| AppError::NotFound(format!("Session {} not found", session_id)))?;
 
     let total_lines = logs.len() + query.since_line;
-    
-    Ok(Json(SessionLogsResponse {
-        logs,
-        total_lines,
-    }))
+
+    Ok(Json(SessionLogsResponse { logs, total_lines }))
 }
 
 #[derive(Serialize)]
@@ -87,7 +88,9 @@ pub async fn cancel_session(
     State(claude_service): State<Arc<ClaudeSessionService>>,
     _auth_user: AuthUser,
 ) -> Result<Json<CancelSessionResponse>, AppError> {
-    claude_service.cancel_session(session_id).await
+    claude_service
+        .cancel_session(session_id)
+        .await
         .map_err(|e| AppError::BadRequest(e.to_string()))?;
 
     Ok(Json(CancelSessionResponse {

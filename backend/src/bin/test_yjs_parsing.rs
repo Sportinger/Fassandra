@@ -1,24 +1,23 @@
 //! Test program for the new YJS-based script parsing system
 
-use std::sync::Arc;
-use sqlx::postgres::PgPoolOptions;
-use uuid::Uuid;
 use anyhow::Result;
+use sqlx::postgres::PgPoolOptions;
+use std::sync::Arc;
+use uuid::Uuid;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logging
-    tracing_subscriber::fmt()
-        .with_env_filter("debug")
-        .init();
+    tracing_subscriber::fmt().with_env_filter("debug").init();
 
     println!("🧪 Testing YJS Script Parsing System");
     println!("=====================================\n");
 
     // Connect to database
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://fassandra_user:dev_password_123@localhost:5432/fassandra_db".to_string());
-    
+    let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+        "postgres://fassandra_user:dev_password_123@localhost:5432/fassandra_db".to_string()
+    });
+
     println!("📦 Connecting to database...");
     let pool = PgPoolOptions::new()
         .max_connections(5)
@@ -31,8 +30,8 @@ async fn main() -> Result<()> {
     println!("Test 1: Single chunk (small script)");
     println!("------------------------------------");
     test_single_chunk(&pool).await?;
-    
-    // Test 2: Multiple chunks  
+
+    // Test 2: Multiple chunks
     println!("\nTest 2: Multiple chunks (large script)");
     println!("---------------------------------------");
     test_multiple_chunks(&pool).await?;
@@ -66,9 +65,11 @@ async fn test_single_chunk(pool: &Arc<sqlx::PgPool>) -> Result<()> {
 
     use backend::services::yjs_script_builder_service::YjsScriptBuilderService;
     let service = YjsScriptBuilderService::new(pool.clone());
-    
-    let result = service.build_script_from_json(json_data, None, "abc").await?;
-    
+
+    let result = service
+        .build_script_from_json(json_data, None, "abc")
+        .await?;
+
     if result.success {
         println!("✅ Single chunk processed successfully");
         println!("   Script ID: {:?}", result.script_id);
@@ -76,13 +77,13 @@ async fn test_single_chunk(pool: &Arc<sqlx::PgPool>) -> Result<()> {
     } else {
         println!("❌ Failed: {:?}", result.errors);
     }
-    
+
     Ok(())
 }
 
 async fn test_multiple_chunks(pool: &Arc<sqlx::PgPool>) -> Result<()> {
     let script_id = Uuid::new_v4();
-    
+
     // Chunk 1: Initial metadata and first pages
     let chunk1 = r#"
     {
@@ -121,9 +122,11 @@ async fn test_multiple_chunks(pool: &Arc<sqlx::PgPool>) -> Result<()> {
 
     use backend::services::yjs_script_builder_service::YjsScriptBuilderService;
     let service = YjsScriptBuilderService::new(pool.clone());
-    
+
     println!("Processing chunk 1/3...");
-    let result1 = service.build_script_from_json(chunk1, Some(script_id), "abc").await?;
+    let result1 = service
+        .build_script_from_json(chunk1, Some(script_id), "abc")
+        .await?;
     if result1.success {
         println!("✅ Chunk 1 processed: {}", result1.message);
     } else {
@@ -163,7 +166,9 @@ async fn test_multiple_chunks(pool: &Arc<sqlx::PgPool>) -> Result<()> {
     "#;
 
     println!("Processing chunk 2/3...");
-    let result2 = service.build_script_from_json(chunk2, Some(script_id), "abc").await?;
+    let result2 = service
+        .build_script_from_json(chunk2, Some(script_id), "abc")
+        .await?;
     if result2.success {
         println!("✅ Chunk 2 processed: {}", result2.message);
     } else {
@@ -208,7 +213,9 @@ async fn test_multiple_chunks(pool: &Arc<sqlx::PgPool>) -> Result<()> {
     "#;
 
     println!("Processing chunk 3/3...");
-    let result3 = service.build_script_from_json(chunk3, Some(script_id), "abc").await?;
+    let result3 = service
+        .build_script_from_json(chunk3, Some(script_id), "abc")
+        .await?;
     if result3.success {
         println!("✅ Chunk 3 processed: {}", result3.message);
         println!("📚 Complete script ID: {:?}", script_id);
@@ -224,10 +231,10 @@ async fn test_multiple_chunks(pool: &Arc<sqlx::PgPool>) -> Result<()> {
     )
     .fetch_optional(&**pool)
     .await?;
-    
+
     if let Some(row) = row {
         println!("✅ Script found in database: '{}'", row.title);
-        
+
         // Check YJS state
         let yjs_state = sqlx::query!(
             "SELECT COUNT(*) as count FROM yjs_recent_updates WHERE script_id = $1",
@@ -235,8 +242,11 @@ async fn test_multiple_chunks(pool: &Arc<sqlx::PgPool>) -> Result<()> {
         )
         .fetch_one(&**pool)
         .await?;
-        
-        println!("✅ YJS updates stored: {} updates", yjs_state.count.unwrap_or(0));
+
+        println!(
+            "✅ YJS updates stored: {} updates",
+            yjs_state.count.unwrap_or(0)
+        );
     } else {
         println!("❌ Script not found in database!");
     }

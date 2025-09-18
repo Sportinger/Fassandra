@@ -47,4 +47,4 @@ pub struct UpdateScriptLayoutRequest {
     pub description: Option<String>,
     pub layout_config: Option<JsonValue>,
     pub is_default: Option<bool>,
-} 
+}

@@ -1,11 +1,11 @@
 //! Application service for page break operations
 //! NOTE: This functionality is deprecated - we now use YJS for script management
 
-use uuid::Uuid;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::sync::Arc;
-use anyhow::Result;
+use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct UpdatePageBreaksRequest {
@@ -40,12 +40,21 @@ impl PageBreakApplicationService {
     }
 
     /// Stub implementation - deprecated functionality
-    pub async fn get_page_breaks(&self, _script_id: Uuid, _user_id: Uuid) -> Result<Vec<BlockPageInfo>> {
+    pub async fn get_page_breaks(
+        &self,
+        _script_id: Uuid,
+        _user_id: Uuid,
+    ) -> Result<Vec<BlockPageInfo>> {
         Ok(vec![])
     }
 
     /// Stub implementation - deprecated functionality
-    pub async fn update_page_breaks(&self, _script_id: Uuid, _user_id: Uuid, _request: UpdatePageBreaksRequest) -> Result<UpdatePageBreaksResponse> {
+    pub async fn update_page_breaks(
+        &self,
+        _script_id: Uuid,
+        _user_id: Uuid,
+        _request: UpdatePageBreaksRequest,
+    ) -> Result<UpdatePageBreaksResponse> {
         Ok(UpdatePageBreaksResponse {
             success: true,
             message: "Page breaks functionality is deprecated".to_string(),
@@ -59,7 +68,12 @@ impl PageBreakApplicationService {
     }
 
     /// Stub implementation - deprecated functionality
-    pub async fn reorder_page(&self, _script_id: Uuid, _user_id: Uuid, _request: PageReorderRequest) -> Result<ReorderPageResponse> {
+    pub async fn reorder_page(
+        &self,
+        _script_id: Uuid,
+        _user_id: Uuid,
+        _request: PageReorderRequest,
+    ) -> Result<ReorderPageResponse> {
         Ok(ReorderPageResponse {
             success: true,
             message: "Page breaks functionality is deprecated".to_string(),

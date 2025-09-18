@@ -1,14 +1,14 @@
-use axum::{extract::State, Json};
 use axum::http::HeaderMap;
+use axum::{extract::State, Json};
 use serde::Serialize;
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
-use uuid::Uuid;
 use tower_cookies::Cookies;
+use uuid::Uuid;
 
-use crate::auth::{AuthUser, remove_auth_cookie};
-use yrs::{Transact, ReadTxn};
+use crate::auth::{remove_auth_cookie, AuthUser};
 use crate::error::AppError;
+use yrs::{ReadTxn, Transact};
 
 #[derive(Serialize)]
 pub struct AccountExport {
@@ -53,7 +53,7 @@ pub async fn export_account_data(
 ) -> Result<Json<AccountExport>, AppError> {
     // Load user
     let user: crate::models::user::User = sqlx::query_as(
-        "SELECT id, email, username, password_hash, role, created_at FROM users WHERE id = $1"
+        "SELECT id, email, username, password_hash, role, created_at FROM users WHERE id = $1",
     )
     .bind(auth.user_id)
     .fetch_one(pool.as_ref())
@@ -65,7 +65,7 @@ pub async fn export_account_data(
         r#"SELECT id, title, created_at, is_public, thumbnail
            FROM scripts
            WHERE created_by = $1
-           ORDER BY created_at DESC"#
+           ORDER BY created_at DESC"#,
     )
     .bind(auth.user_id)
     .fetch_all(pool.as_ref())
@@ -77,13 +77,21 @@ pub async fn export_account_data(
     for row in owned_rows {
         let sid: Uuid = row.try_get("id").map_err(AppError::Db)?;
         let title: String = row.try_get("title").map_err(AppError::Db)?;
-        let created_at: Option<chrono::DateTime<chrono::Utc>> = row.try_get("created_at").map_err(AppError::Db)?;
+        let created_at: Option<chrono::DateTime<chrono::Utc>> =
+            row.try_get("created_at").map_err(AppError::Db)?;
         let is_public: Option<bool> = row.try_get("is_public").map_err(AppError::Db)?;
         let thumbnail: Option<String> = row.try_get("thumbnail").map_err(AppError::Db)?;
-        let yjs_state_base64 = match crate::services::yjs_compaction_service::load_document(pool.as_ref(), sid).await {
+        let yjs_state_base64 = match crate::services::yjs_compaction_service::load_document(
+            pool.as_ref(),
+            sid,
+        )
+        .await
+        {
             Ok(doc) => {
                 use base64::Engine as _;
-                let update = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
+                let update = doc
+                    .transact()
+                    .encode_state_as_update_v1(&yrs::StateVector::default());
                 Some(base64::engine::general_purpose::STANDARD.encode(&update))
             }
             Err(_) => None, // Don't fail export if Yjs load fails; continue best-effort
@@ -104,7 +112,7 @@ pub async fn export_account_data(
         r#"SELECT script_id, shared_with_user_id as user_id, permission, created_at, created_by
            FROM script_shares
            WHERE shared_with_user_id = $1
-           ORDER BY created_at DESC NULLS LAST"#
+           ORDER BY created_at DESC NULLS LAST"#,
     )
     .bind(auth.user_id)
     .fetch_all(pool.as_ref())
@@ -116,7 +124,10 @@ pub async fn export_account_data(
         .map(|row| ShareEntry {
             script_id: row.try_get("script_id").unwrap_or_default(),
             user_id: row.try_get("user_id").unwrap_or_default(),
-            permission: row.try_get::<Option<String>, _>("permission").unwrap_or(None).unwrap_or_else(|| "read".to_string()),
+            permission: row
+                .try_get::<Option<String>, _>("permission")
+                .unwrap_or(None)
+                .unwrap_or_else(|| "read".to_string()),
             created_at: row.try_get("created_at").ok(),
             created_by: row.try_get("created_by").ok(),
         })
@@ -140,7 +151,10 @@ pub async fn export_account_data(
         .map(|row| ShareEntry {
             script_id: row.try_get("script_id").unwrap_or_default(),
             user_id: row.try_get("user_id").unwrap_or_default(),
-            permission: row.try_get::<Option<String>, _>("permission").unwrap_or(None).unwrap_or_else(|| "read".to_string()),
+            permission: row
+                .try_get::<Option<String>, _>("permission")
+                .unwrap_or(None)
+                .unwrap_or_else(|| "read".to_string()),
             created_at: row.try_get("created_at").ok(),
             created_by: row.try_get("created_by").ok(),
         })
@@ -176,30 +190,32 @@ pub async fn delete_account(
         .unwrap_or("");
     let cookie_token = crate::auth::get_csrf_token_from_cookie(&cookies).unwrap_or_default();
     if header_token.is_empty() || cookie_token.is_empty() || header_token != cookie_token {
-        return Err(AppError::Unauthorized("Invalid or missing CSRF token".to_string()));
+        return Err(AppError::Unauthorized(
+            "Invalid or missing CSRF token".to_string(),
+        ));
     }
     let mut tx = pool.begin().await.map_err(AppError::Db)?;
 
     // 1) Remove shares where the user is recipient (to other users' scripts)
     sqlx::query("DELETE FROM script_shares WHERE shared_with_user_id = $1")
         .bind(auth.user_id)
-    .execute(&mut *tx)
-    .await
-    .map_err(AppError::Db)?;
+        .execute(&mut *tx)
+        .await
+        .map_err(AppError::Db)?;
 
     // 2) Delete scripts owned by the user (cascades to blocks, shares, yjs, layouts, snapshots)
     sqlx::query("DELETE FROM scripts WHERE created_by = $1")
         .bind(auth.user_id)
-    .execute(&mut *tx)
-    .await
-    .map_err(AppError::Db)?;
+        .execute(&mut *tx)
+        .await
+        .map_err(AppError::Db)?;
 
     // 3) Finally, delete the user (updates in yjs_document_updates will set user_id = NULL)
     sqlx::query("DELETE FROM users WHERE id = $1")
         .bind(auth.user_id)
-    .execute(&mut *tx)
-    .await
-    .map_err(AppError::Db)?;
+        .execute(&mut *tx)
+        .await
+        .map_err(AppError::Db)?;
 
     tx.commit().await.map_err(AppError::Db)?;
 

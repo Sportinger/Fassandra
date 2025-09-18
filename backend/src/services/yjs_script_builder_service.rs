@@ -4,15 +4,15 @@
 //! It replaces the old json_to_db_service by directly creating YJS updates
 //! instead of inserting blocks into the database.
 
-use std::sync::Arc;
-use sqlx::PgPool;
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use std::sync::Arc;
+use tracing::{debug, error, info};
 use uuid::Uuid;
-use anyhow::{Result, anyhow};
-use tracing::{info, error, debug};
-use yrs::{Doc, Options, Transact, ReadTxn, WriteTxn, StateVector};
 use yrs::updates::encoder::Encode; // for encode_v1 on StateVector and updates
-use yrs::{XmlElementPrelim, XmlTextPrelim, Text, XmlFragment as _};
+use yrs::{Doc, Options, ReadTxn, StateVector, Transact, WriteTxn};
+use yrs::{Text, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
 // use yrs::updates::encoder::Encode; // Not needed; we use encode via transact
 
 // Define the structures for chunks (since yjs_document_builder is disabled)
@@ -77,7 +77,12 @@ impl YjsScriptBuilderService {
     }
 
     /// Process a script chunk and store it as YJS update
-    pub async fn build_script_from_json(&self, json_str: &str, script_id: Option<Uuid>, username: &str) -> Result<BuildResult> {
+    pub async fn build_script_from_json(
+        &self,
+        json_str: &str,
+        script_id: Option<Uuid>,
+        username: &str,
+    ) -> Result<BuildResult> {
         let _errors: Vec<String> = Vec::new();
 
         // Parse JSON according to chunked format
@@ -99,27 +104,44 @@ impl YjsScriptBuilderService {
 
         // Determine script ID (use provided or generate new for first chunk)
         let script_id = script_id.unwrap_or_else(Uuid::new_v4);
-        
+
         // Get user ID
         let user_id = self.get_user_id(username).await?;
 
         // Always process chunked (fallback to chunked if mode is missing)
         match chunk.mode.as_str() {
-            "chunked" => self.process_chunked_script(&chunk, script_id, user_id).await,
-            _ => self.process_chunked_script(&chunk, script_id, user_id).await,
+            "chunked" => {
+                self.process_chunked_script(&chunk, script_id, user_id)
+                    .await
+            }
+            _ => {
+                self.process_chunked_script(&chunk, script_id, user_id)
+                    .await
+            }
         }
     }
 
-    async fn process_chunked_script(&self, chunk: &ScriptChunk, script_id: Uuid, user_id: Uuid) -> Result<BuildResult> {
-        let chunk_info = chunk.chunk.as_ref().ok_or_else(|| anyhow!("Missing chunk info"))?;
-        
-        info!("Processing chunk {} of {} for script {}", 
-              chunk_info.number, chunk_info.total, script_id);
+    async fn process_chunked_script(
+        &self,
+        chunk: &ScriptChunk,
+        script_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<BuildResult> {
+        let chunk_info = chunk
+            .chunk
+            .as_ref()
+            .ok_or_else(|| anyhow!("Missing chunk info"))?;
+
+        info!(
+            "Processing chunk {} of {} for script {}",
+            chunk_info.number, chunk_info.total, script_id
+        );
 
         // If this is the first chunk, create the script record and initialize an empty base state
         if chunk_info.number == 1 {
             if let Some(metadata) = &chunk.metadata {
-                self.create_script_record(script_id, user_id, metadata).await?;
+                self.create_script_record(script_id, user_id, metadata)
+                    .await?;
                 // Initialize a minimal base state like manual scripts do (will be overwritten at finalization)
                 self.initialize_empty_base_state(script_id).await.ok();
             }
@@ -129,7 +151,10 @@ impl YjsScriptBuilderService {
         let doc = self.load_or_create_document(script_id).await?;
         // Capture state vector BEFORE applying this chunk, so we can compute a DIFF update
         use yrs::updates::decoder::Decode as _;
-        let prev_sv_bytes = { let t = doc.transact(); t.state_vector().encode_v1() };
+        let prev_sv_bytes = {
+            let t = doc.transact();
+            t.state_vector().encode_v1()
+        };
 
         // Apply chunk content to document
         self.apply_chunk_to_document(&doc, chunk)?;
@@ -144,9 +169,15 @@ impl YjsScriptBuilderService {
 
         // If this is the last chunk, finalize by compacting recent updates into base state immediately
         if chunk_info.number == chunk_info.total {
-            info!("Last chunk processed, finalizing script {} into base state", script_id);
+            info!(
+                "Last chunk processed, finalizing script {} into base state",
+                script_id
+            );
             if let Err(e) = self.compact_now_to_base(script_id).await {
-                error!("Failed to finalize script {} into base state: {}", script_id, e);
+                error!(
+                    "Failed to finalize script {} into base state: {}",
+                    script_id, e
+                );
             }
         }
 
@@ -157,16 +188,25 @@ impl YjsScriptBuilderService {
             total_chunks: Some(chunk_info.total),
             items_processed: chunk.content.len() as i32,
             errors: vec![],
-            message: format!("Chunk {} of {} processed successfully", chunk_info.number, chunk_info.total),
+            message: format!(
+                "Chunk {} of {} processed successfully",
+                chunk_info.number, chunk_info.total
+            ),
         })
     }
 
-    async fn process_full_script(&self, chunk: &ScriptChunk, script_id: Uuid, user_id: Uuid) -> Result<BuildResult> {
+    async fn process_full_script(
+        &self,
+        chunk: &ScriptChunk,
+        script_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<BuildResult> {
         info!("Processing full script {}", script_id);
 
         // Create script record
         if let Some(metadata) = &chunk.metadata {
-            self.create_script_record(script_id, user_id, metadata).await?;
+            self.create_script_record(script_id, user_id, metadata)
+                .await?;
         }
 
         // Create new YJS document
@@ -177,7 +217,9 @@ impl YjsScriptBuilderService {
         self.apply_chunk_to_document(&doc, chunk)?;
 
         // Get the initial state as update
-        let update = doc.transact().encode_state_as_update_v1(&StateVector::default());
+        let update = doc
+            .transact()
+            .encode_state_as_update_v1(&StateVector::default());
 
         // Store as base state for full scripts
         self.store_initial_yjs_state(script_id, update).await?;
@@ -193,7 +235,12 @@ impl YjsScriptBuilderService {
         })
     }
 
-    async fn create_script_record(&self, script_id: Uuid, user_id: Uuid, metadata: &ScriptMetadata) -> Result<()> {
+    async fn create_script_record(
+        &self,
+        script_id: Uuid,
+        user_id: Uuid,
+        metadata: &ScriptMetadata,
+    ) -> Result<()> {
         sqlx::query!(
             r#"
             INSERT INTO scripts (id, created_by, title, created_at, is_public)
@@ -209,14 +256,17 @@ impl YjsScriptBuilderService {
         .execute(&*self.db_pool)
         .await?;
 
-        info!("Created script record: {} - '{}'", script_id, metadata.title);
+        info!(
+            "Created script record: {} - '{}'",
+            script_id, metadata.title
+        );
         Ok(())
     }
 
     // Initialize an empty YJS base state similar to manual script creation
     async fn initialize_empty_base_state(&self, script_id: Uuid) -> Result<()> {
-        use yrs::{Doc, Options, Transact};
         use yrs::updates::encoder::Encode;
+        use yrs::{Doc, Options, Transact};
         use yrs::{XmlElementPrelim, XmlFragment as _};
 
         let doc = Doc::with_options(Options::default());
@@ -228,7 +278,9 @@ impl YjsScriptBuilderService {
             txn.get_or_insert_text("prosemirror");
             txn.get_or_insert_map("metadata");
         }
-        let base_state = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
+        let base_state = doc
+            .transact()
+            .encode_state_as_update_v1(&yrs::StateVector::default());
         let state_vector = doc.transact().state_vector().encode_v1();
 
         sqlx::query(
@@ -256,7 +308,9 @@ impl YjsScriptBuilderService {
 
         // Load doc = base + recent updates
         let doc = load_document(&*self.db_pool, script_id).await?;
-        let new_base = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
+        let new_base = doc
+            .transact()
+            .encode_state_as_update_v1(&yrs::StateVector::default());
         let state_vector = doc.transact().state_vector().encode_v1();
 
         // Save/overwrite base state
@@ -369,7 +423,11 @@ impl YjsScriptBuilderService {
 
             match item.content_type.as_str() {
                 "scene" | "scene_heading" => {
-                    let title = if item.content.trim().is_empty() { "Untitled Scene".to_string() } else { item.content.clone() };
+                    let title = if item.content.trim().is_empty() {
+                        "Untitled Scene".to_string()
+                    } else {
+                        item.content.clone()
+                    };
                     buffer.push_str(&format!("[SCENE] {}\n\n", title));
                 }
                 "dialogue" | "monologue" => {
@@ -406,7 +464,9 @@ impl YjsScriptBuilderService {
             let mut txn = doc.transact_mut();
             let txt = txn.get_or_insert_text("prosemirror");
             let cur_len = txt.len(&txn);
-            if cur_len > 0 { txt.remove_range(&mut txn, 0, cur_len); }
+            if cur_len > 0 {
+                txt.remove_range(&mut txn, 0, cur_len);
+            }
             txt.push(&mut txn, &buffer);
         }
 
@@ -426,30 +486,51 @@ impl YjsScriptBuilderService {
                     current_page = page_num;
                     let page_el = XmlElementPrelim::empty("pageIndicator");
                     let page_ref = fragment.push_back(&mut txn, page_el);
-                    page_ref.push_back(&mut txn, XmlTextPrelim::new(format!("Page {}", current_page)));
+                    page_ref.push_back(
+                        &mut txn,
+                        XmlTextPrelim::new(format!("Page {}", current_page)),
+                    );
                 }
 
                 match item.content_type.as_str() {
                     "scene" | "scene_heading" => {
                         let scene_el = XmlElementPrelim::empty("sceneBlock");
                         let scene_ref = fragment.push_back(&mut txn, scene_el);
-                        let title = if item.content.trim().is_empty() { "Untitled Scene".to_string() } else { item.content.clone() };
+                        let title = if item.content.trim().is_empty() {
+                            "Untitled Scene".to_string()
+                        } else {
+                            item.content.clone()
+                        };
                         scene_ref.push_back(&mut txn, XmlTextPrelim::new(title));
                     }
                     "dialogue" | "monologue" => {
-                        let dlg_ref = fragment.push_back(&mut txn, XmlElementPrelim::empty("dialogueBlock"));
-                        let sp_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("speaker"));
-                        if let Some(spk) = &item.speaker { if !spk.trim().is_empty() { sp_ref.push_back(&mut txn, XmlTextPrelim::new(spk.trim().to_string())); } }
-                        let dtext_ref = dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("dialogueText"));
+                        let dlg_ref =
+                            fragment.push_back(&mut txn, XmlElementPrelim::empty("dialogueBlock"));
+                        let sp_ref =
+                            dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("speaker"));
+                        if let Some(spk) = &item.speaker {
+                            if !spk.trim().is_empty() {
+                                sp_ref.push_back(
+                                    &mut txn,
+                                    XmlTextPrelim::new(spk.trim().to_string()),
+                                );
+                            }
+                        }
+                        let dtext_ref =
+                            dlg_ref.push_back(&mut txn, XmlElementPrelim::empty("dialogueText"));
                         let parts: Vec<&str> = item.content.split('\n').collect();
                         if parts.is_empty() {
-                            let p = dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                            let p =
+                                dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
                             p.push_back(&mut txn, XmlTextPrelim::new(String::new()));
                         } else {
                             for ptxt in parts {
                                 let t = ptxt.trim();
-                                if t.is_empty() { continue; }
-                                let p = dtext_ref.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                                if t.is_empty() {
+                                    continue;
+                                }
+                                let p = dtext_ref
+                                    .push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
                                 p.push_back(&mut txn, XmlTextPrelim::new(t.to_string()));
                             }
                         }
@@ -457,14 +538,16 @@ impl YjsScriptBuilderService {
                     "stage_direction" | "reading" => {
                         let txt = item.content.trim();
                         if !txt.is_empty() {
-                            let p = fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                            let p =
+                                fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
                             p.push_back(&mut txn, XmlTextPrelim::new(txt.to_string()));
                         }
                     }
                     _ => {
                         let txt = item.content.trim();
                         if !txt.is_empty() {
-                            let p = fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                            let p =
+                                fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
                             p.push_back(&mut txn, XmlTextPrelim::new(txt.to_string()));
                         }
                     }
@@ -474,7 +557,12 @@ impl YjsScriptBuilderService {
         Ok(())
     }
 
-    async fn store_yjs_update(&self, script_id: Uuid, user_id: Uuid, update: Vec<u8>) -> Result<()> {
+    async fn store_yjs_update(
+        &self,
+        script_id: Uuid,
+        user_id: Uuid,
+        update: Vec<u8>,
+    ) -> Result<()> {
         sqlx::query!(
             r#"
             INSERT INTO yjs_recent_updates 
@@ -488,7 +576,11 @@ impl YjsScriptBuilderService {
         .execute(&*self.db_pool)
         .await?;
 
-        debug!("Stored YJS update for script {}: {} bytes", script_id, update.len());
+        debug!(
+            "Stored YJS update for script {}: {} bytes",
+            script_id,
+            update.len()
+        );
         Ok(())
     }
 
@@ -513,7 +605,11 @@ impl YjsScriptBuilderService {
         .execute(&*self.db_pool)
         .await?;
 
-        info!("Stored initial YJS state for script {}: {} bytes", script_id, update.len());
+        info!(
+            "Stored initial YJS state for script {}: {} bytes",
+            script_id,
+            update.len()
+        );
         Ok(())
     }
 
@@ -535,8 +631,10 @@ pub async fn process_script_json(
     pool: Arc<PgPool>,
     json_str: &str,
     username: &str,
-    script_id: Option<Uuid>
+    script_id: Option<Uuid>,
 ) -> Result<BuildResult> {
     let service = YjsScriptBuilderService::new(pool);
-    service.build_script_from_json(json_str, script_id, username).await
+    service
+        .build_script_from_json(json_str, script_id, username)
+        .await
 }
