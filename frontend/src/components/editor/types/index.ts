@@ -89,20 +89,7 @@ export interface ToolbarButton {
 export interface ToolbarProps {
   editor: TipTapEditor | null;
   context: ToolbarContext;
-  hasTextSelection: boolean;
-  viewMode: ViewMode;
-  speakerNames: Set<string>;
-  currentSpeakerName?: string | null;
-  editAllSpeakers?: boolean;
-  onToggleEditAllSpeakers?: () => void;
-  onSetViewMode: (mode: ViewMode) => void;
   className?: string;
-  rehearsalMode?: boolean;
-  onToggleRehearsalMode?: () => void;
-  // Auto-follow control
-  autoFollowActive?: boolean;
-  onToggleAutoFollow?: () => void;
-  asrPreviewText?: string;
 }
 
 // ===== DROPDOWN TYPES =====
