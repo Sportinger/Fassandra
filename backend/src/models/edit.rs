@@ -19,4 +19,4 @@ pub struct Edit {
     pub content: String,
     /// Timestamp when the edit was made
     pub created_at: Option<DateTime<Utc>>,
-} 
+}

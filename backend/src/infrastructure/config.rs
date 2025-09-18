@@ -1,8 +1,8 @@
-use std::env;
-use anyhow::{Context, Result};
-use sqlx::PgPool;
 use crate::auth::hash_password;
 use crate::models::user::User;
+use anyhow::{Context, Result};
+use sqlx::PgPool;
+use std::env;
 
 /// Application configuration loaded from environment variables.
 ///
@@ -23,9 +23,9 @@ pub struct Config {
     pub referrer_policy: String,
     pub permissions_policy: String,
     // ASR/Auto-follow config
-    pub asr_provider: String,          // local|deepgram
-    pub asr_language: String,          // e.g., de-DE
-    pub asr_sample_rate: u32,          // e.g., 16000 or 48000
+    pub asr_provider: String, // local|deepgram
+    pub asr_language: String, // e.g., de-DE
+    pub asr_sample_rate: u32, // e.g., 16000 or 48000
     pub deepgram_api_key: Option<String>,
 }
 
@@ -76,15 +76,15 @@ impl Config {
 /// Uses environment variables for secure configuration.
 pub async fn update_admin_user_password(pool: &PgPool) -> Result<()> {
     // Load admin configuration from environment variables
-    let admin_email = env::var("ADMIN_EMAIL")
-        .context("ADMIN_EMAIL environment variable not set")?;
-    let admin_password = env::var("ADMIN_PASSWORD")
-        .context("ADMIN_PASSWORD environment variable not set")?;
+    let admin_email =
+        env::var("ADMIN_EMAIL").context("ADMIN_EMAIL environment variable not set")?;
+    let admin_password =
+        env::var("ADMIN_PASSWORD").context("ADMIN_PASSWORD environment variable not set")?;
     let placeholder_hash = env::var("ADMIN_PLACEHOLDER_HASH")
         .context("ADMIN_PLACEHOLDER_HASH environment variable not set")?;
 
     let user_result: Result<Option<User>, sqlx::Error> = sqlx::query_as(
-        "SELECT id, email, username, password_hash, role, created_at FROM users WHERE email = $1"
+        "SELECT id, email, username, password_hash, role, created_at FROM users WHERE email = $1",
     )
     .bind(&admin_email)
     .fetch_optional(pool)
@@ -93,9 +93,12 @@ pub async fn update_admin_user_password(pool: &PgPool) -> Result<()> {
     match user_result {
         Ok(Some(user)) => {
             if user.password_hash == placeholder_hash {
-                tracing::info!("Updating placeholder password for admin user: {}", admin_email);
-                let correct_hash = hash_password(&admin_password)
-                    .context("Failed to hash admin user password")?;
+                tracing::info!(
+                    "Updating placeholder password for admin user: {}",
+                    admin_email
+                );
+                let correct_hash =
+                    hash_password(&admin_password).context("Failed to hash admin user password")?;
                 sqlx::query("UPDATE users SET password_hash = $1 WHERE id = $2")
                     .bind(&correct_hash)
                     .bind(user.id)
@@ -104,11 +107,17 @@ pub async fn update_admin_user_password(pool: &PgPool) -> Result<()> {
                     .context("Failed to update admin user password hash")?;
                 tracing::info!("Admin user password updated successfully.");
             } else {
-                tracing::debug!("Admin user {} already has a valid password hash.", admin_email);
+                tracing::debug!(
+                    "Admin user {} already has a valid password hash.",
+                    admin_email
+                );
             }
         }
         Ok(None) => {
-            tracing::warn!("Admin user {} not found after migration. Check migration file.", admin_email);
+            tracing::warn!(
+                "Admin user {} not found after migration. Check migration file.",
+                admin_email
+            );
         }
         Err(e) => {
             // Log the error but don't prevent startup
@@ -116,4 +125,4 @@ pub async fn update_admin_user_password(pool: &PgPool) -> Result<()> {
         }
     }
     Ok(())
-} 
+}

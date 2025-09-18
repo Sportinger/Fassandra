@@ -2,31 +2,31 @@
 //!
 //! Provides clean abstractions for user-related database operations.
 
+use crate::error::AppError;
+use crate::models::user::User;
 use async_trait::async_trait;
 use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::models::user::User;
-use crate::error::AppError;
 
 /// Repository trait for user operations
 #[async_trait]
 pub trait UserRepository: Send + Sync {
     /// Find a user by ID
     async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, AppError>;
-    
+
     /// Find a user by email
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, AppError>;
-    
+
     /// Find a user by username
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError>;
-    
+
     /// Create a new user
     async fn create(&self, user: &User) -> Result<(), AppError>;
-    
+
     /// Update an existing user
     async fn update(&self, user: &User) -> Result<(), AppError>;
-    
+
     /// Delete a user
     async fn delete(&self, id: Uuid) -> Result<(), AppError>;
 }
@@ -53,10 +53,10 @@ impl UserRepository for PostgresUserRepository {
         .fetch_optional(self.pool.as_ref())
         .await
         .map_err(|e| AppError::Db(e))?;
-        
+
         Ok(user)
     }
-    
+
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
         let user = sqlx::query_as!(
             User,
@@ -66,10 +66,10 @@ impl UserRepository for PostgresUserRepository {
         .fetch_optional(self.pool.as_ref())
         .await
         .map_err(|e| AppError::Db(e))?;
-        
+
         Ok(user)
     }
-    
+
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
         let user = sqlx::query_as!(
             User,
@@ -79,10 +79,10 @@ impl UserRepository for PostgresUserRepository {
         .fetch_optional(self.pool.as_ref())
         .await
         .map_err(|e| AppError::Db(e))?;
-        
+
         Ok(user)
     }
-    
+
     async fn create(&self, user: &User) -> Result<(), AppError> {
         sqlx::query!(
             "INSERT INTO users (id, email, password_hash, username, role, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
@@ -96,10 +96,10 @@ impl UserRepository for PostgresUserRepository {
         .execute(self.pool.as_ref())
         .await
         .map_err(|e| AppError::Db(e))?;
-        
+
         Ok(())
     }
-    
+
     async fn update(&self, user: &User) -> Result<(), AppError> {
         sqlx::query!(
             "UPDATE users SET email = $2, password_hash = $3, username = $4, role = $5 WHERE id = $1",
@@ -112,19 +112,16 @@ impl UserRepository for PostgresUserRepository {
         .execute(self.pool.as_ref())
         .await
         .map_err(|e| AppError::Db(e))?;
-        
+
         Ok(())
     }
-    
+
     async fn delete(&self, id: Uuid) -> Result<(), AppError> {
-        sqlx::query!(
-            "DELETE FROM users WHERE id = $1",
-            id
-        )
-        .execute(self.pool.as_ref())
-        .await
-        .map_err(|e| AppError::Db(e))?;
-        
+        sqlx::query!("DELETE FROM users WHERE id = $1", id)
+            .execute(self.pool.as_ref())
+            .await
+            .map_err(|e| AppError::Db(e))?;
+
         Ok(())
     }
 }
@@ -134,49 +131,49 @@ pub mod tests {
     use super::*;
     use chrono::Utc;
     use uuid::Uuid;
-    
+
     // Mock implementation for testing
     pub struct MockUserRepository {
         users: std::sync::Arc<std::sync::Mutex<Vec<User>>>,
     }
-    
+
     impl MockUserRepository {
         pub fn new() -> Self {
             Self {
                 users: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
             }
         }
-        
+
         pub fn with_users(users: Vec<User>) -> Self {
             Self {
                 users: std::sync::Arc::new(std::sync::Mutex::new(users)),
             }
         }
     }
-    
+
     #[async_trait]
     impl UserRepository for MockUserRepository {
         async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, AppError> {
             let users = self.users.lock().unwrap();
             Ok(users.iter().find(|u| u.id == id).cloned())
         }
-        
+
         async fn find_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
             let users = self.users.lock().unwrap();
             Ok(users.iter().find(|u| u.email == email).cloned())
         }
-        
+
         async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
             let users = self.users.lock().unwrap();
             Ok(users.iter().find(|u| u.username == username).cloned())
         }
-        
+
         async fn create(&self, user: &User) -> Result<(), AppError> {
             let mut users = self.users.lock().unwrap();
             users.push(user.clone());
             Ok(())
         }
-        
+
         async fn update(&self, user: &User) -> Result<(), AppError> {
             let mut users = self.users.lock().unwrap();
             if let Some(existing) = users.iter_mut().find(|u| u.id == user.id) {
@@ -184,11 +181,11 @@ pub mod tests {
             }
             Ok(())
         }
-        
+
         async fn delete(&self, id: Uuid) -> Result<(), AppError> {
             let mut users = self.users.lock().unwrap();
             users.retain(|u| u.id != id);
             Ok(())
         }
     }
-} 
+}

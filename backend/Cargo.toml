@@ -5,6 +5,8 @@ edition = "2021"
 license = "AGPL-3.0-or-later"
 
 [dependencies]
+metrics = "0.24"
+metrics-exporter-prometheus = { version = "0.17", features = ["http-listener"] }
 axum = { version = "0.7.5", features = ["macros", "ws", "multipart"] }
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.120"

@@ -14,12 +14,12 @@
 //! - Automatic cleanup of inactive sessions
 //! - Rate limiting and connection timeout protection
 
+pub mod audio;
 pub mod websocket;
 pub mod yjs_protocol;
-pub mod audio;
 
 // Re-export the main networking functions
 pub use websocket::{
-    ws_routes, cleanup_inactive_sessions,
-    CLIENT_TIMEOUT, HEARTBEAT_INTERVAL, SESSIONS, GLOBAL_BROADCAST
+    cleanup_inactive_sessions, ws_routes, CLIENT_TIMEOUT, GLOBAL_BROADCAST, HEARTBEAT_INTERVAL,
+    SESSIONS,
 };

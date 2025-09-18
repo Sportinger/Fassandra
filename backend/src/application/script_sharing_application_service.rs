@@ -3,14 +3,14 @@
 //! Orchestrates script sharing workflows and permissions management.
 //! Handles complex business logic around script access control and sharing.
 
-use std::sync::Arc;
 use sqlx::PgPool;
-use tracing::{info, error, warn};
+use std::sync::Arc;
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use crate::domain::script_service::ScriptService;
 use crate::error::AppError;
-use crate::models::script_share::{ShareScriptRequest, ScriptShare};
+use crate::models::script_share::{ScriptShare, ShareScriptRequest};
 use crate::models::user::User;
 
 /// Application service for script sharing operations
@@ -38,10 +38,14 @@ impl ScriptSharingApplicationService {
         info!(user_id = %user_id, script_id = %script_id, "Sharing script with user");
 
         // Verify ownership through domain service
-        self.script_service.verify_script_ownership(script_id, user_id).await?;
+        self.script_service
+            .verify_script_ownership(script_id, user_id)
+            .await?;
 
         // Business validation for sharing
-        self.script_service.validate_script_sharing(script_id, user_id, &request.username).await?;
+        self.script_service
+            .validate_script_sharing(script_id, user_id, &request.username)
+            .await?;
 
         // Find target user
         let target_user = self.find_user_by_username(&request.username).await?;
@@ -49,11 +53,20 @@ impl ScriptSharingApplicationService {
         // Prevent self-sharing
         if target_user.id == user_id {
             warn!("User {} attempted to share script with themselves", user_id);
-            return Err(AppError::BadRequest("Cannot share script with yourself".into()));
+            return Err(AppError::BadRequest(
+                "Cannot share script with yourself".into(),
+            ));
         }
 
         // Create or update the share
-        let share = self.create_or_update_share(script_id, user_id, target_user.id, &request.permission.to_string()).await?;
+        let share = self
+            .create_or_update_share(
+                script_id,
+                user_id,
+                target_user.id,
+                &request.permission.to_string(),
+            )
+            .await?;
 
         info!(user_id = %user_id, script_id = %script_id, target_user_id = %target_user.id, "Successfully shared script");
         Ok(share)
@@ -68,7 +81,9 @@ impl ScriptSharingApplicationService {
         info!(user_id = %user_id, script_id = %script_id, "Getting script shares");
 
         // Verify ownership
-        self.script_service.verify_script_ownership(script_id, user_id).await?;
+        self.script_service
+            .verify_script_ownership(script_id, user_id)
+            .await?;
 
         // Get shares with user information
         let shares: Vec<_> = sqlx::query!(
@@ -113,7 +128,9 @@ impl ScriptSharingApplicationService {
         info!(user_id = %user_id, script_id = %script_id, share_id = %share_id, "Removing script share");
 
         // Verify ownership
-        self.script_service.verify_script_ownership(script_id, user_id).await?;
+        self.script_service
+            .verify_script_ownership(script_id, user_id)
+            .await?;
 
         // Remove the share
         let result = sqlx::query!(
@@ -141,7 +158,9 @@ impl ScriptSharingApplicationService {
         info!(user_id = %user_id, script_id = %script_id, "Toggling script public status");
 
         // Business validation through domain service
-        self.script_service.validate_public_toggle(script_id, user_id).await?;
+        self.script_service
+            .validate_public_toggle(script_id, user_id)
+            .await?;
 
         // Update the script's public status
         let result = sqlx::query!(
@@ -156,7 +175,9 @@ impl ScriptSharingApplicationService {
         )
         .fetch_optional(self.pool.as_ref())
         .await?
-        .ok_or_else(|| AppError::NotFound("Script not found or you don't have permission".into()))?;
+        .ok_or_else(|| {
+            AppError::NotFound("Script not found or you don't have permission".into())
+        })?;
 
         let new_status = result.is_public.unwrap_or(false);
         info!(user_id = %user_id, script_id = %script_id, public_status = new_status, "Successfully toggled script public status");
@@ -170,7 +191,12 @@ impl ScriptSharingApplicationService {
         user_id: Uuid,
     ) -> Result<bool, AppError> {
         // Check ownership first
-        if self.script_service.verify_script_ownership(script_id, user_id).await.is_ok() {
+        if self
+            .script_service
+            .verify_script_ownership(script_id, user_id)
+            .await
+            .is_ok()
+        {
             return Ok(true);
         }
 
@@ -189,14 +215,11 @@ impl ScriptSharingApplicationService {
         }
 
         // Check if public
-        let is_public = sqlx::query!(
-            "SELECT is_public FROM scripts WHERE id = $1",
-            script_id
-        )
-        .fetch_optional(self.pool.as_ref())
-        .await?
-        .map(|record| record.is_public.unwrap_or(false))
-        .unwrap_or(false);
+        let is_public = sqlx::query!("SELECT is_public FROM scripts WHERE id = $1", script_id)
+            .fetch_optional(self.pool.as_ref())
+            .await?
+            .map(|record| record.is_public.unwrap_or(false))
+            .unwrap_or(false);
 
         Ok(is_public)
     }
@@ -208,7 +231,12 @@ impl ScriptSharingApplicationService {
         user_id: Uuid,
     ) -> Result<bool, AppError> {
         // Check ownership first
-        if self.script_service.verify_script_ownership(script_id, user_id).await.is_ok() {
+        if self
+            .script_service
+            .verify_script_ownership(script_id, user_id)
+            .await
+            .is_ok()
+        {
             return Ok(true);
         }
 
@@ -221,7 +249,8 @@ impl ScriptSharingApplicationService {
         )
         .fetch_one(self.pool.as_ref())
         .await?
-        .count.unwrap_or(0);
+        .count
+        .unwrap_or(0);
 
         Ok(write_share_count > 0)
     }
@@ -230,14 +259,10 @@ impl ScriptSharingApplicationService {
     async fn find_user_by_username(&self, username: &str) -> Result<User, AppError> {
         // Note: Using exact match for now due to SQLX offline mode constraints
         // TODO: Update to case-insensitive after preparing queries
-        sqlx::query_as!(
-            User,
-            "SELECT * FROM users WHERE username = $1",
-            username
-        )
-        .fetch_optional(self.pool.as_ref())
-        .await?
-        .ok_or_else(|| AppError::NotFound(format!("User '{}' not found", username)))
+        sqlx::query_as!(User, "SELECT * FROM users WHERE username = $1", username)
+            .fetch_optional(self.pool.as_ref())
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("User '{}' not found", username)))
     }
 
     /// Creates or updates a script share
@@ -269,4 +294,4 @@ impl ScriptSharingApplicationService {
             AppError::Db(e)
         })
     }
-} 
+}

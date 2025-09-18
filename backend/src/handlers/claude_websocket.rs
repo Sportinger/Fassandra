@@ -1,13 +1,16 @@
+use crate::auth::WebSocketAuth;
+use crate::services::claude_session_service::{ClaudeSessionService, SessionUpdate};
 use axum::{
-    extract::{ws::{WebSocket, WebSocketUpgrade}, State, Path},
+    extract::{
+        ws::{WebSocket, WebSocketUpgrade},
+        Path, State,
+    },
     response::IntoResponse,
 };
+use futures_util::{SinkExt, StreamExt};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use uuid::Uuid;
-use futures_util::{SinkExt, StreamExt};
-use crate::auth::WebSocketAuth;
-use crate::services::claude_session_service::{ClaudeSessionService, SessionUpdate};
 
 /// WebSocket handler for real-time Claude session updates
 pub async fn claude_session_ws(
@@ -25,38 +28,44 @@ async fn handle_claude_session_socket(
     session_id: Uuid,
 ) {
     let (mut sender, mut receiver) = socket.split();
-    
+
     // Check if session exists
     let session_info = match claude_service.get_session(session_id).await {
         Some(info) => info,
         None => {
-            let _ = sender.send(axum::extract::ws::Message::Text(
-                serde_json::json!({
-                    "type": "error",
-                    "message": format!("Session {} not found", session_id)
-                }).to_string()
-            )).await;
+            let _ = sender
+                .send(axum::extract::ws::Message::Text(
+                    serde_json::json!({
+                        "type": "error",
+                        "message": format!("Session {} not found", session_id)
+                    })
+                    .to_string(),
+                ))
+                .await;
             return;
         }
     };
-    
+
     // Send initial status
-    let _ = sender.send(axum::extract::ws::Message::Text(
-        serde_json::json!({
-            "type": "initial",
-            "session": {
-                "id": session_info.id,
-                "status": format!("{:?}", session_info.status),
-                "progress": session_info.progress,
-                "pdf_filename": session_info.pdf_filename,
-                "started_at": session_info.started_at.to_rfc3339(),
-            }
-        }).to_string()
-    )).await;
-    
+    let _ = sender
+        .send(axum::extract::ws::Message::Text(
+            serde_json::json!({
+                "type": "initial",
+                "session": {
+                    "id": session_info.id,
+                    "status": format!("{:?}", session_info.status),
+                    "progress": session_info.progress,
+                    "pdf_filename": session_info.pdf_filename,
+                    "started_at": session_info.started_at.to_rfc3339(),
+                }
+            })
+            .to_string(),
+        ))
+        .await;
+
     // Create channel for updates
     let (tx, mut rx) = mpsc::channel::<SessionUpdate>(100);
-    
+
     // Spawn task to monitor session and send updates
     let claude_service_clone = claude_service.clone();
     let monitor_task = tokio::spawn(async move {
@@ -88,7 +97,10 @@ async fn handle_claude_session_socket(
                 }
 
                 // Check for new log lines
-                if let Some(logs) = claude_service_clone.get_session_logs(session_id, last_line_count).await {
+                if let Some(logs) = claude_service_clone
+                    .get_session_logs(session_id, last_line_count)
+                    .await
+                {
                     for line in logs {
                         // Forward raw output
                         let _ = tx.send(SessionUpdate::Output { line: line.clone() }).await;
@@ -97,17 +109,34 @@ async fn handle_claude_session_socket(
                         if let Some((tp, tc)) = parse_chunk_info(&line) {
                             if chunk_info_sent != Some((tp, tc)) {
                                 chunk_info_sent = Some((tp, tc));
-                                let _ = tx.send(SessionUpdate::ChunkInfo { total_pages: tp, total_chunks: tc }).await;
+                                let _ = tx
+                                    .send(SessionUpdate::ChunkInfo {
+                                        total_pages: tp,
+                                        total_chunks: tc,
+                                    })
+                                    .await;
                             }
                         } else if let Some((cur, total)) = parse_page_progress(&line) {
                             if last_page_seen != Some((cur, total)) {
                                 last_page_seen = Some((cur, total));
-                                let _ = tx.send(SessionUpdate::PageProgress { current_page: cur, total_pages: total }).await;
+                                let _ = tx
+                                    .send(SessionUpdate::PageProgress {
+                                        current_page: cur,
+                                        total_pages: total,
+                                    })
+                                    .await;
                             }
                         } else if let Some((cur, total, ps, pe)) = parse_chunk_complete(&line) {
                             if last_chunk_seen != Some((cur, total)) {
                                 last_chunk_seen = Some((cur, total));
-                                let _ = tx.send(SessionUpdate::ChunkProgress { current_chunk: cur, total_chunks: total, pages_start: ps, pages_end: pe }).await;
+                                let _ = tx
+                                    .send(SessionUpdate::ChunkProgress {
+                                        current_chunk: cur,
+                                        total_chunks: total,
+                                        pages_start: ps,
+                                        pages_end: pe,
+                                    })
+                                    .await;
                             }
                         }
                     }
@@ -135,7 +164,7 @@ async fn handle_claude_session_socket(
             }
         }
     });
-    
+
     // Forward updates to WebSocket
     let forward_task = tokio::spawn(async move {
         while let Some(update) = rx.recv().await {
@@ -153,7 +182,10 @@ async fn handle_claude_session_socket(
                         "line": line
                     })
                 }
-                SessionUpdate::PageProgress { current_page, total_pages } => {
+                SessionUpdate::PageProgress {
+                    current_page,
+                    total_pages,
+                } => {
                     serde_json::json!({
                         "type": "page_progress",
                         "current_page": current_page,
@@ -161,7 +193,10 @@ async fn handle_claude_session_socket(
                         "message": format!("Processing page {} of {}", current_page, total_pages)
                     })
                 }
-                SessionUpdate::ChunkInfo { total_pages, total_chunks } => {
+                SessionUpdate::ChunkInfo {
+                    total_pages,
+                    total_chunks,
+                } => {
                     serde_json::json!({
                         "type": "chunk_info",
                         "total_pages": total_pages,
@@ -169,14 +204,19 @@ async fn handle_claude_session_socket(
                         "message": format!("Script will be processed in {} chunks", total_chunks)
                     })
                 }
-                SessionUpdate::ChunkProgress { current_chunk, total_chunks, pages_start, pages_end } => {
+                SessionUpdate::ChunkProgress {
+                    current_chunk,
+                    total_chunks,
+                    pages_start,
+                    pages_end,
+                } => {
                     serde_json::json!({
                         "type": "chunk_progress",
                         "current_chunk": current_chunk,
                         "total_chunks": total_chunks,
                         "pages_start": pages_start,
                         "pages_end": pages_end,
-                        "message": format!("Processing chunk {} of {} (pages {}-{})", 
+                        "message": format!("Processing chunk {} of {} (pages {}-{})",
                                           current_chunk, total_chunks, pages_start, pages_end)
                     })
                 }
@@ -193,13 +233,17 @@ async fn handle_claude_session_socket(
                     })
                 }
             };
-            
-            if sender.send(axum::extract::ws::Message::Text(message.to_string())).await.is_err() {
+
+            if sender
+                .send(axum::extract::ws::Message::Text(message.to_string()))
+                .await
+                .is_err()
+            {
                 break;
             }
         }
     });
-    
+
     // Handle incoming messages (for potential future use)
     let receive_task = tokio::spawn(async move {
         while let Some(msg) = receiver.next().await {
@@ -215,7 +259,7 @@ async fn handle_claude_session_socket(
             }
         }
     });
-    
+
     // Wait for any task to complete
     tokio::select! {
         _ = monitor_task => {},
@@ -255,8 +299,20 @@ fn parse_page_progress(line: &str) -> Option<(u32, u32)> {
 fn parse_chunk_complete(line: &str) -> Option<(u32, u32, u32, u32)> {
     // "[CHUNK_COMPLETE] Chunk X of Z processed (pages A-B)"
     if line.contains("[CHUNK_COMPLETE]") && line.contains("Chunk") {
-        let cur = line.split("Chunk ").nth(1)?.split_whitespace().next()?.parse::<u32>().ok()?;
-        let total = line.split(" of ").nth(1)?.split_whitespace().next()?.parse::<u32>().ok()?;
+        let cur = line
+            .split("Chunk ")
+            .nth(1)?
+            .split_whitespace()
+            .next()?
+            .parse::<u32>()
+            .ok()?;
+        let total = line
+            .split(" of ")
+            .nth(1)?
+            .split_whitespace()
+            .next()?
+            .parse::<u32>()
+            .ok()?;
         let pages = line.split("(pages ").nth(1)?.split(')').next()?;
         let mut it = pages.split('-');
         let ps = it.next()?.trim().parse::<u32>().ok()?;

@@ -5,8 +5,8 @@
 //! done by the service-oriented architecture with proper separation of concerns.
 
 use sqlx::PgPool;
-use uuid::Uuid;
 use tracing::info;
+use uuid::Uuid;
 
 // Re-export commonly used types for convenience
 pub use crate::error::AppError;
@@ -22,7 +22,7 @@ pub async fn get_script(
     script_id: Uuid,
 ) -> Result<Option<crate::models::script::Script>> {
     info!("🔍 Fetching script: {}", script_id);
-    
+
     let script = sqlx::query_as!(
         crate::models::script::Script,
         "SELECT id, title, created_by, created_at, is_public, thumbnail FROM scripts WHERE id = $1",
@@ -30,14 +30,12 @@ pub async fn get_script(
     )
     .fetch_optional(pool)
     .await?;
-    
+
     Ok(script)
 }
 
 /// Health check function
 pub async fn health_check(pool: &PgPool) -> Result<()> {
-    sqlx::query("SELECT 1")
-        .fetch_one(pool)
-        .await?;
+    sqlx::query("SELECT 1").fetch_one(pool).await?;
     Ok(())
 }

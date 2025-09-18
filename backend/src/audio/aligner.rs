@@ -1,4 +1,4 @@
-use crate::audio::types::{TokenMap, AsrPartial};
+use crate::audio::types::{AsrPartial, TokenMap};
 use std::collections::HashMap;
 use tracing;
 
@@ -19,7 +19,12 @@ pub struct CorridorAligner {
 }
 
 impl CorridorAligner {
-    pub fn new(token_map: TokenMap, backtrack: usize, lookahead: usize, stable_frames_required: usize) -> Self {
+    pub fn new(
+        token_map: TokenMap,
+        backtrack: usize,
+        lookahead: usize,
+        stable_frames_required: usize,
+    ) -> Self {
         let idf_map = Self::compute_idf(&token_map.tokens);
         let idf_map = Self::compute_idf(&token_map.tokens);
         let inv_index = Self::build_inverted_index(&token_map.tokens);
@@ -73,35 +78,53 @@ impl CorridorAligner {
                 'ü' => "ue",
                 'ß' => "ss",
                 _ => {
-                    if ch.is_alphanumeric() { "" } else { " " }
+                    if ch.is_alphanumeric() {
+                        ""
+                    } else {
+                        " "
+                    }
                 }
             };
-            if !mapped.is_empty() { buf.push_str(mapped); } else if ch.is_alphanumeric() { buf.push(ch); } else { buf.push(' '); }
+            if !mapped.is_empty() {
+                buf.push_str(mapped);
+            } else if ch.is_alphanumeric() {
+                buf.push(ch);
+            } else {
+                buf.push(' ');
+            }
         }
         buf.split_whitespace().collect::<Vec<_>>().join("")
     }
 
     fn levenshtein_ratio(a: &str, b: &str) -> f32 {
-        if a == b { return 1.0; }
+        if a == b {
+            return 1.0;
+        }
         let ac: Vec<char> = a.chars().collect();
         let bc: Vec<char> = b.chars().collect();
         let al = ac.len();
         let bl = bc.len();
-        if al == 0 || bl == 0 { return 0.0; }
+        if al == 0 || bl == 0 {
+            return 0.0;
+        }
         let mut dp = vec![0usize; (al + 1) * (bl + 1)];
         let idx = |i: usize, j: usize| -> usize { i * (bl + 1) + j };
-        for i in 0..=al { dp[idx(i,0)] = i; }
-        for j in 0..=bl { dp[idx(0,j)] = j; }
+        for i in 0..=al {
+            dp[idx(i, 0)] = i;
+        }
+        for j in 0..=bl {
+            dp[idx(0, j)] = j;
+        }
         for i in 1..=al {
             for j in 1..=bl {
-                let cost = if ac[i-1] == bc[j-1] { 0 } else { 1 };
-                let del = dp[idx(i-1,j)] + 1;
-                let ins = dp[idx(i,j-1)] + 1;
-                let sub = dp[idx(i-1,j-1)] + cost;
-                dp[idx(i,j)] = del.min(ins).min(sub);
+                let cost = if ac[i - 1] == bc[j - 1] { 0 } else { 1 };
+                let del = dp[idx(i - 1, j)] + 1;
+                let ins = dp[idx(i, j - 1)] + 1;
+                let sub = dp[idx(i - 1, j - 1)] + cost;
+                dp[idx(i, j)] = del.min(ins).min(sub);
             }
         }
-        let dist = dp[idx(al,bl)] as f32;
+        let dist = dp[idx(al, bl)] as f32;
         1.0 - (dist / (al.max(bl) as f32))
     }
 
@@ -110,8 +133,14 @@ impl CorridorAligner {
         *self.idf_map.get(token).unwrap_or(&1.0)
     }
 
-    fn score_window_weighted(&self, asr_tokens: &[(String, f32)], window: &[String]) -> (f32, usize, usize, usize, Vec<usize>) {
-        if asr_tokens.is_empty() || window.is_empty() { return (0.0, 0, 0, 0, Vec::new()); }
+    fn score_window_weighted(
+        &self,
+        asr_tokens: &[(String, f32)],
+        window: &[String],
+    ) -> (f32, usize, usize, usize, Vec<usize>) {
+        if asr_tokens.is_empty() || window.is_empty() {
+            return (0.0, 0, 0, 0, Vec::new());
+        }
         let mut score = 0.0f32;
         let mut matches = 0usize;
         let mut j = 0usize;
@@ -127,7 +156,10 @@ impl CorridorAligner {
             let end = (j + max_jump).min(window.len());
             for k in j..end {
                 let sim = Self::levenshtein_ratio(t, &window[k]);
-                if sim > best_local_sim { best_local_sim = sim; best_local_idx = Some(k); }
+                if sim > best_local_sim {
+                    best_local_sim = sim;
+                    best_local_idx = Some(k);
+                }
             }
             if let Some(k) = best_local_idx {
                 if best_local_sim >= sim_min {
@@ -137,7 +169,9 @@ impl CorridorAligner {
                     let jump_pen = ((k as isize - j as isize).max(0) as f32) * 0.03;
                     score += (best_local_sim * idf * conf_w) - jump_pen;
                     matches += 1;
-                    if first_match_idx.is_none() { first_match_idx = Some(k); }
+                    if first_match_idx.is_none() {
+                        first_match_idx = Some(k);
+                    }
                     last_match_idx = Some(k);
                     path.push(k);
                     j = k + 1;
@@ -153,7 +187,9 @@ impl CorridorAligner {
     }
 
     pub fn update_with_asr(&mut self, partial: &AsrPartial) -> Option<u32> {
-        if self.token_map.tokens.is_empty() { return None; }
+        if self.token_map.tokens.is_empty() {
+            return None;
+        }
 
         // Last up to 15 words with confidence
         let mut asr_seq: Vec<(String, f32)> = partial
@@ -162,8 +198,12 @@ impl CorridorAligner {
             .map(|w| (Self::normalize_token(&w.w), w.conf.unwrap_or(1.0)))
             .filter(|(s, _)| !s.is_empty())
             .collect();
-        if asr_seq.len() > 15 { asr_seq = asr_seq[asr_seq.len()-15..].to_vec(); }
-        if asr_seq.is_empty() { return None; }
+        if asr_seq.len() > 15 {
+            asr_seq = asr_seq[asr_seq.len() - 15..].to_vec();
+        }
+        if asr_seq.is_empty() {
+            return None;
+        }
 
         let p = self.p.max(0) as usize;
         let start = p.saturating_sub(self.backtrack);
@@ -176,9 +216,14 @@ impl CorridorAligner {
         while i < end_bound {
             let win_end = (i + asr_seq.len().max(5)).min(end_bound); // some width
             let window = &self.token_map.tokens[i..win_end];
-            let (score, matches, _first_rel, last_rel, rel_path) = self.score_window_weighted(&asr_seq, window);
+            let (score, matches, _first_rel, last_rel, rel_path) =
+                self.score_window_weighted(&asr_seq, window);
             // Normalize score slightly by matches
-            let norm = if matches > 0 { score / (matches as f32) } else { score - 1.0 };
+            let norm = if matches > 0 {
+                score / (matches as f32)
+            } else {
+                score - 1.0
+            };
             // prefer more matches, then higher normalized score
             let better = matches > best_matches || (matches == best_matches && norm > best_score);
             if better {
@@ -212,9 +257,15 @@ impl CorridorAligner {
                 while i < n {
                     let end = (i + asr_seq.len().max(5)).min(n);
                     let window = &self.token_map.tokens[i..end];
-                    let (g_score, g_matches, _f, g_last, _p) = self.score_window_weighted(&asr_seq, window);
-                    let g_norm = if g_matches > 0 { g_score / (g_matches as f32) } else { g_score - 1.0 };
-                    let better = g_matches > g_best_matches || (g_matches == g_best_matches && g_norm > g_best_score);
+                    let (g_score, g_matches, _f, g_last, _p) =
+                        self.score_window_weighted(&asr_seq, window);
+                    let g_norm = if g_matches > 0 {
+                        g_score / (g_matches as f32)
+                    } else {
+                        g_score - 1.0
+                    };
+                    let better = g_matches > g_best_matches
+                        || (g_matches == g_best_matches && g_norm > g_best_score);
                     if better {
                         g_best_matches = g_matches;
                         g_best_score = g_norm;
@@ -225,29 +276,47 @@ impl CorridorAligner {
                 let g_min_matches = (asr_seq.len() / 4).max(2);
                 if g_best_matches >= g_min_matches && g_best_score >= 0.42 {
                     // hard jump to new location, immediate update
-                    tracing::info!("[align] global resync jump -> idx={}, matches={}, score={}", g_best_idx, g_best_matches, g_best_score);
+                    tracing::info!(
+                        "[align] global resync jump -> idx={}, matches={}, score={}",
+                        g_best_idx,
+                        g_best_matches,
+                        g_best_score
+                    );
                     self.p = g_best_idx as isize;
                     self.last_best_idx = Some(g_best_idx);
                     self.stable_counter = 0;
                     self.no_match_counter = 0;
-                    return Some(*self.token_map.offsets.get(g_best_idx).unwrap_or(&self.token_map.offsets[self.token_map.offsets.len().saturating_sub(1)]));
+                    return Some(*self.token_map.offsets.get(g_best_idx).unwrap_or(
+                        &self.token_map.offsets[self.token_map.offsets.len().saturating_sub(1)],
+                    ));
                 }
             }
 
             // Try immediate anchor-based jump using rare high-confidence tokens
             if let Some((a_idx, a_matches, a_score)) = self.anchor_resync(&asr_seq) {
-                tracing::info!("[align] anchor resync jump -> idx={}, matches={}, score={}", a_idx, a_matches, a_score);
+                tracing::info!(
+                    "[align] anchor resync jump -> idx={}, matches={}, score={}",
+                    a_idx,
+                    a_matches,
+                    a_score
+                );
                 self.p = a_idx as isize;
                 self.last_best_idx = Some(a_idx);
                 self.stable_counter = 0;
                 self.no_match_counter = 0;
-                return Some(*self.token_map.offsets.get(a_idx).unwrap_or(&self.token_map.offsets[self.token_map.offsets.len().saturating_sub(1)]));
+                return Some(*self.token_map.offsets.get(a_idx).unwrap_or(
+                    &self.token_map.offsets[self.token_map.offsets.len().saturating_sub(1)],
+                ));
             }
             return None;
         }
 
         // stability: require same area for a couple frames
-        if self.last_best_idx.map(|x| (x as isize - best_idx as isize).abs() <= 6).unwrap_or(false) {
+        if self
+            .last_best_idx
+            .map(|x| (x as isize - best_idx as isize).abs() <= 6)
+            .unwrap_or(false)
+        {
             self.stable_counter += 1;
         } else {
             self.last_best_idx = Some(best_idx);
@@ -266,15 +335,22 @@ impl CorridorAligner {
 
     pub fn take_last_word_doc_positions(&mut self) -> Vec<u32> {
         if let Some(idxs) = self.last_word_indices.take() {
-            idxs.into_iter().filter_map(|i| self.token_map.offsets.get(i).cloned()).collect()
-        } else { Vec::new() }
+            idxs.into_iter()
+                .filter_map(|i| self.token_map.offsets.get(i).cloned())
+                .collect()
+        } else {
+            Vec::new()
+        }
     }
 
     fn anchor_resync(&self, asr_seq: &[(String, f32)]) -> Option<(usize, usize, f32)> {
         // pick up to 3 best anchors by idf*conf
-        let mut anchors: Vec<(String, f32)> = asr_seq.iter().map(|(t,c)| (t.clone(), self.token_weight(t) * (*c))).collect();
-        anchors.sort_by(|a,b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        let anchors: Vec<String> = anchors.into_iter().take(3).map(|(t,_)| t).collect();
+        let mut anchors: Vec<(String, f32)> = asr_seq
+            .iter()
+            .map(|(t, c)| (t.clone(), self.token_weight(t) * (*c)))
+            .collect();
+        anchors.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        let anchors: Vec<String> = anchors.into_iter().take(3).map(|(t, _)| t).collect();
 
         let n = self.token_map.tokens.len();
         let mut best_idx = None;
@@ -283,14 +359,23 @@ impl CorridorAligner {
 
         for a in anchors {
             if let Some(positions) = self.inv_index.get(&a) {
-                for &pos in positions.iter().take(200) { // cap
+                for &pos in positions.iter().take(200) {
+                    // cap
                     let start = pos;
                     let end = (start + asr_seq.len().max(5)).min(n);
-                    if start >= end { continue; }
+                    if start >= end {
+                        continue;
+                    }
                     let window = &self.token_map.tokens[start..end];
-                    let (score, matches, _f, last_rel, _p) = self.score_window_weighted(asr_seq, window);
-                    let norm = if matches > 0 { score / (matches as f32) } else { score - 1.0 };
-                    let better = matches > best_matches || (matches == best_matches && norm > best_score);
+                    let (score, matches, _f, last_rel, _p) =
+                        self.score_window_weighted(asr_seq, window);
+                    let norm = if matches > 0 {
+                        score / (matches as f32)
+                    } else {
+                        score - 1.0
+                    };
+                    let better =
+                        matches > best_matches || (matches == best_matches && norm > best_score);
                     if better {
                         best_matches = matches;
                         best_score = norm;

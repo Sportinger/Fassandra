@@ -8,4 +8,4 @@ pub struct YjsPersistenceEvent {
     pub update_data: Vec<u8>,
     pub user_id: Option<Uuid>,
     pub received_at: DateTime<Utc>,
-} 
+}

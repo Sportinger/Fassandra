@@ -1,12 +1,15 @@
-use std::sync::Arc;
-use sqlx::PgPool;
-use uuid::Uuid;
-use yrs::{Doc, Options, Transact, ReadTxn, WriteTxn, StateVector, updates::decoder::Decode, Update, GetString};
-use yrs::updates::encoder::Encode;
-use tokio::time::{Duration, interval};
-use tracing::{info, error, debug, warn};
-use anyhow::Result;
 use anyhow::anyhow;
+use anyhow::Result;
+use sqlx::PgPool;
+use std::sync::Arc;
+use tokio::time::{interval, Duration};
+use tracing::{debug, error, info, warn};
+use uuid::Uuid;
+use yrs::updates::encoder::Encode;
+use yrs::{
+    updates::decoder::Decode, Doc, GetString, Options, ReadTxn, StateVector, Transact, Update,
+    WriteTxn,
+};
 
 /// Service responsible for compacting YJS updates into base states
 pub struct CompactionService {
@@ -28,11 +31,11 @@ impl CompactionService {
     pub async fn run(self: Arc<Self>) {
         info!("🚀 YJS Compaction Service started - running every 5 minutes");
         let mut interval = interval(Duration::from_secs(300));
-        
+
         loop {
             interval.tick().await;
             debug!("Running compaction check...");
-            
+
             match self.find_scripts_needing_compaction().await {
                 Ok(scripts) => {
                     if scripts.is_empty() {
@@ -77,10 +80,10 @@ impl CompactionService {
     async fn compact_script(&self, script_id: Uuid) -> Result<()> {
         let start = std::time::Instant::now();
         info!("Starting compaction for script {}", script_id);
-        
+
         // Start transaction
         let mut tx = self.pool.begin().await?;
-        
+
         // 1. Load current base state
         let base_state = sqlx::query!(
             "SELECT base_state, state_vector FROM yjs_base_states WHERE script_id = $1",
@@ -88,7 +91,7 @@ impl CompactionService {
         )
         .fetch_optional(&mut *tx)
         .await?;
-        
+
         // 2. Load uncompacted updates
         let updates = sqlx::query!(
             r#"
@@ -101,21 +104,21 @@ impl CompactionService {
         )
         .fetch_all(&mut *tx)
         .await?;
-        
+
         if updates.is_empty() {
             debug!("No updates to compact for script {}", script_id);
             return Ok(());
         }
-        
+
         let update_count = updates.len();
         let size_before: i32 = updates.iter().map(|u| u.update_data.len() as i32).sum();
-        
+
         // 3. Create YJS document and apply base + updates
         let doc = Doc::with_options(Options {
-            skip_gc: false,  // Enable garbage collection
+            skip_gc: false, // Enable garbage collection
             ..Default::default()
         });
-        
+
         // Bootstrap the document with required fragments (same as old system)
         {
             let mut txn = doc.transact_mut();
@@ -124,7 +127,7 @@ impl CompactionService {
                 txn.get_or_insert_text(name);
             }
         }
-        
+
         // Apply base state if exists
         if let Some(base) = base_state {
             if !base.base_state.is_empty() {
@@ -140,7 +143,7 @@ impl CompactionService {
                 }
             }
         }
-        
+
         // Apply new updates
         let mut last_update_id = 0i64;
         let mut applied_count = 0;
@@ -157,14 +160,16 @@ impl CompactionService {
             }
             last_update_id = update.id;
         }
-        
+
         debug!("Applied {}/{} updates", applied_count, update_count);
-        
+
         // 4. Generate new compacted state
-        let new_base_state = doc.transact().encode_state_as_update_v1(&StateVector::default());
+        let new_base_state = doc
+            .transact()
+            .encode_state_as_update_v1(&StateVector::default());
         let state_vector = doc.transact().state_vector().encode_v1();
         let size_after = new_base_state.len() as i32;
-        
+
         // 5. Save new base state
         sqlx::query!(
             r#"
@@ -188,7 +193,7 @@ impl CompactionService {
         )
         .execute(&mut *tx)
         .await?;
-        
+
         // 6. Mark updates as compacted (soft delete)
         sqlx::query!(
             "UPDATE yjs_recent_updates SET is_compacted = true WHERE script_id = $1 AND id <= $2",
@@ -197,7 +202,7 @@ impl CompactionService {
         )
         .execute(&mut *tx)
         .await?;
-        
+
         // 7. Log compaction
         let duration_ms = start.elapsed().as_millis() as i32;
         sqlx::query!(
@@ -213,26 +218,21 @@ impl CompactionService {
         )
         .execute(&mut *tx)
         .await?;
-        
+
         // Commit transaction
         tx.commit().await?;
-        
+
         let compression_ratio = if size_before > 0 {
             ((1.0 - (size_after as f64 / size_before as f64)) * 100.0) as i32
         } else {
             0
         };
-        
+
         info!(
             "✅ Compacted script {} - {} updates ({} bytes) → {} bytes ({}% reduction) in {}ms",
-            script_id,
-            update_count,
-            size_before,
-            size_after,
-            compression_ratio,
-            duration_ms
+            script_id, update_count, size_before, size_after, compression_ratio, duration_ms
         );
-        
+
         Ok(())
     }
 
@@ -250,13 +250,16 @@ impl CompactionService {
         )
         .fetch_all(self.pool.as_ref())
         .await?;
-        
+
         for script in unhealthy {
             if let Some(count) = script.count {
-                error!("⚠️ Script {} has {} uncompacted updates - needs urgent compaction!", script.script_id, count);
+                error!(
+                    "⚠️ Script {} has {} uncompacted updates - needs urgent compaction!",
+                    script.script_id, count
+                );
             }
         }
-        
+
         Ok(())
     }
 }
@@ -264,7 +267,7 @@ impl CompactionService {
 /// Public function to load a document efficiently using the new compacted system
 pub async fn load_document(pool: &PgPool, script_id: Uuid) -> Result<Doc> {
     debug!("Loading document for script {}", script_id);
-    
+
     // 1. Load base state
     let base = sqlx::query!(
         "SELECT base_state FROM yjs_base_states WHERE script_id = $1",
@@ -272,7 +275,7 @@ pub async fn load_document(pool: &PgPool, script_id: Uuid) -> Result<Doc> {
     )
     .fetch_optional(pool)
     .await?;
-    
+
     // 2. Load recent uncompacted updates
     let recent_updates = sqlx::query!(
         r#"
@@ -285,25 +288,36 @@ pub async fn load_document(pool: &PgPool, script_id: Uuid) -> Result<Doc> {
     )
     .fetch_all(pool)
     .await?;
-    
+
     // 3. Create document without bootstrapping first
     let doc = Doc::with_options(Options {
-        skip_gc: false,  // Enable GC for proper state management
+        skip_gc: false, // Enable GC for proper state management
         ..Default::default()
     });
-    
+
     // 4. Apply base if exists FIRST before bootstrapping
     let has_base_state = if let Some(base) = base {
         if !base.base_state.is_empty() {
-            info!("Found base state for script {} with {} bytes", script_id, base.base_state.len());
+            info!(
+                "Found base state for script {} with {} bytes",
+                script_id,
+                base.base_state.len()
+            );
             match Update::decode_v1(&base.base_state) {
                 Ok(update) => {
                     doc.transact_mut().apply_update(update);
-                    info!("Successfully loaded base state ({} bytes) for script {}", base.base_state.len(), script_id);
+                    info!(
+                        "Successfully loaded base state ({} bytes) for script {}",
+                        base.base_state.len(),
+                        script_id
+                    );
                     true
                 }
                 Err(e) => {
-                    error!("Failed to decode base state for script {}: {}", script_id, e);
+                    error!(
+                        "Failed to decode base state for script {}: {}",
+                        script_id, e
+                    );
                     false
                 }
             }
@@ -315,7 +329,7 @@ pub async fn load_document(pool: &PgPool, script_id: Uuid) -> Result<Doc> {
         info!("No base state found for script {}", script_id);
         false
     };
-    
+
     // 5. Bootstrap with required fragments ONLY if no base state was loaded
     if !has_base_state {
         info!("Bootstrapping empty document for script {}", script_id);
@@ -328,14 +342,15 @@ pub async fn load_document(pool: &PgPool, script_id: Uuid) -> Result<Doc> {
     } else {
         // Debug: log what we have after loading base state
         let txn = doc.transact();
-        info!("After loading base state for {}: has_default={}, has_xmlFragment={}, has_content={}", 
+        info!(
+            "After loading base state for {}: has_default={}, has_xmlFragment={}, has_content={}",
             script_id,
             txn.get_xml_fragment("default").is_some(),
             txn.get_xml_fragment("xmlFragment").is_some(),
             txn.get_xml_fragment("content").is_some()
         );
     }
-    
+
     // 6. Apply recent updates
     let mut applied = 0;
     for update in recent_updates {
@@ -348,9 +363,9 @@ pub async fn load_document(pool: &PgPool, script_id: Uuid) -> Result<Doc> {
                 // Fallback: some legacy rows may contain a full y-protocol Sync frame
                 // Try to decode as yrs::sync::Message and extract the inner Update payload
                 warn!("Failed to decode recent update via Update::decode_v1: {} (attempting sync fallback)", e);
-                use yrs::updates::decoder::{Decode as _, DecoderV1};
                 use yrs::encoding::read::Cursor as YrsCursor;
                 use yrs::sync::{Message as SyncEnvelope, SyncMessage as SyncInner};
+                use yrs::updates::decoder::{Decode as _, DecoderV1};
 
                 let mut dec = DecoderV1::new(YrsCursor::new(&update.update_data));
                 match <SyncEnvelope as yrs::updates::decoder::Decode>::decode(&mut dec) {
@@ -365,7 +380,10 @@ pub async fn load_document(pool: &PgPool, script_id: Uuid) -> Result<Doc> {
                                 Ok(yjs_update) => {
                                     doc.transact_mut().apply_update(yjs_update);
                                     applied += 1;
-                                    debug!("Applied legacy sync-encoded update ({} bytes)", bytes.len());
+                                    debug!(
+                                        "Applied legacy sync-encoded update ({} bytes)",
+                                        bytes.len()
+                                    );
                                 }
                                 Err(e2) => {
                                     warn!("Failed to decode inner Update payload from sync frame: {} (skipping)", e2);
@@ -385,7 +403,7 @@ pub async fn load_document(pool: &PgPool, script_id: Uuid) -> Result<Doc> {
             }
         }
     }
-    
+
     debug!("Document loaded with {} recent updates applied", applied);
     Ok(doc)
 }
@@ -397,25 +415,26 @@ pub async fn compact_now(pool: &PgPool, script_id: Uuid) -> Result<()> {
 
     // Load current document (base + recent updates)
     let doc = load_document(pool, script_id).await?;
-    let new_base = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
+    let new_base = doc
+        .transact()
+        .encode_state_as_update_v1(&yrs::StateVector::default());
     let state_vector = doc.transact().state_vector().encode_v1();
 
     // Persist new base and roll up metadata
     let last_update_id: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(MAX(id), 0) FROM yjs_recent_updates WHERE script_id = $1"
+        "SELECT COALESCE(MAX(id), 0) FROM yjs_recent_updates WHERE script_id = $1",
     )
     .bind(script_id)
     .fetch_one(pool)
     .await
     .unwrap_or(0);
 
-    let update_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM yjs_recent_updates WHERE script_id = $1"
-    )
-    .bind(script_id)
-    .fetch_one(pool)
-    .await
-    .unwrap_or(0);
+    let update_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM yjs_recent_updates WHERE script_id = $1")
+            .bind(script_id)
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
 
     let size_after = new_base.len() as i32;
     let update_count_i32 = (update_count as i32).max(0);
@@ -462,7 +481,11 @@ pub async fn load_state_vector_bytes(pool: &PgPool, script_id: Uuid) -> Result<V
 }
 
 /// Compute a diff update (as update bytes) against a client-provided state vector
-pub async fn compute_diff_update(pool: &PgPool, script_id: Uuid, client_state_vector_v1: &[u8]) -> Result<Vec<u8>> {
+pub async fn compute_diff_update(
+    pool: &PgPool,
+    script_id: Uuid,
+    client_state_vector_v1: &[u8],
+) -> Result<Vec<u8>> {
     use yrs::updates::decoder::Decode;
     let doc = load_document(pool, script_id).await?;
     // Decode client SV
@@ -474,22 +497,22 @@ pub async fn compute_diff_update(pool: &PgPool, script_id: Uuid, client_state_ve
 /// Extract text content from YJS document for preview/search
 pub fn extract_text_content(doc: &Doc) -> String {
     let txn = doc.transact();
-    
+
     // Try to get content from the "content" fragment first
     if let Some(content) = txn.get_xml_fragment("content") {
         return content.get_string(&txn);
     }
-    
+
     // Fallback to "prosemirror" fragment
     if let Some(prosemirror) = txn.get_xml_fragment("prosemirror") {
         return prosemirror.get_string(&txn);
     }
-    
+
     // Fallback to "default" fragment
     if let Some(default) = txn.get_xml_fragment("default") {
         return default.get_string(&txn);
     }
-    
+
     String::new()
 }
 
@@ -505,11 +528,14 @@ pub async fn cleanup_old_updates(pool: &PgPool, days_to_keep: i64) -> Result<()>
     )
     .execute(pool)
     .await?;
-    
+
     if deleted.rows_affected() > 0 {
-        info!("Cleaned up {} old compacted updates", deleted.rows_affected());
+        info!(
+            "Cleaned up {} old compacted updates",
+            deleted.rows_affected()
+        );
     }
-    
+
     Ok(())
 }
 
@@ -524,9 +550,9 @@ pub async fn cleanup_old_updates(pool: &PgPool, days_to_keep: i64) -> Result<()>
 /// - Build a fresh Y.Doc with pageIndicator, sceneBlock, dialogueBlock, and paragraph nodes.
 /// - Overwrite `yjs_base_states` for the script and mark recent updates compacted.
 pub async fn migrate_legacy_to_structured(pool: &PgPool, script_id: Uuid) -> Result<(i32, i64)> {
-    use yrs::{Transact, WriteTxn};
     use yrs::updates::encoder::Encode;
-    use yrs::{XmlElementPrelim, XmlTextPrelim, XmlFragment as _};
+    use yrs::{Transact, WriteTxn};
+    use yrs::{XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
 
     // Load current document (base + updates)
     let doc = load_document(pool, script_id).await?;
@@ -546,7 +572,9 @@ pub async fn migrate_legacy_to_structured(pool: &PgPool, script_id: Uuid) -> Res
         // Split into blocks by blank line
         for raw_block in legacy_text.split("\n\n") {
             let block = raw_block.trim();
-            if block.is_empty() { continue; }
+            if block.is_empty() {
+                continue;
+            }
 
             // [PAGE] N
             if let Some(rest) = block.strip_prefix("[PAGE] ") {
@@ -562,7 +590,14 @@ pub async fn migrate_legacy_to_structured(pool: &PgPool, script_id: Uuid) -> Res
                 let scene_el = XmlElementPrelim::empty("sceneBlock");
                 let scene_ref = frag.push_back(&mut txn, scene_el);
                 let t = title.trim();
-                scene_ref.push_back(&mut txn, XmlTextPrelim::new(if t.is_empty() { "Untitled Scene".to_string() } else { t.to_string() }));
+                scene_ref.push_back(
+                    &mut txn,
+                    XmlTextPrelim::new(if t.is_empty() {
+                        "Untitled Scene".to_string()
+                    } else {
+                        t.to_string()
+                    }),
+                );
                 continue;
             }
 
@@ -584,7 +619,9 @@ pub async fn migrate_legacy_to_structured(pool: &PgPool, script_id: Uuid) -> Res
                     }
                     for l in lines {
                         let lt = l.trim();
-                        if lt.is_empty() { continue; }
+                        if lt.is_empty() {
+                            continue;
+                        }
                         let p = dtext.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
                         p.push_back(&mut txn, XmlTextPrelim::new(lt.to_string()));
                     }
@@ -599,12 +636,14 @@ pub async fn migrate_legacy_to_structured(pool: &PgPool, script_id: Uuid) -> Res
     }
 
     // Persist as new base state
-    let new_base = new_doc.transact().encode_state_as_update_v1(&StateVector::default());
+    let new_base = new_doc
+        .transact()
+        .encode_state_as_update_v1(&StateVector::default());
     let state_vector = new_doc.transact().state_vector().encode_v1();
 
     // Figure out current last update id for bookkeeping
     let last_update_id: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(MAX(id), 0) FROM yjs_recent_updates WHERE script_id = $1"
+        "SELECT COALESCE(MAX(id), 0) FROM yjs_recent_updates WHERE script_id = $1",
     )
     .bind(script_id)
     .fetch_one(pool)

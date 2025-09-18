@@ -22,4 +22,4 @@ pub struct Script {
     pub is_public: Option<bool>,
     /// Base64-encoded thumbnail image for DIN A4 preview
     pub thumbnail: Option<String>,
-} 
+}

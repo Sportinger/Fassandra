@@ -1,14 +1,14 @@
+use anyhow::Error as AnyhowError;
+use axum::Error as AxumError;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
 use serde::Serialize;
-use sqlx::Error as SqlxError;
-use validator::ValidationErrors;
-use std::fmt;
-use anyhow::Error as AnyhowError;
-use axum::Error as AxumError;
 use serde_json::Error as SerdeJsonError;
+use sqlx::Error as SqlxError;
+use std::fmt;
+use validator::ValidationErrors;
 
 /// Application error type for backend operations.
 ///
@@ -42,7 +42,7 @@ impl fmt::Display for AppError {
                 // 🔒 SECURITY: Never expose database error details in display
                 // The actual error is logged separately in IntoResponse
                 write!(f, "Database error")
-            },
+            }
             AppError::Unauthorized(e) => write!(f, "Unauthorized: {}", e),
             AppError::Forbidden(e) => write!(f, "Forbidden: {}", e),
             AppError::Conflict(msg) => write!(f, "Conflict: {}", msg),
@@ -50,12 +50,12 @@ impl fmt::Display for AppError {
                 // 🔒 SECURITY: Never expose validation details in display
                 // The actual validation errors are handled separately in IntoResponse
                 write!(f, "Validation error")
-            },
+            }
             AppError::Internal(_) => {
                 // 🔒 SECURITY: Never expose internal error details in display
                 // The actual error is logged separately in IntoResponse
                 write!(f, "Internal error")
-            },
+            }
             AppError::BadRequest(e) => write!(f, "Bad request: {}", e),
             AppError::NotFound(e) => write!(f, "Not found: {}", e),
             AppError::TooManyRequests(msg) => write!(f, "Too many requests: {}", msg),
@@ -79,12 +79,12 @@ struct ErrorResponse {
 /// Extract user-friendly validation messages while filtering out internal details
 fn extract_safe_validation_messages(errors: &ValidationErrors) -> Vec<String> {
     let mut messages = Vec::new();
-    
+
     for (field, field_errors) in errors.field_errors() {
         for error in field_errors {
             if let Some(message) = &error.message {
                 let message_str = message.to_string();
-                
+
                 // 🔒 SECURITY: Only return predefined safe messages, filter out internal details
                 match field {
                     "password" => {
@@ -97,7 +97,7 @@ fn extract_safe_validation_messages(errors: &ValidationErrors) -> Vec<String> {
                             // Generic password message for any other password validation failures
                             messages.push("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)".to_string());
                         }
-                    },
+                    }
                     "email" => {
                         // For email field, provide helpful message
                         if message_str.contains("Invalid email") {
@@ -105,17 +105,20 @@ fn extract_safe_validation_messages(errors: &ValidationErrors) -> Vec<String> {
                         } else {
                             messages.push("Please enter a valid email address".to_string());
                         }
-                    },
+                    }
                     "username" => {
                         // For username field, provide helpful message
                         if message_str.contains("Username must be between") {
                             messages.push(message_str);
                         } else if message_str.contains("Username can only contain") {
-                            messages.push("Username can only contain letters, numbers, and underscores".to_string());
+                            messages.push(
+                                "Username can only contain letters, numbers, and underscores"
+                                    .to_string(),
+                            );
                         } else {
                             messages.push("Username must be between 3 and 30 characters and contain only letters, numbers, and underscores".to_string());
                         }
-                    },
+                    }
                     _ => {
                         // 🔒 SECURITY: For any other fields, don't expose field names or internal details
                         messages.push("Please check your input and try again".to_string());
@@ -124,16 +127,16 @@ fn extract_safe_validation_messages(errors: &ValidationErrors) -> Vec<String> {
             }
         }
     }
-    
+
     // If no specific messages were extracted, provide generic feedback
     if messages.is_empty() {
         messages.push("Please check your input and try again".to_string());
     }
-    
+
     // Remove duplicates
     messages.sort();
     messages.dedup();
-    
+
     messages
 }
 
@@ -165,18 +168,21 @@ fn sanitize_error_message(message: &str, error_type: &str) -> String {
         "Script not found",
         "User not found"
     ];
-    
+
     // Check if the message contains only safe patterns
     for safe_pattern in &safe_patterns {
-        if message.to_lowercase().contains(&safe_pattern.to_lowercase()) {
+        if message
+            .to_lowercase()
+            .contains(&safe_pattern.to_lowercase())
+        {
             return safe_pattern.to_string();
         }
     }
-    
+
     // 🔒 SECURITY: Return generic message for any unsafe content
     // Log the actual message server-side for debugging
     tracing::warn!("Sanitized {} error message: {}", error_type, message);
-    
+
     match error_type {
         "BadRequest" => "Invalid request format".to_string(),
         "NotFound" => "Resource not found".to_string(),
@@ -200,7 +206,7 @@ impl IntoResponse for AppError {
                     "Internal server error".to_string(),
                     None, // Never expose database details to users
                 )
-            },
+            }
             AppError::Unauthorized(e) => {
                 let sanitized_message = sanitize_error_message(&e, "Unauthorized");
                 tracing::warn!("Unauthorized access attempt: {}", e);
@@ -209,7 +215,7 @@ impl IntoResponse for AppError {
                     "Unauthorized".to_string(),
                     Some(vec![sanitized_message]),
                 )
-            },
+            }
             AppError::Forbidden(e) => {
                 let sanitized_message = sanitize_error_message(&e, "Forbidden");
                 tracing::warn!("Forbidden access attempt: {}", e);
@@ -218,7 +224,7 @@ impl IntoResponse for AppError {
                     "Forbidden".to_string(),
                     Some(vec![sanitized_message]),
                 )
-            },
+            }
             AppError::Conflict(msg) => {
                 let sanitized_message = sanitize_error_message(&msg, "Conflict");
                 tracing::warn!("Resource conflict: {}", msg);
@@ -227,20 +233,20 @@ impl IntoResponse for AppError {
                     "Conflict".to_string(),
                     Some(vec![sanitized_message]),
                 )
-            },
+            }
             AppError::Validation(e) => {
                 // 🔒 SECURITY: Log detailed validation errors server-side but return helpful user messages
                 tracing::warn!("Validation error: {:?}", e);
-                
+
                 // Extract user-friendly validation messages while filtering out internal details
                 let user_messages = extract_safe_validation_messages(&e);
-                
+
                 (
                     StatusCode::BAD_REQUEST,
                     "Validation error".to_string(),
                     Some(user_messages),
                 )
-            },
+            }
             AppError::Internal(e) => {
                 // Log the actual error for debugging (server-side only)
                 tracing::error!("Internal server error: {}", e);
@@ -249,7 +255,7 @@ impl IntoResponse for AppError {
                     "Internal server error".to_string(),
                     None, // Never expose internal details to users
                 )
-            },
+            }
             AppError::BadRequest(e) => {
                 let sanitized_message = sanitize_error_message(&e, "BadRequest");
                 tracing::warn!("Bad request: {}", e);
@@ -258,7 +264,7 @@ impl IntoResponse for AppError {
                     "Bad request".to_string(),
                     Some(vec![sanitized_message]),
                 )
-            },
+            }
             AppError::NotFound(e) => {
                 let sanitized_message = sanitize_error_message(&e, "NotFound");
                 tracing::debug!("Resource not found: {}", e);
@@ -267,7 +273,7 @@ impl IntoResponse for AppError {
                     "Not found".to_string(),
                     Some(vec![sanitized_message]),
                 )
-            },
+            }
             AppError::TooManyRequests(msg) => {
                 let sanitized_message = sanitize_error_message(&msg, "TooManyRequests");
                 tracing::warn!("Rate limit exceeded: {}", msg);
@@ -276,7 +282,7 @@ impl IntoResponse for AppError {
                     "Too many requests".to_string(),
                     Some(vec![sanitized_message]),
                 )
-            },
+            }
         };
 
         let body = ErrorResponse {
@@ -321,4 +327,4 @@ impl From<SerdeJsonError> for AppError {
     fn from(err: SerdeJsonError) -> Self {
         AppError::Internal(AnyhowError::new(err))
     }
-} 
+}

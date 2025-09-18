@@ -1,5 +1,5 @@
-use argon2::{Argon2, PasswordHasher};
 use argon2::password_hash::SaltString;
+use argon2::{Argon2, PasswordHasher};
 use rand::rngs::OsRng;
 use std::env;
 
@@ -27,4 +27,4 @@ fn main() {
             std::process::exit(1);
         }
     }
-} 
+}

@@ -1,17 +1,20 @@
-use tokio::sync::mpsc::Receiver;
-use sqlx::PgPool;
-use uuid::Uuid;
-use crate::services::persistence_event::YjsPersistenceEvent;
 use crate::models::yjs_update::YjsDocumentUpdate; // Assuming this is the correct path
+use crate::services::persistence_event::YjsPersistenceEvent;
 use hex;
+use sqlx::PgPool;
+use tokio::sync::mpsc::Receiver;
+use uuid::Uuid;
 
-async fn save_yjs_update(pool: &PgPool, event: &YjsPersistenceEvent) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn save_yjs_update(
+    pool: &PgPool,
+    event: &YjsPersistenceEvent,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // 🔒 CRITICAL SECURITY: Never use fallback UUIDs - fail fast to prevent data corruption
     let script_id = Uuid::parse_str(&event.script_id).map_err(|e| {
         tracing::error!("CRITICAL: Invalid script_id format '{}': {}. Rejecting update to prevent data corruption.", event.script_id, e);
         Box::new(e) as Box<dyn std::error::Error + Send + Sync>
     })?;
-    
+
     // Use the new table name and add expires_at field
     sqlx::query_as::<_, YjsDocumentUpdate>(
         "INSERT INTO yjs_recent_updates (script_id, user_id, update_data, created_at, expires_at, is_compacted) VALUES ($1, $2, $3, $4, $5, false) RETURNING id, script_id, user_id, update_data, created_at"
@@ -27,40 +30,52 @@ async fn save_yjs_update(pool: &PgPool, event: &YjsPersistenceEvent) -> Result<(
         tracing::error!("CRITICAL: Database error saving Yjs update for script_id '{}': {}. Data persistence failed!", event.script_id, e);
         Box::new(e) as Box<dyn std::error::Error + Send + Sync>
     })?;
-    
+
     Ok(())
 }
 
-pub async fn run_async_db_writer(
-    mut rx: Receiver<YjsPersistenceEvent>,
-    pool: PgPool,
-) {
+pub async fn run_async_db_writer(mut rx: Receiver<YjsPersistenceEvent>, pool: PgPool) {
     tracing::info!("Async DB Writer service started.");
     while let Some(event) = rx.recv().await {
         // Enhanced logging for debugging
         if event.update_data.len() <= 100 {
-            tracing::error!("[DB_WRITER_RECEIVED] script: {}, user: {:?}, size: {}, full_hex: {}",
-                event.script_id, event.user_id, event.update_data.len(), hex::encode(&event.update_data));
+            tracing::error!(
+                "[DB_WRITER_RECEIVED] script: {}, user: {:?}, size: {}, full_hex: {}",
+                event.script_id,
+                event.user_id,
+                event.update_data.len(),
+                hex::encode(&event.update_data)
+            );
         } else {
-            tracing::error!("[DB_WRITER_RECEIVED] script: {}, user: {:?}, size: {}, first_50_hex: {}",
-                event.script_id, event.user_id, event.update_data.len(), 
-                hex::encode(&event.update_data[..event.update_data.len().min(50)]));
+            tracing::error!(
+                "[DB_WRITER_RECEIVED] script: {}, user: {:?}, size: {}, first_50_hex: {}",
+                event.script_id,
+                event.user_id,
+                event.update_data.len(),
+                hex::encode(&event.update_data[..event.update_data.len().min(50)])
+            );
         }
-        
+
         // Validate update before storing
         if event.update_data.len() >= 2 {
             let msg_type = event.update_data[0];
-            tracing::error!("[DB_WRITER_VALIDATE] script: {}, msg_type: {:#04x}, size: {}",
-                event.script_id, msg_type, event.update_data.len());
-            
+            tracing::error!(
+                "[DB_WRITER_VALIDATE] script: {}, msg_type: {:#04x}, size: {}",
+                event.script_id,
+                msg_type,
+                event.update_data.len()
+            );
+
             // Check for suspicious patterns
             if msg_type == 0x00 && event.update_data.len() < 10 {
                 // Small updates starting with 0x00 can be problematic
-                tracing::error!("[DB_WRITER_WARNING] Suspicious small update pattern detected for script: {}",
-                    event.script_id);
+                tracing::error!(
+                    "[DB_WRITER_WARNING] Suspicious small update pattern detected for script: {}",
+                    event.script_id
+                );
             }
         }
-        
+
         match save_yjs_update(&pool, &event).await {
             Ok(_) => {
                 tracing::info!("✅ Successfully saved Yjs update to DB for script_id: {} from user_id: {:?} ({}bytes) - will be processed by compaction service", 
@@ -79,4 +94,4 @@ pub async fn run_async_db_writer(
         }
     }
     tracing::info!("Async DB Writer service stopped as channel was closed.");
-} 
+}

@@ -1,8 +1,8 @@
-use base64::{Engine as _, engine::general_purpose};
-use uuid::Uuid;
-use sqlx::PgPool;
 use crate::{error::AppError, models::script::Script};
-use tracing::{info, error};
+use base64::{engine::general_purpose, Engine as _};
+use sqlx::PgPool;
+use tracing::{error, info};
+use uuid::Uuid;
 
 /// Escapes HTML special characters to prevent XSS attacks
 fn escape_html(input: &str) -> String {
@@ -15,7 +15,7 @@ fn escape_html(input: &str) -> String {
 }
 
 /// Generates a simple DIN A4 ratio thumbnail showing script content
-/// 
+///
 /// Creates a compact preview of the script content with DIN A4 proportions
 /// Returns a base64-encoded SVG image suitable for display
 pub fn generate_script_thumbnail(_script: &Script, content_preview: &str) -> String {
@@ -24,22 +24,22 @@ pub fn generate_script_thumbnail(_script: &Script, content_preview: &str) -> Str
         .split_whitespace()
         .take(100) // Drastically reduced from 500 to 100 words
         .collect();
-    
+
     let limited_content = words.join(" ");
-    
+
     // Split into blocks for better formatting - take fewer blocks
     let content_blocks: Vec<&str> = limited_content
         .split("\n\n")
         .filter(|block| !block.trim().is_empty())
         .take(6) // Reduced from 10 to 6 blocks for the 9:16 format
         .collect();
-    
+
     // 🔒 SECURITY: Escape HTML content to prevent XSS attacks in SVG thumbnails
     let escaped_blocks: Vec<String> = content_blocks
         .iter()
         .map(|block| escape_html(block))
         .collect();
-    
+
     // Create SVG content in 9:16 format with transparent background
     let svg_content = format!(
         "<svg width=\"150\" height=\"267\" xmlns=\"http://www.w3.org/2000/svg\">\
@@ -58,7 +58,7 @@ background: transparent;\
 </svg>",
         escaped_blocks.join("<br/><br/>")
     );
-    
+
     // Encode as base64 data URL
     let base64_svg = general_purpose::STANDARD.encode(svg_content.as_bytes());
     format!("data:image/svg+xml;base64,{}", base64_svg)
@@ -72,9 +72,11 @@ fn format_block_content(block_type: &str, content: &str) -> String {
             Ok(json) => match block_type {
                 "dialogue" => {
                     if let (Some(speaker), Some(line)) = (json.get("speaker"), json.get("line")) {
-                        format!("<strong>{}:</strong> {}", 
-                            escape_html(speaker.as_str().unwrap_or("Speaker")), 
-                            escape_html(line.as_str().unwrap_or("")))
+                        format!(
+                            "<strong>{}:</strong> {}",
+                            escape_html(speaker.as_str().unwrap_or("Speaker")),
+                            escape_html(line.as_str().unwrap_or(""))
+                        )
                     } else {
                         escape_html(content)
                     }
@@ -89,9 +91,11 @@ fn format_block_content(block_type: &str, content: &str) -> String {
                         } else {
                             escape_html(lines.as_str().unwrap_or(""))
                         };
-                        format!("<strong>{}:</strong><br/>{}", 
-                            escape_html(speaker.as_str().unwrap_or("Speaker")), 
-                            lines_text)
+                        format!(
+                            "<strong>{}:</strong><br/>{}",
+                            escape_html(speaker.as_str().unwrap_or("Speaker")),
+                            lines_text
+                        )
                     } else {
                         escape_html(content)
                     }
@@ -113,16 +117,24 @@ fn format_block_content(block_type: &str, content: &str) -> String {
                         } else {
                             escape_html(speakers.as_str().unwrap_or("Speakers"))
                         };
-                        format!("<strong>{}:</strong> {}", speakers_text, escape_html(line.as_str().unwrap_or("")))
+                        format!(
+                            "<strong>{}:</strong> {}",
+                            speakers_text,
+                            escape_html(line.as_str().unwrap_or(""))
+                        )
                     } else {
                         escape_html(content)
                     }
                 }
                 "reading" => {
-                    if let (Some(speaker), Some(text)) = (json.get("speaker"), json.get("reading_text")) {
-                        format!("<strong>{}:</strong> <em>(Reading)</em> {}", 
-                            escape_html(speaker.as_str().unwrap_or("Reader")), 
-                            escape_html(text.as_str().unwrap_or("")))
+                    if let (Some(speaker), Some(text)) =
+                        (json.get("speaker"), json.get("reading_text"))
+                    {
+                        format!(
+                            "<strong>{}:</strong> <em>(Reading)</em> {}",
+                            escape_html(speaker.as_str().unwrap_or("Reader")),
+                            escape_html(text.as_str().unwrap_or(""))
+                        )
                     } else {
                         escape_html(content)
                     }
@@ -135,15 +147,15 @@ fn format_block_content(block_type: &str, content: &str) -> String {
                         escape_html(content)
                     }
                 }
-                _ => escape_html(content)
-            }
-            Err(_) => escape_html(content)
+                _ => escape_html(content),
+            },
+            Err(_) => escape_html(content),
         }
     } else {
         // Plain text content
         match block_type {
             "stage_direction" => format!("<em>({})</em>", escape_html(content)),
-            _ => escape_html(content)
+            _ => escape_html(content),
         }
     }
 }
@@ -151,21 +163,25 @@ fn format_block_content(block_type: &str, content: &str) -> String {
 /// Updates the thumbnail for a script by fetching its content and generating a preview
 pub async fn update_script_thumbnail(pool: &PgPool, script_id: Uuid) -> Result<String, AppError> {
     info!("Generating thumbnail for script: {}", script_id);
-    
+
     // Fetch script
-    let script = crate::core::lib::get_script(pool, script_id).await?
+    let script = crate::core::lib::get_script(pool, script_id)
+        .await?
         .ok_or_else(|| AppError::NotFound("Script not found".to_string()))?;
     info!("Fetched script '{}'", script.title);
-    
+
     // For now, generate empty content preview since blocks are deprecated
     // In the future, this should extract content from YJS documents
     let content_preview = String::new();
-    info!("Content preview length: {} characters", content_preview.len());
-    
+    info!(
+        "Content preview length: {} characters",
+        content_preview.len()
+    );
+
     // Generate thumbnail
     let thumbnail = generate_script_thumbnail(&script, &content_preview);
     info!("Generated thumbnail with {} characters", thumbnail.len());
-    
+
     // Update script with new thumbnail
     sqlx::query!(
         "UPDATE scripts SET thumbnail = $1 WHERE id = $2",
@@ -178,7 +194,7 @@ pub async fn update_script_thumbnail(pool: &PgPool, script_id: Uuid) -> Result<S
         error!("Failed to update script thumbnail in database: {}", e);
         AppError::Internal(anyhow::Error::msg("Failed to update script thumbnail"))
     })?;
-    
+
     info!("Successfully updated thumbnail for script: {}", script_id);
     Ok(thumbnail)
 }
@@ -186,7 +202,7 @@ pub async fn update_script_thumbnail(pool: &PgPool, script_id: Uuid) -> Result<S
 /// Generates thumbnails for all scripts that don't have one
 pub async fn generate_missing_thumbnails(pool: &PgPool) -> Result<usize, AppError> {
     info!("Generating thumbnails for scripts without thumbnails");
-    
+
     let scripts_without_thumbnails = sqlx::query_as!(
         Script,
         "SELECT id, title, created_by, created_at, COALESCE(is_public, false) as \"is_public!\", thumbnail FROM scripts WHERE thumbnail IS NULL"
@@ -194,15 +210,18 @@ pub async fn generate_missing_thumbnails(pool: &PgPool) -> Result<usize, AppErro
     .fetch_all(pool)
     .await
     .map_err(|_| AppError::Internal(anyhow::Error::msg("Failed to fetch scripts for thumbnail generation")))?;
-    
+
     let mut count = 0;
     for script in scripts_without_thumbnails {
         match update_script_thumbnail(pool, script.id).await {
             Ok(_) => count += 1,
-            Err(e) => error!("Failed to generate thumbnail for script {}: {}", script.id, e),
+            Err(e) => error!(
+                "Failed to generate thumbnail for script {}: {}",
+                script.id, e
+            ),
         }
     }
-    
+
     info!("Generated {} thumbnails", count);
     Ok(count)
 }
@@ -210,7 +229,7 @@ pub async fn generate_missing_thumbnails(pool: &PgPool) -> Result<usize, AppErro
 /// Regenerates thumbnails for ALL scripts (forces refresh)
 pub async fn regenerate_all_thumbnails(pool: &PgPool) -> Result<usize, AppError> {
     info!("Regenerating thumbnails for ALL scripts");
-    
+
     let all_scripts = sqlx::query_as!(
         Script,
         "SELECT id, title, created_by, created_at, COALESCE(is_public, false) as \"is_public!\", thumbnail FROM scripts"
@@ -218,24 +237,39 @@ pub async fn regenerate_all_thumbnails(pool: &PgPool) -> Result<usize, AppError>
     .fetch_all(pool)
     .await
     .map_err(|_| AppError::Internal(anyhow::Error::msg("Failed to fetch scripts for thumbnail regeneration")))?;
-    
+
     let total_scripts = all_scripts.len();
-    info!("Found {} scripts to process for thumbnail regeneration", total_scripts);
-    
+    info!(
+        "Found {} scripts to process for thumbnail regeneration",
+        total_scripts
+    );
+
     let mut count = 0;
     for script in all_scripts {
-        info!("Processing script '{}' (ID: {}) for thumbnail generation", script.title, script.id);
+        info!(
+            "Processing script '{}' (ID: {}) for thumbnail generation",
+            script.title, script.id
+        );
         match update_script_thumbnail(pool, script.id).await {
             Ok(_) => {
                 count += 1;
-                info!("✅ Successfully generated thumbnail for script '{}'", script.title);
-            },
+                info!(
+                    "✅ Successfully generated thumbnail for script '{}'",
+                    script.title
+                );
+            }
             Err(e) => {
-                error!("❌ Failed to regenerate thumbnail for script '{}' ({}): {}", script.title, script.id, e);
+                error!(
+                    "❌ Failed to regenerate thumbnail for script '{}' ({}): {}",
+                    script.title, script.id, e
+                );
             }
         }
     }
-    
-    info!("Regenerated {} thumbnails out of {} scripts", count, total_scripts);
+
+    info!(
+        "Regenerated {} thumbnails out of {} scripts",
+        count, total_scripts
+    );
     Ok(count)
-} 
+}

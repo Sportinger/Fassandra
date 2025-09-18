@@ -5,4 +5,4 @@
 //! related errors during the analysis process.
 
 pub mod errors;
-pub mod structs; 
+pub mod structs;

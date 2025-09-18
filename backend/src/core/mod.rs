@@ -13,11 +13,11 @@
 //! - Proper error handling and logging throughout
 //! - Scalable and maintainable application structure
 
+pub mod lib;
 pub mod server;
 pub mod service_manager;
-pub mod lib;
 
 // Re-export core components
+pub use lib::*;
 pub use server::*;
 pub use service_manager::*;
-pub use lib::*;

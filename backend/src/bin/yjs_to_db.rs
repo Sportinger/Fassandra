@@ -5,24 +5,22 @@
 //! Usage: yjs_to_db <json_file> <username> [script_id]
 
 use backend::services::yjs_script_builder_service::YjsScriptBuilderService;
+use serde_json::Value;
+use sqlx::postgres::PgPoolOptions;
 use std::env;
 use std::fs;
 use std::process;
 use tracing::info;
-use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
-use serde_json::Value;
 
 #[tokio::main]
 async fn main() {
     // Initialize logging
-    tracing_subscriber::fmt()
-        .with_target(false)
-        .init();
+    tracing_subscriber::fmt().with_target(false).init();
 
     // Parse command line arguments
     let args: Vec<String> = env::args().collect();
-    
+
     if args.len() < 3 || args.len() > 4 {
         eprintln!("Error: Invalid number of arguments");
         eprintln!("Usage: {} <json_file> <username> [script_id]", args[0]);
@@ -31,7 +29,8 @@ async fn main() {
         eprintln!("- A single chunk object (mode=chunked)");
         eprintln!("- An array of chunk objects (processed sequentially)");
         eprintln!("- An object with {{\"chunks\": [ ... ]}}");
-        eprintln!(r#"{{
+        eprintln!(
+            r#"{{
   \"mode\": \"chunked\",
   \"chunk\": {{
     \"number\": 1,
@@ -48,7 +47,8 @@ async fn main() {
     {{ \"type\": \"scene\", \"content\": \"INT. OFFICE - DAY\", \"page\": 1, \"scene_number\": \"1\" }},
     {{ \"type\": \"dialogue\", \"speaker\": \"CHARACTER\", \"content\": \"Hello\", \"page\": 1 }}
   ]
-}}"#);
+}}"#
+        );
         eprintln!("\nNotes:");
         eprintln!("- Provide metadata only in the first chunk; subsequent chunks omit metadata and include context.");
         eprintln!("- Optional third argument \"script_id\" lets you force appending to an existing script.");
@@ -57,7 +57,11 @@ async fn main() {
 
     let json_file = &args[1];
     let username = &args[2];
-    let script_id_arg = if args.len() == 4 { Some(args[3].clone()) } else { None };
+    let script_id_arg = if args.len() == 4 {
+        Some(args[3].clone())
+    } else {
+        None
+    };
     let script_id_opt: Option<Uuid> = match script_id_arg {
         Some(s) => match Uuid::parse_str(&s) {
             Ok(id) => Some(id),
@@ -79,9 +83,10 @@ async fn main() {
     };
 
     // Connect to database
-    let database_url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://fassandra_user:dev_password_123@db:5432/fassandra_db".to_string());
-    
+    let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| {
+        "postgres://fassandra_user:dev_password_123@db:5432/fassandra_db".to_string()
+    });
+
     let db_pool = match PgPoolOptions::new()
         .max_connections(5)
         .connect(&database_url)
@@ -115,15 +120,32 @@ async fn main() {
             for (idx, item) in arr.iter().enumerate() {
                 info!("Processing chunk {} of {}", idx + 1, arr.len());
                 let json_str = item.to_string();
-                match service.build_script_from_json(&json_str, final_script_id, username).await {
+                match service
+                    .build_script_from_json(&json_str, final_script_id, username)
+                    .await
+                {
                     Ok(res) => {
                         overall_success &= res.success;
                         total_items += res.items_processed;
-                        if final_script_id.is_none() { final_script_id = res.script_id; }
-                        println!("Chunk processed{}", match (res.chunk_number, res.total_chunks) { (Some(n), Some(t)) => format!(" ({} of {})", n, t), _ => String::new() });
-                        if !res.success { break; }
+                        if final_script_id.is_none() {
+                            final_script_id = res.script_id;
+                        }
+                        println!(
+                            "Chunk processed{}",
+                            match (res.chunk_number, res.total_chunks) {
+                                (Some(n), Some(t)) => format!(" ({} of {})", n, t),
+                                _ => String::new(),
+                            }
+                        );
+                        if !res.success {
+                            break;
+                        }
                     }
-                    Err(e) => { eprintln!("Error: {}", e); overall_success = false; break; }
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                        overall_success = false;
+                        break;
+                    }
                 }
             }
         }
@@ -132,15 +154,32 @@ async fn main() {
                 for (idx, item) in arr.iter().enumerate() {
                     info!("Processing chunk {} of {}", idx + 1, arr.len());
                     let json_str = item.to_string();
-                    match service.build_script_from_json(&json_str, final_script_id, username).await {
+                    match service
+                        .build_script_from_json(&json_str, final_script_id, username)
+                        .await
+                    {
                         Ok(res) => {
                             overall_success &= res.success;
                             total_items += res.items_processed;
-                            if final_script_id.is_none() { final_script_id = res.script_id; }
-                            println!("Chunk processed{}", match (res.chunk_number, res.total_chunks) { (Some(n), Some(t)) => format!(" ({} of {})", n, t), _ => String::new() });
-                            if !res.success { break; }
+                            if final_script_id.is_none() {
+                                final_script_id = res.script_id;
+                            }
+                            println!(
+                                "Chunk processed{}",
+                                match (res.chunk_number, res.total_chunks) {
+                                    (Some(n), Some(t)) => format!(" ({} of {})", n, t),
+                                    _ => String::new(),
+                                }
+                            );
+                            if !res.success {
+                                break;
+                            }
                         }
-                        Err(e) => { eprintln!("Error: {}", e); overall_success = false; break; }
+                        Err(e) => {
+                            eprintln!("Error: {}", e);
+                            overall_success = false;
+                            break;
+                        }
                     }
                 }
             } else {
@@ -149,11 +188,16 @@ async fn main() {
             }
         }
         _ => {
-            match service.build_script_from_json(&json_content, final_script_id, username).await {
+            match service
+                .build_script_from_json(&json_content, final_script_id, username)
+                .await
+            {
                 Ok(res) => {
                     overall_success = res.success;
                     total_items = res.items_processed;
-                    if final_script_id.is_none() { final_script_id = res.script_id; }
+                    if final_script_id.is_none() {
+                        final_script_id = res.script_id;
+                    }
                     if let (Some(n), Some(t)) = (res.chunk_number, res.total_chunks) {
                         println!("Chunk {}/{} processed", n, t);
                     }

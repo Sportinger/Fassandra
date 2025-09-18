@@ -1,11 +1,11 @@
 //! Script analysis data structures for the Fassandra theater collaboration platform.
 //! Includes data models for parsing and representing theatrical scripts.
 
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 // Using serde_json::Value for flexibility where AI output might vary slightly
-use serde_json::Value; 
+use serde_json::Value;
 
 /// Represents the entire analyzed script document based on AI output.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Default)] // Added Clone, Default
@@ -13,7 +13,7 @@ pub struct Script {
     #[serde(default)] // Keep default for Option
     pub id: Option<String>,
     pub source_filename: Option<String>, // Keep this for our context
-    
+
     // Fields observed from AI JSON output:
     pub title: Option<String>,
     pub subtitle: Option<String>,
@@ -21,7 +21,7 @@ pub struct Script {
     pub adaptation_by: Vec<String>, // Renamed from 'authors'
     #[serde(default)]
     pub sections: Vec<Section>,
-    
+
     // Allow catching unexpected fields from AI
     #[serde(flatten)]
     pub extra: std::collections::HashMap<String, Value>,
@@ -32,7 +32,7 @@ pub struct Script {
 pub struct Section {
     #[serde(default)]
     pub id: Option<String>,
-    
+
     // Fields observed from AI JSON output:
     pub section_number: Option<Value>, // AI might return string or number
     pub title: Option<String>,
@@ -444,7 +444,7 @@ impl ContentElement {
                     description: s.description.clone(),
                 };
                 serde_json::to_string(&clean)
-            },
+            }
             ContentElement::Dialogue(d) => {
                 let clean = CleanDialogue {
                     speaker: d.speaker.clone(),
@@ -455,7 +455,7 @@ impl ContentElement {
                     speakers: d.speakers.clone(),
                 };
                 serde_json::to_string(&clean)
-            },
+            }
             ContentElement::Monologue(m) => {
                 let clean = CleanMonologue {
                     speaker: m.speaker.clone(),
@@ -466,7 +466,7 @@ impl ContentElement {
                     speakers: m.speakers.clone(),
                 };
                 serde_json::to_string(&clean)
-            },
+            }
             ContentElement::StageDirection(sd) => {
                 let clean = CleanStageDirection {
                     description: sd.description.clone(),
@@ -478,7 +478,7 @@ impl ContentElement {
                     speakers: sd.speakers.clone(),
                 };
                 serde_json::to_string(&clean)
-            },
+            }
             ContentElement::JointDialogue(jd) => {
                 let clean = CleanJointDialogue {
                     speaker: jd.speaker.clone(),
@@ -489,7 +489,7 @@ impl ContentElement {
                     source: jd.source.clone(),
                 };
                 serde_json::to_string(&clean)
-            },
+            }
             ContentElement::Reading(r) => {
                 let clean = CleanReading {
                     speaker: r.speaker.clone(),
@@ -502,13 +502,11 @@ impl ContentElement {
                     speakers: r.speakers.clone(),
                 };
                 serde_json::to_string(&clean)
-            },
-            ContentElement::Unknown => {
-                Ok("{}".to_string())
-            },
+            }
+            ContentElement::Unknown => Ok("{}".to_string()),
         }
     }
 }
 
 // Note: We removed the old Speaker, DialogueLine structs as they are replaced by the new structure.
-// We also removed CharacterAssignment as it's replaced by 'participants'. 
+// We also removed CharacterAssignment as it's replaced by 'participants'.

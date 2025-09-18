@@ -1,13 +1,13 @@
+use anyhow::{anyhow, Result};
+use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
-use tokio::process::Command;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use uuid::Uuid;
-use chrono::{DateTime, Utc};
-use anyhow::{Result, anyhow};
-use tokio::time::{timeout, Duration};
 use std::time::Instant;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::Command;
+use tokio::sync::{Mutex, RwLock};
+use tokio::time::{timeout, Duration};
+use uuid::Uuid;
 
 // Embed the detailed parsing prompt so the Claude CLI reliably emits
 // the expected progress markers that our parser understands.
@@ -44,7 +44,7 @@ pub enum SessionStatus {
 pub struct ClaudeSessionService {
     sessions: Arc<RwLock<HashMap<Uuid, Arc<Mutex<SessionInfo>>>>>,
     active_session: Arc<Mutex<Option<Uuid>>>, // Only one active session allowed
-    active_process: Arc<Mutex<Option<u32>>>, // Store the process ID for cancellation
+    active_process: Arc<Mutex<Option<u32>>>,  // Store the process ID for cancellation
 }
 
 impl ClaudeSessionService {
@@ -77,20 +77,27 @@ impl ClaudeSessionService {
             started_at: Utc::now(),
             completed_at: None,
             username: username.clone(),
-            pdf_filename: pdf_path.split('/').last().unwrap_or("unknown.pdf").to_string(),
+            pdf_filename: pdf_path
+                .split('/')
+                .last()
+                .unwrap_or("unknown.pdf")
+                .to_string(),
             script_id: None,
             error: None,
         }));
 
         // Store session
-        self.sessions.write().await.insert(session_id, session_info.clone());
+        self.sessions
+            .write()
+            .await
+            .insert(session_id, session_info.clone());
         *active = Some(session_id);
 
         // Spawn task to run Claude Code
         let active_session = self.active_session.clone();
         let active_process = self.active_process.clone();
         let update_callback = Arc::new(update_callback);
-        
+
         tokio::spawn(async move {
             let result = Self::run_claude_code(
                 session_id,
@@ -99,7 +106,8 @@ impl ClaudeSessionService {
                 username,
                 update_callback.clone(),
                 active_process.clone(),
-            ).await;
+            )
+            .await;
 
             // Update final status
             let mut info = session_info.lock().await;
@@ -115,9 +123,12 @@ impl ClaudeSessionService {
                     info.status = SessionStatus::Failed;
                     info.error = Some(e.to_string());
                     info.completed_at = Some(Utc::now());
-                    update_callback(session_id, SessionUpdate::Failed { 
-                        error: e.to_string() 
-                    });
+                    update_callback(
+                        session_id,
+                        SessionUpdate::Failed {
+                            error: e.to_string(),
+                        },
+                    );
                 }
             }
 
@@ -146,10 +157,13 @@ impl ClaudeSessionService {
             info.status = SessionStatus::Processing;
             info.progress = 10;
         }
-        update_callback(session_id, SessionUpdate::Status { 
-            status: SessionStatus::Processing,
-            progress: 10,
-        });
+        update_callback(
+            session_id,
+            SessionUpdate::Status {
+                status: SessionStatus::Processing,
+                progress: 10,
+            },
+        );
 
         // Resolve execution context and paths so the CLI starts in the right place
         // 1) Decide where helper scripts live and set the working directory there
@@ -160,8 +174,9 @@ impl ClaudeSessionService {
         // Try to locate scripts on host if not in container
         let host_backend_has_scripts = tokio::fs::metadata("./yjs_to_db.sh").await.is_ok()
             && tokio::fs::metadata("./json_mem.sh").await.is_ok();
-        let host_repo_backend_has_scripts = tokio::fs::metadata("backend/yjs_to_db.sh").await.is_ok()
-            && tokio::fs::metadata("backend/json_mem.sh").await.is_ok();
+        let host_repo_backend_has_scripts =
+            tokio::fs::metadata("backend/yjs_to_db.sh").await.is_ok()
+                && tokio::fs::metadata("backend/json_mem.sh").await.is_ok();
 
         // Determine execution CWD where ./json_mem.sh and ./yjs_to_db.sh will be available
         let exec_cwd = if in_container {
@@ -185,7 +200,11 @@ impl ClaudeSessionService {
         };
 
         // The path that will be presented to the Claude CLI and used for existence checks
-        let effective_input_path = if in_container { container_pdf_path.clone() } else { pdf_path.clone() };
+        let effective_input_path = if in_container {
+            container_pdf_path.clone()
+        } else {
+            pdf_path.clone()
+        };
 
         // Prepare the command - inline the full instructions to maximize
         // adherence to required [PROGRESS]/[CHUNK_COMPLETE] markers.
@@ -203,14 +222,16 @@ impl ClaudeSessionService {
         // Patch helper paths inside IMPORTANT block to match our working directory
         // Replace the absolute /app helper paths with ./ to ensure they resolve under exec_cwd
         // Normalize helper paths. Keep importer command exact with the JSON file arg preserved.
-        let prompt = prompt
-            .replace("/app/json_mem.sh", mem_helper_cmd);
+        let prompt = prompt.replace("/app/json_mem.sh", mem_helper_cmd);
 
         // Logging: keep operational details concise at info level
-        tracing::info!("Starting Claude Code with input path: {}", effective_input_path);
+        tracing::info!(
+            "Starting Claude Code with input path: {}",
+            effective_input_path
+        );
         tracing::debug!("Original (host) path: {}", pdf_path);
         tracing::debug!("Execution working directory: {}", exec_cwd.display());
-        
+
         // Check if the input path exists
         if !tokio::fs::metadata(&effective_input_path).await.is_ok() {
             tracing::error!("Input path does not exist: {}", effective_input_path);
@@ -220,14 +241,21 @@ impl ClaudeSessionService {
         // If input is a directory of pre-split PDFs, try to compute chunk/page info
         if let Ok(meta) = tokio::fs::metadata(&effective_input_path).await {
             if meta.is_dir() {
-                let mut entries = tokio::fs::read_dir(&effective_input_path).await
+                let mut entries = tokio::fs::read_dir(&effective_input_path)
+                    .await
                     .map_err(|e| anyhow!("Failed to read input directory: {}", e))?;
                 let mut pdfs: Vec<String> = Vec::new();
                 while let Ok(Some(entry)) = entries.next_entry().await {
-                    if let Ok(ft) = entry.file_type().await { if ft.is_file() {
-                        let p = entry.path();
-                        if let Some(ext) = p.extension() { if ext == "pdf" { pdfs.push(p.to_string_lossy().to_string()); } }
-                    }}
+                    if let Ok(ft) = entry.file_type().await {
+                        if ft.is_file() {
+                            let p = entry.path();
+                            if let Some(ext) = p.extension() {
+                                if ext == "pdf" {
+                                    pdfs.push(p.to_string_lossy().to_string());
+                                }
+                            }
+                        }
+                    }
                 }
                 pdfs.sort();
                 if !pdfs.is_empty() {
@@ -238,8 +266,16 @@ impl ClaudeSessionService {
                         if let Ok(out) = Command::new("pdfinfo").arg(last).output().await {
                             if out.status.success() {
                                 if let Ok(txt) = String::from_utf8(out.stdout) {
-                                    if let Some(line) = txt.lines().find(|l| l.starts_with("Pages:")) {
-                                        if let Ok(last_pages) = line.split(':').nth(1).map(|s| s.trim()).unwrap_or("").parse::<u32>() {
+                                    if let Some(line) =
+                                        txt.lines().find(|l| l.starts_with("Pages:"))
+                                    {
+                                        if let Ok(last_pages) = line
+                                            .split(':')
+                                            .nth(1)
+                                            .map(|s| s.trim())
+                                            .unwrap_or("")
+                                            .parse::<u32>()
+                                        {
                                             total_pages = (total_chunks - 1) * 5 + last_pages;
                                         }
                                     }
@@ -248,24 +284,42 @@ impl ClaudeSessionService {
                         }
                     }
                     // Fallback if we couldn't compute pages
-                    if total_pages == 0 { total_pages = total_chunks * 5; }
+                    if total_pages == 0 {
+                        total_pages = total_chunks * 5;
+                    }
 
-                    Self::update_progress(&session_info, &update_callback, session_id, 12, SessionStatus::ParsingPdf).await;
-                    update_callback(session_id, SessionUpdate::ChunkInfo { total_pages, total_chunks });
+                    Self::update_progress(
+                        &session_info,
+                        &update_callback,
+                        session_id,
+                        12,
+                        SessionStatus::ParsingPdf,
+                    )
+                    .await;
+                    update_callback(
+                        session_id,
+                        SessionUpdate::ChunkInfo {
+                            total_pages,
+                            total_chunks,
+                        },
+                    );
                     {
                         let mut info = session_info.lock().await;
-                        let line = format!("[PROGRESS] Starting chunked parsing - Total pages: {}, Chunks: {}", total_pages, total_chunks);
+                        let line = format!(
+                            "[PROGRESS] Starting chunked parsing - Total pages: {}, Chunks: {}",
+                            total_pages, total_chunks
+                        );
                         info.output.push(line.clone());
                         tracing::info!("[Claude] {}", line);
                     }
                 }
             }
         }
-        
+
         // Use the executor script if it exists, otherwise try direct execution
         let executor_path = "/app/claude-executor.sh";
         let use_executor = tokio::fs::metadata(executor_path).await.is_ok();
-        
+
         let mut cmd = if use_executor {
             tracing::info!("Using Claude executor script");
             Command::new(executor_path)
@@ -275,7 +329,9 @@ impl ClaudeSessionService {
             // Try multiple known locations, then PATH lookup. Allow override via CLAUDE_BIN.
             let mut candidates: Vec<String> = Vec::new();
             if let Ok(override_bin) = std::env::var("CLAUDE_BIN") {
-                if !override_bin.trim().is_empty() { candidates.push(override_bin); }
+                if !override_bin.trim().is_empty() {
+                    candidates.push(override_bin);
+                }
             }
             candidates.push("/home/appuser/.npm-global/bin/claude".to_string());
             candidates.push("/usr/local/bin/claude".to_string());
@@ -293,7 +349,8 @@ impl ClaudeSessionService {
             tracing::debug!("PATH={}", path_env);
             let mut cmd = Command::new(claude_path);
             cmd.arg("--print")
-                .arg("--output-format").arg("stream-json") // stream incremental output as JSON lines
+                .arg("--output-format")
+                .arg("stream-json") // stream incremental output as JSON lines
                 .arg("--verbose") // increase verbosity (safe)
                 .arg("--dangerously-skip-permissions");
             cmd
@@ -311,7 +368,8 @@ impl ClaudeSessionService {
         let mut apply_env = |home_dir: &str, xdg_cfg: &str| {
             tracing::info!(
                 "Using Claude config from HOME={} XDG_CONFIG_HOME={}",
-                home_dir, xdg_cfg
+                home_dir,
+                xdg_cfg
             );
             cmd.env("HOME", home_dir);
             cmd.env("XDG_CONFIG_HOME", xdg_cfg);
@@ -339,15 +397,11 @@ impl ClaudeSessionService {
                     // XDG is parent of claude-code, HOME stays as current or /home/appuser if available
                     let parent = p.parent().unwrap_or(std::path::Path::new("/home/appuser"));
                     // Pick a reasonable HOME
-                    let home_guess = env_home
-                        .as_deref()
-                        .unwrap_or("/home/appuser");
+                    let home_guess = env_home.as_deref().unwrap_or("/home/appuser");
                     (home_guess.to_string(), parent.to_string_lossy().to_string())
                 } else {
                     // Provided path is already XDG_CONFIG_HOME
-                    let home_guess = env_home
-                        .as_deref()
-                        .unwrap_or("/home/appuser");
+                    let home_guess = env_home.as_deref().unwrap_or("/home/appuser");
                     (home_guess.to_string(), dir.to_string())
                 };
                 let cfg_dir = std::path::Path::new(&xdg_cfg).join("claude-code");
@@ -385,7 +439,7 @@ impl ClaudeSessionService {
         }
         // Do not log the full prompt at info level to avoid noisy or sensitive output
         tracing::debug!("Running with embedded parsing prompt (chunked PDF parser)");
-        
+
         // Run Claude Code
         let mut child = cmd
             .current_dir(&exec_cwd)
@@ -397,7 +451,7 @@ impl ClaudeSessionService {
                 tracing::error!("Failed to spawn Claude process: {}", e);
                 anyhow!("Failed to start Claude Code: {}", e)
             })?;
-        
+
         // Store the process ID
         if let Some(pid) = child.id() {
             let mut process = active_process.lock().await;
@@ -408,16 +462,14 @@ impl ClaudeSessionService {
         if let Some(mut stdin) = child.stdin.take() {
             use tokio::io::AsyncWriteExt;
             tracing::info!("Sending prompt to Claude stdin");
-            stdin.write_all(prompt.as_bytes()).await
-                .map_err(|e| {
-                    tracing::error!("Failed to write prompt to stdin: {}", e);
-                    anyhow!("Failed to send prompt to Claude: {}", e)
-                })?;
-            stdin.shutdown().await
-                .map_err(|e| {
-                    tracing::error!("Failed to close stdin: {}", e);
-                    anyhow!("Failed to close Claude stdin: {}", e)
-                })?;
+            stdin.write_all(prompt.as_bytes()).await.map_err(|e| {
+                tracing::error!("Failed to write prompt to stdin: {}", e);
+                anyhow!("Failed to send prompt to Claude: {}", e)
+            })?;
+            stdin.shutdown().await.map_err(|e| {
+                tracing::error!("Failed to close stdin: {}", e);
+                anyhow!("Failed to close Claude stdin: {}", e)
+            })?;
             tracing::info!("Prompt sent successfully");
         } else {
             tracing::error!("Failed to get stdin handle");
@@ -427,7 +479,7 @@ impl ClaudeSessionService {
         // Read output
         let stdout = child.stdout.take().ok_or_else(|| anyhow!("No stdout"))?;
         let stderr = child.stderr.take().ok_or_else(|| anyhow!("No stderr"))?;
-        
+
         let mut stdout_reader = BufReader::new(stdout).lines();
         let mut stderr_reader = BufReader::new(stderr).lines();
         let mut heartbeat = tokio::time::interval(Duration::from_secs(3));
@@ -446,7 +498,7 @@ impl ClaudeSessionService {
 
         // Set a timeout of 10 minutes
         let timeout_duration = Duration::from_secs(600);
-        
+
         let process_result = timeout(timeout_duration, async {
             loop {
                 tokio::select! {
@@ -617,14 +669,21 @@ impl ClaudeSessionService {
                         return Err(anyhow!("Session was cancelled by user"));
                     }
                     drop(info);
-                    
+
                     if !found_completion {
-                        tracing::error!("Claude process exited with status: {}, found_completion: {}", status, found_completion);
+                        tracing::error!(
+                            "Claude process exited with status: {}, found_completion: {}",
+                            status,
+                            found_completion
+                        );
                         tracing::error!("Last 10 lines of output:");
                         for line in all_output.iter().rev().take(10) {
                             tracing::error!("  {}", line);
                         }
-                        return Err(anyhow!("Claude Code process failed with exit code: {}", status.code().unwrap_or(-1)));
+                        return Err(anyhow!(
+                            "Claude Code process failed with exit code: {}",
+                            status.code().unwrap_or(-1)
+                        ));
                     }
                 }
             }
@@ -638,7 +697,7 @@ impl ClaudeSessionService {
 
         // Generate a script ID if we couldn't extract one
         let final_script_id = script_id.unwrap_or_else(Uuid::new_v4);
-        
+
         Ok(final_script_id)
     }
 
@@ -653,7 +712,7 @@ impl ClaudeSessionService {
         info.status = status.clone();
         info.progress = progress;
         drop(info);
-        
+
         update_callback(session_id, SessionUpdate::Status { status, progress });
     }
 
@@ -665,17 +724,17 @@ impl ClaudeSessionService {
         } else {
             return None;
         };
-        
+
         let total_chunks = if let Some(start) = line.find("Chunks: ") {
             let remaining = &line[start + 8..];
             remaining.split_whitespace().next()?.parse::<u32>().ok()?
         } else {
             return None;
         };
-        
+
         Some((total_pages, total_chunks))
     }
-    
+
     fn parse_chunk_complete(line: &str) -> Option<(u32, u32, u32, u32)> {
         // Parse "[CHUNK_COMPLETE] Chunk X of Z processed (pages A-B)"
         let chunk_info = if let Some(start) = line.find("Chunk ") {
@@ -691,7 +750,7 @@ impl ClaudeSessionService {
         } else {
             return None;
         };
-        
+
         let pages_info = if let Some(start) = line.find("(pages ") {
             let remaining = &line[start + 7..];
             let end_idx = remaining.find(')')?;
@@ -707,10 +766,10 @@ impl ClaudeSessionService {
         } else {
             return None;
         };
-        
+
         Some((chunk_info.0, chunk_info.1, pages_info.0, pages_info.1))
     }
-    
+
     fn extract_script_id(line: &str) -> Option<Uuid> {
         // Try to extract UUID from output lines
         if let Some(start) = line.find("script_id:") {
@@ -719,7 +778,7 @@ impl ClaudeSessionService {
                 return Some(id);
             }
         }
-        
+
         // Also try to find raw UUIDs in the line
         let words: Vec<&str> = line.split_whitespace().collect();
         for word in words {
@@ -730,7 +789,7 @@ impl ClaudeSessionService {
 
         None
     }
-    
+
     fn parse_page_progress(line: &str) -> Option<(u32, u32)> {
         // Parse "[PROGRESS] Page X of Y processed"
         if let Some(start) = line.find("Page ") {
@@ -748,7 +807,7 @@ impl ClaudeSessionService {
         }
         None
     }
-    
+
     fn extract_total_pages(line: &str) -> Option<u32> {
         // Extract total from "[PROGRESS] Starting PDF parsing - Total pages: Y"
         if let Some(start) = line.find("Total pages: ") {
@@ -770,7 +829,11 @@ impl ClaudeSessionService {
         }
     }
 
-    pub async fn get_session_logs(&self, session_id: Uuid, since_line: usize) -> Option<Vec<String>> {
+    pub async fn get_session_logs(
+        &self,
+        session_id: Uuid,
+        since_line: usize,
+    ) -> Option<Vec<String>> {
         let sessions = self.sessions.read().await;
         if let Some(session) = sessions.get(&session_id) {
             let info = session.lock().await;
@@ -803,17 +866,17 @@ impl ClaudeSessionService {
                         tracing::error!("Error killing process {}: {}", pid, e);
                     }
                 }
-                
+
                 // Also try to kill any claude processes
                 let _ = tokio::process::Command::new("pkill")
                     .args(&["-f", "claude"])
                     .status()
                     .await;
             }
-            
+
             *active = None;
             *active_proc = None;
-            
+
             // Update session status
             let sessions = self.sessions.read().await;
             if let Some(session) = sessions.get(&session_id) {
@@ -822,7 +885,7 @@ impl ClaudeSessionService {
                 info.completed_at = Some(Utc::now());
                 info.error = Some("Session cancelled by user".to_string());
             }
-            
+
             Ok(())
         } else {
             Err(anyhow!("Session not found or not active"))
@@ -832,7 +895,7 @@ impl ClaudeSessionService {
     pub async fn cleanup_old_sessions(&self, max_age_hours: i64) {
         let now = Utc::now();
         let mut sessions = self.sessions.write().await;
-        
+
         sessions.retain(|_, session| {
             if let Ok(info) = session.try_lock() {
                 let age = now.signed_duration_since(info.started_at);
@@ -846,11 +909,31 @@ impl ClaudeSessionService {
 
 #[derive(Debug, Clone)]
 pub enum SessionUpdate {
-    Status { status: SessionStatus, progress: u8 },
-    Output { line: String },
-    PageProgress { current_page: u32, total_pages: u32 },
-    ChunkInfo { total_pages: u32, total_chunks: u32 },
-    ChunkProgress { current_chunk: u32, total_chunks: u32, pages_start: u32, pages_end: u32 },
-    Complete { script_id: Uuid },
-    Failed { error: String },
+    Status {
+        status: SessionStatus,
+        progress: u8,
+    },
+    Output {
+        line: String,
+    },
+    PageProgress {
+        current_page: u32,
+        total_pages: u32,
+    },
+    ChunkInfo {
+        total_pages: u32,
+        total_chunks: u32,
+    },
+    ChunkProgress {
+        current_chunk: u32,
+        total_chunks: u32,
+        pages_start: u32,
+        pages_end: u32,
+    },
+    Complete {
+        script_id: Uuid,
+    },
+    Failed {
+        error: String,
+    },
 }

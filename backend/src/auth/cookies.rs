@@ -1,10 +1,10 @@
-use tower_cookies::{Cookie, Cookies, cookie::SameSite};
+use crate::Result;
 use chrono::{Duration, Utc};
-use uuid::Uuid;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use crate::Result;
+use tower_cookies::{cookie::SameSite, Cookie, Cookies};
+use uuid::Uuid;
 
 /// Cookie configuration constants
 const AUTH_COOKIE_NAME: &str = "auth_token";
@@ -15,11 +15,12 @@ const COOKIE_MAX_AGE_DAYS: i64 = 7;
 /// Cookies should be secure when using HTTPS (even in dev)
 fn should_use_secure_cookies() -> bool {
     // Check if we're in production
-    if std::env::var("PRODUCTION").is_ok() || 
-       std::env::var("RUST_ENV").unwrap_or_default() == "production" {
+    if std::env::var("PRODUCTION").is_ok()
+        || std::env::var("RUST_ENV").unwrap_or_default() == "production"
+    {
         return true;
     }
-    
+
     // Check if HTTPS is enabled in dev (for proper cookie handling)
     std::env::var("USE_HTTPS").unwrap_or_default() == "true"
 }
@@ -27,16 +28,17 @@ fn should_use_secure_cookies() -> bool {
 /// Get appropriate SameSite setting based on environment
 fn get_same_site_setting() -> SameSite {
     // In production, use Lax for better security
-    if std::env::var("PRODUCTION").is_ok() || 
-       std::env::var("RUST_ENV").unwrap_or_default() == "production" {
+    if std::env::var("PRODUCTION").is_ok()
+        || std::env::var("RUST_ENV").unwrap_or_default() == "production"
+    {
         return SameSite::Lax;
     }
-    
+
     // In development with HTTP, use Lax
     if !should_use_secure_cookies() {
         return SameSite::Lax;
     }
-    
+
     // In development with HTTPS, use None for cross-origin
     SameSite::None
 }
@@ -58,7 +60,6 @@ fn get_cookie_domain() -> Option<String> {
         _ => None,
     }
 }
-
 
 /// CSRF token store - in production, this should be in Redis or database
 pub type CsrfTokenStore = Arc<RwLock<HashMap<String, (Uuid, chrono::DateTime<Utc>)>>>;
@@ -82,7 +83,7 @@ pub fn set_auth_cookie(cookies: &Cookies, token: &str) -> Result<()> {
     }
 
     let cookie = builder.build();
-    
+
     cookies.add(cookie);
     Ok(())
 }
@@ -101,13 +102,15 @@ pub fn remove_auth_cookie(cookies: &Cookies) {
     }
 
     let cookie = builder.build();
-    
+
     cookies.add(cookie);
 }
 
 /// Gets the authentication token from cookies
 pub fn get_auth_token_from_cookie(cookies: &Cookies) -> Option<String> {
-    cookies.get(AUTH_COOKIE_NAME).map(|cookie| cookie.value().to_string())
+    cookies
+        .get(AUTH_COOKIE_NAME)
+        .map(|cookie| cookie.value().to_string())
 }
 
 /// Generates a new CSRF token
@@ -129,29 +132,27 @@ pub fn set_csrf_cookie(cookies: &Cookies, token: &str) {
     }
 
     let cookie = builder.build();
-    
+
     cookies.add(cookie);
 }
 
 /// Gets the CSRF token from cookies
 pub fn get_csrf_token_from_cookie(cookies: &Cookies) -> Option<String> {
-    cookies.get(CSRF_COOKIE_NAME).map(|cookie| cookie.value().to_string())
+    cookies
+        .get(CSRF_COOKIE_NAME)
+        .map(|cookie| cookie.value().to_string())
 }
 
 /// Stores a CSRF token in the store with user association
-pub async fn store_csrf_token(
-    store: &CsrfTokenStore,
-    token: &str,
-    user_id: Uuid,
-) -> Result<()> {
+pub async fn store_csrf_token(store: &CsrfTokenStore, token: &str, user_id: Uuid) -> Result<()> {
     let expiry = Utc::now() + Duration::hours(24);
     let mut tokens = store.write().await;
     tokens.insert(token.to_string(), (user_id, expiry));
-    
+
     // Clean up expired tokens
     let now = Utc::now();
     tokens.retain(|_, (_, exp)| *exp > now);
-    
+
     Ok(())
 }
 
@@ -162,13 +163,13 @@ pub async fn validate_csrf_token(
     user_id: Uuid,
 ) -> Result<bool> {
     let tokens = store.read().await;
-    
+
     if let Some((stored_user_id, expiry)) = tokens.get(token) {
         if *stored_user_id == user_id && *expiry > Utc::now() {
             return Ok(true);
         }
     }
-    
+
     Ok(false)
 }
 

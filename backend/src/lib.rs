@@ -11,23 +11,24 @@
 //! - **external**: External service integrations placeholder module
 
 // Core modules
+pub mod audio;
 pub mod auth;
+pub mod core;
 pub mod error;
 pub mod external;
-pub mod networking;
-pub mod audio;
 pub mod infrastructure;
+pub mod networking;
 pub mod services;
+pub mod telemetry;
 pub mod utils;
-pub mod core;
 
 // Domain-specific modules
+pub mod analysis;
 pub mod application;
 pub mod domain;
 pub mod handlers;
 pub mod models;
 pub mod repositories;
-pub mod analysis;
 // pub mod prompts; // Module removed - prompts are now handled directly
 // Tests removed - using embedded unit tests and external E2E tests instead
 

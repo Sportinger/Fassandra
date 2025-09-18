@@ -1,12 +1,16 @@
+use crate::error::AppError;
 use anyhow::Result;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
-use crate::error::AppError;
 
 /// 🔒 SECURITY: Helper functions for authorization checks
 
 /// Checks if a user has access to a script (ownership, public, or shared).
-pub async fn check_script_access(pool: &PgPool, script_id: Uuid, user_id: Uuid) -> Result<bool, AppError> {
+pub async fn check_script_access(
+    pool: &PgPool,
+    script_id: Uuid,
+    user_id: Uuid,
+) -> Result<bool, AppError> {
     let row = sqlx::query(
         r#"
         SELECT EXISTS(
@@ -22,7 +26,7 @@ pub async fn check_script_access(pool: &PgPool, script_id: Uuid, user_id: Uuid) 
                 )
             )
         ) as has_access
-        "#
+        "#,
     )
     .bind(script_id)
     .bind(user_id)
@@ -35,9 +39,13 @@ pub async fn check_script_access(pool: &PgPool, script_id: Uuid, user_id: Uuid) 
 }
 
 /// Checks if a user owns a script.
-pub async fn check_script_ownership(pool: &PgPool, script_id: Uuid, user_id: Uuid) -> Result<bool, AppError> {
+pub async fn check_script_ownership(
+    pool: &PgPool,
+    script_id: Uuid,
+    user_id: Uuid,
+) -> Result<bool, AppError> {
     let row = sqlx::query(
-        "SELECT EXISTS(SELECT 1 FROM scripts WHERE id = $1 AND created_by = $2) as owns_script"
+        "SELECT EXISTS(SELECT 1 FROM scripts WHERE id = $1 AND created_by = $2) as owns_script",
     )
     .bind(script_id)
     .bind(user_id)
@@ -47,4 +55,4 @@ pub async fn check_script_ownership(pool: &PgPool, script_id: Uuid, user_id: Uui
 
     let owns_script: bool = row.get("owns_script");
     Ok(owns_script)
-} 
+}

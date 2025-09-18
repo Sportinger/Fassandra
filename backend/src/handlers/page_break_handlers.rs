@@ -2,7 +2,7 @@
 //! NOTE: This functionality is deprecated - we now use YJS for script management
 
 use axum::{
-    extract::{State, Path, Json},
+    extract::{Json, Path, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, put},
@@ -10,10 +10,10 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::{info, error};
-use uuid::Uuid;
 use sqlx::PgPool;
 use std::sync::Arc;
+use tracing::{error, info};
+use uuid::Uuid;
 
 use crate::auth::AuthUser;
 
@@ -69,13 +69,16 @@ async fn get_page_breaks(
     _auth_user: AuthUser,
 ) -> impl IntoResponse {
     // Deprecated - return empty response
-    info!("Page breaks requested for script {} - returning empty (deprecated)", script_id);
-    
+    info!(
+        "Page breaks requested for script {} - returning empty (deprecated)",
+        script_id
+    );
+
     let response = PageBreaksResponse {
         script_id,
         blocks: vec![],
     };
-    
+
     (StatusCode::OK, Json(response))
 }
 
@@ -87,10 +90,16 @@ async fn update_page_breaks(
     Json(_request): Json<UpdatePageBreaksRequest>,
 ) -> impl IntoResponse {
     // Deprecated - return success
-    info!("Page breaks update requested for script {} - returning success (deprecated)", script_id);
-    
-    (StatusCode::OK, Json(json!({
-        "message": "Page breaks functionality is deprecated - use YJS sync instead",
-        "script_id": script_id
-    })))
+    info!(
+        "Page breaks update requested for script {} - returning success (deprecated)",
+        script_id
+    );
+
+    (
+        StatusCode::OK,
+        Json(json!({
+            "message": "Page breaks functionality is deprecated - use YJS sync instead",
+            "script_id": script_id
+        })),
+    )
 }

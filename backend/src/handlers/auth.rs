@@ -1,26 +1,26 @@
-use axum::{extract::State, Json, http::StatusCode};
-use std::sync::Arc;
-use sqlx::PgPool;
-use serde::{Deserialize, Serialize};
-use validator::Validate;
-use tower_cookies::Cookies;
 use crate::auth::{
-    hash_password, verify_password, generate_token, RegisterPayload, AuthUser,
-    set_auth_cookie, remove_auth_cookie, generate_csrf_token, set_csrf_cookie,
-    store_csrf_token, CsrfTokenStore, get_auth_token_from_cookie
+    generate_csrf_token, generate_token, get_auth_token_from_cookie, hash_password,
+    remove_auth_cookie, set_auth_cookie, set_csrf_cookie, store_csrf_token, verify_password,
+    AuthUser, CsrfTokenStore, RegisterPayload,
 };
 use crate::error::AppError;
 use crate::models::user::User;
+use axum::{extract::State, http::StatusCode, Json};
 use chrono;
-use std::env;
-use serde_json::Value;
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use sqlx::PgPool;
+use std::env;
+use std::sync::Arc;
+use tower_cookies::Cookies;
+use validator::Validate;
 
 /// Payload for user login requests.
 #[derive(Deserialize)]
-pub struct LoginPayload { 
-    pub email: String, 
-    pub password: String 
+pub struct LoginPayload {
+    pub email: String,
+    pub password: String,
 }
 
 /// Health check endpoint. Returns "OK" if the server is running.
@@ -33,14 +33,11 @@ pub async fn health_with_service_manager(
     State(pool): State<Arc<PgPool>>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     // Check database connectivity
-    let database_healthy = match sqlx::query("SELECT 1")
-        .fetch_one(pool.as_ref())
-        .await
-    {
+    let database_healthy = match sqlx::query("SELECT 1").fetch_one(pool.as_ref()).await {
         Ok(_) => true,
         Err(_) => false,
     };
-    
+
     Ok(Json(serde_json::json!({
         "status": if database_healthy { "healthy" } else { "unhealthy" },
         "timestamp": chrono::Utc::now().to_rfc3339(),
@@ -59,20 +56,20 @@ pub async fn health_with_service_manager(
 /// # Returns
 /// * `Result<Json<serde_json::Value>, AppError>` - JSON response on success, or an AppError on failure.
 pub async fn register(
-    State(pool): State<Arc<PgPool>>, 
+    State(pool): State<Arc<PgPool>>,
     cookies: Cookies,
-    Json(payload): Json<RegisterPayload>
+    Json(payload): Json<RegisterPayload>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     // 🔒 SECURITY: Validate payload including strong password requirements
     payload.validate()?;
-    
+
     // 🔒 SECURITY: Additional password strength validation
     payload.validate_password_strength()?;
-    
+
     let password_hash = hash_password(&payload.password)?;
-    
+
     // Default role for new users - adjust as needed
-    let default_role = "user"; 
+    let default_role = "user";
 
     // Include username and role in insert, fetch all needed fields
     let user: User = sqlx::query_as(
@@ -103,10 +100,10 @@ pub async fn register(
 
     // Pass all required fields to generate_token
     let token = generate_token(user.id, &user.email, &user.username, &user.role)?;
-    
+
     // Set the authentication cookie
     set_auth_cookie(&cookies, &token)?;
-    
+
     // Return success response with user info
     Ok(Json(serde_json::json!({
         "message": "Registration successful",
@@ -129,35 +126,35 @@ pub async fn register(
 /// # Returns
 /// * `Result<Json<serde_json::Value>, AppError>` - JSON response on success, or an AppError on failure.
 pub async fn login(
-    State(pool): State<Arc<PgPool>>, 
+    State(pool): State<Arc<PgPool>>,
     cookies: Cookies,
     _headers: axum::http::HeaderMap,
-    Json(payload): Json<LoginPayload>
+    Json(payload): Json<LoginPayload>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     // Fetch all fields needed for the token
     let user: User = sqlx::query_as(
-        "SELECT id, email, username, role, password_hash, created_at FROM users WHERE email=$1"
+        "SELECT id, email, username, role, password_hash, created_at FROM users WHERE email=$1",
     )
-        .bind(&payload.email)
-        .fetch_one(pool.as_ref())
-        .await
-        .map_err(|e| match e {
-            // Map "no rows" error specifically to Unauthorized
-            sqlx::Error::RowNotFound => AppError::Unauthorized("Invalid credentials".to_string()),
-            // Let other SQLx errors be converted automatically via #[from]
-            // This requires AppError::Db(#[from] sqlx::Error) in error.rs
-            _ => AppError::Db(e),
-        })?;
+    .bind(&payload.email)
+    .fetch_one(pool.as_ref())
+    .await
+    .map_err(|e| match e {
+        // Map "no rows" error specifically to Unauthorized
+        sqlx::Error::RowNotFound => AppError::Unauthorized("Invalid credentials".to_string()),
+        // Let other SQLx errors be converted automatically via #[from]
+        // This requires AppError::Db(#[from] sqlx::Error) in error.rs
+        _ => AppError::Db(e),
+    })?;
     // Verify password
     if !verify_password(&payload.password, &user.password_hash) {
         return Err(AppError::Unauthorized("Invalid credentials".to_string()));
     }
     // Pass all required fields to generate_token
     let token = generate_token(user.id, &user.email, &user.username, &user.role)?;
-    
+
     // Set the authentication cookie (for backward compatibility)
     set_auth_cookie(&cookies, &token)?;
-    
+
     // Always include token in response for sessionStorage-based auth
     // This enables multi-tab support with different users
     let response = serde_json::json!({
@@ -170,7 +167,7 @@ pub async fn login(
         },
         "token": token.clone()  // Always return token for sessionStorage
     });
-    
+
     Ok(Json(response))
 }
 
@@ -214,21 +211,21 @@ pub async fn login_with_google(
 
     // Verify ID token with Google
     let http = Client::new();
-    let url = format!("https://oauth2.googleapis.com/tokeninfo?id_token={}", payload.id_token);
-    let resp = http
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to call Google tokeninfo: {}", e)))?;
+    let url = format!(
+        "https://oauth2.googleapis.com/tokeninfo?id_token={}",
+        payload.id_token
+    );
+    let resp = http.get(&url).send().await.map_err(|e| {
+        AppError::Internal(anyhow::anyhow!("Failed to call Google tokeninfo: {}", e))
+    })?;
 
     if !resp.status().is_success() {
         return Err(AppError::Unauthorized("Invalid Google token".to_string()));
     }
 
-    let info: GoogleTokenInfo = resp
-        .json()
-        .await
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to parse Google tokeninfo: {}", e)))?;
+    let info: GoogleTokenInfo = resp.json().await.map_err(|e| {
+        AppError::Internal(anyhow::anyhow!("Failed to parse Google tokeninfo: {}", e))
+    })?;
 
     // Validate audience against allowed client IDs
     if !client_ids.iter().any(|cid| *cid == info.aud) {
@@ -242,22 +239,26 @@ pub async fn login_with_google(
 
     // Ensure email is present and verified if provided
     if info.email.is_empty() {
-        return Err(AppError::Unauthorized("Google account has no email".to_string()));
+        return Err(AppError::Unauthorized(
+            "Google account has no email".to_string(),
+        ));
     }
     if let Some(verified) = info.email_verified.as_deref() {
-        if verified != "true" { 
-            return Err(AppError::Unauthorized("Google email not verified".to_string()));
+        if verified != "true" {
+            return Err(AppError::Unauthorized(
+                "Google email not verified".to_string(),
+            ));
         }
     }
 
     // Find or create the user by email
     let existing: Option<User> = sqlx::query_as(
-        "SELECT id, email, username, password_hash, role, created_at FROM users WHERE email = $1"
+        "SELECT id, email, username, password_hash, role, created_at FROM users WHERE email = $1",
     )
-        .bind(&info.email)
-        .fetch_optional(pool.as_ref())
-        .await
-        .map_err(AppError::Db)?;
+    .bind(&info.email)
+    .fetch_optional(pool.as_ref())
+    .await
+    .map_err(AppError::Db)?;
 
     let user = match existing {
         Some(u) => u,
@@ -266,7 +267,8 @@ pub async fn login_with_google(
                 .name
                 .as_deref()
                 .unwrap_or_else(|| info.email.split('@').next().unwrap_or("user"));
-            let username = username_base.chars()
+            let username = username_base
+                .chars()
                 .filter(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
                 .collect::<String>()
                 .to_lowercase();
@@ -275,22 +277,22 @@ pub async fn login_with_google(
 
             sqlx::query_as::<_, User>(
                 "INSERT INTO users (email, username, password_hash, role) VALUES ($1, $2, $3, $4)
-                 RETURNING id, email, username, password_hash, role, created_at"
+                 RETURNING id, email, username, password_hash, role, created_at",
             )
-                .bind(&info.email)
-                .bind(&username)
-                .bind(&password_hash)
-                .bind(default_role)
-                .fetch_one(pool.as_ref())
-                .await
-                .map_err(|e| {
-                    if let sqlx::Error::Database(db_err) = &e {
-                        if db_err.code().as_deref() == Some("23505") {
-                            return AppError::Conflict("Email already exists".to_string());
-                        }
+            .bind(&info.email)
+            .bind(&username)
+            .bind(&password_hash)
+            .bind(default_role)
+            .fetch_one(pool.as_ref())
+            .await
+            .map_err(|e| {
+                if let sqlx::Error::Database(db_err) = &e {
+                    if db_err.code().as_deref() == Some("23505") {
+                        return AppError::Conflict("Email already exists".to_string());
                     }
-                    AppError::Db(e)
-                })?
+                }
+                AppError::Db(e)
+            })?
         }
     };
 
@@ -333,17 +335,40 @@ pub async fn receive_console_logs(
     // Log the received console logs from mobile browsers
     for log_entry in payload.logs {
         match log_entry.level.as_str() {
-            "error" => tracing::error!("[Mobile Console] {}: {}", log_entry.timestamp, log_entry.message),
-            "warn" => tracing::warn!("[Mobile Console] {}: {}", log_entry.timestamp, log_entry.message),
-            "info" => tracing::info!("[Mobile Console] {}: {}", log_entry.timestamp, log_entry.message),
-            "debug" => tracing::debug!("[Mobile Console] {}: {}", log_entry.timestamp, log_entry.message),
-            _ => tracing::info!("[Mobile Console] {}: {}", log_entry.timestamp, log_entry.message),
+            "error" => tracing::error!(
+                "[Mobile Console] {}: {}",
+                log_entry.timestamp,
+                log_entry.message
+            ),
+            "warn" => tracing::warn!(
+                "[Mobile Console] {}: {}",
+                log_entry.timestamp,
+                log_entry.message
+            ),
+            "info" => tracing::info!(
+                "[Mobile Console] {}: {}",
+                log_entry.timestamp,
+                log_entry.message
+            ),
+            "debug" => tracing::debug!(
+                "[Mobile Console] {}: {}",
+                log_entry.timestamp,
+                log_entry.message
+            ),
+            _ => tracing::info!(
+                "[Mobile Console] {}: {}",
+                log_entry.timestamp,
+                log_entry.message
+            ),
         }
     }
-    
+
     // Log device info
-    tracing::info!("[Mobile Debug] Device info: {}", serde_json::to_string_pretty(&payload.device_info).unwrap_or_default());
-    
+    tracing::info!(
+        "[Mobile Debug] Device info: {}",
+        serde_json::to_string_pretty(&payload.device_info).unwrap_or_default()
+    );
+
     Ok(axum::http::StatusCode::OK)
 }
 
@@ -365,16 +390,16 @@ pub async fn get_current_user(
 ) -> Result<Json<UserInfoResponse>, AppError> {
     // Fetch user details from database using the authenticated user ID
     let user: User = sqlx::query_as(
-        "SELECT id, email, username, role, password_hash, created_at FROM users WHERE id = $1"
+        "SELECT id, email, username, role, password_hash, created_at FROM users WHERE id = $1",
     )
-        .bind(auth.user_id)
-        .fetch_one(pool.as_ref())
-        .await
-        .map_err(|e| match e {
-            sqlx::Error::RowNotFound => AppError::Unauthorized("User not found".to_string()),
-            _ => AppError::Db(e),
-        })?;
-    
+    .bind(auth.user_id)
+    .fetch_one(pool.as_ref())
+    .await
+    .map_err(|e| match e {
+        sqlx::Error::RowNotFound => AppError::Unauthorized("User not found".to_string()),
+        _ => AppError::Db(e),
+    })?;
+
     // Return user info without sensitive data
     Ok(Json(UserInfoResponse {
         id: user.id,
@@ -404,13 +429,13 @@ pub async fn get_csrf_token(
     auth: AuthUser,
 ) -> Result<Json<CsrfTokenResponse>, AppError> {
     let token = generate_csrf_token();
-    
+
     // Store the token associated with the user
     store_csrf_token(&csrf_store, &token, auth.user_id).await?;
-    
+
     // Set the CSRF cookie
     set_csrf_cookie(&cookies, &token);
-    
+
     Ok(Json(CsrfTokenResponse { token }))
 }
 
@@ -423,7 +448,7 @@ pub async fn get_ws_token(
     // Get the JWT token from the cookie
     let token = get_auth_token_from_cookie(&cookies)
         .ok_or_else(|| AppError::Unauthorized("No authentication token found".to_string()))?;
-    
+
     Ok(Json(serde_json::json!({
         "token": token
     })))

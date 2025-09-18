@@ -15,19 +15,19 @@
 //! - Proper error handling and recovery mechanisms
 //! - Database transaction management for consistency
 
-pub mod thumbnail;
 pub mod async_db_writer;
 pub mod persistence_event;
+pub mod thumbnail;
 pub mod yjs_compaction_service;
 pub mod yjs_script_builder_service;
 // pub mod yjs_base_state_service; // Temporarily disabled
 pub mod claude_session_service;
 
 // Re-export key service components
-pub use thumbnail::*;
 pub use async_db_writer::*;
 pub use persistence_event::*;
+pub use thumbnail::*;
 pub use yjs_compaction_service::*;
 pub use yjs_script_builder_service::*;
-// pub use yjs_base_state_service::*; // Temporarily disabled  
+// pub use yjs_base_state_service::*; // Temporarily disabled
 pub use claude_session_service::*;
