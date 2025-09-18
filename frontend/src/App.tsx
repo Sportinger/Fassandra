@@ -51,7 +51,10 @@ function App(): JSX.Element {
     const onPop = () => setPath(getPath())
     window.addEventListener('popstate', onPop)
     window.addEventListener('hashchange', onPop)
-    return () => window.removeEventListener('popstate', onPop)
+    return () => {
+      window.removeEventListener('popstate', onPop)
+      window.removeEventListener('hashchange', onPop)
+    }
   }, [])
   const {
     currentView,

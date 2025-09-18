@@ -160,7 +160,7 @@ class RoutingService {
     const state = event.state as HistoryState | null;
     
     let route: RouteInfo;
-    if (state) {
+    if (state && state.view) {
       route = {
         view: state.view,
         scriptId: state.scriptId || null,
