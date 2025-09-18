@@ -3,8 +3,6 @@ import type { Editor as TipTapEditor } from '@tiptap/react';
 import type { WebsocketProvider } from 'y-websocket';
 import type * as Y from 'yjs';
 
-import { Header } from '../../Header';
-import { EditorShell } from './EditorShell';
 import { BorderlessView, SinglePageView } from '../ViewModes';
 import { FloatingCuesLayer } from './FloatingCuesLayer';
 import { CueConnectors } from './CueConnectors';
@@ -43,9 +41,6 @@ interface EditorViewProps {
   provider: WebsocketProvider | null;
   ydoc: Y.Doc | null;
   connectionStatus: ConnectionStatus;
-  initialTitle: string | undefined;
-  onNavigateBack: () => void;
-  activeUserCount: number;
   toolbarContext: ToolbarContext;
   debugLog: (...args: any[]) => void;
 }
@@ -55,9 +50,6 @@ export const EditorView: React.FC<EditorViewProps> = ({
   provider,
   ydoc,
   connectionStatus,
-  initialTitle,
-  onNavigateBack,
-  activeUserCount,
   toolbarContext,
   debugLog,
 }) => {
@@ -162,22 +154,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
   };
 
   return (
-    <EditorShell
-      header={(
-        <Header
-          currentView="editor"
-          scriptTitle={initialTitle}
-          onNavigateToScripts={onNavigateBack}
-          layouts={[]}
-          currentLayout={null}
-          onLayoutChange={() => {}}
-          onCreateNewLayout={async () => {}}
-          onSaveLayout={async () => {}}
-          activeUserCount={activeUserCount}
-          connectionStatus={connectionStatus}
-        />
-      )}
-    >
+    <>
       {viewMode === 'borderless' ? (
         <BorderlessView
           showRuler={false}
@@ -323,6 +300,6 @@ export const EditorView: React.FC<EditorViewProps> = ({
         setActiveCommentId={setActiveSidebarCommentId}
         editor={editor}
       />
-    </EditorShell>
+    </>
   );
-};
+}
