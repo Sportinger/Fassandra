@@ -1,0 +1,18 @@
+{
+  "baseUrl": "https://localhost:8080",
+  "wsUrl": "wss://localhost:8080/api/collab",
+  "scriptId": "00000000-0000-0000-0000-000000000000",
+  "virtualUsers": 60,
+  "sessionDurationMs": 60000,
+  "rampUpMs": 15000,
+  "editsPerMinute": 18,
+  "minThinkTimeMs": 350,
+  "maxThinkTimeMs": 1250,
+  "deleteProbability": 0.15,
+  "rejectUnauthorized": false,
+  "users": [
+    { "email": "loadtest1@example.com", "password": "change-me", "displayName": "LoadTest 1" },
+    { "email": "loadtest2@example.com", "password": "change-me", "displayName": "LoadTest 2" }
+  ],
+  "wordList": ["cue", "line", "stage", "prop", "entrance", "exit"]
+}

@@ -1,15 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FontSizeDropdown } from '../../FontSizeDropdown';
-import { FontStyleDropdown } from '../../FontStyleDropdown';
-import { CueDropdown } from '../../CueDropdown';
-import { CueTypeDropdown } from '../../CueTypeDropdown';
-import { SearchBox } from '../../SearchBox';
-import { SpeakerDropdown } from '../../SpeakerDropdown';
-import { SpeakerColorPicker } from '../../SpeakerColorPicker';
-import { DialogueLayoutDropdown } from '../../DialogueLayoutDropdown';
-import { ViewModeDropdown } from '../../ViewModeDropdown';
 import { KeyboardIcon } from '../../icons';
-import { RulerAdjustDropdown } from '../../RulerAdjustDropdown';
 import type { ToolbarProps, ToolbarContext } from '../../types/index';
 import { CueType } from '../../../../types/cue';
 
@@ -17,6 +7,13 @@ import logger from '../../../../services/LoggingService';
 import '../../styles/toolbar.css';
 import { useToolbarKeyboard } from './hooks/useToolbarKeyboard';
 import { buildToolbarButtons, type ToolbarButton } from './toolbarButtons';
+import {
+  useEditorLayout,
+  useEditorRehearsal,
+  useEditorSpeakers,
+  useEditorContextMenuState,
+} from '../../contexts/EditorUiContext';
+import { renderToolbarButton } from './renderToolbarButton';
 /**
  * Enhanced Toolbar Component
  * Full-featured floating toolbar with context-aware buttons
@@ -24,22 +21,26 @@ import { buildToolbarButtons, type ToolbarButton } from './toolbarButtons';
  */
 
 // Import the responsive styles
-export const Toolbar: React.FC<ToolbarProps> = ({ 
+export const Toolbar: React.FC<ToolbarProps> = ({
   editor,
   context: clickContext,
-  hasTextSelection,
-  viewMode,
-  speakerNames,
-  editAllSpeakers = false,
-  onToggleEditAllSpeakers,
-  onSetViewMode,
   className = '',
-  rehearsalMode = false,
-  onToggleRehearsalMode,
-  autoFollowActive = false,
-  onToggleAutoFollow,
-  asrPreviewText
 }) => {
+  const { viewMode, setViewMode } = useEditorLayout();
+  const {
+    rehearsalMode,
+    setRehearsalMode,
+    autoFollowActive,
+    startAutoFollow,
+    stopAutoFollow,
+    lastAsrText,
+    adoptRemotePosition,
+  } = useEditorRehearsal();
+  const { editAllSpeakers, setEditAllSpeakers, availableSpeakers } = useEditorSpeakers();
+  const { editorHasSelection } = useEditorContextMenuState();
+
+  const speakerNames = useMemo(() => new Set(availableSpeakers), [availableSpeakers]);
+
   const {
     windowWidth,
     keyboardHeight,
@@ -57,6 +58,32 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     setTimeout(() => setForceDefaultContext(false), 250);
   }, []);
 
+  const handleToggleEditAllSpeakers = useCallback(() => {
+    setEditAllSpeakers(prev => !prev);
+  }, [setEditAllSpeakers]);
+
+  const handleToggleRehearsalMode = useCallback(() => {
+    const nextMode = !rehearsalMode;
+    setRehearsalMode(nextMode);
+    logger.debug('Toolbar', 'Rehearsal mode toggled:', nextMode);
+    if (nextMode) {
+      try {
+        if (adoptRemotePosition()) {
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [adoptRemotePosition, rehearsalMode, setRehearsalMode]);
+
+  const handleToggleAutoFollow = useCallback(() => {
+    const togglePromise = autoFollowActive ? stopAutoFollow() : startAutoFollow();
+    if (togglePromise && typeof (togglePromise as Promise<unknown>).then === 'function') {
+      (togglePromise as Promise<unknown>).catch(() => {});
+    }
+  }, [autoFollowActive, startAutoFollow, stopAutoFollow]);
+
   // Determine current context based on editor state
   const getContext = (): ToolbarContext => {
     // If a recent action requested default toolbar, honor it immediately
@@ -73,7 +100,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     if (clickContext === 'text-formatting') return 'text-formatting';
     
     // 2. Text selection always shows formatting tools
-    if (hasTextSelection) return 'text-formatting';
+    if (editorHasSelection) return 'text-formatting';
     
     // 3. Default context
     return 'default';
@@ -112,24 +139,24 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const allButtons = useMemo(() => buildToolbarButtons({
     editor,
     autoFollowActive,
-    onToggleAutoFollow,
+    onToggleAutoFollow: handleToggleAutoFollow,
     editAllSpeakers,
-    onToggleEditAllSpeakers,
+    onToggleEditAllSpeakers: handleToggleEditAllSpeakers,
     focusIfNeeded,
     viewMode,
     rehearsalMode,
-    onToggleRehearsalMode,
+    onToggleRehearsalMode: handleToggleRehearsalMode,
     requestDefaultContext,
   }), [
     editor,
     autoFollowActive,
-    onToggleAutoFollow,
+    handleToggleAutoFollow,
     editAllSpeakers,
-    onToggleEditAllSpeakers,
+    handleToggleEditAllSpeakers,
     focusIfNeeded,
     viewMode,
     rehearsalMode,
-    onToggleRehearsalMode,
+    handleToggleRehearsalMode,
     requestDefaultContext,
   ]);
 
@@ -285,72 +312,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         
         return (
           <React.Fragment key={button.id}>
-            {button.isSpecial && button.id === 'font-size' ? (
-              <FontSizeDropdown 
-                editor={editor}
-                isVisible={isVisible}
-              />
-            ) : button.isSpecial && button.id === 'cue-dropdown' ? (
-              <CueDropdown
-                editor={editor}
-                isVisible={isVisible}
-              />
-            ) : button.isSpecial && button.id === 'search-box' ? (
-              <SearchBox
-                editor={editor}
-                isVisible={isVisible}
-              />
-            ) : button.isSpecial && button.id === 'cue-type-dropdown' ? (
-              <CueTypeDropdown
-                editor={editor}
-                isVisible={isVisible}
-                currentCueType={currentCueType}
-              />
-            ) : button.isSpecial && button.id === 'speaker-dropdown' ? (
-              <SpeakerDropdown
-                editor={editor}
-                isVisible={isVisible}
-                speakerNames={speakerNames}
-              />
-            ) : button.isSpecial && button.id === 'speaker-color-picker' ? (
-              <SpeakerColorPicker
-                editor={editor}
-                isVisible={isVisible}
-              />
-            ) : button.isSpecial && button.id === 'font-style' ? (
-              <FontStyleDropdown
-                editor={editor}
-                isVisible={isVisible}
-              />
-            ) : button.isSpecial && button.id === 'dialogue-layout-dropdown' ? (
-              <DialogueLayoutDropdown
-                editor={editor}
-                isVisible={isVisible}
-              />
-            ) : button.isSpecial && button.id === 'view-mode-dropdown' ? (
-              <ViewModeDropdown
-                viewMode={viewMode}
-                onSetViewMode={onSetViewMode}
-              />
-            ) : button.isSpecial && button.id === 'ruler-adjust' ? (
-              <RulerAdjustDropdown />
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button
-                onClick={button.action}
-                className={[
-                  'toolbarButton',
-                  button.isActive ? 'active' : ''
-                ].filter(Boolean).join(' ')}
-                title={button.title}
-                type="button"
-              >
-                <span className="icon">
-                  {typeof button.icon === 'string' ? button.icon : button.icon}
-                </span>
-              </button>
-              </div>
-            )}
+            {renderToolbarButton({
+              button,
+              editor,
+              isVisible,
+              viewMode,
+              onSetViewMode: setViewMode,
+              currentCueType,
+              speakerNames,
+            })}
             
             {shouldShowSeparatorAfter(button, index) && (
               <div 
@@ -396,9 +366,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             pointerEvents: 'none',
             backdropFilter: 'blur(2px)'
           }}
-          title={asrPreviewText || ''}
+          title={lastAsrText || ''}
         >
-          {asrPreviewText || 'Listening…'}
+          {lastAsrText || 'Listening…'}
         </div>
       )}
 
