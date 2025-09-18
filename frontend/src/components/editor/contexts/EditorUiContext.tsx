@@ -40,6 +40,10 @@ interface EditorLayoutValue {
   setShowRuler: React.Dispatch<React.SetStateAction<boolean>>;
   pageNumber: number;
   pageCount: number;
+  showCues: boolean;
+  setShowCues: React.Dispatch<React.SetStateAction<boolean>>;
+  showStruckDialogue: boolean;
+  setShowStruckDialogue: React.Dispatch<React.SetStateAction<boolean>>;
   rulerOverlayActive: boolean;
   setRulerOverlayActive: React.Dispatch<React.SetStateAction<boolean>>;
   rightSidebarOpen: boolean;
@@ -154,8 +158,30 @@ export const EditorUiProvider: React.FC<EditorUiProviderProps> = ({
   const [showRuler, setShowRuler] = useState(false);
   const [rulerOverlayActive, setRulerOverlayActive] = useState(false);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+  const [showCues, setShowCues] = useState(true);
+  const [showStruckDialogue, setShowStruckDialogue] = useState(true);
 
   const { pageNumber, pageCount } = useEditorPages(editor);
+
+  useEffect(() => {
+    const classList = document.body.classList;
+    if (showCues) {
+      classList.remove('hide-cues');
+    } else {
+      classList.add('hide-cues');
+    }
+    return () => classList.remove('hide-cues');
+  }, [showCues]);
+
+  useEffect(() => {
+    const classList = document.body.classList;
+    if (showStruckDialogue) {
+      classList.remove('hide-struck-dialogue');
+    } else {
+      classList.add('hide-struck-dialogue');
+    }
+    return () => classList.remove('hide-struck-dialogue');
+  }, [showStruckDialogue]);
 
   const rehearsal = useRehearsalMode({
     editor,
@@ -348,6 +374,10 @@ export const EditorUiProvider: React.FC<EditorUiProviderProps> = ({
       setShowRuler,
       pageNumber,
       pageCount,
+      showCues,
+      setShowCues,
+      showStruckDialogue,
+      setShowStruckDialogue,
       rulerOverlayActive,
       setRulerOverlayActive,
       rightSidebarOpen,
@@ -359,6 +389,8 @@ export const EditorUiProvider: React.FC<EditorUiProviderProps> = ({
       showRuler,
       pageNumber,
       pageCount,
+      showCues,
+      showStruckDialogue,
       rulerOverlayActive,
       rightSidebarOpen,
     ],

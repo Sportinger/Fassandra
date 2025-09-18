@@ -28,6 +28,7 @@ import { SceneBlock } from '../extensions/SceneBlock';
 import { TrailingNode } from '../extensions/TrailingNode';
 import { CueConnectionMark } from '../extensions/CueConnectionMark';
 import { CueSelectTool } from '../extensions/CueSelectTool';
+import { BlockPlacementTool } from '../extensions/BlockPlacementTool';
 import { CueMigration } from '../extensions/CueMigration';
 import { CommentMark } from '../extensions/CommentMark';
 import { PageIndicator } from '../extensions/PageIndicator';
@@ -172,6 +173,7 @@ export const useEditorCore = ({
             CueConnectionMark,
             SceneBlock,
             CueSelectTool,
+            BlockPlacementTool,
             CommentMark,
             CueMigration, // one-time migration of legacy cue blocks
             PageIndicator,
@@ -239,6 +241,7 @@ export const useEditorCore = ({
             CueConnectionMark,
             SceneBlock,
             CueSelectTool,
+            BlockPlacementTool,
             CommentMark,
             CueMigration,
             PageIndicator,

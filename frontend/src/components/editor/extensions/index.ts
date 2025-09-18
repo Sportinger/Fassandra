@@ -5,3 +5,4 @@ export * from './CueBlock';
 export * from './SceneBlock';
 export * from './TrailingNode';
 export * from './CueConnectionMark'; 
+export * from './BlockPlacementTool';

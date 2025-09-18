@@ -4,6 +4,7 @@ import { FontSizeDropdown } from '../../FontSizeDropdown';
 import { CueDropdown } from '../../CueDropdown';
 import { SearchBox } from '../../SearchBox';
 import { CueTypeDropdown } from '../../CueTypeDropdown';
+import { VisibilityDropdown } from '../../VisibilityDropdown';
 import { SpeakerDropdown } from '../../SpeakerDropdown';
 import { SpeakerColorPicker } from '../../SpeakerColorPicker';
 import { FontStyleDropdown } from '../../FontStyleDropdown';
@@ -57,6 +58,8 @@ export const renderToolbarButton = ({
   switch (button.id) {
     case 'font-size':
       return <FontSizeDropdown editor={editorInstance as any} isVisible={isVisible} />;
+    case 'visibility-dropdown':
+      return <VisibilityDropdown isVisible={isVisible} />;
     case 'cue-dropdown':
       return <CueDropdown editor={editorInstance as any} isVisible={isVisible} />;
     case 'search-box':

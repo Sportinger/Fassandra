@@ -9,6 +9,12 @@ export const PageIndicator = Node.create({
   selectable: false,
   atom: true,
 
+  addStorage() {
+    return {
+      updateNumbers: null as (() => void) | null,
+    };
+  },
+
   addAttributes() {
     return {
       pageNumber: {
@@ -29,5 +35,48 @@ export const PageIndicator = Node.create({
     const n = node?.attrs?.pageNumber || HTMLAttributes['data-page-number'] || 1;
     return ['div', { 'data-type': 'page-indicator', 'data-page-number': n, class: 'page-indicator-inline' }, `Page ${n}`];
   },
-});
 
+  onCreate() {
+    const renumber = () => {
+      try {
+        const { state } = this.editor;
+        const tr = state.tr;
+        let page = 1;
+        let changed = false;
+
+        state.doc.descendants((node, pos) => {
+          if (node.type.name !== this.name) {
+            return true;
+          }
+
+          if (node.attrs.pageNumber !== page) {
+            tr.setNodeMarkup(pos, undefined, {
+              ...node.attrs,
+              pageNumber: page,
+            });
+            changed = true;
+          }
+
+          page += 1;
+          return false;
+        });
+
+        if (changed) {
+          this.editor.view.dispatch(tr);
+        }
+      } catch (error) {
+        console.error('[PageIndicator] Failed to renumber pages', error);
+      }
+    };
+
+    this.storage.updateNumbers = renumber;
+    setTimeout(renumber, 0);
+    this.editor.on('update', renumber);
+  },
+
+  onDestroy() {
+    if (this.storage.updateNumbers) {
+      this.editor.off('update', this.storage.updateNumbers);
+    }
+  },
+});
