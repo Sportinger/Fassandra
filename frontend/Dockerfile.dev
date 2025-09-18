@@ -17,6 +17,9 @@ RUN apk add --no-cache openssl
 
 WORKDIR /app
 
+# Upgrade npm to mitigate recent supply-chain incidents
+RUN npm install -g npm@11.6.0
+
 # Copy package files first for better layer caching
 COPY package.json package-lock.json ./
 
