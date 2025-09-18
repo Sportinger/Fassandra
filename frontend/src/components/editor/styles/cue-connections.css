@@ -241,6 +241,56 @@ body.cue-select-active .cue-connection {
   white-space: normal;
 }
 
+body.block-placement-active {
+  cursor: copy;
+}
+
+body.block-placement-active .ProseMirror {
+  cursor: copy;
+}
+
+.block-placement-target {
+  position: relative;
+  display: block;
+  height: 0;
+  pointer-events: none;
+  margin: 6px 0;
+}
+
+.block-placement-target::after {
+  content: '';
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.85);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.45);
+}
+
+.block-placement-target[data-mode='scene']::after {
+  background: rgba(249, 115, 22, 0.9);
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.45);
+}
+
+body.hide-cues .cue-connection {
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+body.hide-cues .cue-connection::before,
+body.hide-cues .cue-connection::after,
+body.hide-cues .cue-connection-tooltip {
+  display: none !important;
+}
+
+body.hide-cues .floating-cues-layer,
+body.hide-cues .floating-cues-backdrop,
+body.hide-cues .floating-cue,
+body.hide-cues .floating-cue-popover {
+  display: none !important;
+}
+
+
 /* Print styles */
 @media print {
   .cue-connection::before,

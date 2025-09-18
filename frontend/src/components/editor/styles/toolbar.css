@@ -328,6 +328,13 @@
   text-align: left;
 }
 
+.dropdownItem .toggleIndicator {
+  margin-right: 8px;
+  font-size: calc(var(--toolbar-button-size) * 0.28);
+  width: 1.5em;
+  text-align: center;
+}
+
 .dropdownItem:hover,
 .cue-dropdown-item:hover {
   background: var(--color-accent, #3b82f6);

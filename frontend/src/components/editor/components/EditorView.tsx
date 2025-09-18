@@ -9,6 +9,7 @@ import { BorderlessView, SinglePageView } from '../ViewModes';
 import { FloatingCuesLayer } from './FloatingCuesLayer';
 import { CueConnectors } from './CueConnectors';
 import { FloatingCommentsLayer } from './FloatingCommentsLayer';
+import { useToolbarKeyboard } from './toolbar/hooks/useToolbarKeyboard';
 import RulerOverlay from './RulerOverlay';
 import { EditorContent } from './EditorContent';
 import { EditorContextMenu } from './context-menu/EditorContextMenu';
@@ -66,13 +67,15 @@ export const EditorView: React.FC<EditorViewProps> = ({
     toggleViewMode,
     showRuler,
     setShowRuler,
-    pageNumber,
-    pageCount,
+    showCues,
     rulerOverlayActive,
     setRulerOverlayActive,
     rightSidebarOpen,
     setRightSidebarOpen,
   } = useEditorLayout();
+
+  const { windowWidth } = useToolbarKeyboard(editor);
+  const isMobile = windowWidth <= 767;
 
   const { rehearsalMode, rehearsalLinePosition, rehearsalWordBox } = useEditorRehearsal();
 
@@ -185,8 +188,12 @@ export const EditorView: React.FC<EditorViewProps> = ({
           overlay={
             editor ? (
               <>
-                <FloatingCuesLayer editor={editor} onOpenCue={handleCueOpen} />
-                {editor && <CueConnectors editor={editor} expandedCueId={expandedCueId} />}
+                {showCues && isMobile && (
+                  <>
+                    <FloatingCuesLayer editor={editor} onOpenCue={handleCueOpen} />
+                    <CueConnectors editor={editor} expandedCueId={expandedCueId} />
+                  </>
+                )}
                 <FloatingCommentsLayer editor={editor} onOpenComment={handleCommentOpen} />
                 {rehearsalMode && rehearsalWordBox && (
                   <div
@@ -223,8 +230,6 @@ export const EditorView: React.FC<EditorViewProps> = ({
         <SinglePageView
           className={rightSidebarOpen ? 'sidebar-open' : 'sidebar-collapsed'}
           showRuler={false}
-          pageNumber={pageNumber}
-          pageCount={pageCount}
           onToggleRuler={() => setShowRuler(!showRuler)}
           onToggleViewMode={toggleViewMode}
           rehearsalMode={rehearsalMode}
@@ -232,8 +237,12 @@ export const EditorView: React.FC<EditorViewProps> = ({
           overlay={
             editor ? (
               <>
-                <FloatingCuesLayer editor={editor} onOpenCue={handleCueOpen} />
-                {editor && <CueConnectors editor={editor} expandedCueId={expandedCueId} />}
+                {showCues && isMobile && (
+                  <>
+                    <FloatingCuesLayer editor={editor} onOpenCue={handleCueOpen} />
+                    <CueConnectors editor={editor} expandedCueId={expandedCueId} />
+                  </>
+                )}
                 <RulerOverlay active={rulerOverlayActive} onClose={() => setRulerOverlayActive(false)} />
                 <FloatingCommentsLayer editor={editor} onOpenComment={handleCommentOpen} />
                 {rehearsalMode && rehearsalWordBox && (

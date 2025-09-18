@@ -26,7 +26,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   context: clickContext,
   className = '',
 }) => {
-  const { viewMode, setViewMode } = useEditorLayout();
+  const { viewMode, setViewMode, showCues, showStruckDialogue } = useEditorLayout();
   const {
     rehearsalMode,
     setRehearsalMode,
@@ -144,6 +144,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     onToggleEditAllSpeakers: handleToggleEditAllSpeakers,
     focusIfNeeded,
     viewMode,
+    showCues,
+    showStruckDialogue,
     rehearsalMode,
     onToggleRehearsalMode: handleToggleRehearsalMode,
     requestDefaultContext,
@@ -155,6 +157,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     handleToggleEditAllSpeakers,
     focusIfNeeded,
     viewMode,
+    showCues,
+    showStruckDialogue,
     rehearsalMode,
     handleToggleRehearsalMode,
     requestDefaultContext,

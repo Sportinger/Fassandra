@@ -8,6 +8,7 @@ import {
   ClapperboardIcon,
   CornerDownLeftIcon,
   GoalIcon,
+  EyeIcon,
   ItalicIcon,
   LayoutListIcon,
   LayoutPanelTopIcon,
@@ -40,6 +41,8 @@ interface BuildToolbarButtonsArgs {
   onToggleEditAllSpeakers?: () => void;
   focusIfNeeded: () => void;
   viewMode: ViewMode;
+  showCues: boolean;
+  showStruckDialogue: boolean;
   rehearsalMode: boolean;
   onToggleRehearsalMode?: () => void;
   requestDefaultContext: () => void;
@@ -53,6 +56,8 @@ export const buildToolbarButtons = ({
   onToggleEditAllSpeakers,
   focusIfNeeded,
   viewMode,
+  showCues,
+  showStruckDialogue,
   rehearsalMode,
   onToggleRehearsalMode,
   requestDefaultContext,
@@ -286,9 +291,9 @@ export const buildToolbarButtons = ({
     icon: <MessageSquareQuoteIcon />,
     title: 'Insert Dialogue Block',
     action: () => {
-      logger.debug('Toolbar', 'Inserting dialogue block');
+      logger.debug('Toolbar', 'Starting dialogue placement mode');
       focusIfNeeded();
-      editor?.chain().insertDialogueBlock().run();
+      editor?.commands.startDialoguePlacement();
     },
     contexts: ['empty-page', 'default'],
     order: 1,
@@ -397,6 +402,17 @@ export const buildToolbarButtons = ({
     isSpecial: true,
   },
   {
+    id: 'visibility-dropdown',
+    icon: <EyeIcon />,
+    title: 'Visibility Options',
+    action: () => {},
+    isActive: !showCues || !showStruckDialogue,
+    contexts: ['default'],
+    order: 9,
+    isSpecial: true,
+  },
+
+  {
     id: 'cue-dropdown',
     icon: '🎭',
     title: 'Insert Cue',
@@ -409,7 +425,10 @@ export const buildToolbarButtons = ({
     id: 'add-scene',
     icon: <ClapperboardIcon />,
     title: 'Add Scene',
-    action: () => { focusIfNeeded(); editor?.commands.insertSceneBlock(); },
+    action: () => {
+      focusIfNeeded();
+      editor?.commands.startScenePlacement();
+    },
     contexts: ['default'],
     order: 11,
   },

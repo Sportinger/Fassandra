@@ -107,6 +107,28 @@ export const DramaIcon: React.FC<{ size?: number; className?: string }> = ({
   </svg>
 );
 
+// Eye Icon SVG
+export const EyeIcon: React.FC<{ size?: number; className?: string }> = ({
+  size = 24,
+  className = ''
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={`lucide lucide-eye-icon lucide-eye ${className}`}
+  >
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+);
+
 // Message Square Quote Icon SVG
 export const MessageSquareQuoteIcon: React.FC<{ size?: number; className?: string }> = ({
   size = 24,
