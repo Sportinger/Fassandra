@@ -1,4 +1,4 @@
-import React, { type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
+import React, { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import type { Editor } from '@tiptap/react';
 import type { ConnectionStatus, ToolbarContext } from '../types';
 import type { WebsocketProvider } from 'y-websocket';
@@ -48,6 +48,22 @@ export const EditorContent: React.FC<EditorContentProps> = ({
     showContextMenu,
   });
 
+  const handlePointerDownCapture = useCallback(() => {
+    if (!editor) return;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const anchorNode = selection.anchorNode;
+    if (!anchorNode) return;
+    const editorRoot = (editor as any)?.view?.dom as HTMLElement | null;
+    if (!editorRoot) return;
+    if (editorRoot.contains(anchorNode)) return;
+    try {
+      selection.removeAllRanges();
+    } catch {
+      /* ignore selection errors */
+    }
+  }, [editor]);
+
   if (!editor) {
     return (
       <div className="editor-loading">
@@ -71,6 +87,7 @@ export const EditorContent: React.FC<EditorContentProps> = ({
   return (
     <div 
       className="editor-content"
+      onPointerDownCapture={handlePointerDownCapture}
       onContextMenu={onContextMenu}
       onClick={(e) => {
         closeContextMenu();

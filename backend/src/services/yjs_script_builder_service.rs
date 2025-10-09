@@ -5,12 +5,14 @@
 //! instead of inserting blocks into the database.
 
 use anyhow::{anyhow, Result};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::sync::Arc;
 use tracing::{debug, error, info};
 use uuid::Uuid;
 use yrs::updates::encoder::Encode; // for encode_v1 on StateVector and updates
+use yrs::Map;
 use yrs::{Doc, Options, ReadTxn, StateVector, Transact, WriteTxn};
 use yrs::{Text, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
 // use yrs::updates::encoder::Encode; // Not needed; we use encode via transact
@@ -273,10 +275,15 @@ impl YjsScriptBuilderService {
         {
             let mut txn = doc.transact_mut();
             let default_fragment = txn.get_or_insert_xml_fragment("default");
-            // Add an initial empty paragraph
+            // Add an initial empty paragraph so the editor has a cursor anchor
             default_fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
             txn.get_or_insert_text("prosemirror");
-            txn.get_or_insert_map("metadata");
+            let metadata = txn.get_or_insert_map("metadata");
+            metadata.insert(&mut txn, "initialized", true);
+            metadata.insert(&mut txn, "source", "pdf_upload".to_string());
+            metadata.insert(&mut txn, "migrated", false);
+            metadata.insert(&mut txn, "last_import_status", "initializing".to_string());
+            metadata.insert(&mut txn, "last_imported_at", Utc::now().to_rfc3339());
         }
         let base_state = doc
             .transact()
@@ -552,6 +559,33 @@ impl YjsScriptBuilderService {
                         }
                     }
                 }
+            }
+        }
+
+        {
+            let mut txn = doc.transact_mut();
+            let meta = txn.get_or_insert_map("metadata");
+            meta.insert(&mut txn, "migrated", true);
+            meta.insert(&mut txn, "initialized", true);
+            meta.insert(&mut txn, "source", "pdf_upload".to_string());
+            meta.insert(&mut txn, "last_import_status", "completed".to_string());
+            meta.insert(&mut txn, "last_imported_at", Utc::now().to_rfc3339());
+            if let Some(info) = chunk.chunk.as_ref() {
+                meta.insert(&mut txn, "last_imported_chunk", info.number as i64);
+                meta.insert(&mut txn, "total_chunks", info.total as i64);
+                meta.insert(&mut txn, "pages_start", info.pages_start as i64);
+                meta.insert(&mut txn, "pages_end", info.pages_end as i64);
+            }
+            if let Some(details) = chunk.metadata.as_ref() {
+                if !details.title.trim().is_empty() {
+                    meta.insert(&mut txn, "title", details.title.clone());
+                }
+                if let Some(author) = &details.author {
+                    if !author.trim().is_empty() {
+                        meta.insert(&mut txn, "author", author.clone());
+                    }
+                }
+                meta.insert(&mut txn, "total_pages", details.total_pages as i64);
             }
         }
         Ok(())

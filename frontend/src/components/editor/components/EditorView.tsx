@@ -188,10 +188,13 @@ export const EditorView: React.FC<EditorViewProps> = ({
           overlay={
             editor ? (
               <>
-                {showCues && isMobile && (
+                {showCues && (
                   <>
-                    <FloatingCuesLayer editor={editor} onOpenCue={handleCueOpen} />
-                    <CueConnectors editor={editor} expandedCueId={expandedCueId} />
+                    {isMobile ? (
+                      <FloatingCuesLayer editor={editor} onOpenCue={handleCueOpen} />
+                    ) : (
+                      <CueConnectors editor={editor} expandedCueId={expandedCueId} />
+                    )}
                   </>
                 )}
                 <FloatingCommentsLayer editor={editor} onOpenComment={handleCommentOpen} />
@@ -237,10 +240,13 @@ export const EditorView: React.FC<EditorViewProps> = ({
           overlay={
             editor ? (
               <>
-                {showCues && isMobile && (
+                {showCues && (
                   <>
-                    <FloatingCuesLayer editor={editor} onOpenCue={handleCueOpen} />
-                    <CueConnectors editor={editor} expandedCueId={expandedCueId} />
+                    {isMobile ? (
+                      <FloatingCuesLayer editor={editor} onOpenCue={handleCueOpen} />
+                    ) : (
+                      <CueConnectors editor={editor} expandedCueId={expandedCueId} />
+                    )}
                   </>
                 )}
                 <RulerOverlay active={rulerOverlayActive} onClose={() => setRulerOverlayActive(false)} />

@@ -16,6 +16,7 @@ pub struct CorridorAligner {
     no_match_counter: usize,
     resync_after_frames: usize,
     inv_index: HashMap<String, Vec<usize>>, // token -> positions
+    min_consecutive_matches: usize, // minimum consecutive word matches required
 }
 
 impl CorridorAligner {
@@ -41,6 +42,7 @@ impl CorridorAligner {
             no_match_counter: 0,
             resync_after_frames: 8, // ~1-1.5s
             inv_index,
+            min_consecutive_matches: 4, // require at least 4 consecutive words
         }
     }
 
@@ -133,6 +135,25 @@ impl CorridorAligner {
         *self.idf_map.get(token).unwrap_or(&1.0)
     }
 
+    /// Count the longest consecutive sequence in matched indices
+    fn count_longest_consecutive_run(path: &[usize]) -> usize {
+        if path.is_empty() {
+            return 0;
+        }
+        let mut max_run = 1;
+        let mut current_run = 1;
+        for i in 1..path.len() {
+            // Allow gaps of 1-2 tokens (for articles/punctuation that might be missing)
+            if path[i] <= path[i - 1] + 3 {
+                current_run += 1;
+                max_run = max_run.max(current_run);
+            } else {
+                current_run = 1;
+            }
+        }
+        max_run
+    }
+
     fn score_window_weighted(
         &self,
         asr_tokens: &[(String, f32)],
@@ -212,23 +233,33 @@ impl CorridorAligner {
         let mut best_idx = p;
         let mut best_score = f32::MIN;
         let mut best_matches = 0usize;
+        let mut best_consecutive = 0usize;
         let mut i = start;
         while i < end_bound {
             let win_end = (i + asr_seq.len().max(5)).min(end_bound); // some width
             let window = &self.token_map.tokens[i..win_end];
             let (score, matches, _first_rel, last_rel, rel_path) =
                 self.score_window_weighted(&asr_seq, window);
+
+            // Count consecutive matches
+            let consecutive = Self::count_longest_consecutive_run(&rel_path);
+
             // Normalize score slightly by matches
             let norm = if matches > 0 {
                 score / (matches as f32)
             } else {
                 score - 1.0
             };
-            // prefer more matches, then higher normalized score
-            let better = matches > best_matches || (matches == best_matches && norm > best_score);
+
+            // prefer more consecutive matches first, then total matches, then score
+            let better = consecutive > best_consecutive
+                || (consecutive == best_consecutive && matches > best_matches)
+                || (consecutive == best_consecutive && matches == best_matches && norm > best_score);
+
             if better {
                 best_score = norm;
                 best_matches = matches;
+                best_consecutive = consecutive;
                 // prefer the last matched token in the window for docPos highlighting
                 best_idx = i + last_rel;
                 // store absolute path indices for later word-trail mapping
@@ -238,9 +269,36 @@ impl CorridorAligner {
             i += 2; // stride for speed
         }
 
-        // decision threshold: at least len/3 matches (min 2) and reasonable normalized score
-        let min_matches = (asr_seq.len() / 3).max(2);
-        let accept = best_matches >= min_matches && best_score >= 0.45;
+        // Calculate jump distance from current position
+        let jump_distance = if best_idx > p {
+            best_idx - p
+        } else {
+            p - best_idx
+        };
+
+        // Stricter thresholds: require more consecutive matches for large jumps
+        let min_consecutive = if jump_distance > 100 {
+            // Large jump: need at least min_consecutive_matches consecutive words
+            self.min_consecutive_matches
+        } else if jump_distance > 30 {
+            // Medium jump: need at least 3 consecutive words
+            self.min_consecutive_matches.saturating_sub(1).max(3)
+        } else {
+            // Small move: need at least 2 consecutive words
+            2
+        };
+
+        // Also require minimum total matches
+        let min_matches = (asr_seq.len() / 3).max(3); // increased from max(2) to max(3)
+
+        let accept = best_consecutive >= min_consecutive
+            && best_matches >= min_matches
+            && best_score >= 0.45;
+
+        tracing::debug!(
+            "[align] corridor: pos={}, jump_dist={}, consecutive={}/{}, matches={}/{}, score={:.2}, accept={}",
+            best_idx, jump_distance, best_consecutive, min_consecutive, best_matches, min_matches, best_score, accept
+        );
 
         if !accept {
             self.no_match_counter = self.no_match_counter.saturating_add(1);
@@ -249,36 +307,44 @@ impl CorridorAligner {
 
             // If we've been stuck for a while, do a global resync (allow large jumps)
             if self.no_match_counter >= self.resync_after_frames {
+                tracing::info!("[align] triggering global resync after {} failed frames", self.no_match_counter);
                 let mut g_best_idx = self.p.max(0) as usize;
                 let mut g_best_score = f32::MIN;
                 let mut g_best_matches = 0usize;
+                let mut g_best_consecutive = 0usize;
                 let mut i = 0usize;
                 let n = self.token_map.tokens.len();
                 while i < n {
                     let end = (i + asr_seq.len().max(5)).min(n);
                     let window = &self.token_map.tokens[i..end];
-                    let (g_score, g_matches, _f, g_last, _p) =
+                    let (g_score, g_matches, _f, g_last, g_path) =
                         self.score_window_weighted(&asr_seq, window);
+                    let g_consecutive = Self::count_longest_consecutive_run(&g_path);
                     let g_norm = if g_matches > 0 {
                         g_score / (g_matches as f32)
                     } else {
                         g_score - 1.0
                     };
-                    let better = g_matches > g_best_matches
-                        || (g_matches == g_best_matches && g_norm > g_best_score);
+                    let better = g_consecutive > g_best_consecutive
+                        || (g_consecutive == g_best_consecutive && g_matches > g_best_matches)
+                        || (g_consecutive == g_best_consecutive && g_matches == g_best_matches && g_norm > g_best_score);
                     if better {
                         g_best_matches = g_matches;
                         g_best_score = g_norm;
+                        g_best_consecutive = g_consecutive;
                         g_best_idx = i + g_last;
                     }
                     i += 5; // coarse stride for full scan
                 }
-                let g_min_matches = (asr_seq.len() / 4).max(2);
-                if g_best_matches >= g_min_matches && g_best_score >= 0.42 {
+                // For global resync, still require at least 3 consecutive matches to avoid false jumps
+                let g_min_matches = (asr_seq.len() / 4).max(3);
+                let g_min_consecutive = 3;
+                if g_best_consecutive >= g_min_consecutive && g_best_matches >= g_min_matches && g_best_score >= 0.42 {
                     // hard jump to new location, immediate update
                     tracing::info!(
-                        "[align] global resync jump -> idx={}, matches={}, score={}",
+                        "[align] global resync jump -> idx={}, consecutive={}, matches={}, score={}",
                         g_best_idx,
+                        g_best_consecutive,
                         g_best_matches,
                         g_best_score
                     );
@@ -289,14 +355,20 @@ impl CorridorAligner {
                     return Some(*self.token_map.offsets.get(g_best_idx).unwrap_or(
                         &self.token_map.offsets[self.token_map.offsets.len().saturating_sub(1)],
                     ));
+                } else {
+                    tracing::warn!(
+                        "[align] global resync failed: consecutive={}/{}, matches={}/{}, score={}",
+                        g_best_consecutive, g_min_consecutive, g_best_matches, g_min_matches, g_best_score
+                    );
                 }
             }
 
             // Try immediate anchor-based jump using rare high-confidence tokens
-            if let Some((a_idx, a_matches, a_score)) = self.anchor_resync(&asr_seq) {
+            if let Some((a_idx, a_consecutive, a_matches, a_score)) = self.anchor_resync(&asr_seq) {
                 tracing::info!(
-                    "[align] anchor resync jump -> idx={}, matches={}, score={}",
+                    "[align] anchor resync jump -> idx={}, consecutive={}, matches={}, score={}",
                     a_idx,
+                    a_consecutive,
                     a_matches,
                     a_score
                 );
@@ -343,7 +415,7 @@ impl CorridorAligner {
         }
     }
 
-    fn anchor_resync(&self, asr_seq: &[(String, f32)]) -> Option<(usize, usize, f32)> {
+    fn anchor_resync(&self, asr_seq: &[(String, f32)]) -> Option<(usize, usize, usize, f32)> {
         // pick up to 3 best anchors by idf*conf
         let mut anchors: Vec<(String, f32)> = asr_seq
             .iter()
@@ -355,6 +427,7 @@ impl CorridorAligner {
         let n = self.token_map.tokens.len();
         let mut best_idx = None;
         let mut best_matches = 0usize;
+        let mut best_consecutive = 0usize;
         let mut best_score = f32::MIN;
 
         for a in anchors {
@@ -367,17 +440,20 @@ impl CorridorAligner {
                         continue;
                     }
                     let window = &self.token_map.tokens[start..end];
-                    let (score, matches, _f, last_rel, _p) =
+                    let (score, matches, _f, last_rel, path) =
                         self.score_window_weighted(asr_seq, window);
+                    let consecutive = Self::count_longest_consecutive_run(&path);
                     let norm = if matches > 0 {
                         score / (matches as f32)
                     } else {
                         score - 1.0
                     };
-                    let better =
-                        matches > best_matches || (matches == best_matches && norm > best_score);
+                    let better = consecutive > best_consecutive
+                        || (consecutive == best_consecutive && matches > best_matches)
+                        || (consecutive == best_consecutive && matches == best_matches && norm > best_score);
                     if better {
                         best_matches = matches;
+                        best_consecutive = consecutive;
                         best_score = norm;
                         best_idx = Some(start + last_rel);
                     }
@@ -385,9 +461,10 @@ impl CorridorAligner {
             }
         }
         if let Some(idx) = best_idx {
-            let min_matches = (asr_seq.len() / 4).max(2);
-            if best_matches >= min_matches && best_score >= 0.45 {
-                return Some((idx, best_matches, best_score));
+            let min_matches = (asr_seq.len() / 4).max(3);
+            let min_consecutive = 3; // require at least 3 consecutive for anchor jumps
+            if best_consecutive >= min_consecutive && best_matches >= min_matches && best_score >= 0.45 {
+                return Some((idx, best_consecutive, best_matches, best_score));
             }
         }
         None
