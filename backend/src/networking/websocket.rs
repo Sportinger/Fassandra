@@ -328,10 +328,8 @@ async fn handle_socket(
     // Add this client to the session
     session.clients.insert(session_id.clone(), user_id.clone());
 
-    metrics::gauge!("collab_active_connections", "script_id" => script_id.clone())
-        .increment(1.0);
-    metrics::counter!("collab_ws_connections_total", "script_id" => script_id.clone())
-        .increment(1);
+    metrics::gauge!("collab_active_connections", "script_id" => script_id.clone()).increment(1.0);
+    metrics::counter!("collab_ws_connections_total", "script_id" => script_id.clone()).increment(1);
 
     // Split the socket
     let (mut socket_tx, mut socket_rx) = socket.split();

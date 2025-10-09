@@ -131,6 +131,14 @@ Implementation notes (critical):
 - Strict JSON: use standard ASCII double quotes (`"`), escape internal quotes correctly, and avoid typographic quotes (e.g., “ ” „ ”).
 - Validate JSON before import: `jq -e . /tmp/script_data.json` and fix errors before proceeding.
 
+## Critical fail-safes
+
+- Never fabricate, summarize, or pad data. Every `content` string must come from the actual PDF text for the current chunk. If extraction fails or yields only placeholders, stop with an explicit error instead of emitting dummy records.
+- Prohibited placeholders: do not write generic strings such as `"Content from chunk X"`, `"Placeholder"`, or similar phrasings. If you cannot recover the real lines, abort and report the failure.
+- Process chunks sequentially yourself. Do **not** delegate chunk parsing to Task/background tooling or parallel helpers; the workflow depends on a single linear command stream so progress markers stay accurate.
+- After writing `/tmp/chunk_i.json`, inspect it (e.g., via `jq` or `cat`) to confirm it contains real script text. If a chunk lacks dialogue/stage text where the PDF clearly has content, treat it as an error and re-extract instead of continuing.
+- Use shell quoting that survives spaces or parentheses in paths (e.g., wrapping paths in double quotes or using `find` with `-print0`). Do not advance to the next step until listing and parsing commands succeed.
+
 ## Validation Checklist (Per Chunk)
 
 - Pages: Every item has a correct `page` within A..B.
