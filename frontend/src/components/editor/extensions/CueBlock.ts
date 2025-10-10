@@ -68,7 +68,7 @@ function getWordAtPosition(doc: ProseMirrorNode, pos: number): { from: number; t
 // Helper function to find the scene number for a given position
 function getSceneNumberForPosition(editor: Editor, pos: number): number {
   let currentSceneNumber = 1; // Default to scene 1 if no scene found
-  
+
   // Look backwards from the position to find the nearest scene
   editor.state.doc.nodesBetween(0, pos, (node, nodePos) => {
     if (node.type.name === 'sceneBlock' && nodePos < pos) {
@@ -76,7 +76,7 @@ function getSceneNumberForPosition(editor: Editor, pos: number): number {
       currentSceneNumber = sceneNum;
     }
   });
-  
+
   return currentSceneNumber;
 }
 
@@ -84,16 +84,16 @@ function getSceneNumberForPosition(editor: Editor, pos: number): number {
 function updateAllCueNumbers(editor: Editor) {
   const { tr } = editor.state;
   let hasChanges = false;
-  
+
   // Track cue counts per scene and type
   const cueCounts: Record<string, Record<CueType, number>> = {};
-  
+
   editor.state.doc.descendants((node, pos) => {
     if (node.type.name === 'cueBlock') {
       const cueType = node.attrs.cueType as CueType;
       const sceneNumber = getSceneNumberForPosition(editor, pos);
       const sceneKey = `scene_${sceneNumber}`;
-      
+
       // Initialize counters for this scene if needed
       if (!cueCounts[sceneKey]) {
         cueCounts[sceneKey] = {
@@ -103,17 +103,19 @@ function updateAllCueNumbers(editor: Editor) {
           props: 0,
         };
       }
-      
+
       // Increment counter for this cue type
       cueCounts[sceneKey][cueType]++;
-      
+
       // Calculate cue number: scene * 100 + cue count
       const baseNumber = sceneNumber * 100;
       const cueNumber = baseNumber + cueCounts[sceneKey][cueType];
       const newCueNumber = cueNumber.toString();
-      
-      // Update if different
-      if (node.attrs.cueNumber !== newCueNumber || node.attrs.sceneNumber !== sceneNumber) {
+
+      // Only update if not manually edited AND (no existing number OR number/scene changed)
+      // Don't overwrite existing numbers on initial load
+      const hasExistingNumber = node.attrs.cueNumber && node.attrs.cueNumber !== '999';
+      if (!node.attrs.manualNumber && (!hasExistingNumber || node.attrs.cueNumber !== newCueNumber || node.attrs.sceneNumber !== sceneNumber)) {
         tr.setNodeMarkup(pos, undefined, {
           ...node.attrs,
           cueNumber: newCueNumber,
@@ -123,7 +125,7 @@ function updateAllCueNumbers(editor: Editor) {
       }
     }
   });
-  
+
   if (hasChanges) {
     editor.view.dispatch(tr);
   }
@@ -138,6 +140,7 @@ declare module '@tiptap/core' {
     cueBlock: {
       insertCueBlock: (cueType: CueType) => ReturnType;
       updateCueContent: (content: string) => ReturnType;
+      updateCueBlockAndConnections: (cueType: CueType, oldNumber: string, newNumber: string, manualNumber?: boolean) => ReturnType;
     };
   }
 }
@@ -593,17 +596,97 @@ export const CueBlock = Node.create<CueBlockOptions>({
       document.addEventListener('mouseout', hoverOutHandler);
     };
     
+    // Setup cue number editor handlers
+    const setupCueNumberEditors = () => {
+      const cueNumbers = document.querySelectorAll('.cue-number[data-cue-number-editor="true"]');
+
+      cueNumbers.forEach((numberEl: Element) => {
+        const numberSpan = numberEl as HTMLElement;
+
+        // Remove old listeners
+        numberSpan.oninput = null;
+        numberSpan.onblur = null;
+
+        // On input, update the attribute and mark as manual
+        numberSpan.oninput = (e) => {
+          const target = e.target as HTMLElement;
+          let newNumber = target.textContent?.replace('Q', '').trim() || '';
+
+          // Update the cue block attribute
+          const cueBlock = numberSpan.closest('.cue-block');
+          if (cueBlock) {
+            const pos = this.editor.view.posAtDOM(cueBlock, 0);
+            const node = this.editor.state.doc.nodeAt(pos);
+
+            if (node && node.type.name === 'cueBlock') {
+              const oldNumber = node.attrs.cueNumber;
+              const cueType = node.attrs.cueType;
+
+              const { tr } = this.editor.state;
+              tr.setNodeMarkup(pos, undefined, {
+                ...node.attrs,
+                cueNumber: newNumber,
+                manualNumber: true, // Mark as manually edited
+              });
+
+              // Also update all connection marks with this cue
+              if (oldNumber !== newNumber) {
+                this.editor.state.doc.nodesBetween(0, this.editor.state.doc.content.size, (n, p) => {
+                  if (n.isText && n.marks.length) {
+                    n.marks.forEach(mark => {
+                      if (mark.type.name === 'cueConnection' &&
+                          mark.attrs.cueType === cueType &&
+                          mark.attrs.cueNumber === oldNumber) {
+                        const newMark = mark.type.create({
+                          ...mark.attrs,
+                          cueNumber: newNumber,
+                          manualNumber: true,
+                        });
+                        tr.removeMark(p, p + n.nodeSize, mark.type);
+                        tr.addMark(p, p + n.nodeSize, newMark);
+                      }
+                    });
+                  }
+                });
+              }
+
+              this.editor.view.dispatch(tr);
+            }
+          }
+        };
+
+        // On blur, ensure Q prefix
+        numberSpan.onblur = (e) => {
+          const target = e.target as HTMLElement;
+          let newNumber = target.textContent?.replace('Q', '').trim() || '';
+          if (newNumber && !target.textContent?.startsWith('Q')) {
+            target.textContent = `Q${newNumber}`;
+          }
+        };
+
+        // Prevent Enter key from adding new line
+        numberSpan.onkeydown = (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            (e.target as HTMLElement).blur();
+          }
+        };
+      });
+    };
+
     // Setup handlers after a delay to ensure DOM is ready
     setTimeout(() => {
       setupConnectionDragHandlers();
       setupHoverHandlers();
+      setupCueNumberEditors();
     }, 100);
-    
+
     // Re-setup handlers when content changes
     this.editor.on('update', () => {
       setTimeout(() => {
         setupConnectionDragHandlers();
         setupHoverHandlers();
+        setupCueNumberEditors();
       }, 100);
     });
     
@@ -707,6 +790,16 @@ export const CueBlock = Node.create<CueBlockOptions>({
           return { 'data-scene-number': attributes.sceneNumber };
         },
       },
+      manualNumber: {
+        default: false,
+        parseHTML: element => element.getAttribute('data-manual-number') === 'true',
+        renderHTML: attributes => {
+          if (attributes.manualNumber) {
+            return { 'data-manual-number': 'true' };
+          }
+          return {};
+        },
+      },
     };
   },
 
@@ -729,8 +822,8 @@ export const CueBlock = Node.create<CueBlockOptions>({
         'data-type': 'cue-block',
         class: `cue-block cue-${cueType}`,
       }),
-      ['div', { class: 'cue-connection-drag-area', contenteditable: 'false', draggable: 'true', title: 'Drag to connect to words' }, 
-        ['span', { class: 'cue-number' }, cueNumber ? `Q${cueNumber}` : ''],
+      ['div', { class: 'cue-connection-drag-area', contenteditable: 'false', draggable: 'true', title: 'Drag to connect to words' },
+        ['span', { class: 'cue-number', contenteditable: 'true', 'data-cue-number-editor': 'true' }, cueNumber ? `Q${cueNumber}` : ''],
         ['span', { class: 'cue-label' }, label + ':'],
       ],
       ['span', { class: 'cue-content' }, 0], // Content slot
@@ -748,16 +841,62 @@ export const CueBlock = Node.create<CueBlockOptions>({
           attrs: { cueType, cueNumber: '999' }, // Temporary number
           content: [{ type: 'text', text: ' ' }], // Start with single space instead of empty
         });
-        
+
         // Trigger cue number update
         setTimeout(() => {
           updateAllCueNumbers(editor);
         }, 10);
-        
+
         return result;
       },
       updateCueContent: (content: string) => ({ commands }) => {
         return commands.updateAttributes(this.name, { content });
+      },
+      updateCueBlockAndConnections: (cueType: CueType, oldNumber: string, newNumber: string, manualNumber = true) => ({ state, tr, dispatch }) => {
+        let changed = false;
+
+        // Update CueBlock node
+        state.doc.descendants((node, pos) => {
+          if (node.type.name === 'cueBlock' &&
+              node.attrs.cueType === cueType &&
+              node.attrs.cueNumber === oldNumber) {
+            tr.setNodeMarkup(pos, undefined, {
+              ...node.attrs,
+              cueNumber: newNumber,
+              manualNumber,
+            });
+            changed = true;
+          }
+        });
+
+        // Update all CueConnectionMarks
+        const markType = state.schema.marks.cueConnection;
+        if (markType) {
+          state.doc.nodesBetween(0, state.doc.content.size, (node, pos) => {
+            if (node.isText && node.marks.length) {
+              node.marks.forEach(mark => {
+                if (mark.type.name === 'cueConnection' &&
+                    mark.attrs.cueType === cueType &&
+                    mark.attrs.cueNumber === oldNumber) {
+                  const newMark = markType.create({
+                    ...mark.attrs,
+                    cueNumber: newNumber,
+                    manualNumber,
+                  });
+                  tr.removeMark(pos, pos + node.nodeSize, markType);
+                  tr.addMark(pos, pos + node.nodeSize, newMark);
+                  changed = true;
+                }
+              });
+            }
+          });
+        }
+
+        if (changed && dispatch) {
+          dispatch(tr);
+        }
+
+        return changed;
       },
     };
   },

@@ -85,13 +85,56 @@ export const CuesTab: React.FC<CuesTabProps> = ({
                 key={cue.cueId}
                 data-cue-id={cue.cueId}
                 className={`rs-card clickable ${activeCueId === cue.cueId ? 'active' : ''}`}
-                onClick={() => handleCueClick(cue.cueId)}
+                onClick={() => {
+                  // Don't toggle expansion if in edit mode
+                  if (sidebarPanel?.type === 'cue' && sidebarPanel.cueId === cue.cueId) {
+                    return;
+                  }
+                  handleCueClick(cue.cueId);
+                }}
               >
                 <div className="rs-cue-row">
                   <span className="rs-cue-emoji" aria-hidden>
                     {CUE_TYPE_ICONS[cue.cueType as keyof typeof CUE_TYPE_ICONS] || '🎛️'}
                   </span>
-                  <span className="rs-cue-number">Q{cue.cueNumber}</span>
+                  <span
+                    className={`rs-cue-number ${sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === cue.cueId ? 'editable-hint' : ''}`}
+                    contentEditable={Boolean(sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === cue.cueId)}
+                    suppressContentEditableWarning
+                    onClick={event => {
+                      if (sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === cue.cueId) {
+                        event.stopPropagation();
+                      }
+                    }}
+                    onBlur={event => {
+                      const element = event.currentTarget as HTMLElement;
+                      let newNumber = (element.innerText || '').replace('Q', '').trim();
+                      const oldNumber = cue.cueNumber;
+
+                      if (newNumber !== oldNumber) {
+                        // Update both CueBlock and all CueConnectionMarks
+                        (editor as any)?.commands.updateCueBlockAndConnections?.(
+                          cue.cueType,
+                          oldNumber,
+                          newNumber,
+                          true
+                        );
+                      }
+
+                      // Ensure Q prefix is shown
+                      if (newNumber && !element.innerText?.startsWith('Q')) {
+                        element.innerText = `Q${newNumber}`;
+                      }
+                    }}
+                    onKeyDown={event => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        (event.currentTarget as HTMLElement).blur();
+                      }
+                    }}
+                  >
+                    Q{cue.cueNumber}
+                  </span>
                   <span
                     className={`rs-cue-name ${sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === cue.cueId ? 'editable-hint' : ''}`}
                     contentEditable={Boolean(sidebarPanel && sidebarPanel.type === 'cue' && sidebarPanel.cueId === cue.cueId)}

@@ -77,6 +77,9 @@ export const useCueCardActions = ({
         return;
       }
 
+      // Expand the cue details when entering edit mode
+      setExpandedCueId(cue.cueId);
+
       setSidebarPanel({
         type: 'cue',
         cueId: cue.cueId,
@@ -87,7 +90,7 @@ export const useCueCardActions = ({
       });
       focusCueNameField(cue.cueId);
     },
-    [editor, focusCueNameField, setSidebarPanel, sidebarPanel],
+    [editor, focusCueNameField, setSidebarPanel, sidebarPanel, setExpandedCueId],
   );
 
   const moveCueLink = useCallback(
