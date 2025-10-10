@@ -7,6 +7,7 @@ export interface CueConnectionAttributes {
   cueType: CueType;
   cueNumber: string;
   cueName?: string | null;
+  manualNumber?: boolean;
 }
 
 declare module '@tiptap/core' {
@@ -91,6 +92,16 @@ export const CueConnectionMark = Mark.create({
           return {
             'data-cue-name': attributes.cueName,
           };
+        },
+      },
+      manualNumber: {
+        default: false,
+        parseHTML: element => element.getAttribute('data-manual-number') === 'true',
+        renderHTML: attributes => {
+          if (attributes.manualNumber) {
+            return { 'data-manual-number': 'true' };
+          }
+          return {};
         },
       },
     };
