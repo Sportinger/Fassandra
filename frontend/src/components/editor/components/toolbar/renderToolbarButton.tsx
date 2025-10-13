@@ -22,6 +22,7 @@ export interface RenderToolbarButtonArgs {
   viewMode: ViewMode;
   onSetViewMode: (mode: ViewMode) => void;
   currentCueType: CueType;
+  onCueTypeChange?: (type: CueType) => void;
   speakerNames: Set<string>;
 }
 
@@ -32,6 +33,7 @@ export const renderToolbarButton = ({
   viewMode,
   onSetViewMode,
   currentCueType,
+  onCueTypeChange,
   speakerNames,
 }: RenderToolbarButtonArgs): React.ReactNode => {
   const editorInstance = editor as EditorInstance | null;
@@ -65,7 +67,7 @@ export const renderToolbarButton = ({
     case 'search-box':
       return <SearchBox editor={editorInstance as any} isVisible={isVisible} />;
     case 'cue-type-dropdown':
-      return <CueTypeDropdown editor={editorInstance as any} isVisible={isVisible} currentCueType={currentCueType} />;
+      return <CueTypeDropdown editor={editorInstance as any} isVisible={isVisible} currentCueType={currentCueType} onCueTypeChange={onCueTypeChange} />;
     case 'speaker-dropdown':
       return <SpeakerDropdown editor={editorInstance as any} isVisible={isVisible} speakerNames={speakerNames} />;
     case 'speaker-color-picker':

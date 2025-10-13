@@ -23,6 +23,7 @@ import { useAuth } from '../../../AuthContext';
 import { DialogueBlock } from '../extensions/DialogueBlock';
 import { Speaker } from '../extensions/Speaker';
 import { DialogueText } from '../extensions/DialogueText';
+import { CueBlock } from '../extensions/CueBlock';
 import { CueBlockCompat } from '../extensions/CueBlockCompat';
 import { SceneBlock } from '../extensions/SceneBlock';
 import { TrailingNode } from '../extensions/TrailingNode';
@@ -169,6 +170,7 @@ export const useEditorCore = ({
             DialogueBlock,
             Speaker,
             DialogueText,
+            CueBlock, // ✅ Active CueBlock extension with full functionality
             CueBlockCompat, // compat: parse legacy cue blocks without plugins
             CueConnectionMark,
             SceneBlock,
@@ -237,6 +239,7 @@ export const useEditorCore = ({
             DialogueBlock,
             Speaker,
             DialogueText,
+            CueBlock, // ✅ Active CueBlock extension with full functionality
             CueBlockCompat,
             CueConnectionMark,
             SceneBlock,

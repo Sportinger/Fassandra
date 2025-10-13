@@ -102,6 +102,27 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
       </div>
       {open && (
         <div className="rightSidebarInner">
+          {/* Always-visible compact scene selector */}
+          <div className="rs-scene-selector">
+            <label className="rs-scene-selector-label">Szene:</label>
+            <select
+              className="rs-scene-selector-dropdown"
+              value={activeSceneId || ''}
+              onChange={(e) => {
+                const sceneId = e.target.value;
+                const scene = scenes.find(s => s.id === sceneId);
+                if (scene) handleSceneSelect(scene);
+              }}
+            >
+              <option value="">Szene auswählen...</option>
+              {scenes.map(scene => (
+                <option key={scene.id} value={scene.id}>
+                  Szene {scene.sceneNumber}{scene.sceneName ? ` - ${scene.sceneName}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="rs-tablist" role="tablist" aria-label="Sidebar sections">
             <button
               type="button"

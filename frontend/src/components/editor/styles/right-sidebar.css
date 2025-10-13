@@ -63,6 +63,48 @@
   padding: 12px;
 }
 
+/* Always-visible scene selector at the top */
+.rs-scene-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.rs-scene-selector-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  flex: 0 0 auto;
+}
+
+.rs-scene-selector-dropdown {
+  flex: 1 1 auto;
+  background: var(--color-button-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.rs-scene-selector-dropdown:hover {
+  background: var(--color-button-bg-hover);
+  border-color: rgba(255,255,255,0.25);
+}
+
+.rs-scene-selector-dropdown:focus {
+  outline: none;
+  border-color: rgba(255,255,255,0.35);
+}
+
 .rs-tablist {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -152,9 +194,19 @@
   gap: 8px;
 }
 .rs-cue-emoji { flex: 0 0 auto; }
-.rs-cue-number { flex: 0 0 auto; font-weight: 700; }
+.rs-cue-number {
+  flex: 0 0 auto;
+  font-weight: 700;
+  min-width: 50px; /* Ensure space for editing */
+}
+.rs-cue-number[contenteditable="true"] {
+  outline: none;
+  border-bottom: 1px dashed var(--color-border);
+  cursor: text;
+}
 .rs-cue-name {
   flex: 1 1 auto;
+  min-width: 0; /* Allow flexbox to shrink below content size */
   color: var(--color-text-secondary);
   overflow: hidden;
   white-space: nowrap;
@@ -170,7 +222,10 @@
   content: ' \270E'; /* pencil hint */
   opacity: 0.5;
 }
-.rs-cue-edit { flex: 0 0 auto; }
+.rs-cue-edit {
+  flex: 0 0 auto;
+  white-space: nowrap; /* Prevent button text from wrapping */
+}
 
 /* Expanded details panel under a cue row */
 .rs-cue-details {
