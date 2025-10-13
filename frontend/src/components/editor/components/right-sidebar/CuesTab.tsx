@@ -66,8 +66,8 @@ export const CuesTab: React.FC<CuesTabProps> = ({
         </div>
         {!cuesCollapsed && (
           <div className="rs-list">
-            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-              {(['light', 'video', 'sound', 'props'] as CueType[]).map(type => (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+              {(['light', 'video', 'sound', 'props', 'technik', 'einruf'] as CueType[]).map(type => (
                 <button
                   key={type}
                   type="button"
@@ -165,20 +165,6 @@ export const CuesTab: React.FC<CuesTabProps> = ({
                 </div>
                 {expandedCueId === cue.cueId && (
                   <div className="rs-cue-details">
-                    <div className="row">
-                      <span className="k">Type</span>
-                      <span className="v">{cue.cueType.toUpperCase()}</span>
-                    </div>
-                    <div className="row">
-                      <span className="k">Number</span>
-                      <span className="v">{cue.cueNumber}</span>
-                    </div>
-                    {cue.cueName && (
-                      <div className="row">
-                        <span className="k">Name</span>
-                        <span className="v">{cue.cueName}</span>
-                      </div>
-                    )}
                     {cue.text && (
                       <div className="row">
                         <span className="k">Stichwort</span>

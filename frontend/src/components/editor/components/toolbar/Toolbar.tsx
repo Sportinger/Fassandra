@@ -52,7 +52,22 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   } = useToolbarKeyboard(editor);
   // Force toolbar to show default context after certain actions (e.g., exit blocks)
   const [forceDefaultContext, setForceDefaultContext] = useState(false);
-  
+  // Remember last selected cue type (persisted in localStorage)
+  const [lastSelectedCueType, setLastSelectedCueType] = useState<CueType>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('lastSelectedCueType');
+      return (saved as CueType) || 'light';
+    }
+    return 'light';
+  });
+
+  const handleCueTypeSelection = useCallback((type: CueType) => {
+    setLastSelectedCueType(type);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('lastSelectedCueType', type);
+    }
+  }, []);
+
   const requestDefaultContext = useCallback(() => {
     setForceDefaultContext(true);
     setTimeout(() => setForceDefaultContext(false), 250);
@@ -108,23 +123,24 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   const currentContext = getContext();
 
-  // Get current cue type if a cue is selected
+  // Get current cue type if a cue is selected, otherwise use last selected
   const getCurrentCueType = (): CueType => {
-    if (!editor || currentContext !== 'cue-select') return 'light';
-    
+    if (!editor) return lastSelectedCueType;
+
     const { state } = editor;
     const { selection } = state;
     const { from } = selection;
-    
-    let cueType: CueType = 'light';
+
+    let cueType: CueType | null = null;
     state.doc.nodesBetween(from, from, (node) => {
       if (node.type.name === 'cueBlock' && node.attrs.cueType) {
         cueType = node.attrs.cueType as CueType;
         return false;
       }
     });
-    
-    return cueType;
+
+    // Return the cue type from selected block, or fallback to last selected type
+    return cueType || lastSelectedCueType;
   };
 
   const currentCueType = getCurrentCueType();
@@ -323,6 +339,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               viewMode,
               onSetViewMode: setViewMode,
               currentCueType,
+              onCueTypeChange: handleCueTypeSelection,
               speakerNames,
             })}
             

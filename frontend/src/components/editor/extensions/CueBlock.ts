@@ -101,6 +101,8 @@ function updateAllCueNumbers(editor: Editor) {
           video: 0,
           sound: 0,
           props: 0,
+          technik: 0,
+          einruf: 0,
         };
       }
 
@@ -907,6 +909,8 @@ export const CueBlock = Node.create<CueBlockOptions>({
       'Mod-Shift-v': () => this.editor.commands.insertCueBlock('video'),
       'Mod-Shift-s': () => this.editor.commands.insertCueBlock('sound'),
       'Mod-Shift-p': () => this.editor.commands.insertCueBlock('props'),
+      'Mod-Shift-t': () => this.editor.commands.insertCueBlock('technik'),
+      'Mod-Shift-e': () => this.editor.commands.insertCueBlock('einruf'),
       // Allow arrow keys to navigate out of cue block
       'ArrowDown': () => {
         const { state, view } = this.editor;

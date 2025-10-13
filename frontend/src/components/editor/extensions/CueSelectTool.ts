@@ -25,20 +25,74 @@ declare module '@tiptap/core' {
   }
 }
 
-// Find the word boundaries at a position (similar to prior helper)
+// Find word boundaries at a position with multi-word support
+// Expands to include surrounding words separated by single spaces (up to 5 words max)
 function getWordAtPosition(doc: ProseMirrorNode, pos: number): { from: number; to: number; text: string } | null {
   const $pos = doc.resolve(pos);
   const parent = $pos.parent;
   if (!parent || !parent.isTextblock) return null;
   const text = parent.textContent;
   const offset = $pos.parentOffset;
+
+  // Find the initial word boundaries
   let start = offset;
   let end = offset;
   while (start > 0 && /\S/.test(text.charAt(start - 1))) start--;
   while (end < text.length && /\S/.test(text.charAt(end))) end++;
   if (start === end) return null;
+
+  // Expand to include up to 4 more words (5 words total max)
+  // Expand left: look for words before separated by single space
+  let expandedStart = start;
+  let wordsLeft = 0;
+  while (wordsLeft < 4 && expandedStart > 0) {
+    // Check if previous char is space
+    if (text.charAt(expandedStart - 1) === ' ') {
+      // Look for word before the space
+      let wordStart = expandedStart - 2;
+      while (wordStart >= 0 && /\S/.test(text.charAt(wordStart))) wordStart--;
+      wordStart++; // Move to first char of word
+
+      // Only expand if we found a word (not punctuation only)
+      if (wordStart < expandedStart - 1 && /[a-zA-ZäöüÄÖÜß]/.test(text.charAt(wordStart))) {
+        expandedStart = wordStart;
+        wordsLeft++;
+      } else {
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+
+  // Expand right: look for words after separated by single space
+  let expandedEnd = end;
+  let wordsRight = 0;
+  while (wordsRight < 4 && expandedEnd < text.length) {
+    // Check if next char is space
+    if (text.charAt(expandedEnd) === ' ') {
+      // Look for word after the space
+      let wordEnd = expandedEnd + 1;
+      while (wordEnd < text.length && /\S/.test(text.charAt(wordEnd))) wordEnd++;
+
+      // Only expand if we found a word (not punctuation only)
+      if (wordEnd > expandedEnd + 1 && /[a-zA-ZäöüÄÖÜß]/.test(text.charAt(expandedEnd + 1))) {
+        expandedEnd = wordEnd;
+        wordsRight++;
+      } else {
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+
   const basePos = $pos.start();
-  return { from: basePos + start, to: basePos + end, text: text.slice(start, end) };
+  return {
+    from: basePos + expandedStart,
+    to: basePos + expandedEnd,
+    text: text.slice(expandedStart, expandedEnd)
+  };
 }
 
 // Determine scene number for a given document position

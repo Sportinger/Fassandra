@@ -9,14 +9,16 @@ interface CueTypeDropdownProps {
   editor: EditorInstance | null;
   isVisible: boolean;
   currentCueType: CueType;
+  onCueTypeChange?: (type: CueType) => void;
   transitionDelay?: string;
 }
 
-export const CueTypeDropdown: React.FC<CueTypeDropdownProps> = ({ 
-  editor, 
-  isVisible, 
+export const CueTypeDropdown: React.FC<CueTypeDropdownProps> = ({
+  editor,
+  isVisible,
   currentCueType,
-  transitionDelay = '0ms' 
+  onCueTypeChange,
+  transitionDelay = '0ms'
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<'right' | 'left'>('right');
@@ -36,12 +38,17 @@ export const CueTypeDropdown: React.FC<CueTypeDropdownProps> = ({
     if (!editor) return;
 
     logger.debug('CueTypeDropdown', `[CueType] Changing cue type to ${newType}`);
-    
+
+    // Save the selected type for future use
+    if (onCueTypeChange) {
+      onCueTypeChange(newType);
+    }
+
     // Get the current selected cue block
     const { state } = editor;
     const { selection } = state;
     const { from } = selection;
-    
+
     // Find the cue block node
     let cueBlockPos = -1;
     state.doc.nodesBetween(from, from, (node, pos) => {
@@ -50,7 +57,7 @@ export const CueTypeDropdown: React.FC<CueTypeDropdownProps> = ({
         return false;
       }
     });
-    
+
     if (cueBlockPos >= 0) {
       // Update the cue block attributes
       editor.chain()
@@ -58,7 +65,7 @@ export const CueTypeDropdown: React.FC<CueTypeDropdownProps> = ({
         .updateAttributes('cueBlock', { cueType: newType })
         .run();
     }
-    
+
     setIsOpen(false);
   };
 
@@ -110,7 +117,7 @@ export const CueTypeDropdown: React.FC<CueTypeDropdownProps> = ({
     }
   }, [isVisible]);
 
-  const cueTypes: CueType[] = ['light', 'video', 'sound', 'props'];
+  const cueTypes: CueType[] = ['light', 'video', 'sound', 'props', 'technik', 'einruf'];
 
   return (
     <div 
