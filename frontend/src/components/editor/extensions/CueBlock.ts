@@ -143,6 +143,7 @@ declare module '@tiptap/core' {
       insertCueBlock: (cueType: CueType) => ReturnType;
       updateCueContent: (content: string) => ReturnType;
       updateCueBlockAndConnections: (cueType: CueType, oldNumber: string, newNumber: string, manualNumber?: boolean) => ReturnType;
+      updateCueByIdWithNumber: (cueId: string, newNumber: string) => ReturnType;
     };
   }
 }
@@ -220,7 +221,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
                 
                 // Store cue data in dataTransfer
                 const cueData = {
-                  cueId: `cue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                  cueId: node.attrs.cueId || `cue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                   cueType: node.attrs.cueType,
                   cueNumber: node.attrs.cueNumber,
                   isConnectionDrag: true, // Mark this as a connection drag
@@ -435,16 +436,21 @@ export const CueBlock = Node.create<CueBlockOptions>({
   },
 
   onCreate() {
+    // Track if handlers are already set up to avoid redundant setup
+    let handlersInitialized = false;
+    let setupDebounceTimer: number | null = null;
+
     // Add native drag handlers to connection drag areas
     const setupConnectionDragHandlers = () => {
       const dragAreas = document.querySelectorAll('.cue-connection-drag-area');
-      
+
       dragAreas.forEach((area: Element) => {
         const dragArea = area as HTMLElement;
-        
-        // Remove any existing listeners
-        dragArea.ondragstart = null;
-        
+
+        // Skip if already initialized
+        if ((dragArea as any).__cueHandlerInitialized) return;
+        (dragArea as any).__cueHandlerInitialized = true;
+
         // Add new listeners
         dragArea.ondragstart = (e) => {
           e.stopPropagation();
@@ -453,18 +459,20 @@ export const CueBlock = Node.create<CueBlockOptions>({
           if (!cueBlock) return;
           
           // Get cue data from the block
+          const cueId = cueBlock.getAttribute('data-cue-id') || `cue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           const cueNumber = dragArea.querySelector('.cue-number')?.textContent?.replace('Q', '') || '';
           // Get cue type from data attribute
           const cueType = cueBlock.getAttribute('data-cue-type') || 'light';
-          
+
           logger.debug('CueBlock', 'Extracting cue data:', {
             dataAttribute: cueBlock.getAttribute('data-cue-type'),
+            cueId,
             cueType,
             cueNumber
           });
-          
+
           const cueData = {
-            cueId: `cue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            cueId,
             cueType,
             cueNumber,
             isConnectionDrag: true,
@@ -605,9 +613,9 @@ export const CueBlock = Node.create<CueBlockOptions>({
       cueNumbers.forEach((numberEl: Element) => {
         const numberSpan = numberEl as HTMLElement;
 
-        // Remove old listeners
-        numberSpan.oninput = null;
-        numberSpan.onblur = null;
+        // Skip if already initialized
+        if ((numberSpan as any).__cueNumberHandlerInitialized) return;
+        (numberSpan as any).__cueNumberHandlerInitialized = true;
 
         // On input, update the attribute and mark as manual
         numberSpan.oninput = (e) => {
@@ -676,91 +684,123 @@ export const CueBlock = Node.create<CueBlockOptions>({
       });
     };
 
+    // Debounced setup function to avoid redundant handler registration
+    const debouncedSetup = () => {
+      if (setupDebounceTimer) {
+        clearTimeout(setupDebounceTimer);
+      }
+      setupDebounceTimer = window.setTimeout(() => {
+        setupConnectionDragHandlers();
+        setupCueNumberEditors();
+        handlersInitialized = true;
+        setupDebounceTimer = null;
+      }, 300); // Increased debounce to 300ms for better performance
+    };
+
     // Setup handlers after a delay to ensure DOM is ready
     setTimeout(() => {
       setupConnectionDragHandlers();
       setupHoverHandlers();
       setupCueNumberEditors();
+      handlersInitialized = true;
     }, 100);
 
-    // Re-setup handlers when content changes
+    // Re-setup handlers when content changes (debounced)
     this.editor.on('update', () => {
-      setTimeout(() => {
-        setupConnectionDragHandlers();
-        setupHoverHandlers();
-        setupCueNumberEditors();
-      }, 100);
+      // Only re-setup if handlers were already initialized
+      if (handlersInitialized) {
+        debouncedSetup();
+      }
     });
     
-    // Update cue numbers whenever the document changes
+    // Update cue numbers whenever the document changes (debounced for performance)
+    let cueUpdateTimer: number | null = null;
+    let pendingDeletedCues: Array<{cueType: string, cueNumber: string}> = [];
+
     this.editor.on('update', ({ transaction }) => {
-      // Check if we need to update cue numbers
-      let shouldUpdate = false;
-      let deletedCues: Array<{cueType: string, cueNumber: string}> = [];
-      
-      // Check if any cue blocks were deleted
-      if (transaction.docChanged) {
-        // Check what was deleted
+      // Only process structural changes (insertions/deletions), not text edits
+      if (!transaction.docChanged) return;
+
+      // Check if cue blocks or scene blocks were added/removed
+      let hasCueBlockChange = false;
+      let hasSceneBlockChange = false;
+
+      transaction.steps.forEach((step: any) => {
+        if (step.slice) {
+          // Check if the slice contains cueBlock or sceneBlock nodes
+          step.slice.content.descendants((node: any) => {
+            if (node.type.name === 'cueBlock') hasCueBlockChange = true;
+            if (node.type.name === 'sceneBlock') hasSceneBlockChange = true;
+          });
+        }
+      });
+
+      // Only process if structural changes to cues/scenes occurred
+      if (!hasCueBlockChange && !hasSceneBlockChange) return;
+
+      // Find deleted cues (only if cue blocks changed)
+      if (hasCueBlockChange) {
         const oldState = transaction.before;
         const newState = transaction.doc;
-        
+
         // Find deleted cue blocks
         oldState.descendants((node, _pos) => {
           if (node.type.name === 'cueBlock') {
             const cueType = node.attrs.cueType;
             const cueNumber = node.attrs.cueNumber;
-            
+
             // Check if this cue still exists in the new state
             let stillExists = false;
             newState.descendants((newNode) => {
-              if (newNode.type.name === 'cueBlock' && 
-                  newNode.attrs.cueType === cueType && 
+              if (newNode.type.name === 'cueBlock' &&
+                  newNode.attrs.cueType === cueType &&
                   newNode.attrs.cueNumber === cueNumber) {
                 stillExists = true;
               }
             });
-            
+
             if (!stillExists) {
-              deletedCues.push({ cueType, cueNumber });
+              pendingDeletedCues.push({ cueType, cueNumber });
             }
-          }
-        });
-        
-        transaction.steps.forEach((step: any) => {
-          if (step.slice) {
-            shouldUpdate = true;
           }
         });
       }
-      
-      // Remove connections for deleted cues
-      if (deletedCues.length > 0) {
-        const { tr } = this.editor.state;
-        
-        deletedCues.forEach(({ cueType, cueNumber }) => {
-          this.editor.state.doc.nodesBetween(0, this.editor.state.doc.content.size, (node, pos) => {
-            if (node.isText && node.marks.length) {
-              node.marks.forEach(mark => {
-                if (mark.type.name === 'cueConnection' && 
-                    mark.attrs.cueType === cueType &&
-                    mark.attrs.cueNumber === cueNumber) {
-                  tr.removeMark(pos, pos + node.nodeSize, mark.type);
-                }
-              });
-            }
+
+      // Debounce cue number updates to avoid excessive recalculations
+      if (cueUpdateTimer) {
+        clearTimeout(cueUpdateTimer);
+      }
+
+      cueUpdateTimer = window.setTimeout(() => {
+        // Remove connections for deleted cues
+        if (pendingDeletedCues.length > 0) {
+          const { tr } = this.editor.state;
+
+          pendingDeletedCues.forEach(({ cueType, cueNumber }) => {
+            this.editor.state.doc.nodesBetween(0, this.editor.state.doc.content.size, (node, pos) => {
+              if (node.isText && node.marks.length) {
+                node.marks.forEach(mark => {
+                  if (mark.type.name === 'cueConnection' &&
+                      mark.attrs.cueType === cueType &&
+                      mark.attrs.cueNumber === cueNumber) {
+                    tr.removeMark(pos, pos + node.nodeSize, mark.type);
+                  }
+                });
+              }
+            });
           });
-        });
-        
-        if (tr.docChanged) {
-          this.editor.view.dispatch(tr);
+
+          if (tr.docChanged) {
+            this.editor.view.dispatch(tr);
+          }
+
+          pendingDeletedCues = [];
         }
-      }
-      
-      if (shouldUpdate) {
-        setTimeout(() => {
-          updateAllCueNumbers(this.editor);
-        }, 10);
-      }
+
+        // Update cue numbers
+        updateAllCueNumbers(this.editor);
+        cueUpdateTimer = null;
+      }, 500); // Debounce cue number updates by 500ms
     });
     
     // Initial numbering
@@ -771,6 +811,15 @@ export const CueBlock = Node.create<CueBlockOptions>({
 
   addAttributes() {
     return {
+      cueId: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-cue-id') || `cue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        renderHTML: attributes => {
+          // Generate cueId if it doesn't exist
+          const id = attributes.cueId || `cue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          return { 'data-cue-id': id };
+        },
+      },
       cueType: {
         default: 'light',
         parseHTML: element => element.getAttribute('data-cue-type'),
@@ -838,9 +887,10 @@ export const CueBlock = Node.create<CueBlockOptions>({
   addCommands() {
     return {
       insertCueBlock: (cueType: CueType) => ({ commands, editor }) => {
+        const cueId = `cue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const result = commands.insertContent({
           type: this.name,
-          attrs: { cueType, cueNumber: '999' }, // Temporary number
+          attrs: { cueId, cueType, cueNumber: '999' }, // Temporary number
           content: [{ type: 'text', text: ' ' }], // Start with single space instead of empty
         });
 
@@ -892,6 +942,89 @@ export const CueBlock = Node.create<CueBlockOptions>({
               });
             }
           });
+        }
+
+        if (changed && dispatch) {
+          dispatch(tr);
+        }
+
+        return changed;
+      },
+      updateCueByIdWithNumber: (cueId: string, newNumber: string) => ({ state, tr, dispatch }) => {
+        let changed = false;
+        let cueType: CueType | null = null;
+        let oldNumber: string | null = null;
+
+        // Check if this is a legacy ID format: "legacy-TYPE-NUMBER"
+        const isLegacy = cueId.startsWith('legacy-');
+        let legacyCueType: string | null = null;
+        let legacyCueNumber: string | null = null;
+        if (isLegacy) {
+          const parts = cueId.split('-');
+          if (parts.length >= 3) {
+            legacyCueType = parts[1];
+            legacyCueNumber = parts.slice(2).join('-');
+          }
+        }
+
+        // Find and update the CueBlock node by cueId or by legacy type/number
+        state.doc.descendants((node, pos) => {
+          if (node.type.name === 'cueBlock') {
+            let isMatch = false;
+
+            // Try matching by cueId first
+            if (node.attrs.cueId === cueId) {
+              isMatch = true;
+            }
+            // For legacy cues, match by type and number
+            else if (isLegacy && !node.attrs.cueId &&
+                     node.attrs.cueType === legacyCueType &&
+                     node.attrs.cueNumber === legacyCueNumber) {
+              isMatch = true;
+            }
+
+            if (isMatch) {
+              cueType = node.attrs.cueType;
+              oldNumber = node.attrs.cueNumber;
+
+              // Generate a real cueId if this is a legacy cue
+              const realCueId = node.attrs.cueId || `cue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+              tr.setNodeMarkup(pos, undefined, {
+                ...node.attrs,
+                cueId: realCueId,
+                cueNumber: newNumber,
+                manualNumber: true,
+              });
+              changed = true;
+              return false; // Stop searching
+            }
+          }
+        });
+
+        // Update all CueConnectionMarks with the same type and old number
+        if (cueType && oldNumber && oldNumber !== newNumber) {
+          const markType = state.schema.marks.cueConnection;
+          if (markType) {
+            state.doc.nodesBetween(0, state.doc.content.size, (node, pos) => {
+              if (node.isText && node.marks.length) {
+                node.marks.forEach(mark => {
+                  if (mark.type.name === 'cueConnection' &&
+                      mark.attrs.cueType === cueType &&
+                      mark.attrs.cueNumber === oldNumber) {
+                    const newMark = markType.create({
+                      ...mark.attrs,
+                      cueNumber: newNumber,
+                      manualNumber: true,
+                    });
+                    tr.removeMark(pos, pos + node.nodeSize, markType);
+                    tr.addMark(pos, pos + node.nodeSize, newMark);
+                    changed = true;
+                  }
+                });
+              }
+            });
+          }
         }
 
         if (changed && dispatch) {
