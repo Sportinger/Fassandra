@@ -112,12 +112,10 @@ export const CuesTab: React.FC<CuesTabProps> = ({
                       const oldNumber = cue.cueNumber;
 
                       if (newNumber !== oldNumber) {
-                        // Update both CueBlock and all CueConnectionMarks
-                        (editor as any)?.commands.updateCueBlockAndConnections?.(
-                          cue.cueType,
-                          oldNumber,
-                          newNumber,
-                          true
+                        // Update CueBlock by ID and all its connections
+                        (editor as any)?.commands.updateCueByIdWithNumber?.(
+                          cue.cueId,
+                          newNumber
                         );
                       }
 
