@@ -142,7 +142,6 @@ export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
     // Get cues from cue blocks (source of truth) instead of connections
     const cueBlocks = document.querySelectorAll('[data-type="cue-block"]');
 
-    // Get cues from cue blocks (source of truth) instead of connections
     cueBlocks.forEach((el) => {
       const he = el as HTMLElement;
       // Generate a temporary ID if the cue block doesn't have one yet (for backward compatibility)
