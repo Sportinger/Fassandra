@@ -36,6 +36,7 @@ import { CommentMark } from '../extensions/CommentMark';
 import { PageIndicator } from '../extensions/PageIndicator';
 import { FontSize } from '../FontSizeExtension';
 import { FontFamilyExtension } from '../extensions/FontFamilyExtension';
+import { TypingOptimizer } from '../extensions/TypingOptimizer';
 import { extractSpeakerNames } from '../utils/contentConverters';
 import { useContentMigration } from './useContentMigration';
 import type {
@@ -46,6 +47,7 @@ import type {
   ToolbarContext,
 } from '../types';
 import { useCollaborativeConnection } from './useCollaborativeConnection';
+import { perfMonitor } from '../utils/performanceMonitor';
 
 /**
  * useEditorCore Hook  
@@ -159,6 +161,7 @@ export const useEditorCore = ({
             // No History - disabled for YJS
             Dropcursor,
             Gapcursor,
+            TypingOptimizer, // ⚡ Optimize typing performance
             Collaboration.configure({
               document: ydoc,
               field: 'default', // Use default field which TipTap expects
@@ -242,6 +245,7 @@ export const useEditorCore = ({
             History, // Enabled for local editing
             Dropcursor,
             Gapcursor,
+            TypingOptimizer, // ⚡ Optimize typing performance
             DialogueBlock,
             Speaker,
             DialogueText,
@@ -293,7 +297,11 @@ export const useEditorCore = ({
       let speakerUpdateTimer: number | null = null;
 
       const updateHandler = ({ editor, transaction }: any) => {
+        perfMonitor.start('editor-update');
+
         if (transaction.docChanged && !transaction.getMeta('fromYjs')) {
+          perfMonitor.start('editor-update-processing');
+
           // Set saving status immediately for user feedback
           setSaving();
 
@@ -310,6 +318,7 @@ export const useEditorCore = ({
 
           // Schedule speaker extraction as low-priority async operation
           scheduleOperation(() => {
+            perfMonitor.start('speaker-extraction');
             try {
               const html = editor.getHTML();
               if (html && html.length > 0) {
@@ -319,8 +328,13 @@ export const useEditorCore = ({
                 setAvailableSpeakers([]);
               }
             } catch {}
+            perfMonitor.end('speaker-extraction');
           }, 'low');
+
+          perfMonitor.end('editor-update-processing');
         }
+
+        perfMonitor.end('editor-update');
       };
       
       editorInstance.on('update', updateHandler);
