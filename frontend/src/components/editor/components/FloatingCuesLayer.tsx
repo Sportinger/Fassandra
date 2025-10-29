@@ -50,6 +50,9 @@ export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, of
   const [items, setItems] = useState<FloatingCueItem[]>([]);
 
   const computePositions = useCallback(() => {
+    // 🔧 PERFORMANCE: Skip computation if not visible
+    if (!visible) return;
+
     const container = document.querySelector('.singlePageContainer') as HTMLElement | null;
     if (!container) return;
 
@@ -108,23 +111,32 @@ export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, of
       }
     }
     setItems(out);
-  }, [offsetY]);
+  }, [offsetY, visible]);
 
-  // Recompute on editor updates
+  // 🔧 PERFORMANCE: Throttle updates and use requestIdleCallback for zero-latency typing
+  const scheduleAsyncUpdate = useCallback(() => {
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => computePositions(), { timeout: 1000 });
+    } else {
+      // Fallback: debounce
+      setTimeout(computePositions, 300);
+    }
+  }, [computePositions]);
+
+  // Recompute on editor updates (async to avoid blocking typing)
   useEffect(() => {
     if (!editor) return;
-    const update = () => computePositions();
-    editor.on('update', update);
-    // Also reposition after selection changes which may reflow marks
-    editor.on('selectionUpdate', update);
+    editor.on('update', scheduleAsyncUpdate);
+    // Selection updates can be immediate since they don't happen during typing
+    editor.on('selectionUpdate', computePositions);
     // Initial compute after mount
     const id = window.setTimeout(computePositions, 50);
     return () => {
       window.clearTimeout(id);
-      editor.off('update', update);
-      editor.off('selectionUpdate', update);
+      editor.off('update', scheduleAsyncUpdate);
+      editor.off('selectionUpdate', computePositions);
     };
-  }, [editor, computePositions]);
+  }, [editor, scheduleAsyncUpdate, computePositions]);
 
   // Recompute on resize/scroll
   useEffect(() => {

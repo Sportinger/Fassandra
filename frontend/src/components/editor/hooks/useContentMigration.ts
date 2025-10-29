@@ -28,14 +28,13 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
       const meta = ydoc.getMap('metadata');
       const alreadyMigrated = (meta.get('migrated') as any) === true;
 
-      logger.info('useContentMigration', '[MIGRATION_CHECK] Checking for content migration:', {
-        hasProsemirrorField: !!prosemirrorText,
-        prosemirrorLength: prosemirrorText?.length || 0,
-        prosemirrorXmlLength: prosemirrorXml ? prosemirrorXml.length : 0,
-        contentTextLength: contentText?.length || 0,
-        defaultFragmentLength: defaultFragment.length,
-        editorEmpty: editor.isEmpty
-      });
+      // 🔧 FIXED: Only log during initial check, not on every keystroke
+      if (import.meta.env.DEV) {
+        logger.debug('useContentMigration', '[MIGRATION_CHECK] Initial migration check:', {
+          hasProsemirrorField: !!prosemirrorText,
+          alreadyMigrated
+        });
+      }
 
       // If legacy 'prosemirror' text has content and the current editor
       // document is effectively empty, migrate. Consider the document
@@ -67,7 +66,10 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
           : shouldMigrateFromContentText
             ? contentText!.toString()
             : prosemirrorXml!.toString();
-        logger.info('useContentMigration', '[MIGRATION_START] Found content in prosemirror field:', textContent.substring(0, 200));
+
+        if (import.meta.env.DEV) {
+          logger.info('useContentMigration', '[MIGRATION_START] Found content in prosemirror field:', textContent.substring(0, 200));
+        }
 
         // Split into blocks on blank lines to preserve paragraph grouping
         const blocks = textContent
@@ -145,11 +147,15 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
 
         if (docContent.length > 0) {
           const contentJson = { type: 'doc', content: docContent } as any;
-          logger.info('useContentMigration', '[MIGRATION_APPLY] Applying structured content', {
-            blocks: docContent.length,
-          });
+          if (import.meta.env.DEV) {
+            logger.info('useContentMigration', '[MIGRATION_APPLY] Applying structured content', {
+              blocks: docContent.length,
+            });
+          }
           editor.commands.setContent(contentJson, false, { preserveWhitespace: true });
-          logger.info('useContentMigration', '[MIGRATION_COMPLETE] Content migrated to TipTap nodes');
+          if (import.meta.env.DEV) {
+            logger.info('useContentMigration', '[MIGRATION_COMPLETE] Content migrated to TipTap nodes');
+          }
 
           // Mark migrated and clear source text to avoid re-running
           try {
@@ -171,18 +177,11 @@ export function useContentMigration(ydoc: Y.Doc | null, editor: any) {
       }
     };
 
-    // Check immediately
+    // 🔧 CRITICAL FIX: Only run migration once on mount, NOT on every YJS update
+    // Running on every update was causing lag on every keystroke
     checkAndMigrate();
 
-    // Also check when document updates
-    const handleUpdate = () => {
-      checkAndMigrate();
-    };
-
-    ydoc.on('update', handleUpdate);
-
-    return () => {
-      ydoc.off('update', handleUpdate);
-    };
+    // No need to listen to updates - migration is a one-time operation
+    // If we need to re-check, it will happen when the component remounts
   }, [ydoc, editor]);
 }
