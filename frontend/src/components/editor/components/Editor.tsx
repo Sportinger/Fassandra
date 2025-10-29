@@ -29,6 +29,8 @@ export const Editor: React.FC<EditorProps> = ({
     hideContextMenu,
     activeUserCount,
     isYjsSynced,
+    savingStatus,
+    lastSaved,
   } = useEditorCore({
     scriptId,
     user,
@@ -100,6 +102,8 @@ export const Editor: React.FC<EditorProps> = ({
         activeUserCount={activeUserCount}
         toolbarContext={toolbarContext}
         debugLog={debugLog}
+        savingStatus={savingStatus}
+        lastSaved={lastSaved}
       />
     </EditorUiProvider>
   );

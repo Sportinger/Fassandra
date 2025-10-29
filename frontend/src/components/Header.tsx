@@ -14,6 +14,7 @@ interface HeaderProps {
   onThumbnailsRefreshed?: () => void;
   activeUserCount?: number;
   connectionStatus?: ConnectionStatus; // Add connection status
+  savingIndicator?: React.ReactNode; // Saving indicator component
   // Layout management props (only for editor view)
   layouts?: ScriptLayout[];
   currentLayout?: ScriptLayout | null;
@@ -134,13 +135,14 @@ const useAnimatedNumber = (targetNumber: number, duration: number = 300) => {
   return displayNumber;
 };
 
-export const Header: React.FC<HeaderProps> = ({ 
-  currentView = 'scripts', 
-  scriptTitle, 
+export const Header: React.FC<HeaderProps> = ({
+  currentView = 'scripts',
+  scriptTitle,
   onNavigateToScripts,
   onThumbnailsRefreshed,
   activeUserCount = 0,
   connectionStatus = 'connected',
+  savingIndicator,
   layouts = [],
   currentLayout,
   onLayoutChange,
@@ -301,9 +303,16 @@ export const Header: React.FC<HeaderProps> = ({
         {renderBreadcrumb()}
       </nav>
 
+      {/* Saving indicator - shown in editor view */}
+      {savingIndicator && (
+        <div style={{ marginLeft: 'auto', marginRight: '12px' }}>
+          {savingIndicator}
+        </div>
+      )}
+
       {/* Connection status sphere - always visible */}
-      <div style={{ marginLeft: 'auto', marginRight: '16px' }}>
-        <StatusIndicator 
+      <div style={{ marginRight: '16px' }}>
+        <StatusIndicator
           status={connectionStatus}
           activeUserCount={activeUserCount}
           mode="sphere"

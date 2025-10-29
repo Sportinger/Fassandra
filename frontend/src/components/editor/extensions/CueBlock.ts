@@ -158,10 +158,12 @@ export const CueBlock = Node.create<CueBlockOptions>({
   group: 'block',
   content: 'inline*',
   draggable: true, // Allow normal drag-and-drop for reordering
-  
+
   addOptions() {
     return {
       HTMLAttributes: {},
+      // Callback for scheduling async operations
+      scheduleAsyncOperation: null as ((fn: () => void) => void) | null,
     };
   },
 
@@ -684,17 +686,25 @@ export const CueBlock = Node.create<CueBlockOptions>({
       });
     };
 
-    // Debounced setup function to avoid redundant handler registration
-    const debouncedSetup = () => {
-      if (setupDebounceTimer) {
-        clearTimeout(setupDebounceTimer);
-      }
-      setupDebounceTimer = window.setTimeout(() => {
+    // Schedule handler setup as async operation for zero-latency typing
+    const scheduleHandlerSetup = () => {
+      const scheduleOp = this.options.scheduleAsyncOperation;
+      const setupFn = () => {
         setupConnectionDragHandlers();
         setupCueNumberEditors();
         handlersInitialized = true;
-        setupDebounceTimer = null;
-      }, 300); // Increased debounce to 300ms for better performance
+      };
+
+      if (scheduleOp) {
+        // Use async queue if available
+        scheduleOp(setupFn);
+      } else {
+        // Fallback to debounced setup
+        if (setupDebounceTimer) {
+          clearTimeout(setupDebounceTimer);
+        }
+        setupDebounceTimer = window.setTimeout(setupFn, 300);
+      }
     };
 
     // Setup handlers after a delay to ensure DOM is ready
@@ -705,11 +715,11 @@ export const CueBlock = Node.create<CueBlockOptions>({
       handlersInitialized = true;
     }, 100);
 
-    // Re-setup handlers when content changes (debounced)
+    // Re-setup handlers when content changes (async for zero latency)
     this.editor.on('update', () => {
       // Only re-setup if handlers were already initialized
       if (handlersInitialized) {
-        debouncedSetup();
+        scheduleHandlerSetup();
       }
     });
     
@@ -771,7 +781,9 @@ export const CueBlock = Node.create<CueBlockOptions>({
         clearTimeout(cueUpdateTimer);
       }
 
-      cueUpdateTimer = window.setTimeout(() => {
+      // Schedule cue updates as low-priority async operation
+      const scheduleOp = this.options.scheduleAsyncOperation;
+      const updateFn = () => {
         // Remove connections for deleted cues
         if (pendingDeletedCues.length > 0) {
           const { tr } = this.editor.state;
@@ -800,7 +812,15 @@ export const CueBlock = Node.create<CueBlockOptions>({
         // Update cue numbers
         updateAllCueNumbers(this.editor);
         cueUpdateTimer = null;
-      }, 500); // Debounce cue number updates by 500ms
+      };
+
+      if (scheduleOp) {
+        // Use async queue for zero-latency typing
+        scheduleOp(updateFn);
+      } else {
+        // Fallback to debounced update
+        cueUpdateTimer = window.setTimeout(updateFn, 500);
+      }
     });
     
     // Initial numbering

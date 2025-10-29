@@ -206,27 +206,31 @@ export interface UseEditorCoreProps {
 export interface UseEditorCoreReturn {
   // Core editor instance
   editor: TipTapEditor | null;
-  
+
   // Document state
   ydoc: Y.Doc | null;
   provider: WebsocketProvider | null;
-  
+
   // Connection state
   connectionStatus: ConnectionStatus;
   availableSpeakers: string[];
   errorMessage: string | null;
-  
+
   // UI state
   contextMenu: ContextMenu | null;
   toolbarContext: ToolbarContext;
-  
+
   // Actions
   showContextMenu: (x: number, y: number, context: ToolbarContext) => void;
   hideContextMenu: () => void;
-  
+
   // Collaboration
   activeUserCount: number;
   isYjsSynced: boolean;
+
+  // Saving state
+  savingStatus: 'saved' | 'saving' | 'error';
+  lastSaved: Date | null;
 }
 
 export interface UseCollaborationProps {

@@ -203,6 +203,18 @@ export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
     [recompute]
   );
 
+  // Schedule recompute as low-priority async operation using requestIdleCallback
+  const scheduleAsyncRecompute = useCallback(() => {
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        recompute();
+      }, { timeout: 1000 });
+    } else {
+      // Fallback: use throttled version
+      throttledRecompute();
+    }
+  }, [recompute, throttledRecompute]);
+
   useEffect(() => {
     if (!editor || !isBrowser) return undefined;
 
@@ -211,19 +223,20 @@ export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
 
     const anyEditor = editor as any;
 
-    // Use throttled version for high-frequency events
-    anyEditor.on?.('update', throttledRecompute);
-    anyEditor.on?.('selectionUpdate', throttledRecompute);
+    // Use async scheduled recompute for zero-latency typing
+    // This ensures UI updates happen during browser idle time
+    anyEditor.on?.('update', scheduleAsyncRecompute);
+    anyEditor.on?.('selectionUpdate', throttledRecompute); // Keep throttled for selection
     window.addEventListener('resize', throttledRecompute);
     window.addEventListener('scroll', throttledRecompute, true);
 
     return () => {
-      anyEditor.off?.('update', throttledRecompute);
+      anyEditor.off?.('update', scheduleAsyncRecompute);
       anyEditor.off?.('selectionUpdate', throttledRecompute);
       window.removeEventListener('resize', throttledRecompute);
       window.removeEventListener('scroll', throttledRecompute, true);
     };
-  }, [editor, recompute, throttledRecompute]);
+  }, [editor, recompute, throttledRecompute, scheduleAsyncRecompute]);
 
   const memoizedCueFilters = useMemo(() => cueFilters, [cueFilters]);
 
