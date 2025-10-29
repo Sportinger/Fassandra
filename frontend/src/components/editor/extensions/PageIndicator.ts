@@ -37,41 +37,16 @@ export const PageIndicator = Node.create({
   },
 
   onCreate() {
+    // 🔧 PERFORMANCE FIX: Disabled auto-renumbering on every update
+    // This was causing lag by traversing the entire document on every keystroke
+    // Page indicators are deprecated - no longer auto-update
     const renumber = () => {
-      try {
-        const { state } = this.editor;
-        const tr = state.tr;
-        let page = 1;
-        let changed = false;
-
-        state.doc.descendants((node, pos) => {
-          if (node.type.name !== this.name) {
-            return true;
-          }
-
-          if (node.attrs.pageNumber !== page) {
-            tr.setNodeMarkup(pos, undefined, {
-              ...node.attrs,
-              pageNumber: page,
-            });
-            changed = true;
-          }
-
-          page += 1;
-          return false;
-        });
-
-        if (changed) {
-          this.editor.view.dispatch(tr);
-        }
-      } catch (error) {
-        console.error('[PageIndicator] Failed to renumber pages', error);
-      }
+      // Disabled for performance
     };
 
     this.storage.updateNumbers = renumber;
-    setTimeout(renumber, 0);
-    this.editor.on('update', renumber);
+    // Removed: setTimeout(renumber, 0);
+    // Removed: this.editor.on('update', renumber);
   },
 
   onDestroy() {

@@ -67,7 +67,9 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
 
     // Keep track of scene count to detect additions/deletions
     let previousSceneCount = 0;
+    let sceneUpdateTimer: number | null = null;
 
+    // 🔧 PERFORMANCE FIX: Defer scene counting to avoid blocking on every keystroke
     // Update scene numbers when scenes are added, deleted, or moved
     this.editor.on('update', ({ transaction }) => {
       // Skip auto-numbering during initial content load
@@ -75,39 +77,59 @@ export const SceneBlock = Node.create<SceneBlockOptions>({
         return;
       }
 
-      // Count current scene blocks
-      let currentSceneCount = 0;
-      this.editor.state.doc.descendants((node) => {
-        if (node.type.name === 'sceneBlock') {
-          currentSceneCount++;
-        }
-      });
-
-      // Check if scene count changed (addition or deletion)
-      const sceneCountChanged = currentSceneCount !== previousSceneCount;
-      
-      // Check for structural changes to scene blocks (including deletions)
+      // Only check for scene changes, don't count immediately
       let sceneStructureChanged = false;
-      
+
       transaction.steps.forEach((step: any) => {
         const stepType = step.constructor.name;
         // Check for operations that might affect scenes
         if (stepType === 'ReplaceStep' || stepType === 'ReplaceAroundStep' || stepType === 'DeleteStep') {
-          sceneStructureChanged = true; // Be more aggressive about detecting changes
+          sceneStructureChanged = true;
         }
-        
-        // Also check if the transaction has a deletion
+
         if (transaction.getMeta('deleteScene')) {
           sceneStructureChanged = true;
         }
       });
-      
-      // Update if scenes were added, deleted, or structurally changed
-      if ((sceneCountChanged || sceneStructureChanged) && transaction.docChanged) {
-        previousSceneCount = currentSceneCount;
-        setTimeout(() => {
-          updateAllSceneNumbers(this.editor);
-        }, 50);
+
+      // Debounce scene counting and updates
+      if (sceneStructureChanged && transaction.docChanged) {
+        if (sceneUpdateTimer) {
+          clearTimeout(sceneUpdateTimer);
+        }
+
+        // Defer counting and update using requestIdleCallback
+        sceneUpdateTimer = window.setTimeout(() => {
+          if ('requestIdleCallback' in window) {
+            requestIdleCallback(() => {
+              let currentSceneCount = 0;
+              this.editor.state.doc.descendants((node) => {
+                if (node.type.name === 'sceneBlock') {
+                  currentSceneCount++;
+                }
+              });
+
+              if (currentSceneCount !== previousSceneCount) {
+                previousSceneCount = currentSceneCount;
+                updateAllSceneNumbers(this.editor);
+              }
+            }, { timeout: 1000 });
+          } else {
+            // Fallback: just update after delay
+            let currentSceneCount = 0;
+            this.editor.state.doc.descendants((node) => {
+              if (node.type.name === 'sceneBlock') {
+                currentSceneCount++;
+              }
+            });
+
+            if (currentSceneCount !== previousSceneCount) {
+              previousSceneCount = currentSceneCount;
+              updateAllSceneNumbers(this.editor);
+            }
+          }
+          sceneUpdateTimer = null;
+        }, 500);
       }
     });
 
