@@ -281,51 +281,37 @@ export const useEditorCore = ({
       setEditor(editorInstance);
       logger.info('useEditorCore', '[EDITOR_INSTANCE] Collaborative editor instance created successfully');
       
-      // Add transaction listener to track content changes
+      // Add transaction listener to track content changes (optimized)
+      let speakerUpdateTimer: number | null = null;
+
       const updateHandler = ({ editor, transaction }: any) => {
         if (transaction.docChanged && !transaction.getMeta('fromYjs')) {
-          const defaultField = ydoc?.getXmlFragment('default');
-          logger.info('useEditorCore', '[EDITOR_TRANSACTION] Document changed:', {
-            steps: transaction.steps.length,
-            hasSteps: transaction.steps.length > 0,
-            isEmpty: editor.isEmpty,
-            htmlLength: editor.getHTML().length,
-            yjsFieldLength: defaultField?.length
-          });
-          
-          // Check if WebSocket is connected and synced
-          if (provider && (provider as any).wsconnected && (provider as any).synced) {
-            // Get the collaboration extension's binding
-            const collabExtension = editor.extensionManager.extensions.find((ext: any) => ext.name === 'collaboration');
-            if (collabExtension && collabExtension.storage?.binding) {
-              // Force a YJS update by accessing the binding's document
-              const binding = collabExtension.storage.binding;
-              logger.info('useEditorCore', '[YJS_BINDING_SYNC] Forcing sync through binding', {
-                hasBinding: !!binding,
-                bindingType: binding?.constructor?.name
-              });
-              
-              // This will trigger YJS to check for changes and send updates
-              if (ydoc) {
-                ydoc.transact(() => {
-                  // Access the default field to ensure it's marked as changed
-                  const field = ydoc.getXmlFragment('default');
-                  logger.info('useEditorCore', '[YJS_FORCE_UPDATE] Triggered update check, field length:', field.length);
-                }, 'editorChange');
-              }
-            }
+          // Only log in development and reduce verbosity
+          if (import.meta.env.DEV) {
+            const defaultField = ydoc?.getXmlFragment('default');
+            logger.debug('useEditorCore', '[EDITOR_TRANSACTION] Doc changed, steps:', transaction.steps.length);
           }
 
-          // Update available speakers whenever content changes
-          try {
-            const html = editor.getHTML();
-            if (html && html.length > 0) {
-              const speakers = extractSpeakerNames(html);
-              setAvailableSpeakers(Array.from(speakers));
-            } else {
-              setAvailableSpeakers([]);
-            }
-          } catch {}
+          // YJS automatically syncs changes through the collaboration binding
+          // No need to manually force transactions - this was causing overhead
+
+          // Debounce speaker extraction to avoid repeated parsing on every keystroke
+          if (speakerUpdateTimer) {
+            clearTimeout(speakerUpdateTimer);
+          }
+
+          speakerUpdateTimer = window.setTimeout(() => {
+            try {
+              const html = editor.getHTML();
+              if (html && html.length > 0) {
+                const speakers = extractSpeakerNames(html);
+                setAvailableSpeakers(Array.from(speakers));
+              } else {
+                setAvailableSpeakers([]);
+              }
+            } catch {}
+            speakerUpdateTimer = null;
+          }, 500); // Debounce speaker updates by 500ms
         }
       };
       
@@ -350,6 +336,9 @@ export const useEditorCore = ({
 
       return () => {
         clearTimeout(timer);
+        if (speakerUpdateTimer) {
+          clearTimeout(speakerUpdateTimer);
+        }
         editorInstance.off('update', updateHandler);
       };
     }

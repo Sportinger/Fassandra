@@ -37,6 +37,8 @@ const DEFAULT_CUE_FILTERS: Record<CueType, boolean> = {
   video: true,
   sound: true,
   props: true,
+  technik: true,
+  einruf: true,
 };
 
 interface UseSidebarDataReturn {
@@ -66,6 +68,35 @@ interface UseSidebarDataReturn {
 }
 
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+
+// Throttle helper function
+function throttle<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: number | null = null;
+  let previous = 0;
+
+  return function (this: any, ...args: Parameters<T>) {
+    const now = Date.now();
+    const remaining = wait - (now - previous);
+
+    if (remaining <= 0 || remaining > wait) {
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+      previous = now;
+      func.apply(this, args);
+    } else if (!timeout) {
+      timeout = window.setTimeout(() => {
+        previous = Date.now();
+        timeout = null;
+        func.apply(this, args);
+      }, remaining);
+    }
+  };
+}
 
 export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
   const [sidebarScenes, setSidebarScenes] = useState<SidebarScene[]>([]);
@@ -107,20 +138,45 @@ export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
 
     const cues: SidebarCue[] = [];
     const seenCueIds = new Set<string>();
-    document.querySelectorAll('.cue-connection[data-cue-id][data-cue-type]').forEach((el) => {
+
+    // Get cues from cue blocks (source of truth) instead of connections
+    const cueBlocks = document.querySelectorAll('[data-type="cue-block"]');
+
+    // Get cues from cue blocks (source of truth) instead of connections
+    cueBlocks.forEach((el) => {
       const he = el as HTMLElement;
-      const id = he.getAttribute('data-cue-id') || '';
-      if (!id || seenCueIds.has(id)) return;
+      // Generate a temporary ID if the cue block doesn't have one yet (for backward compatibility)
+      let id = he.getAttribute('data-cue-id');
+      const cueType = he.getAttribute('data-cue-type') || 'light';
+      const cueNumber = he.getAttribute('data-cue-number') || '';
+
+      if (!id) {
+        // For legacy cues without IDs, generate a stable ID based on type and number
+        id = `legacy-${cueType}-${cueNumber}`;
+      }
+
+      if (seenCueIds.has(id)) {
+        return;
+      }
       seenCueIds.add(id);
+
       const r = he.getBoundingClientRect();
       const y = cRect ? (r.top - cRect.top) + cScrollTop : r.top;
       const x = cRect ? (r.left - cRect.left) + cScrollLeft : r.left;
+
+      // Find the connected text by looking for matching cue-connection marks
+      let connectedText = '';
+      const connectionEl = document.querySelector(`.cue-connection[data-cue-type="${cueType}"][data-cue-number="${cueNumber}"]`) as HTMLElement;
+      if (connectionEl) {
+        connectedText = (connectionEl.textContent || '').trim();
+      }
+
       cues.push({
         cueId: id,
-        cueType: he.getAttribute('data-cue-type') || 'props',
-        cueNumber: he.getAttribute('data-cue-number') || '',
+        cueType,
+        cueNumber,
         cueName: he.getAttribute('data-cue-name') || '',
-        text: (he.textContent || '').trim(),
+        text: connectedText,
         y,
         x,
       });
@@ -141,22 +197,33 @@ export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
     setSidebarComments(comments);
   }, []);
 
+  // Create throttled version of recompute for performance
+  const throttledRecompute = useCallback(
+    throttle(recompute, 250), // Throttle to max 4 times per second
+    [recompute]
+  );
+
   useEffect(() => {
     if (!editor || !isBrowser) return undefined;
+
+    // Initial computation
     recompute();
+
     const anyEditor = editor as any;
-    anyEditor.on?.('update', recompute);
-    anyEditor.on?.('selectionUpdate', recompute);
-    window.addEventListener('resize', recompute);
-    window.addEventListener('scroll', recompute, true);
+
+    // Use throttled version for high-frequency events
+    anyEditor.on?.('update', throttledRecompute);
+    anyEditor.on?.('selectionUpdate', throttledRecompute);
+    window.addEventListener('resize', throttledRecompute);
+    window.addEventListener('scroll', throttledRecompute, true);
 
     return () => {
-      anyEditor.off?.('update', recompute);
-      anyEditor.off?.('selectionUpdate', recompute);
-      window.removeEventListener('resize', recompute);
-      window.removeEventListener('scroll', recompute, true);
+      anyEditor.off?.('update', throttledRecompute);
+      anyEditor.off?.('selectionUpdate', throttledRecompute);
+      window.removeEventListener('resize', throttledRecompute);
+      window.removeEventListener('scroll', throttledRecompute, true);
     };
-  }, [editor, recompute]);
+  }, [editor, recompute, throttledRecompute]);
 
   const memoizedCueFilters = useMemo(() => cueFilters, [cueFilters]);
 
