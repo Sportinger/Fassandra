@@ -29,7 +29,8 @@ export const CueConnectors: React.FC<{ editor: TipTapEditor | null; expandedCueI
   const [stroke, setStroke] = useState<string>('#dc2626');
 
   const recompute = useCallback(() => {
-    if (!expandedCueId) { setPath(''); return; }
+    // 🔧 PERFORMANCE: Skip if not visible
+    if (!visible || !expandedCueId) { setPath(''); return; }
     const card = document.querySelector(`.rightSidebar [data-cue-id="${expandedCueId}"]`) as HTMLElement | null;
     const word = document.querySelector(`.cue-connection[data-cue-id="${expandedCueId}"]`) as HTMLElement | null;
     if (!card || !word) { setPath(''); return; }
@@ -68,7 +69,16 @@ export const CueConnectors: React.FC<{ editor: TipTapEditor | null; expandedCueI
     const p4 = { x: target.x, y: target.y };
     const d = `M ${p1.x},${p1.y} L ${p2.x},${p2.y} L ${p3.x},${p3.y} L ${p4.x},${p4.y}`;
     setPath(d);
-  }, [expandedCueId]);
+  }, [expandedCueId, visible]);
+
+  // 🔧 PERFORMANCE: Use requestIdleCallback for async updates during typing
+  const scheduleAsyncRecompute = useCallback(() => {
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => recompute(), { timeout: 1000 });
+    } else {
+      setTimeout(recompute, 300);
+    }
+  }, [recompute]);
 
   useEffect(() => {
     if (!visible) return;
@@ -83,11 +93,11 @@ export const CueConnectors: React.FC<{ editor: TipTapEditor | null; expandedCueI
 
   useEffect(() => {
     if (!editor || !visible) return;
-    const cb = () => recompute();
-    editor.on('update', cb);
-    editor.on('selectionUpdate', cb);
-    return () => { editor.off('update', cb); editor.off('selectionUpdate', cb); };
-  }, [editor, recompute, visible]);
+    // Use async scheduling for update events to avoid blocking typing
+    editor.on('update', scheduleAsyncRecompute);
+    editor.on('selectionUpdate', recompute);
+    return () => { editor.off('update', scheduleAsyncRecompute); editor.off('selectionUpdate', recompute); };
+  }, [editor, scheduleAsyncRecompute, recompute, visible]);
 
   if (!visible || !expandedCueId || !path) return null;
 

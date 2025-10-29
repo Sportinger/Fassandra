@@ -20,6 +20,7 @@ export const FloatingCommentsLayer: React.FC<FloatingCommentsLayerProps> = ({ ed
   const [panel, setPanel] = useState<{ id: string | null; left: number; top: number; width: number }>({ id: null, left: 0, top: 0, width: 0 });
 
   const compute = useCallback(() => {
+    // 🔧 PERFORMANCE: Early exit for heavy DOM queries
     const container = document.querySelector('.singlePageContainer') as HTMLElement | null;
     const page = (document.querySelector('.dinA4Page') || document.querySelector('.borderlessPanel')) as HTMLElement | null;
     const inner = (page?.querySelector('.pageInner') as HTMLElement | null) || (document.querySelector('.borderlessPanel .pageInner') as HTMLElement | null);
@@ -49,14 +50,23 @@ export const FloatingCommentsLayer: React.FC<FloatingCommentsLayerProps> = ({ ed
     setItems(out);
   }, []);
 
+  // 🔧 PERFORMANCE: Use requestIdleCallback for async updates during typing
+  const scheduleAsyncCompute = useCallback(() => {
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => compute(), { timeout: 1000 });
+    } else {
+      setTimeout(compute, 300);
+    }
+  }, [compute]);
+
   useEffect(() => {
     if (!editor) return;
-    const update = () => compute();
-    editor.on('update', update);
-    editor.on('selectionUpdate', update);
+    // Async compute for update events to avoid blocking typing
+    editor.on('update', scheduleAsyncCompute);
+    editor.on('selectionUpdate', compute);
     const id = window.setTimeout(compute, 50);
-    return () => { window.clearTimeout(id); editor.off('update', update); editor.off('selectionUpdate', update); };
-  }, [editor, compute]);
+    return () => { window.clearTimeout(id); editor.off('update', scheduleAsyncCompute); editor.off('selectionUpdate', compute); };
+  }, [editor, scheduleAsyncCompute, compute]);
 
   useEffect(() => {
     const onResize = () => compute();
