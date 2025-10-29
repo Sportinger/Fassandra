@@ -202,17 +202,23 @@ export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
     [recompute]
   );
 
-  // Schedule recompute as low-priority async operation using requestIdleCallback
-  const scheduleAsyncRecompute = useCallback(() => {
-    if ('requestIdleCallback' in window) {
-      requestIdleCallback(() => {
+  // 🔧 CRITICAL PERFORMANCE FIX: Heavy debounce for sidebar recompute
+  // querySelectorAll for all cue-blocks is VERY expensive - only run after typing stops
+  const debouncedRecompute = useCallback(() => {
+    let debounceTimer: number | null = null;
+    return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      // Wait 800ms after last update before running expensive querySelectorAll
+      debounceTimer = window.setTimeout(() => {
         recompute();
-      }, { timeout: 1000 });
-    } else {
-      // Fallback: use throttled version
-      throttledRecompute();
-    }
-  }, [recompute, throttledRecompute]);
+        debounceTimer = null;
+      }, 800);
+    };
+  }, [recompute])();
+
+  const scheduleAsyncRecompute = debouncedRecompute;
 
   useEffect(() => {
     if (!editor || !isBrowser) return undefined;
