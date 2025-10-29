@@ -723,7 +723,7 @@ export const CueBlock = Node.create<CueBlockOptions>({
       }
     });
     
-    // Update cue numbers whenever the document changes (debounced for performance)
+    // 🔧 PERFORMANCE FIX: Update cue numbers with async scheduling to avoid blocking typing
     let cueUpdateTimer: number | null = null;
     let pendingDeletedCues: Array<{cueType: string, cueNumber: string}> = [];
 
@@ -731,82 +731,97 @@ export const CueBlock = Node.create<CueBlockOptions>({
       // Only process structural changes (insertions/deletions), not text edits
       if (!transaction.docChanged) return;
 
-      // Check if cue blocks or scene blocks were added/removed
-      let hasCueBlockChange = false;
-      let hasSceneBlockChange = false;
+      // Quick check - only look at step types, don't traverse content yet
+      let mightHaveCueChange = false;
 
       transaction.steps.forEach((step: any) => {
-        if (step.slice) {
-          // Check if the slice contains cueBlock or sceneBlock nodes
-          step.slice.content.descendants((node: any) => {
-            if (node.type.name === 'cueBlock') hasCueBlockChange = true;
-            if (node.type.name === 'sceneBlock') hasSceneBlockChange = true;
-          });
+        const stepType = step.constructor.name;
+        // Only check for structural changes
+        if (stepType === 'ReplaceStep' || stepType === 'ReplaceAroundStep' || stepType === 'DeleteStep') {
+          mightHaveCueChange = true;
         }
       });
 
-      // Only process if structural changes to cues/scenes occurred
-      if (!hasCueBlockChange && !hasSceneBlockChange) return;
-
-      // Find deleted cues (only if cue blocks changed)
-      if (hasCueBlockChange) {
-        const oldState = transaction.before;
-        const newState = transaction.doc;
-
-        // Find deleted cue blocks
-        oldState.descendants((node, _pos) => {
-          if (node.type.name === 'cueBlock') {
-            const cueType = node.attrs.cueType;
-            const cueNumber = node.attrs.cueNumber;
-
-            // Check if this cue still exists in the new state
-            let stillExists = false;
-            newState.descendants((newNode) => {
-              if (newNode.type.name === 'cueBlock' &&
-                  newNode.attrs.cueType === cueType &&
-                  newNode.attrs.cueNumber === cueNumber) {
-                stillExists = true;
-              }
-            });
-
-            if (!stillExists) {
-              pendingDeletedCues.push({ cueType, cueNumber });
-            }
-          }
-        });
-      }
+      // If no potential structural changes, skip entirely
+      if (!mightHaveCueChange) return;
 
       // Debounce cue number updates to avoid excessive recalculations
       if (cueUpdateTimer) {
         clearTimeout(cueUpdateTimer);
       }
 
-      // Schedule cue updates as low-priority async operation
+      // Defer all heavy work (document traversal, deletion checking, number updates)
       const scheduleOp = this.options.scheduleAsyncOperation;
       const updateFn = () => {
-        // Remove connections for deleted cues
-        if (pendingDeletedCues.length > 0) {
-          const { tr } = this.editor.state;
+        // Check for actual cue/scene block changes (deferred)
+        let hasCueBlockChange = false;
+        let hasSceneBlockChange = false;
 
-          pendingDeletedCues.forEach(({ cueType, cueNumber }) => {
-            this.editor.state.doc.nodesBetween(0, this.editor.state.doc.content.size, (node, pos) => {
-              if (node.isText && node.marks.length) {
-                node.marks.forEach(mark => {
-                  if (mark.type.name === 'cueConnection' &&
-                      mark.attrs.cueType === cueType &&
-                      mark.attrs.cueNumber === cueNumber) {
-                    tr.removeMark(pos, pos + node.nodeSize, mark.type);
-                  }
-                });
-              }
+        transaction.steps.forEach((step: any) => {
+          if (step.slice) {
+            step.slice.content.descendants((node: any) => {
+              if (node.type.name === 'cueBlock') hasCueBlockChange = true;
+              if (node.type.name === 'sceneBlock') hasSceneBlockChange = true;
             });
+          }
+        });
+
+        if (!hasCueBlockChange && !hasSceneBlockChange) {
+          cueUpdateTimer = null;
+          return;
+        }
+
+        // Find deleted cues (only if cue blocks changed)
+        if (hasCueBlockChange) {
+          const oldState = transaction.before;
+          const newState = transaction.doc;
+
+          // Find deleted cue blocks
+          oldState.descendants((node, _pos) => {
+            if (node.type.name === 'cueBlock') {
+              const cueType = node.attrs.cueType;
+              const cueNumber = node.attrs.cueNumber;
+
+              // Check if this cue still exists in the new state
+              let stillExists = false;
+              newState.descendants((newNode) => {
+                if (newNode.type.name === 'cueBlock' &&
+                    newNode.attrs.cueType === cueType &&
+                    newNode.attrs.cueNumber === cueNumber) {
+                  stillExists = true;
+                }
+              });
+
+              if (!stillExists) {
+                pendingDeletedCues.push({ cueType, cueNumber });
+              }
+            }
           });
 
-          if (tr.docChanged) {
-            this.editor.view.dispatch(tr);
-          }
+          // Remove connections for deleted cues
+          if (pendingDeletedCues.length > 0) {
+            const { tr } = this.editor.state;
 
-          pendingDeletedCues = [];
+            pendingDeletedCues.forEach(({ cueType, cueNumber }) => {
+              this.editor.state.doc.nodesBetween(0, this.editor.state.doc.content.size, (node, pos) => {
+                if (node.isText && node.marks.length) {
+                  node.marks.forEach(mark => {
+                    if (mark.type.name === 'cueConnection' &&
+                        mark.attrs.cueType === cueType &&
+                        mark.attrs.cueNumber === cueNumber) {
+                      tr.removeMark(pos, pos + node.nodeSize, mark.type);
+                    }
+                  });
+                }
+              });
+            });
+
+            if (tr.docChanged) {
+              this.editor.view.dispatch(tr);
+            }
+
+            pendingDeletedCues = [];
+          }
         }
 
         // Update cue numbers
