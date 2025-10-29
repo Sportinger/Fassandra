@@ -297,11 +297,7 @@ export const useEditorCore = ({
       let speakerUpdateTimer: number | null = null;
 
       const updateHandler = ({ editor, transaction }: any) => {
-        perfMonitor.start('editor-update');
-
         if (transaction.docChanged && !transaction.getMeta('fromYjs')) {
-          perfMonitor.start('editor-update-processing');
-
           // Set saving status immediately for user feedback
           setSaving();
 
@@ -318,7 +314,6 @@ export const useEditorCore = ({
 
           // Schedule speaker extraction as low-priority async operation
           scheduleOperation(() => {
-            perfMonitor.start('speaker-extraction');
             try {
               const html = editor.getHTML();
               if (html && html.length > 0) {
@@ -328,13 +323,8 @@ export const useEditorCore = ({
                 setAvailableSpeakers([]);
               }
             } catch {}
-            perfMonitor.end('speaker-extraction');
           }, 'low');
-
-          perfMonitor.end('editor-update-processing');
         }
-
-        perfMonitor.end('editor-update');
       };
       
       editorInstance.on('update', updateHandler);
