@@ -15,6 +15,7 @@ import { EditorContent } from './EditorContent';
 import { EditorContextMenu } from './context-menu/EditorContextMenu';
 import { Toolbar } from './toolbar/Toolbar';
 import { RightSidebar } from './RightSidebar';
+import { SavingIndicator } from './ui/SavingIndicator';
 import {
   useEditorLayout,
   useEditorRehearsal,
@@ -48,6 +49,8 @@ interface EditorViewProps {
   activeUserCount: number;
   toolbarContext: ToolbarContext;
   debugLog: (...args: any[]) => void;
+  savingStatus?: 'saved' | 'saving' | 'error';
+  lastSaved?: Date | null;
 }
 
 export const EditorView: React.FC<EditorViewProps> = ({
@@ -60,6 +63,8 @@ export const EditorView: React.FC<EditorViewProps> = ({
   activeUserCount,
   toolbarContext,
   debugLog,
+  savingStatus = 'saved',
+  lastSaved = null,
 }) => {
   const {
     viewMode,
@@ -175,6 +180,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
           onSaveLayout={async () => {}}
           activeUserCount={activeUserCount}
           connectionStatus={connectionStatus}
+          savingIndicator={<SavingIndicator status={savingStatus} lastSaved={lastSaved} />}
         />
       )}
     >

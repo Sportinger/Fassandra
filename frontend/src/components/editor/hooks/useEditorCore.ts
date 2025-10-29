@@ -3,6 +3,7 @@ import { useEditor } from '@tiptap/react';
 
 import Collaboration from '@tiptap/extension-collaboration';
 import { CollaborationCursor } from '@tiptap/extension-collaboration-cursor';
+import { useAsyncOperations } from './useAsyncOperations';
 // Import individual extensions instead of StarterKit for better tree shaking
 import { Document } from '@tiptap/extension-document';
 import { Paragraph } from '@tiptap/extension-paragraph';
@@ -103,6 +104,9 @@ export const useEditorCore = ({
   const { token } = useAuth();
   const stableToken = useMemo(() => token, [token]);
 
+  // Async operations management for zero-latency typing
+  const { scheduleOperation, setSaving, setSaved, savingStatus, lastSaved } = useAsyncOperations();
+
   const [editor, setEditor] = useState<any>(null);
   const [availableSpeakers, setAvailableSpeakers] = useState<string[]>([]);
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
@@ -170,7 +174,9 @@ export const useEditorCore = ({
             DialogueBlock,
             Speaker,
             DialogueText,
-            CueBlock, // ✅ Active CueBlock extension with full functionality
+            CueBlock.configure({
+              scheduleAsyncOperation: (fn: () => void) => scheduleOperation(fn, 'low'),
+            }), // ✅ Active CueBlock extension with full functionality
             CueBlockCompat, // compat: parse legacy cue blocks without plugins
             CueConnectionMark,
             SceneBlock,
@@ -239,7 +245,9 @@ export const useEditorCore = ({
             DialogueBlock,
             Speaker,
             DialogueText,
-            CueBlock, // ✅ Active CueBlock extension with full functionality
+            CueBlock.configure({
+              scheduleAsyncOperation: (fn: () => void) => scheduleOperation(fn, 'low'),
+            }), // ✅ Active CueBlock extension with full functionality
             CueBlockCompat,
             CueConnectionMark,
             SceneBlock,
@@ -286,21 +294,22 @@ export const useEditorCore = ({
 
       const updateHandler = ({ editor, transaction }: any) => {
         if (transaction.docChanged && !transaction.getMeta('fromYjs')) {
-          // Only log in development and reduce verbosity
-          if (import.meta.env.DEV) {
-            const defaultField = ydoc?.getXmlFragment('default');
-            logger.debug('useEditorCore', '[EDITOR_TRANSACTION] Doc changed, steps:', transaction.steps.length);
-          }
+          // Set saving status immediately for user feedback
+          setSaving();
 
           // YJS automatically syncs changes through the collaboration binding
-          // No need to manually force transactions - this was causing overhead
-
-          // Debounce speaker extraction to avoid repeated parsing on every keystroke
+          // Mark as saved after a short delay (YJS sync is nearly instant)
           if (speakerUpdateTimer) {
             clearTimeout(speakerUpdateTimer);
           }
 
           speakerUpdateTimer = window.setTimeout(() => {
+            setSaved();
+            speakerUpdateTimer = null;
+          }, 200);
+
+          // Schedule speaker extraction as low-priority async operation
+          scheduleOperation(() => {
             try {
               const html = editor.getHTML();
               if (html && html.length > 0) {
@@ -310,8 +319,7 @@ export const useEditorCore = ({
                 setAvailableSpeakers([]);
               }
             } catch {}
-            speakerUpdateTimer = null;
-          }, 500); // Debounce speaker updates by 500ms
+          }, 'low');
         }
       };
       
@@ -447,5 +455,7 @@ export const useEditorCore = ({
     hideContextMenu,
     activeUserCount,
     isYjsSynced,
+    savingStatus,
+    lastSaved,
   };
 }; 
