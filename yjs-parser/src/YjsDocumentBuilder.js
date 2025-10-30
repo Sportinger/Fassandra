@@ -5,7 +5,10 @@ import { JSDOM } from 'jsdom';
 const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
 global.window = dom.window;
 global.document = window.document;
-global.navigator = window.navigator;
+// Only set navigator if it's not already defined
+if (!global.navigator) {
+  global.navigator = window.navigator;
+}
 
 import { getSchema } from '@tiptap/core';
 import Document from '@tiptap/extension-document';
@@ -13,8 +16,36 @@ import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
 import Bold from '@tiptap/extension-bold';
 import Italic from '@tiptap/extension-italic';
+import { Extension } from '@tiptap/core';
 import { prosemirrorToYXmlFragment } from 'y-prosemirror';
 import { Node as ProseMirrorNode } from 'prosemirror-model';
+
+// Custom extension to add page number attribute to paragraphs
+const PageNumberExtension = Extension.create({
+  name: 'pageNumber',
+
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['paragraph'],
+        attributes: {
+          pageNumber: {
+            default: null,
+            parseHTML: element => element.getAttribute('data-page-number'),
+            renderHTML: attributes => {
+              if (!attributes.pageNumber) {
+                return {};
+              }
+              return {
+                'data-page-number': attributes.pageNumber,
+              };
+            },
+          },
+        },
+      },
+    ];
+  },
+});
 
 export class YjsDocumentBuilder {
   constructor() {
@@ -24,8 +55,9 @@ export class YjsDocumentBuilder {
       Text,
       Bold,
       Italic,
+      PageNumberExtension,
     ];
-    
+
     this.schema = getSchema(this.extensions);
   }
 
@@ -140,24 +172,28 @@ export class YjsDocumentBuilder {
   contentItemToParagraph(item) {
     let text = '';
     let marks = [];
-    
+
+    // Extract page number from item
+    const pageNumber = item.page || item.page_number || null;
+
     switch (item.type || item.content_type) {
       case 'scene':
         text = `[SCENE] ${item.content}`;
         marks = [{ type: 'bold' }];
         break;
-        
+
       case 'stage_direction':
         text = `(${item.content})`;
         marks = [{ type: 'italic' }];
         break;
-        
+
       case 'dialogue':
       case 'monologue':
         if (item.speaker) {
-          // Create speaker line
+          // Create speaker line with page number attribute
           return {
             type: 'paragraph',
+            attrs: pageNumber ? { pageNumber } : {},
             content: [
               {
                 type: 'text',
@@ -174,14 +210,15 @@ export class YjsDocumentBuilder {
           text = item.content;
         }
         break;
-        
+
       default:
         text = item.content;
         break;
     }
-    
+
     return {
       type: 'paragraph',
+      attrs: pageNumber ? { pageNumber } : {},
       content: [
         {
           type: 'text',

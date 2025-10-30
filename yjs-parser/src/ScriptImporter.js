@@ -139,15 +139,28 @@ export class ScriptImporter {
   applyChunkToDocument(ydoc, chunk) {
     // Build ProseMirror content for this chunk
     const chunkContent = this.builder.buildProseMirrorDoc(chunk);
-    
-    // For now, append to prosemirror text field
-    // (This is a simplified approach - in production, you'd merge properly)
-    const prosemirrorText = ydoc.getText('prosemirror');
-    
-    // Convert ProseMirror doc to text and append
-    const textContent = this.prosemirrorToText(chunkContent);
-    prosemirrorText.insert(prosemirrorText.length, textContent);
-    
+
+    // CRITICAL FIX: Use XML Fragment to preserve structure and attributes
+    // Get the existing XML fragment
+    const xmlFragment = ydoc.getXmlFragment('default');
+
+    // Import the prosemirrorToYXmlFragment function
+    const { prosemirrorToYXmlFragment } = require('y-prosemirror');
+
+    // Create a temporary YDoc to convert this chunk
+    const tempDoc = new Y.Doc();
+    const tempFragment = tempDoc.getXmlFragment('temp');
+
+    // Convert ProseMirror to YXmlFragment (preserves all attributes including page numbers)
+    prosemirrorToYXmlFragment(chunkContent, tempFragment);
+
+    // Append all nodes from temp fragment to main fragment
+    // This preserves the ProseMirror structure with all attributes
+    tempFragment.forEach((item) => {
+      // Clone and append each node
+      xmlFragment.push([item.clone()]);
+    });
+
     // Update metadata if present
     if (chunk.metadata) {
       const metadata = ydoc.getMap('metadata');
@@ -155,21 +168,6 @@ export class ScriptImporter {
       metadata.set('author', chunk.metadata.author || '');
       metadata.set('totalPages', chunk.metadata.total_pages);
     }
-  }
-
-  /**
-   * Simple converter from ProseMirror to text
-   */
-  prosemirrorToText(doc) {
-    let text = '';
-    doc.descendants((node) => {
-      if (node.isText) {
-        text += node.text;
-      } else if (node.type.name === 'paragraph') {
-        text += '\n\n';
-      }
-    });
-    return text.trim() + '\n\n';
   }
 
   async close() {
