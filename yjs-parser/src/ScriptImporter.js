@@ -1,4 +1,5 @@
 import * as Y from 'yjs';
+import { prosemirrorToYXmlFragment } from 'y-prosemirror';
 import { YjsDocumentBuilder } from './YjsDocumentBuilder.js';
 import { DatabaseService } from './DatabaseService.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -143,9 +144,6 @@ export class ScriptImporter {
     // CRITICAL FIX: Use XML Fragment to preserve structure and attributes
     // Get the existing XML fragment
     const xmlFragment = ydoc.getXmlFragment('default');
-
-    // Import the prosemirrorToYXmlFragment function
-    const { prosemirrorToYXmlFragment } = require('y-prosemirror');
 
     // Create a temporary YDoc to convert this chunk
     const tempDoc = new Y.Doc();
