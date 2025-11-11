@@ -25,6 +25,11 @@ export const FloatingCommentsLayer: React.FC<FloatingCommentsLayerProps> = ({ ed
     const page = (document.querySelector('.dinA4Page') || document.querySelector('.borderlessPanel')) as HTMLElement | null;
     const inner = (page?.querySelector('.pageInner') as HTMLElement | null) || (document.querySelector('.borderlessPanel .pageInner') as HTMLElement | null);
     if (!container || !page || !inner) return;
+
+    // 🔧 PERFORMANCE: Query only within ProseMirror editor
+    const editorEl = document.querySelector('.ProseMirror') as HTMLElement | null;
+    if (!editorEl) return;
+
     const containerRect = container.getBoundingClientRect();
     const innerRect = inner.getBoundingClientRect();
     const innerCS = getComputedStyle(inner);
@@ -33,7 +38,9 @@ export const FloatingCommentsLayer: React.FC<FloatingCommentsLayerProps> = ({ ed
     const scrollTop = container.scrollTop || 0;
     const seen = new Set<string>();
     const out: CommentItem[] = [];
-    document.querySelectorAll('.comment-annotation[data-comment-id]').forEach((el) => {
+
+    // Query scoped to editor container
+    editorEl.querySelectorAll('.comment-annotation[data-comment-id]').forEach((el) => {
       const span = el as HTMLElement;
       const id = span.getAttribute('data-comment-id') || '';
       if (!id || seen.has(id)) return;
@@ -69,11 +76,30 @@ export const FloatingCommentsLayer: React.FC<FloatingCommentsLayerProps> = ({ ed
   }, [editor, scheduleAsyncCompute, compute]);
 
   useEffect(() => {
-    const onResize = () => compute();
-    const onScroll = () => compute();
+    // 🔧 PERFORMANCE: Throttle scroll/resize events
+    let scrollTimeout: number | undefined;
+    const onScroll = () => {
+      if (scrollTimeout) return;
+      scrollTimeout = window.setTimeout(() => {
+        compute();
+        scrollTimeout = undefined;
+      }, 16);
+    };
+
+    let resizeTimeout: number | undefined;
+    const onResize = () => {
+      if (resizeTimeout) window.clearTimeout(resizeTimeout);
+      resizeTimeout = window.setTimeout(compute, 150);
+    };
+
     window.addEventListener('resize', onResize);
     window.addEventListener('scroll', onScroll, true);
-    return () => { window.removeEventListener('resize', onResize); window.removeEventListener('scroll', onScroll, true); };
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onScroll, true);
+      if (scrollTimeout) window.clearTimeout(scrollTimeout);
+      if (resizeTimeout) window.clearTimeout(resizeTimeout);
+    };
   }, [compute]);
 
   // Open comment from external event
