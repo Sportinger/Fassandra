@@ -115,13 +115,20 @@ export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
 
   const recompute = useCallback(() => {
     if (!isBrowser) return;
+
+    // 🔧 PERFORMANCE: Use scoped queries from editor container instead of document
+    const editorContainer = document.querySelector('.ProseMirror') as HTMLElement | null;
+    if (!editorContainer) return;
+
     const container = document.querySelector('.singlePageContainer') as HTMLElement | null;
     const cRect = container ? container.getBoundingClientRect() : null;
     const cScrollTop = container ? (container.scrollTop || 0) : 0;
     const cScrollLeft = container ? ((container as any).scrollLeft || 0) : 0;
 
     const scenes: SidebarScene[] = [];
-    document.querySelectorAll('[data-type="scene-block"]').forEach((el, index) => {
+    // 🔧 PERFORMANCE: Query only within editor container
+    const sceneElements = editorContainer.querySelectorAll('[data-type="scene-block"]');
+    sceneElements.forEach((el, index) => {
       const he = el as HTMLElement;
       const rect = he.getBoundingClientRect();
       const y = cRect ? (rect.top - cRect.top) + cScrollTop : rect.top;
@@ -139,8 +146,8 @@ export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
     const cues: SidebarCue[] = [];
     const seenCueIds = new Set<string>();
 
-    // Get cues from cue blocks (source of truth) instead of connections
-    const cueBlocks = document.querySelectorAll('[data-type="cue-block"]');
+    // 🔧 PERFORMANCE: Query only within editor container
+    const cueBlocks = editorContainer.querySelectorAll('[data-type="cue-block"]');
 
     cueBlocks.forEach((el) => {
       const he = el as HTMLElement;
@@ -163,9 +170,9 @@ export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
       const y = cRect ? (r.top - cRect.top) + cScrollTop : r.top;
       const x = cRect ? (r.left - cRect.left) + cScrollLeft : r.left;
 
-      // Find the connected text by looking for matching cue-connection marks
+      // 🔧 PERFORMANCE: Use scoped query for cue connection
       let connectedText = '';
-      const connectionEl = document.querySelector(`.cue-connection[data-cue-type="${cueType}"][data-cue-number="${cueNumber}"]`) as HTMLElement;
+      const connectionEl = editorContainer.querySelector(`.cue-connection[data-cue-type="${cueType}"][data-cue-number="${cueNumber}"]`) as HTMLElement;
       if (connectionEl) {
         connectedText = (connectionEl.textContent || '').trim();
       }
@@ -183,7 +190,8 @@ export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
 
     const comments: SidebarComment[] = [];
     const seenCommentIds = new Set<string>();
-    document.querySelectorAll('.comment-annotation[data-comment-id]').forEach((el) => {
+    // 🔧 PERFORMANCE: Query only within editor container
+    editorContainer.querySelectorAll('.comment-annotation[data-comment-id]').forEach((el) => {
       const he = el as HTMLElement;
       const id = he.getAttribute('data-comment-id') || '';
       if (!id || seenCommentIds.has(id)) return;

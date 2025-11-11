@@ -82,13 +82,50 @@ export const CueConnectors: React.FC<{ editor: TipTapEditor | null; expandedCueI
 
   useEffect(() => {
     if (!visible) return;
-    const onScroll = () => recompute();
-    const onResize = () => recompute();
+
+    // Throttle scroll events to max 60fps (16ms)
+    let scrollTimeout: number | undefined;
+    const onScroll = () => {
+      if (scrollTimeout) return;
+      scrollTimeout = window.setTimeout(() => {
+        recompute();
+        scrollTimeout = undefined;
+      }, 16);
+    };
+
+    // Debounce resize events
+    let resizeTimeout: number | undefined;
+    const onResize = () => {
+      if (resizeTimeout) window.clearTimeout(resizeTimeout);
+      resizeTimeout = window.setTimeout(recompute, 150);
+    };
+
     window.addEventListener('scroll', onScroll, true);
     window.addEventListener('resize', onResize);
-    const id = window.setInterval(recompute, 200); // guard against layout shifts
+
+    // 🔧 PERFORMANCE FIX: Use ResizeObserver instead of 200ms interval
+    // Only observe the elements we care about
+    const resizeObserver = new ResizeObserver(() => {
+      // Debounce ResizeObserver calls
+      if (resizeTimeout) window.clearTimeout(resizeTimeout);
+      resizeTimeout = window.setTimeout(recompute, 100);
+    });
+
+    // Observe the page container and sidebar for layout changes
+    const pageContainer = document.querySelector('.dinA4Page, .borderlessPanel');
+    const sidebar = document.querySelector('.rightSidebar');
+    if (pageContainer) resizeObserver.observe(pageContainer);
+    if (sidebar) resizeObserver.observe(sidebar);
+
     recompute();
-    return () => { window.removeEventListener('scroll', onScroll, true); window.removeEventListener('resize', onResize); window.clearInterval(id); };
+
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+      resizeObserver.disconnect();
+      if (scrollTimeout) window.clearTimeout(scrollTimeout);
+      if (resizeTimeout) window.clearTimeout(resizeTimeout);
+    };
   }, [recompute, visible]);
 
   useEffect(() => {

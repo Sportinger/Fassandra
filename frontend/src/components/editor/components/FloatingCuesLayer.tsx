@@ -26,10 +26,11 @@ interface FloatingCuesLayerProps {
 
 // Helper: find first DOM element per unique cue (type+number)
 function collectCueAnchors(_container: HTMLElement | null): Array<{ el: HTMLElement; cueId: string; cueType: string; cueNumber: string; cueName?: string | null }>{
-  // We intentionally query the whole document for cue-connection spans,
-  // because they live inside the editor DOM. Positioning will be done
-  // relative to the provided container later.
-  const nodes = Array.from(document.querySelectorAll('.cue-connection[data-cue-type][data-cue-number]')) as HTMLElement[];
+  // 🔧 PERFORMANCE: Query only within ProseMirror editor instead of entire document
+  const editorEl = document.querySelector('.ProseMirror') as HTMLElement | null;
+  if (!editorEl) return [];
+
+  const nodes = Array.from(editorEl.querySelectorAll('.cue-connection[data-cue-type][data-cue-number]')) as HTMLElement[];
   const seen = new Set<string>();
   const anchors: Array<{ el: HTMLElement; cueId: string; cueType: string; cueNumber: string; cueName?: string | null }> = [];
   for (const el of nodes) {
@@ -140,13 +141,29 @@ export const FloatingCuesLayer: React.FC<FloatingCuesLayerProps> = ({ editor, of
 
   // Recompute on resize/scroll
   useEffect(() => {
-    const onResize = () => computePositions();
-    const onScroll = () => computePositions();
+    // 🔧 PERFORMANCE: Throttle scroll to 60fps (16ms) and debounce resize
+    let scrollTimeout: number | undefined;
+    const onScroll = () => {
+      if (scrollTimeout) return;
+      scrollTimeout = window.setTimeout(() => {
+        computePositions();
+        scrollTimeout = undefined;
+      }, 16);
+    };
+
+    let resizeTimeout: number | undefined;
+    const onResize = () => {
+      if (resizeTimeout) window.clearTimeout(resizeTimeout);
+      resizeTimeout = window.setTimeout(computePositions, 150);
+    };
+
     window.addEventListener('resize', onResize);
     window.addEventListener('scroll', onScroll, true); // capture container/window scrolls
     return () => {
       window.removeEventListener('resize', onResize);
       window.removeEventListener('scroll', onScroll, true);
+      if (scrollTimeout) window.clearTimeout(scrollTimeout);
+      if (resizeTimeout) window.clearTimeout(resizeTimeout);
     };
   }, [computePositions]);
 
