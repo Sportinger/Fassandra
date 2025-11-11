@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DATABASE_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U fassandra_user -d fassandra_db"]
       interval: 10s
@@ -29,7 +29,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgres://fassandra_user:${POSTGRES_PASSWORD:-dev_password_123}@db:5432/fassandra_db
+      - DATABASE_URL=postgres://fassandra_user:${POSTGRES_PASSWORD:-dev_password_123}@db:${DATABASE_PORT:-5432}/fassandra_db
       - JWT_SECRET=${JWT_SECRET}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://localhost,http://localhost,capacitor://localhost,ionic://localhost,http://192.168.2.141:8080,https://192.168.2.141:8080}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
