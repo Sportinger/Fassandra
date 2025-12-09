@@ -15,6 +15,8 @@ export type SidebarCue = {
   cueType: string;
   cueNumber: string;
   cueName?: string | null;
+  manualNumber?: boolean;
+  customNumber?: string | null;
   y: number;
   x: number;
   text?: string;
@@ -26,7 +28,7 @@ export type SidebarComment = {
 };
 
 export type SidebarPanelState =
-  | { type: 'cue'; cueId: string; cueType: string; cueNumber: string; cueName?: string | null; draftName: string }
+  | { type: 'cue'; cueId: string; cueType: string; cueNumber: string; cueName?: string | null; draftName: string; manualNumber?: boolean; customNumber?: string | null }
   | { type: 'comment'; id: string; draft: string }
   | null;
 
@@ -156,6 +158,8 @@ export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
       const cueType = he.getAttribute('data-cue-type') || 'light';
       const cueNumber = he.getAttribute('data-cue-number') || '';
       const cueName = he.getAttribute('data-cue-name') || '';
+      const manualNumber = he.getAttribute('data-manual-number') === 'true';
+      const customNumber = he.getAttribute('data-custom-number') || '';
 
       if (!id) {
         return;
@@ -177,8 +181,11 @@ export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
       cues.push({
         cueId: id,
         cueType,
-        cueNumber,
+        // Display customNumber when manualNumber is true, otherwise show auto cueNumber
+        cueNumber: manualNumber && customNumber ? customNumber : cueNumber,
         cueName,
+        manualNumber,
+        customNumber,
         text: connectedText,
         y,
         x,
