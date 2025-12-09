@@ -3,7 +3,7 @@ import { Node, mergeAttributes } from '@tiptap/core';
 // Minimal compatibility node so old documents with cueBlock can be parsed and migrated,
 // without activating any of the interactive plugins from the legacy CueBlock.
 export const CueBlockCompat = Node.create({
-  name: 'cueBlock',
+  name: 'cueBlockLegacy',
   group: 'block',
   content: 'inline*',
   draggable: false,

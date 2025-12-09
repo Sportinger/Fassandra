@@ -5,7 +5,8 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "import-script": "node bin/import-script.js"
+    "import-script": "node bin/import-script.js",
+    "import-text": "node bin/import-text.js"
   },
   "dependencies": {
     "@tiptap/core": "^2.1.13",
