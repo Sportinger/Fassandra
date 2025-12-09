@@ -278,7 +278,74 @@ export const EditorUiProvider: React.FC<EditorUiProviderProps> = ({
     setSidebarPanel,
   } = useSidebarData(editor);
 
-  const editorHasSelection = Boolean(editor?.state?.selection && !editor.state.selection.empty);
+  // Track editor focus state reactively
+  const [editorIsFocused, setEditorIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const handleFocus = () => setEditorIsFocused(true);
+    const handleBlur = () => setEditorIsFocused(false);
+
+    editor.on('focus', handleFocus);
+    editor.on('blur', handleBlur);
+
+    // Set initial state
+    setEditorIsFocused(editor.isFocused);
+
+    return () => {
+      editor.off('focus', handleFocus);
+      editor.off('blur', handleBlur);
+    };
+  }, [editor]);
+
+  // Handle ESC key to exit editor mode and return to default toolbar
+  useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Clear text selection and blur editor
+        if (editor) {
+          const { state } = editor;
+          const { selection } = state;
+          if (selection && !selection.empty) {
+            const pos = selection.head;
+            editor.chain().setTextSelection(pos).run();
+          }
+          editor.commands.blur();
+
+          // Deselect any selected speaker nodes
+          try {
+            const { state: s, view } = editor as any;
+            let tr = s.tr;
+            let changed = false;
+            s.doc.descendants((node: any, position: number) => {
+              if (node.type?.name === 'speaker' && node.attrs?.selected) {
+                tr = tr.setNodeMarkup(position, undefined, { ...node.attrs, selected: false });
+                changed = true;
+              }
+              return true;
+            });
+            if (changed) view.dispatch(tr);
+          } catch {
+            /* ignore */
+          }
+        }
+
+        // Reset toolbar to default context
+        hideContextMenu();
+        setEditAllSpeakers(false);
+        setCurrentSpeakerName(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscapeKey);
+    return () => document.removeEventListener('keydown', handleEscapeKey);
+  }, [editor, hideContextMenu, setEditAllSpeakers, setCurrentSpeakerName]);
+
+  // Only show text-formatting toolbar when editor is focused AND has a non-empty selection
+  const editorHasSelection = Boolean(
+    editorIsFocused && editor?.state?.selection && !editor.state.selection.empty
+  );
 
   const handleCueOpen = useCallback(
     (payload: { cueId: string }) => {
@@ -335,8 +402,13 @@ export const EditorUiProvider: React.FC<EditorUiProviderProps> = ({
     debugLog('[Editor] viewMode changed to:', viewMode);
   }, [debugLog, viewMode]);
 
+  // Track if initial scroll has been done for this script
+  const initialScrollDoneRef = React.useRef<string | null>(null);
+
   useEffect(() => {
     if (!editor) return;
+    // Only scroll to top once per script load, not on every WebSocket reconnect
+    if (initialScrollDoneRef.current === scriptId) return;
 
     const timer = window.setTimeout(() => {
       try {
@@ -345,13 +417,14 @@ export const EditorUiProvider: React.FC<EditorUiProviderProps> = ({
           container.scrollTop = 0;
         }
         window.scrollTo({ top: 0, behavior: 'auto' });
+        initialScrollDoneRef.current = scriptId;
       } catch {
         /* no-op */
       }
     }, 80);
 
     return () => window.clearTimeout(timer);
-  }, [editor, scriptId, isYjsSynced]);
+  }, [editor, scriptId]);
 
   useEffect(() => {
     const handler = () => setRulerOverlayActive(prev => !prev);
