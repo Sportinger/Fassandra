@@ -303,6 +303,12 @@ export const EditorUiProvider: React.FC<EditorUiProviderProps> = ({
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        // If in cue/comment edit mode in sidebar, exit without saving
+        if (sidebarPanel !== null) {
+          setSidebarPanel(null);
+          return; // Don't do anything else, just exit the sidebar panel
+        }
+
         // Clear text selection and blur editor
         if (editor) {
           const { state } = editor;
@@ -340,7 +346,7 @@ export const EditorUiProvider: React.FC<EditorUiProviderProps> = ({
 
     document.addEventListener('keydown', handleEscapeKey);
     return () => document.removeEventListener('keydown', handleEscapeKey);
-  }, [editor, hideContextMenu, setEditAllSpeakers, setCurrentSpeakerName]);
+  }, [editor, hideContextMenu, setEditAllSpeakers, setCurrentSpeakerName, sidebarPanel, setSidebarPanel]);
 
   // Only show text-formatting toolbar when editor is focused AND has a non-empty selection
   const editorHasSelection = Boolean(
