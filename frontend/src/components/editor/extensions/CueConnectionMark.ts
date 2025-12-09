@@ -8,6 +8,7 @@ export interface CueConnectionAttributes {
   cueNumber: string;
   cueName?: string | null;
   manualNumber?: boolean;
+  customNumber?: string | null;  // User-defined number shown when manualNumber is true
 }
 
 declare module '@tiptap/core' {
@@ -104,6 +105,16 @@ export const CueConnectionMark = Mark.create({
           return {};
         },
       },
+      customNumber: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-custom-number'),
+        renderHTML: attributes => {
+          if (!attributes.customNumber) return {};
+          return {
+            'data-custom-number': attributes.customNumber,
+          };
+        },
+      },
     };
   },
 
@@ -192,14 +203,17 @@ export const CueConnectionMark = Mark.create({
             if (!node.isText || !node.marks.length) return;
             const cueMarks = node.marks.filter((m: ProseMirrorMark) => m.type.name === this.name);
             if (!cueMarks.length) return;
+            let nodeChanged = false;
             const newMarks = cueMarks.map((m: ProseMirrorMark) => {
               if (m.attrs.cueId === cueId) {
                 changed = true;
+                nodeChanged = true;
+                // Simply merge the new attributes with existing ones
                 return markType.create({ ...m.attrs, ...attrs });
               }
               return m;
             });
-            if (changed) {
+            if (nodeChanged) {
               // Rebuild the cue marks for this node only
               tr.removeMark(pos, pos + node.nodeSize, markType);
               newMarks.forEach((nm: ProseMirrorMark) => tr.addMark(pos, pos + node.nodeSize, nm));

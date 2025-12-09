@@ -986,83 +986,56 @@ export const CueBlock = Node.create<CueBlockOptions>({
         return changed;
       },
       updateCueByIdWithNumber: (cueId: string, newNumber: string) => ({ state, tr, dispatch }) => {
+        console.log('[updateCueByIdWithNumber] Called with cueId:', cueId, 'newNumber:', newNumber);
         let changed = false;
-        let cueType: CueType | null = null;
-        let oldNumber: string | null = null;
-
-        // Check if this is a legacy ID format: "legacy-TYPE-NUMBER"
-        const isLegacy = cueId.startsWith('legacy-');
-        let legacyCueType: string | null = null;
-        let legacyCueNumber: string | null = null;
-        if (isLegacy) {
-          const parts = cueId.split('-');
-          if (parts.length >= 3) {
-            legacyCueType = parts[1];
-            legacyCueNumber = parts.slice(2).join('-');
-          }
+        const markType = state.schema.marks.cueConnection;
+        if (!markType) {
+          console.log('[updateCueByIdWithNumber] ERROR: cueConnection mark type not found in schema');
+          return false;
         }
 
-        // Find and update the CueBlock node by cueId or by legacy type/number
-        state.doc.descendants((node, pos) => {
-          if (node.type.name === 'cueBlock') {
-            let isMatch = false;
+        let marksFound = 0;
+        let matchingMarksFound = 0;
 
-            // Try matching by cueId first
-            if (node.attrs.cueId === cueId) {
-              isMatch = true;
-            }
-            // For legacy cues, match by type and number
-            else if (isLegacy && !node.attrs.cueId &&
-                     node.attrs.cueType === legacyCueType &&
-                     node.attrs.cueNumber === legacyCueNumber) {
-              isMatch = true;
-            }
+        state.doc.nodesBetween(0, state.doc.content.size, (node, pos) => {
+          if (node.isText && node.marks.length) {
+            node.marks.forEach(mark => {
+              if (mark.type.name === 'cueConnection') {
+                marksFound++;
+                console.log('[updateCueByIdWithNumber] Found cueConnection mark:', mark.attrs.cueId, 'looking for:', cueId);
+                if (mark.attrs.cueId === cueId) {
+                  matchingMarksFound++;
+                  console.log('[updateCueByIdWithNumber] MATCH! Updating mark at pos:', pos);
+                  console.log('[updateCueByIdWithNumber] Old mark attrs:', JSON.stringify(mark.attrs));
 
-            if (isMatch) {
-              cueType = node.attrs.cueType;
-              oldNumber = node.attrs.cueNumber;
+                  // 🔧 FIX: Store user's custom number in customNumber field
+                  // The cueNumber field continues to be auto-managed
+                  // When manualNumber is true, UI should display customNumber instead
+                  const newMark = markType.create({
+                    cueId: mark.attrs.cueId,
+                    cueType: mark.attrs.cueType,
+                    cueNumber: mark.attrs.cueNumber, // Keep auto-number unchanged
+                    cueName: mark.attrs.cueName,
+                    manualNumber: true,
+                    customNumber: newNumber, // Store user's custom number here
+                  });
+                  console.log('[updateCueByIdWithNumber] New mark attrs:', JSON.stringify(newMark.attrs));
 
-              // Generate a real cueId if this is a legacy cue
-              const realCueId = node.attrs.cueId || `cue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-              tr.setNodeMarkup(pos, undefined, {
-                ...node.attrs,
-                cueId: realCueId,
-                cueNumber: newNumber,
-                manualNumber: true,
-              });
-              changed = true;
-              return false; // Stop searching
-            }
-          }
-        });
-
-        // Update all CueConnectionMarks with the same type and old number
-        if (cueType && oldNumber && oldNumber !== newNumber) {
-          const markType = state.schema.marks.cueConnection;
-          if (markType) {
-            state.doc.nodesBetween(0, state.doc.content.size, (node, pos) => {
-              if (node.isText && node.marks.length) {
-                node.marks.forEach(mark => {
-                  if (mark.type.name === 'cueConnection' &&
-                      mark.attrs.cueType === cueType &&
-                      mark.attrs.cueNumber === oldNumber) {
-                    const newMark = markType.create({
-                      ...mark.attrs,
-                      cueNumber: newNumber,
-                      manualNumber: true,
-                    });
-                    tr.removeMark(pos, pos + node.nodeSize, markType);
-                    tr.addMark(pos, pos + node.nodeSize, newMark);
-                    changed = true;
-                  }
-                });
+                  tr.removeMark(pos, pos + node.nodeSize, markType);
+                  tr.addMark(pos, pos + node.nodeSize, newMark);
+                  changed = true;
+                }
               }
             });
           }
-        }
+        });
+
+        console.log('[updateCueByIdWithNumber] Total cueConnection marks found:', marksFound);
+        console.log('[updateCueByIdWithNumber] Matching marks found:', matchingMarksFound);
+        console.log('[updateCueByIdWithNumber] Changed:', changed, 'dispatch available:', !!dispatch);
 
         if (changed && dispatch) {
+          console.log('[updateCueByIdWithNumber] Dispatching transaction...');
           dispatch(tr);
         }
 
