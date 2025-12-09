@@ -146,21 +146,22 @@ export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
     const cues: SidebarCue[] = [];
     const seenCueIds = new Set<string>();
 
-    // 🔧 PERFORMANCE: Query only within editor container
-    const cueBlocks = editorContainer.querySelectorAll('[data-type="cue-block"]');
+    // 🔧 FIX: Query .cue-connection marks instead of [data-type="cue-block"] nodes
+    // CueMigration converts cueBlock nodes to cueConnection marks, so we need to query those
+    const cueConnections = editorContainer.querySelectorAll('.cue-connection[data-cue-id]');
 
-    cueBlocks.forEach((el) => {
+    cueConnections.forEach((el) => {
       const he = el as HTMLElement;
-      // Generate a temporary ID if the cue block doesn't have one yet (for backward compatibility)
-      let id = he.getAttribute('data-cue-id');
+      const id = he.getAttribute('data-cue-id');
       const cueType = he.getAttribute('data-cue-type') || 'light';
       const cueNumber = he.getAttribute('data-cue-number') || '';
+      const cueName = he.getAttribute('data-cue-name') || '';
 
       if (!id) {
-        // For legacy cues without IDs, generate a stable ID based on type and number
-        id = `legacy-${cueType}-${cueNumber}`;
+        return;
       }
 
+      // Skip duplicates (same cue can mark multiple words)
       if (seenCueIds.has(id)) {
         return;
       }
@@ -170,18 +171,14 @@ export const useSidebarData = (editor: Editor | null): UseSidebarDataReturn => {
       const y = cRect ? (r.top - cRect.top) + cScrollTop : r.top;
       const x = cRect ? (r.left - cRect.left) + cScrollLeft : r.left;
 
-      // 🔧 PERFORMANCE: Use scoped query for cue connection
-      let connectedText = '';
-      const connectionEl = editorContainer.querySelector(`.cue-connection[data-cue-type="${cueType}"][data-cue-number="${cueNumber}"]`) as HTMLElement;
-      if (connectionEl) {
-        connectedText = (connectionEl.textContent || '').trim();
-      }
+      // The connected text is the text content of the cue connection element itself
+      const connectedText = (he.textContent || '').trim();
 
       cues.push({
         cueId: id,
         cueType,
         cueNumber,
-        cueName: he.getAttribute('data-cue-name') || '',
+        cueName,
         text: connectedText,
         y,
         x,
