@@ -67,11 +67,60 @@ export const useCueCardActions = ({
 
       if (isEditing) {
         try {
-          const element = document.querySelector(`.rs-cue-name[data-cue-id="${cue.cueId}"]`) as HTMLElement | null;
-          const newName = (element?.innerText || '').trim();
-          tiptap?.commands.updateCueById?.(cue.cueId, { cueName: newName });
-        } catch {
-          /* ignore update errors */
+          // Save cueName
+          const nameElement = document.querySelector(`.rs-cue-name[data-cue-id="${cue.cueId}"]`) as HTMLElement | null;
+          const newName = (nameElement?.innerText || '').trim();
+
+          // Save cueNumber
+          const numberElement = document.querySelector(`.rs-card[data-cue-id="${cue.cueId}"] .rs-cue-number`) as HTMLElement | null;
+          const newNumber = (numberElement?.innerText || '').replace('Q', '').trim();
+
+          // DEBUG: Log what we're trying to save
+          console.log('[CUE SAVE DEBUG] ================');
+          console.log('[CUE SAVE DEBUG] cue.cueId:', cue.cueId);
+          console.log('[CUE SAVE DEBUG] cue.cueNumber (old):', cue.cueNumber);
+          console.log('[CUE SAVE DEBUG] newNumber:', newNumber);
+          console.log('[CUE SAVE DEBUG] cue.cueName (old):', cue.cueName);
+          console.log('[CUE SAVE DEBUG] newName:', newName);
+          console.log('[CUE SAVE DEBUG] numberElement found:', !!numberElement);
+          console.log('[CUE SAVE DEBUG] nameElement found:', !!nameElement);
+          console.log('[CUE SAVE DEBUG] editor available:', !!tiptap);
+          console.log('[CUE SAVE DEBUG] updateCueByIdWithNumber available:', !!tiptap?.commands?.updateCueByIdWithNumber);
+          console.log('[CUE SAVE DEBUG] updateCueById available:', !!tiptap?.commands?.updateCueById);
+
+          // Check what changed - compare against the original values
+          // For number, compare against customNumber if it exists, otherwise cueNumber
+          const originalNumber = cue.customNumber || cue.cueNumber;
+          const numberChanged = newNumber && newNumber !== originalNumber;
+          const nameChanged = newName !== (cue.cueName || '');
+
+          console.log('[CUE SAVE DEBUG] originalNumber:', originalNumber);
+          console.log('[CUE SAVE DEBUG] numberChanged:', numberChanged);
+          console.log('[CUE SAVE DEBUG] nameChanged:', nameChanged);
+
+          // Update custom number if changed
+          // This sets manualNumber: true and stores in customNumber field
+          if (numberChanged) {
+            console.log('[CUE SAVE DEBUG] Calling updateCueByIdWithNumber with customNumber...');
+            const result1 = tiptap?.commands.updateCueByIdWithNumber?.(cue.cueId, newNumber);
+            console.log('[CUE SAVE DEBUG] updateCueByIdWithNumber result:', result1);
+          } else {
+            console.log('[CUE SAVE DEBUG] Skipping number update (no change or empty)');
+          }
+
+          // Update cueName if changed
+          if (nameChanged) {
+            console.log('[CUE SAVE DEBUG] Calling updateCueById for name...');
+            const result2 = tiptap?.commands.updateCueById?.(cue.cueId, {
+              cueName: newName,
+            });
+            console.log('[CUE SAVE DEBUG] updateCueById result:', result2);
+          } else {
+            console.log('[CUE SAVE DEBUG] Skipping name update (no changes)');
+          }
+          console.log('[CUE SAVE DEBUG] ================');
+        } catch (err) {
+          console.error('[CUE SAVE DEBUG] Error:', err);
         }
         setSidebarPanel(null);
         return;
@@ -87,6 +136,8 @@ export const useCueCardActions = ({
         cueNumber: cue.cueNumber,
         cueName: cue.cueName || '',
         draftName: cue.cueName || '',
+        manualNumber: cue.manualNumber,
+        customNumber: cue.customNumber,
       });
       focusCueNameField(cue.cueId);
     },

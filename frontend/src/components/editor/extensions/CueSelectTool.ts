@@ -109,10 +109,11 @@ function getSceneNumberForPosition(state: EditorState, pos: number): number {
 
 // Re-number all cueConnection marks by unique cueId per scene and type
 function renumberCuesByMarks(view: EditorView) {
+  console.log('[renumberCuesByMarks] Called');
   const { state } = view;
   const tr = state.tr;
   const seenFirstPos: Record<string, number> = {}; // cueId -> pos to keep
-  const cueMeta: Record<string, { type: CueType; scene: number } | null> = {};
+  const cueMeta: Record<string, { type: CueType; scene: number; manualNumber?: boolean } | null> = {};
   const markType = state.schema.marks['cueConnection'];
 
   // First pass: find first occurrence and scene/type
@@ -126,20 +127,22 @@ function renumberCuesByMarks(view: EditorView) {
       if (seenFirstPos[cueId] == null) {
         seenFirstPos[cueId] = pos; // first occurrence kept
         const scene = getSceneNumberForPosition(state, pos);
-        cueMeta[cueId] = { type: cueType, scene };
+        cueMeta[cueId] = { type: cueType, scene, manualNumber: mark.attrs.manualNumber };
       } else {
         // Do nothing here; we'll drop extras in the rebuild below
       }
     });
   });
 
-  // Build counters per scene and type
+  // Build counters per scene and type (only for non-manual cues)
   const counters: Record<string, Record<CueType, number>> = {};
   const sortedCues = Object.entries(seenFirstPos).sort((a, b) => a[1] - b[1]);
   const cueNumberMap: Record<string, string> = {};
   for (const [cueId] of sortedCues) {
     const meta = cueMeta[cueId];
     if (!meta) continue;
+    // 🔧 FIX: Skip manual cues from auto-numbering entirely
+    if (meta.manualNumber) continue;
     const sceneKey = `scene_${meta.scene}`;
     counters[sceneKey] ||= { light: 0, video: 0, sound: 0, props: 0 } as Record<CueType, number>;
     counters[sceneKey][meta.type] += 1;
@@ -148,35 +151,61 @@ function renumberCuesByMarks(view: EditorView) {
   }
 
   // Second pass: update all marks to have consistent cueNumber
-  let changed = false;
+  // 🔧 FIX: Track changes per-node instead of globally to prevent incorrect mark rebuilding
+  let hasAnyChanges = false;
+  const nodesToUpdate: Array<{ pos: number; nodeSize: number; marks: any[] }> = [];
+
   state.doc.nodesBetween(0, state.doc.content.size, (node: ProseMirrorNode, pos: number) => {
     if (!node.isText || !node.marks?.length) return;
     const cueMarks = node.marks.filter(mark => mark.type.name === 'cueConnection');
     if (!cueMarks.length) return;
+
+    let nodeChanged = false;
     const rebuilt: typeof cueMarks = [];
+
     cueMarks.forEach(mark => {
       const cueId = mark.attrs.cueId as string;
       if (!cueId) return;
+
       // Keep only the first occurrence per cueId across the doc
       if (seenFirstPos[cueId] != null && pos !== seenFirstPos[cueId]) {
-        changed = true; // drop this duplicate by not re-adding
+        nodeChanged = true; // drop this duplicate by not re-adding
         return;
       }
-      const targetNumber = cueNumberMap[cueId];
-      if (targetNumber && mark.attrs.cueNumber !== targetNumber) {
-        rebuilt.push(markType.create({ ...mark.attrs, cueNumber: targetNumber }));
-        changed = true;
+
+      // 🔧 FIX: Skip auto-renumbering if manualNumber is true - preserve ALL attributes
+      if (mark.attrs.manualNumber) {
+        console.log('[renumberCuesByMarks] Skipping manual cue:', cueId, 'manualNumber:', mark.attrs.manualNumber, 'current:', mark.attrs.cueNumber, 'cueName:', mark.attrs.cueName);
+        rebuilt.push(mark); // Keep manual cue completely as-is
       } else {
-        rebuilt.push(mark);
+        const targetNumber = cueNumberMap[cueId];
+        if (targetNumber && mark.attrs.cueNumber !== targetNumber) {
+          console.log('[renumberCuesByMarks] Auto-renumbering cue:', cueId, 'from', mark.attrs.cueNumber, 'to', targetNumber);
+          rebuilt.push(markType.create({ ...mark.attrs, cueNumber: targetNumber }));
+          nodeChanged = true;
+        } else {
+          rebuilt.push(mark);
+        }
       }
     });
-    if (changed) {
-      tr.removeMark(pos, pos + node.nodeSize, markType);
-      rebuilt.forEach(m => tr.addMark(pos, pos + node.nodeSize, m));
+
+    // 🔧 FIX: Only rebuild marks for THIS node if THIS node actually changed
+    if (nodeChanged) {
+      hasAnyChanges = true;
+      nodesToUpdate.push({ pos, nodeSize: node.nodeSize, marks: rebuilt });
     }
   });
 
-  if (changed) view.dispatch(tr);
+  // Apply all changes in a single batch
+  if (hasAnyChanges) {
+    // Apply in reverse order to preserve positions
+    for (let i = nodesToUpdate.length - 1; i >= 0; i--) {
+      const { pos, nodeSize, marks } = nodesToUpdate[i];
+      tr.removeMark(pos, pos + nodeSize, markType);
+      marks.forEach(m => tr.addMark(pos, pos + nodeSize, m));
+    }
+    view.dispatch(tr);
+  }
 }
 
 export const CueSelectTool = Extension.create({
