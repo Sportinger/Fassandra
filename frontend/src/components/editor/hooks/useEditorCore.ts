@@ -202,6 +202,9 @@ export const useEditorCore = ({
             }),
             Highlight.configure({
               multicolor: true,
+              HTMLAttributes: {
+                style: 'color: #000000',
+              },
             }),
           ],
           content: '',
@@ -277,6 +280,9 @@ export const useEditorCore = ({
             }),
             Highlight.configure({
               multicolor: true,
+              HTMLAttributes: {
+                style: 'color: #000000',
+              },
             }),
           ],
           content: '',
