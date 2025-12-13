@@ -510,6 +510,10 @@ impl YjsScriptBuilderService {
                         } else {
                             item.content.clone()
                         };
+                        // Set sceneNumber and sceneName attributes for the frontend
+                        let scene_num = item.scene_number.clone().unwrap_or_else(|| "1".to_string());
+                        scene_ref.insert_attribute(&mut txn, "sceneNumber", scene_num);
+                        scene_ref.insert_attribute(&mut txn, "sceneName", title.clone());
                         scene_ref.push_back(&mut txn, XmlTextPrelim::new(title));
                     }
                     "dialogue" | "monologue" => {
