@@ -64,17 +64,62 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         {(menu.onPageBackground || editorHasSelection) && (
           <>
             {editorHasSelection && (
-              <div 
-                className="context-menu-item"
-                style={{
-                  padding: '10px 14px',
-                  cursor: 'pointer',
-                  borderBottom: '1px solid var(--color-border)',
-                }}
-                onClick={() => onAction('add-comment')}
-              >
-                💬 Add Comment
-              </div>
+              <>
+                <div
+                  className="context-menu-item"
+                  style={{
+                    padding: '10px 14px',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid var(--color-border)',
+                  }}
+                  onClick={() => onAction('add-comment')}
+                >
+                  💬 Add Comment
+                </div>
+                <div
+                  className="context-menu-item"
+                  style={{
+                    padding: '10px 14px',
+                    borderBottom: '1px solid var(--color-border)',
+                  }}
+                >
+                  <span style={{ marginRight: '8px' }}>🖍️ Highlight</span>
+                  <div style={{ display: 'inline-flex', gap: '4px' }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onAction('highlight-yellow'); }}
+                      style={{ width: '20px', height: '20px', backgroundColor: '#fef08a', border: '1px solid #ccc', borderRadius: '3px', cursor: 'pointer' }}
+                      title="Yellow"
+                    />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onAction('highlight-green'); }}
+                      style={{ width: '20px', height: '20px', backgroundColor: '#bbf7d0', border: '1px solid #ccc', borderRadius: '3px', cursor: 'pointer' }}
+                      title="Green"
+                    />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onAction('highlight-blue'); }}
+                      style={{ width: '20px', height: '20px', backgroundColor: '#bfdbfe', border: '1px solid #ccc', borderRadius: '3px', cursor: 'pointer' }}
+                      title="Blue"
+                    />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onAction('highlight-pink'); }}
+                      style={{ width: '20px', height: '20px', backgroundColor: '#fbcfe8', border: '1px solid #ccc', borderRadius: '3px', cursor: 'pointer' }}
+                      title="Pink"
+                    />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onAction('highlight-orange'); }}
+                      style={{ width: '20px', height: '20px', backgroundColor: '#fed7aa', border: '1px solid #ccc', borderRadius: '3px', cursor: 'pointer' }}
+                      title="Orange"
+                    />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onAction('highlight-remove'); }}
+                      style={{ width: '20px', height: '20px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '3px', cursor: 'pointer', fontSize: '10px' }}
+                      title="Remove highlight"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
             <div 
               className="context-menu-item"

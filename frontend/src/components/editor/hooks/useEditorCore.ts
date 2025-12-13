@@ -19,6 +19,7 @@ import { Color } from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 // FontFamily will be handled through TextStyle
 import { TextAlign } from '@tiptap/extension-text-align';
+import Highlight from '@tiptap/extension-highlight';
 import logger from '../../../services/LoggingService';
 import { useAuth } from '../../../AuthContext';
 import { DialogueBlock } from '../extensions/DialogueBlock';
@@ -199,6 +200,9 @@ export const useEditorCore = ({
             TextAlign.configure({
               types: ['heading', 'paragraph'],
             }),
+            Highlight.configure({
+              multicolor: true,
+            }),
           ],
           content: '',
           editable: true,
@@ -270,6 +274,9 @@ export const useEditorCore = ({
             TextStyle,
             TextAlign.configure({
               types: ['heading', 'paragraph'],
+            }),
+            Highlight.configure({
+              multicolor: true,
             }),
           ],
           content: '',
