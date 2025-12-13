@@ -98,6 +98,7 @@ export const FontStyleDropdown: React.FC<FontStyleDropdownProps> = ({
     <div className="dropdownContainer" ref={dropdownRef}>
       <button
         className={`toolbarButton dropdownButton ${isOpen ? 'open' : ''}`}
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => setIsOpen(!isOpen)}
         title="Font Style"
       >
@@ -114,6 +115,7 @@ export const FontStyleDropdown: React.FC<FontStyleDropdownProps> = ({
             <button
               key={style.value}
               className={`dropdownItem ${currentFontStyle === style.value ? 'active' : ''}`}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => handleFontStyleChange(style.value)}
               style={{ fontFamily: style.fontFamily }}
             >
@@ -129,6 +131,7 @@ export const FontStyleDropdown: React.FC<FontStyleDropdownProps> = ({
                 <button
                   key={style.value}
                   className={`dropdownItem ${currentFontStyle === style.value ? 'active' : ''}`}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleFontStyleChange(style.value)}
                   style={{ fontFamily: style.fontFamily }}
                 >

@@ -193,6 +193,7 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
           'dropdownButton',
           isOpen ? 'active' : ''
         ].filter(Boolean).join(' ')}
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className="label">
@@ -218,6 +219,7 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
                 key={size}
                 type="button"
                 className={[ 'dropdownItem', currentSize === size ? 'active' : '' ].join(' ')}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleFontSizeChange(size)}
                 style={{ fontSize: `${Math.min(size, 18)}px` }}
               >
@@ -235,6 +237,7 @@ export const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
                   key={size}
                   type="button"
                   className={[ 'dropdownItem', currentSize === size ? 'active' : '' ].join(' ')}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleFontSizeChange(size)}
                   style={{ fontSize: `${Math.min(size, 18)}px` }}
                 >
