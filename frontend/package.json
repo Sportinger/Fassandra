@@ -23,6 +23,7 @@
     "@tiptap/extension-color": "^2.11.9",
     "@tiptap/extension-font-family": "^2.11.9",
     "@tiptap/extension-heading": "^2.11.9",
+    "@tiptap/extension-highlight": "^2.11.9",
     "@tiptap/extension-text-align": "^2.11.9",
     "@tiptap/extension-text-style": "^2.11.9",
     "@tiptap/react": "^2.11.9",
@@ -47,7 +48,6 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
-    
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.26.1",
     "vite": "^6.3.1",

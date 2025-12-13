@@ -27,6 +27,12 @@ export type ContextMenuAction =
   | 'toggle-view'
   | 'jump'
   | 'format-speakers'
-  | 'change-speaker-color';
+  | 'change-speaker-color'
+  | 'highlight-yellow'
+  | 'highlight-green'
+  | 'highlight-blue'
+  | 'highlight-pink'
+  | 'highlight-orange'
+  | 'highlight-remove';
 
 export type CloseContextMenu = () => void;

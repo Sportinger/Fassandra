@@ -257,6 +257,24 @@ export const useEditorContextMenu = ({
         }
         break;
       }
+      case 'highlight-yellow':
+        editor.chain().focus().toggleHighlight({ color: '#fef08a' }).run();
+        break;
+      case 'highlight-green':
+        editor.chain().focus().toggleHighlight({ color: '#bbf7d0' }).run();
+        break;
+      case 'highlight-blue':
+        editor.chain().focus().toggleHighlight({ color: '#bfdbfe' }).run();
+        break;
+      case 'highlight-pink':
+        editor.chain().focus().toggleHighlight({ color: '#fbcfe8' }).run();
+        break;
+      case 'highlight-orange':
+        editor.chain().focus().toggleHighlight({ color: '#fed7aa' }).run();
+        break;
+      case 'highlight-remove':
+        editor.chain().focus().unsetHighlight().run();
+        break;
       case 'format-speakers':
       case 'change-speaker-color':
         debugLog('Unknown context menu action:', action);
