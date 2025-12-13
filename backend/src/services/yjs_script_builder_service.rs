@@ -14,7 +14,7 @@ use uuid::Uuid;
 use yrs::updates::encoder::Encode; // for encode_v1 on StateVector and updates
 use yrs::Map;
 use yrs::{Doc, Options, ReadTxn, StateVector, Transact, WriteTxn};
-use yrs::{Text, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
+use yrs::{Text, Xml, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
 // use yrs::updates::encoder::Encode; // Not needed; we use encode via transact
 
 // Define the structures for chunks (since yjs_document_builder is disabled)
@@ -493,6 +493,8 @@ impl YjsScriptBuilderService {
                     current_page = page_num;
                     let page_el = XmlElementPrelim::empty("pageIndicator");
                     let page_ref = fragment.push_back(&mut txn, page_el);
+                    // Set the pageNumber attribute so the frontend can read it
+                    page_ref.insert_attribute(&mut txn, "pageNumber", current_page.to_string());
                     page_ref.push_back(
                         &mut txn,
                         XmlTextPrelim::new(format!("Page {}", current_page)),
