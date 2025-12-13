@@ -118,8 +118,21 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                     <button
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={(e) => { e.stopPropagation(); onAction('highlight-remove'); }}
-                      style={{ width: '20px', height: '20px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '3px', cursor: 'pointer', fontSize: '10px' }}
-                      title="Remove highlight"
+                      style={{
+                        width: '20px',
+                        height: '20px',
+                        backgroundColor: '#fff',
+                        border: '1px solid #ccc',
+                        borderRadius: '3px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        color: '#dc2626',
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title="Highlight entfernen"
                     >
                       ✕
                     </button>
