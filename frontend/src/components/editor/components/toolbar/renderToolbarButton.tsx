@@ -42,6 +42,7 @@ export const renderToolbarButton = ({
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button
+          onMouseDown={(e) => e.preventDefault()}
           onClick={button.action}
           className={['toolbarButton', button.isActive ? 'active' : '']
             .filter(Boolean)
