@@ -111,6 +111,13 @@ button:focus-visible {
   color: var(--color-text-secondary);
 }
 
+/* ===== TEXT HIGHLIGHT STYLES ===== */
+/* Ensure highlighted text is readable with black color */
+.ProseMirror mark,
+.ProseMirror mark[data-color] {
+  color: #000000 !important;
+}
+
 /* ===== DIALOGUE BLOCK STYLES (GLOBAL) ===== */
 /* These styles must be global to work with TipTap's rendered HTML */
 
