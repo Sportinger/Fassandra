@@ -30,8 +30,12 @@ fi
 # Error handler
 trap 'echo "DEPLOYMENT FAILED AT LINE $LINENO"' ERR
 
+# Get git info for version endpoint
+GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+
 echo "DEV DEPLOYMENT - FRONTEND ONLY"
 echo "==============================="
+echo "Branch: $GIT_BRANCH"
 
 # TEST CONNECTION
 echo "[1/4] Testing server connection..."
@@ -63,7 +67,7 @@ fi
 
 # BUILD AND DEPLOY ON SERVER
 echo "[4/4] Building and deploying on server..."
-ssh "$USER@$SERVER" "APP_DIR='$APP_DIR' DEV_DOMAIN='$DEV_DOMAIN' BUILD_OPTS='$BUILD_OPTS' bash -s" << 'DEPLOY_SCRIPT'
+ssh "$USER@$SERVER" "APP_DIR='$APP_DIR' DEV_DOMAIN='$DEV_DOMAIN' BUILD_OPTS='$BUILD_OPTS' GIT_BRANCH='$GIT_BRANCH' bash -s" << 'DEPLOY_SCRIPT'
 set -euo pipefail
 cd "$APP_DIR"
 
@@ -86,6 +90,8 @@ DOCKER_BUILDKIT=1 docker build $BUILD_OPTS \
     --build-arg VITE_API_BASE_URL=https://$DEV_DOMAIN \
     --build-arg VITE_WS_BASE_URL=wss://$DEV_DOMAIN/api/collab \
     --build-arg VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID \
+    --build-arg GIT_BRANCH="$GIT_BRANCH" \
+    --build-arg ENVIRONMENT=development \
     -t mylayer-frontend:dev .
 cd ..
 

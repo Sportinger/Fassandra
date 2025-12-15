@@ -1,7 +1,18 @@
 :80 {
     root * /srv
-    file_server
-    try_files {path} /index.html
+
+    # Serve version.json at /version with JSON content type
+    handle /version {
+        header Content-Type application/json
+        rewrite * /version.json
+        file_server
+    }
+
+    # Handle all other requests
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
 
     # Enable gzip compression
     encode gzip
