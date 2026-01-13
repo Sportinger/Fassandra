@@ -8,11 +8,11 @@
 
 set -euo pipefail
 
-# CONFIGURATION
-SERVER="fassandra.de"
-DEV_DOMAIN="dev.fassandra.de"
-USER="admin"
-APP_DIR="/home/admin/app"
+# CONFIGURATION (can be overridden via environment variables)
+SERVER="${DEPLOY_SERVER:-fassandra.de}"
+DEV_DOMAIN="${DEPLOY_DEV_DOMAIN:-dev.fassandra.de}"
+USER="${DEPLOY_USER:-admin}"
+APP_DIR="${DEPLOY_APP_DIR:-/home/admin/app}"
 
 # Resolve project root (parent of scripts)
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -49,7 +49,13 @@ done
 # Error handler
 trap 'echo "DEPLOYMENT FAILED AT LINE $LINENO"' ERR
 
+# Capture git info locally before deployment
+GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
 echo "DEV DEPLOYMENT - BACKEND + FRONTEND"
+echo "Branch: $GIT_BRANCH | Commit: $GIT_COMMIT"
 echo "===================================="
 echo "Build backend: $BUILD_BACKEND"
 echo "Build frontend: $BUILD_FRONTEND"
@@ -105,7 +111,7 @@ fi
 
 # BUILD AND DEPLOY ON SERVER
 echo "[5/5] Building and deploying on server..."
-ssh "$USER@$SERVER" "APP_DIR='$APP_DIR' DEV_DOMAIN='$DEV_DOMAIN' BUILD_OPTS='$BUILD_OPTS' BUILD_BACKEND='$BUILD_BACKEND' BUILD_FRONTEND='$BUILD_FRONTEND' bash -s" << 'DEPLOY_SCRIPT'
+ssh "$USER@$SERVER" "APP_DIR='$APP_DIR' DEV_DOMAIN='$DEV_DOMAIN' BUILD_OPTS='$BUILD_OPTS' BUILD_BACKEND='$BUILD_BACKEND' BUILD_FRONTEND='$BUILD_FRONTEND' GIT_BRANCH='$GIT_BRANCH' GIT_COMMIT='$GIT_COMMIT' BUILD_TIME='$BUILD_TIME' bash -s" << 'DEPLOY_SCRIPT'
 set -euo pipefail
 cd "$APP_DIR"
 
@@ -128,10 +134,15 @@ fi
 # Build backend if requested
 if [ "$BUILD_BACKEND" = true ]; then
     echo "Building backend image..."
+    echo "  Branch: $GIT_BRANCH, Commit: $GIT_COMMIT"
     cd backend
     DOCKER_BUILDKIT=1 docker build $BUILD_OPTS \
         -f Dockerfile.prod \
         --target runtime \
+        --build-arg GIT_BRANCH="$GIT_BRANCH" \
+        --build-arg GIT_COMMIT="$GIT_COMMIT" \
+        --build-arg BUILD_TIME="$BUILD_TIME" \
+        --build-arg ENVIRONMENT=development \
         -t mylayer-backend:dev .
     cd ..
     echo "Backend image built"
@@ -150,6 +161,8 @@ if [ "$BUILD_FRONTEND" = true ]; then
         --build-arg VITE_API_BASE_URL=https://$DEV_DOMAIN \
         --build-arg VITE_WS_BASE_URL=wss://$DEV_DOMAIN/api/collab \
         --build-arg VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID \
+        --build-arg GIT_BRANCH="$GIT_BRANCH" \
+        --build-arg ENVIRONMENT=development \
         -t mylayer-frontend:dev .
     cd ..
     echo "Frontend image built"
