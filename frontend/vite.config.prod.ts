@@ -44,7 +44,7 @@ export default defineConfig(({ mode }) => {
         registerType: 'prompt',
         // Ensure SW never caches or intercepts API/auth routes
         workbox: {
-          navigateFallbackDenylist: [/^\/api\//, /^\/login$/, /^\/register$/, /^\/logout$/],
+          navigateFallbackDenylist: [/^\/api\//, /^\/login$/, /^\/register$/, /^\/logout$/, /^\/version$/, /^\/health$/],
           runtimeCaching: [
             {
               urlPattern: /^https?:\/\/[^/]+\/api\//,
@@ -52,7 +52,7 @@ export default defineConfig(({ mode }) => {
               options: { cacheName: 'api-network-only' },
             },
             {
-              urlPattern: /\/login$|\/register$|\/logout$/,
+              urlPattern: /\/login$|\/register$|\/logout$|\/version$|\/health$/,
               handler: 'NetworkOnly',
               options: { cacheName: 'auth-network-only' },
             },
