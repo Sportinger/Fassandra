@@ -9,11 +9,11 @@
 
 set -euo pipefail
 
-# CONFIGURATION
-SERVER="fassandra.de"
-DEV_DOMAIN="dev.fassandra.de"
-USER="admin"
-APP_DIR="/home/admin/app"
+# CONFIGURATION (can be overridden via environment variables)
+SERVER="${DEPLOY_SERVER:-fassandra.de}"
+DEV_DOMAIN="${DEPLOY_DEV_DOMAIN:-dev.fassandra.de}"
+USER="${DEPLOY_USER:-admin}"
+APP_DIR="${DEPLOY_APP_DIR:-/home/admin/app}"
 
 # Resolve project root (parent of scripts)
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -44,8 +44,8 @@ echo "Connected to $SERVER"
 
 # STOP AND CLEAN DEV CONTAINERS
 echo "[2/7] Stopping DEV containers and cleaning images..."
-ssh "$USER@$SERVER" << 'EOF'
-cd /home/admin/app
+ssh "$USER@$SERVER" "APP_DIR='$APP_DIR' bash -s" << 'EOF'
+cd "$APP_DIR"
 # Stop DEV compose stack
 docker compose -f docker-compose.dev.yml down 2>/dev/null || true
 # Remove DEV images to force fresh build
