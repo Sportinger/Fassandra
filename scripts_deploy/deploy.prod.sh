@@ -6,9 +6,9 @@
 set -euo pipefail
 
 # CONFIGURATION
-SERVER="91.99.69.115"
+SERVER="fassandra.de"
 DOMAIN="fassandra.de"
-USER="root"
+USER="admin"
 APP_DIR="/home/admin/app"
 
 # Get the project root directory (parent of scripts)
@@ -42,10 +42,14 @@ for arg in "$@"; do
     esac
 done
 
+# Capture git info locally before deployment
+GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
 # Error handler
 trap 'echo "❌ DEPLOYMENT FAILED AT LINE $LINENO"' ERR
 
-echo "🚀 Fast deploy to $DOMAIN"
+echo "🚀 Fast deploy to $DOMAIN (branch: $GIT_BRANCH, commit: $GIT_COMMIT)"
 
 # --- Pre-flight --- keep only essential connectivity check ---
 echo "🔎 Checking SSH connectivity..."
@@ -101,11 +105,13 @@ rsync -az \
     "$USER@$SERVER:$APP_DIR/"
 
 # REBUILD AND RESTART CONTAINERS
-ssh "$USER@$SERVER" bash -s -- "$APP_DIR" "$DOMAIN" "$REBUILD_BACKEND" "$REBUILD_FRONTEND" << 'REMOTE_SCRIPT'
+ssh "$USER@$SERVER" bash -s -- "$APP_DIR" "$DOMAIN" "$REBUILD_BACKEND" "$REBUILD_FRONTEND" "$GIT_BRANCH" "$GIT_COMMIT" << 'REMOTE_SCRIPT'
 APP_DIR="$1"
 DOMAIN="$2"
 REBUILD_BACKEND="$3"
 REBUILD_FRONTEND="$4"
+GIT_BRANCH="$5"
+GIT_COMMIT="$6"
 set -e
 cd "$APP_DIR"
 
@@ -143,6 +149,9 @@ rebuild_frontend() {
         --build-arg VITE_API_BASE_URL=https://$DOMAIN \
         --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
         --build-arg VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID \
+        --build-arg GIT_BRANCH="$GIT_BRANCH" \
+        --build-arg GIT_COMMIT="$GIT_COMMIT" \
+        --build-arg ENVIRONMENT=production \
         -t mylayer-frontend:latest .
     cd ..
     docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --force-recreate frontend

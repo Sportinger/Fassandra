@@ -6,9 +6,8 @@
 set -euo pipefail
 
 # CONFIGURATION
-SERVER="91.99.69.115"
+SERVER="fassandra.de"
 DOMAIN="fassandra.de"
-# Remote SSH user (matches server setup)
 USER="admin"
 APP_DIR="/home/admin/app"
 
