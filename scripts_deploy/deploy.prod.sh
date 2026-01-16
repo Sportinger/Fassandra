@@ -105,12 +105,13 @@ rsync -az \
     "$USER@$SERVER:$APP_DIR/"
 
 # REBUILD AND RESTART CONTAINERS
-ssh "$USER@$SERVER" bash -s -- "$APP_DIR" "$DOMAIN" "$REBUILD_BACKEND" "$REBUILD_FRONTEND" "$GIT_BRANCH" << 'REMOTE_SCRIPT'
+ssh "$USER@$SERVER" bash -s -- "$APP_DIR" "$DOMAIN" "$REBUILD_BACKEND" "$REBUILD_FRONTEND" "$GIT_BRANCH" "$GIT_COMMIT" << 'REMOTE_SCRIPT'
 APP_DIR="$1"
 DOMAIN="$2"
 REBUILD_BACKEND="$3"
 REBUILD_FRONTEND="$4"
 GIT_BRANCH="$5"
+GIT_COMMIT="$6"
 set -e
 cd "$APP_DIR"
 
@@ -149,6 +150,7 @@ rebuild_frontend() {
         --build-arg VITE_WS_BASE_URL=wss://$DOMAIN/api/collab \
         --build-arg VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID \
         --build-arg GIT_BRANCH="$GIT_BRANCH" \
+        --build-arg GIT_COMMIT="$GIT_COMMIT" \
         --build-arg ENVIRONMENT=production \
         -t mylayer-frontend:latest .
     cd ..

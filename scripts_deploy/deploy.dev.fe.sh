@@ -64,6 +64,7 @@ echo "[3/4] Syncing config..."
 if [ -f ".env.prod" ]; then
     rsync -az ./.env.prod "$USER@$SERVER:$APP_DIR/"
 fi
+rsync -az ./docker-compose.dev.server.yml "$USER@$SERVER:$APP_DIR/"
 
 # BUILD AND DEPLOY ON SERVER
 echo "[4/4] Building and deploying on server..."
@@ -99,14 +100,14 @@ echo "Frontend image built"
 
 # Restart frontend container
 echo "Restarting frontend container..."
-docker compose -f docker-compose.dev.yml --env-file .env.dev up -d --force-recreate dev-frontend
+docker compose -f docker-compose.dev.server.yml --env-file .env.dev up -d --force-recreate dev-frontend
 
 echo "Waiting for frontend..."
 sleep 5
 
 echo ""
 echo "Container status:"
-docker compose -f docker-compose.dev.yml ps dev-frontend
+docker compose -f docker-compose.dev.server.yml ps dev-frontend
 
 echo ""
 echo -n "Frontend health: "
@@ -126,4 +127,4 @@ echo "DEV FRONTEND DEPLOYED"
 echo "URL: https://$DEV_DOMAIN"
 echo ""
 echo "View logs:"
-echo "   ssh $USER@$SERVER 'cd $APP_DIR && docker compose -f docker-compose.dev.yml logs -f dev-frontend'"
+echo "   ssh $USER@$SERVER 'cd $APP_DIR && docker compose -f docker-compose.dev.server.yml logs -f dev-frontend'"
