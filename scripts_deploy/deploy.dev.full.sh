@@ -108,6 +108,7 @@ echo "[4/5] Syncing config..."
 if [ -f ".env.prod" ]; then
     rsync -az ./.env.prod "$USER@$SERVER:$APP_DIR/"
 fi
+rsync -az ./docker-compose.dev.server.yml "$USER@$SERVER:$APP_DIR/"
 
 # BUILD AND DEPLOY ON SERVER
 echo "[5/5] Building and deploying on server..."
@@ -171,10 +172,10 @@ fi
 # Restart containers
 echo "Restarting containers..."
 if [ "$BUILD_BACKEND" = true ]; then
-    docker compose -f docker-compose.dev.yml --env-file .env.dev up -d --force-recreate dev-backend
+    docker compose -f docker-compose.dev.server.yml --env-file .env.dev up -d --force-recreate dev-backend
 fi
 if [ "$BUILD_FRONTEND" = true ]; then
-    docker compose -f docker-compose.dev.yml --env-file .env.dev up -d --force-recreate dev-frontend
+    docker compose -f docker-compose.dev.server.yml --env-file .env.dev up -d --force-recreate dev-frontend
 fi
 
 echo "Waiting for services..."
@@ -182,7 +183,7 @@ sleep 5
 
 echo ""
 echo "Container status:"
-docker compose -f docker-compose.dev.yml ps
+docker compose -f docker-compose.dev.server.yml ps
 
 echo ""
 echo "Health checks:"
@@ -210,4 +211,4 @@ echo "DEV DEPLOYMENT COMPLETE"
 echo "URL: https://$DEV_DOMAIN"
 echo ""
 echo "View logs:"
-echo "   ssh $USER@$SERVER 'cd $APP_DIR && docker compose -f docker-compose.dev.yml logs -f'"
+echo "   ssh $USER@$SERVER 'cd $APP_DIR && docker compose -f docker-compose.dev.server.yml logs -f'"
