@@ -4,8 +4,6 @@ const Imprint: React.FC = () => (
   <div style={{ maxWidth: 860, margin: '24px auto', padding: '0 16px' }}>
     <h1>Impressum</h1>
     <p>
-      Anbieter: Roman Kuskowski<br/>
-      Anschrift: Schönegarten 08, 10785 Berlin<br/>
       Kontakt: mail@romankuskowski.de<br/>
       USt‑ID: nicht vorhanden (Kleinunternehmer)
     </p>
