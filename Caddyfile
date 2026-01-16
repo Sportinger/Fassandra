@@ -7,6 +7,65 @@ www.fassandra.de {
     redir https://fassandra.de{uri}
 }
 
+# Development environment
+dev.fassandra.de {
+    # Backend API
+    handle /api/* {
+        reverse_proxy dev-backend:3000 {
+            transport http {
+                versions 1.1
+                read_timeout 24h
+                write_timeout 24h
+                dial_timeout 30s
+            }
+        }
+    }
+
+    # Health check endpoint
+    handle /health {
+        reverse_proxy dev-backend:3000
+    }
+
+    # Login endpoint
+    handle /login {
+        reverse_proxy dev-backend:3000
+    }
+
+    # Google login endpoint
+    handle /login/google {
+        reverse_proxy dev-backend:3000
+    }
+
+    # Register endpoint
+    handle /register {
+        reverse_proxy dev-backend:3000
+    }
+
+    # Frontend
+    handle {
+        reverse_proxy dev-frontend:80
+    }
+
+    # Security headers
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        -Server
+    }
+
+    encode zstd gzip
+
+    request_body {
+        max_size 50MB
+    }
+
+    log {
+        output file /var/log/caddy/dev-access.log
+        format json
+    }
+}
+
 fassandra.de {
     # Backend API - handle API routes first
     handle /api/* {
