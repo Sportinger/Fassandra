@@ -25,7 +25,7 @@ use crate::handlers::claude_session_handler::{
 };
 use crate::handlers::claude_websocket::claude_session_ws;
 use crate::handlers::script_upload_handler::{
-    parse_existing_script, upload_and_parse_script, ExtendedScriptServices,
+    parse_existing_script, upload_and_parse_script, upload_pdf_simple, ExtendedScriptServices,
 };
 use crate::models::script_share::{ScriptShare, ShareScriptRequest};
 use crate::services::claude_session_service::ClaudeSessionService;
@@ -50,7 +50,15 @@ pub struct ScriptServices {
 /// * `Router<ExtendedScriptServices>` - Configured router with script routes and security middleware
 pub fn script_routes(rate_limiter: Arc<RateLimiter>) -> Router<ExtendedScriptServices> {
     Router::new()
-        // PDF upload and parsing endpoints using Claude Code
+        // Simple PDF upload - extracts text without Claude processing
+        .route(
+            "/upload-pdf-simple",
+            post(upload_pdf_simple).layer(middleware::from_fn_with_state(
+                rate_limiter.clone(),
+                rate_limit_middleware,
+            )),
+        )
+        // PDF upload and parsing endpoints using Claude Code (kept for future use)
         .route(
             "/upload-pdf",
             post(upload_and_parse_script).layer(middleware::from_fn_with_state(

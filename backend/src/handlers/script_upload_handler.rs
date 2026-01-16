@@ -18,9 +18,22 @@ use tokio::fs;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
+// Yrs imports for simple PDF upload
+use yrs::Map;
+use yrs::updates::encoder::Encode;
+use yrs::{Doc, Options, ReadTxn, Transact, WriteTxn, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
+
 #[derive(serde::Serialize)]
 pub struct UploadResponse {
     pub session_id: Uuid,
+    pub message: String,
+}
+
+/// Response for simple PDF upload (no Claude processing)
+#[derive(serde::Serialize)]
+pub struct SimpleUploadResponse {
+    pub script_id: Uuid,
+    pub title: String,
     pub message: String,
 }
 
@@ -256,4 +269,205 @@ pub async fn parse_existing_script(
     let sse = Sse::new(sse_stream).keep_alive(KeepAlive::default());
 
     Ok(sse)
+}
+
+/// Simple PDF upload handler - extracts text and creates script without Claude processing
+///
+/// This is a simplified import flow:
+/// 1. Upload PDF
+/// 2. Extract raw text using pdftotext
+/// 3. Create script with plain text paragraphs
+/// 4. Delete PDF
+/// 5. Return script ID
+pub async fn upload_pdf_simple(
+    State(services): State<ExtendedScriptServices>,
+    auth_user: AuthUser,
+    mut multipart: Multipart,
+) -> Result<axum::Json<SimpleUploadResponse>, AppError> {
+    // Create upload directory if it doesn't exist
+    let upload_dir = PathBuf::from("uploads/scripts");
+    fs::create_dir_all(&upload_dir)
+        .await
+        .map_err(|e| AppError::Internal(anyhow!("Failed to create upload directory: {}", e)))?;
+
+    // Generate a unique filename
+    let temp_id = Uuid::new_v4();
+    let mut pdf_path: Option<PathBuf> = None;
+    let mut original_filename = String::new();
+
+    // Process multipart upload
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::BadRequest(format!("Failed to read multipart field: {}", e)))?
+    {
+        let file_name = field.file_name().unwrap_or("").to_string();
+
+        if file_name.to_lowercase().ends_with(".pdf") {
+            original_filename = file_name.clone();
+            let filepath = upload_dir.join(format!("{}_{}", temp_id, file_name));
+
+            // Create file
+            let mut file = tokio::fs::File::create(&filepath)
+                .await
+                .map_err(|e| AppError::Internal(anyhow!("Failed to create file: {}", e)))?;
+
+            // Stream the file data
+            let mut field_stream = field.into_stream();
+            while let Some(chunk) = field_stream
+                .try_next()
+                .await
+                .map_err(|e| AppError::Internal(anyhow!("Failed to read chunk: {}", e)))?
+            {
+                tokio::io::AsyncWriteExt::write_all(&mut file, &chunk)
+                    .await
+                    .map_err(|e| AppError::Internal(anyhow!("Failed to write chunk: {}", e)))?;
+            }
+
+            pdf_path = Some(filepath);
+            break;
+        }
+    }
+
+    let pdf_path =
+        pdf_path.ok_or_else(|| AppError::BadRequest("No PDF file found in upload".to_string()))?;
+
+    // Extract text using pdftotext
+    let output = tokio::process::Command::new("pdftotext")
+        .arg("-layout")  // Preserve layout
+        .arg(&pdf_path)
+        .arg("-")  // Output to stdout
+        .output()
+        .await
+        .map_err(|e| AppError::Internal(anyhow!("Failed to run pdftotext: {}", e)))?;
+
+    if !output.status.success() {
+        // Clean up PDF file
+        let _ = fs::remove_file(&pdf_path).await;
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(AppError::Internal(anyhow!("pdftotext failed: {}", stderr)));
+    }
+
+    let extracted_text = String::from_utf8_lossy(&output.stdout).to_string();
+
+    // Clean up PDF file - we don't need it anymore
+    let _ = fs::remove_file(&pdf_path).await;
+
+    // Get title from filename (without .pdf extension)
+    let title = std::path::Path::new(&original_filename)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("Untitled Script")
+        .to_string();
+
+    // Get database pool
+    let pool = services.script_services.script_service.get_pool();
+
+    // Get user ID
+    let user_id = auth_user.user_id;
+
+    // Create script record
+    let script_id = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO scripts (id, created_by, title, created_at, is_public)
+        VALUES ($1, $2, $3, NOW(), false)
+        "#
+    )
+    .bind(script_id)
+    .bind(user_id)
+    .bind(&title)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::Internal(anyhow!("Failed to create script record: {}", e)))?;
+
+    // Create Yjs document with plain text paragraphs
+    create_simple_yjs_document(pool, script_id, user_id, &extracted_text).await?;
+
+    tracing::info!(
+        "Simple PDF upload completed: script_id={}, title={}, text_length={}",
+        script_id,
+        title,
+        extracted_text.len()
+    );
+
+    Ok(axum::Json(SimpleUploadResponse {
+        script_id,
+        title: title.clone(),
+        message: format!("Script '{}' created successfully", title),
+    }))
+}
+
+/// Creates a simple Yjs document with the extracted text as paragraphs
+async fn create_simple_yjs_document(
+    pool: &sqlx::PgPool,
+    script_id: Uuid,
+    _user_id: Uuid,
+    text: &str,
+) -> Result<(), AppError> {
+    let doc = Doc::with_options(Options::default());
+
+    {
+        let mut txn = doc.transact_mut();
+
+        // Create the standard Yjs structures used by the editor
+        let fragment = txn.get_or_insert_xml_fragment("default");
+        txn.get_or_insert_text("prosemirror");
+        let metadata = txn.get_or_insert_map("metadata");
+
+        // Set metadata using fully qualified syntax
+        Map::insert(&metadata, &mut txn, "initialized", true);
+        Map::insert(&metadata, &mut txn, "source", "simple_pdf_upload".to_string());
+        Map::insert(&metadata, &mut txn, "migrated", true);
+
+        // Split text into paragraphs and add them
+        for line in text.lines() {
+            let trimmed = line.trim();
+            // Skip empty lines but create paragraph nodes for non-empty content
+            if !trimmed.is_empty() {
+                let p = fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                p.push_back(&mut txn, XmlTextPrelim::new(trimmed.to_string()));
+            }
+        }
+
+        // If no content, add an empty paragraph so editor has a cursor anchor
+        if text.trim().is_empty() {
+            fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+        }
+    }
+
+    // Encode the document state
+    let base_state = doc
+        .transact()
+        .encode_state_as_update_v1(&yrs::StateVector::default());
+    let state_vector = doc.transact().state_vector().encode_v1();
+
+    // Store in database
+    sqlx::query(
+        r#"
+        INSERT INTO yjs_base_states
+            (script_id, base_state, state_vector, compacted_at, last_compacted_update_id, update_count, document_size)
+        VALUES ($1, $2, $3, NOW(), 0, 0, $4)
+        ON CONFLICT (script_id) DO UPDATE SET
+            base_state = EXCLUDED.base_state,
+            state_vector = EXCLUDED.state_vector,
+            compacted_at = NOW(),
+            document_size = EXCLUDED.document_size
+        "#
+    )
+    .bind(script_id)
+    .bind(base_state.as_slice())
+    .bind(state_vector.as_slice())
+    .bind(base_state.len() as i32)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::Internal(anyhow!("Failed to store Yjs document: {}", e)))?;
+
+    tracing::info!(
+        "Created simple Yjs document for script {}: {} bytes",
+        script_id,
+        base_state.len()
+    );
+
+    Ok(())
 }
