@@ -20,8 +20,9 @@ This is the **scripts_deploy** subdirectory. The main project structure is:
 ├── frontend/             # React + Vite + TipTap editor
 ├── yjs-parser/           # Node.js utilities for Yjs document parsing
 ├── scripts_deploy/       # THIS DIRECTORY - deployment scripts
-├── docker-compose.dev.yml
-├── docker-compose.prod.yml
+├── docker-compose.dev.yml        # Local development
+├── docker-compose.dev.server.yml # Server development (dev.fassandra.de)
+├── docker-compose.prod.yml       # Production (fassandra.de)
 ├── Caddyfile
 └── .env.prod
 ```
@@ -31,10 +32,10 @@ This is the **scripts_deploy** subdirectory. The main project structure is:
 ### Local Development
 ```bash
 # Start local dev environment (from scripts_deploy/)
-./deploy.dev.sh
+./deploy.local.sh
 
 # Force rebuild without cache
-./deploy.dev.sh --no-cache
+./deploy.local.sh --no-cache
 
 # Access points after deployment:
 # - Frontend: https://192.168.2.141:8080 (self-signed cert)
@@ -43,11 +44,46 @@ This is the **scripts_deploy** subdirectory. The main project structure is:
 # - PgAdmin: http://192.168.2.141:5050
 ```
 
-The dev deployment script:
+The local deployment script:
 1. Cleans existing containers
 2. Builds containers with docker-compose
 3. Starts all services (db, backend, frontend, pgadmin)
 4. Performs health checks
+
+### Server Development (dev.fassandra.de)
+
+Development environment running on the server for testing before production.
+
+**Full reset** (first time or major changes):
+```bash
+./deploy.dev.reset.sh
+
+# Force rebuild without cache
+./deploy.dev.reset.sh --no-cache
+```
+
+**Fast deployment - backend + frontend**:
+```bash
+./deploy.dev.full.sh
+
+# Backend only
+./deploy.dev.full.sh --backend-only
+
+# Frontend only
+./deploy.dev.full.sh --frontend-only
+```
+
+**Frontend only** (quickest for UI changes):
+```bash
+./deploy.dev.fe.sh
+```
+
+The server dev deployment uses:
+- **Server**: fassandra.de (admin user)
+- **Domain**: dev.fassandra.de
+- **App directory**: /home/admin/app
+- **Compose file**: docker-compose.dev.server.yml
+- Uses shared Caddy (configured for both dev and prod subdomains)
 
 ### Production Deployment
 
@@ -75,7 +111,7 @@ The dev deployment script:
 ```
 
 The production deployment uses:
-- **Server**: 91.99.69.115 (root user)
+- **Server**: 91.99.69.115 (admin user)
 - **Domain**: fassandra.de
 - **App directory**: /home/admin/app
 - **Fast deploy**: Uses rsync to sync code, rebuilds in Docker on server
@@ -105,6 +141,28 @@ sudo ./secure-production-setup.sh
 ./maintenance/cleanup.sh
 ```
 Requires `DATABASE_URL` environment variable. Prunes compacted Yjs updates and old uploads older than 30 days (configurable via `DAYS_YJS` and `DAYS_UPLOADS`).
+
+### Monitoring
+```bash
+# Live monitoring with alerts (CPU/memory thresholds, error detection)
+./monitor-live.sh
+
+# Simple monitoring (just docker stats)
+./monitor-simple.sh
+```
+Both scripts connect to the production server via SSH and display real-time container stats. Press Ctrl+C to stop.
+
+### Performance Analysis
+```bash
+# Analyze frontend bundle, backend dependencies, and code patterns
+./analyze-performance.sh
+```
+Generates a report with:
+- Frontend bundle sizes and largest JS files
+- Large dependencies and code anti-patterns
+- Backend cargo dependencies and binary size
+- Database query analysis
+- Optimization recommendations
 
 ## Backend Architecture
 
@@ -213,6 +271,13 @@ npm run android:build
 - All services use named volumes for caching (cargo_cache, target_cache, etc.)
 - Memory limits: 2GB max, 512MB reserved per service
 
+### Server Development (docker-compose.dev.server.yml)
+- **dev-backend**: Backend for dev.fassandra.de, tagged as `mylayer-backend:dev`
+- **dev-frontend**: Frontend for dev.fassandra.de, tagged as `mylayer-frontend:dev`
+- **dev-db**: Separate PostgreSQL instance for dev environment
+- Uses shared Caddy from production compose (handles both domains)
+- Separate volumes from production to avoid data conflicts
+
 ### Production (docker-compose.prod.yml)
 - **caddy**: Reverse proxy, handles HTTPS, ports 80/443
 - **frontend**: Static build served by Caddy, no exposed ports
@@ -272,28 +337,48 @@ No formal test framework configured; tests are in `src/bin/test_*.rs`.
 2. Edit migration SQL in `migrations/`
 3. Deploy (migrations run automatically on backend startup)
 
-### Debugging Production Issues
+### Debugging Server Issues
 ```bash
-# SSH to production
-ssh root@91.99.69.115
-
-# Check logs
+# SSH to server
+ssh admin@fassandra.de
 cd /home/admin/app
+
+# --- Production (fassandra.de) ---
 docker compose -f docker-compose.prod.yml logs -f
-
-# Check specific service
 docker compose -f docker-compose.prod.yml logs -f backend
-
-# Check container status
 docker compose -f docker-compose.prod.yml ps
-
-# Restart service
 docker compose -f docker-compose.prod.yml restart backend
+
+# --- Dev Server (dev.fassandra.de) ---
+docker compose -f docker-compose.dev.server.yml logs -f
+docker compose -f docker-compose.dev.server.yml logs -f dev-backend
+docker compose -f docker-compose.dev.server.yml ps
+docker compose -f docker-compose.dev.server.yml restart dev-backend
 ```
 
 ## Deployment Flow Comparison
 
-### Fast Deploy (deploy.prod.sh)
+### Local (deploy.local.sh)
+1. Clean existing containers
+2. Build with docker-compose.dev.yml
+3. Start all services locally
+- **Use when**: Local development and testing
+
+### Server Dev Fast (deploy.dev.full.sh / deploy.dev.fe.sh)
+1. Rsync source files to server
+2. SSH to server
+3. Build Docker images on server (tagged as :dev)
+4. Restart dev containers
+- **Use when**: Testing on dev.fassandra.de before production
+
+### Server Dev Reset (deploy.dev.reset.sh)
+1. Stop and remove dev containers/images
+2. Rsync all source files
+3. Full rebuild of backend + frontend images
+4. Start all dev services
+- **Use when**: First deploy or major changes to dev server
+
+### Production Fast (deploy.prod.sh)
 1. Rsync backend, frontend, yjs-parser, config files to server
 2. SSH to server
 3. Rebuild frontend Docker image on server
@@ -301,7 +386,7 @@ docker compose -f docker-compose.prod.yml restart backend
 5. Restart Caddy
 - **Use when**: Frontend changes, small backend changes that don't require rebuild
 
-### Reset Deploy (deploy.prod.reset.sh)
+### Production Reset (deploy.prod.reset.sh)
 1. Build backend + frontend images locally
 2. Save images as tar.gz
 3. Transfer to server via SCP
@@ -311,9 +396,11 @@ docker compose -f docker-compose.prod.yml restart backend
 
 ## Known Configurations
 
-- **Dev IP**: 192.168.2.141
-- **Prod IP**: 91.99.69.115
-- **Domain**: fassandra.de
+- **Local Dev IP**: 192.168.2.141
+- **Server IP**: 91.99.69.115
+- **Production Domain**: fassandra.de
+- **Dev Server Domain**: dev.fassandra.de
+- **SSH User**: admin
 - **License**: AGPL-3.0-or-later
 
 ## Troubleshooting

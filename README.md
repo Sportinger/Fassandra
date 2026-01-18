@@ -10,7 +10,7 @@ Quick Start
 - Prerequisites: Docker 24+, Docker Compose, Node 20+ (optional for direct frontend dev).
 - Dev environment variables: `.env.dev` at repo root already contains sane defaults.
 - Start locally:
-  - `./scripts_deploy/deploy.dev.sh`
+  - `./scripts_deploy/deploy.local.sh`
   - Services: Postgres (`db`), Backend (`backend` on 3000), Frontend (`frontend` on 8080), PgAdmin (5050, optional; see below).
 - First login: Register a user in the app, or set admin via `ADMIN_EMAIL`/`ADMIN_PASSWORD` in env (backend reads them on start to fix a placeholder hash).
 
@@ -171,7 +171,7 @@ Security Highlights
 Local Development
 - Compose: `docker compose --env-file .env.dev -f docker-compose.dev.yml up -d`
   - Services: `db`, `backend`, `frontend`, `pgadmin` (admin UI). If you prefer no PgAdmin, start only needed services: `up -d db backend frontend`.
-- Dev script: `./scripts_deploy/deploy.dev.sh`
+- Dev script: `./scripts_deploy/deploy.local.sh`
   - Builds images, brings the stack up, verifies health, prints access URLs:
     - Frontend: `https://localhost:8080` (self‑signed cert)
     - Backend: `http://localhost:3000`
