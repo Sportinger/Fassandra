@@ -1145,3 +1145,670 @@ async fn rebuild_yjs_from_parsed_json(
 
     Ok(())
 }
+
+// ============================================================================
+// CHUNKED AI FORMAT WITH SSE STREAMING
+// ============================================================================
+
+/// Chunk with context from previous chunk for continuity
+#[derive(Debug, Clone)]
+pub struct ChunkWithContext {
+    pub chunk_index: usize,
+    pub total_chunks: usize,
+    pub context: Option<String>,  // Previous chunk's ending for context
+    pub text: String,             // Text to parse
+    pub is_first: bool,
+    pub is_last: bool,
+}
+
+/// SSE event types for streaming progress
+#[derive(serde::Serialize, Clone)]
+#[serde(tag = "type")]
+pub enum AIFormatEvent {
+    #[serde(rename = "started")]
+    Started {
+        total_chunks: usize,
+        backup_id: String,
+        total_chars: usize,
+    },
+    #[serde(rename = "chunk_started")]
+    ChunkStarted {
+        chunk: usize,
+        total: usize,
+    },
+    #[serde(rename = "chunk_complete")]
+    ChunkComplete {
+        chunk: usize,
+        total: usize,
+        items_parsed: usize,
+    },
+    #[serde(rename = "complete")]
+    Complete {
+        total_items: usize,
+        backup_id: String,
+    },
+    #[serde(rename = "error")]
+    Error {
+        message: String,
+        chunk: Option<usize>,
+    },
+    #[serde(rename = "cancelled")]
+    Cancelled,
+}
+
+/// Request body for cancel/undo operations
+#[derive(serde::Deserialize)]
+pub struct FormatControlRequest {
+    pub backup_id: String,
+}
+
+/// In-memory storage for backups and cancel flags
+/// In production, consider using Redis or database
+use std::sync::RwLock;
+use std::collections::HashMap;
+use once_cell::sync::Lazy;
+
+#[derive(Clone)]
+struct FormatSession {
+    backup_state: Vec<u8>,
+    script_id: Uuid,
+    cancelled: bool,
+    created_at: std::time::Instant,
+}
+
+static FORMAT_SESSIONS: Lazy<RwLock<HashMap<String, FormatSession>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
+
+/// Split text into chunks with overlap for context continuity
+fn split_into_chunks(text: &str, chunk_size: usize, overlap_size: usize) -> Vec<ChunkWithContext> {
+    let text_len = text.len();
+
+    if text_len <= chunk_size {
+        // Small document, single chunk
+        return vec![ChunkWithContext {
+            chunk_index: 0,
+            total_chunks: 1,
+            context: None,
+            text: text.to_string(),
+            is_first: true,
+            is_last: true,
+        }];
+    }
+
+    let mut chunks = Vec::new();
+    let mut start = 0;
+    let mut chunk_index = 0;
+
+    // First, calculate total chunks for progress reporting
+    let mut temp_start = 0;
+    let mut total_chunks = 0;
+    while temp_start < text_len {
+        total_chunks += 1;
+        temp_start += chunk_size;
+    }
+
+    while start < text_len {
+        let end = (start + chunk_size).min(text_len);
+
+        // Try to find a good break point (paragraph break, empty line)
+        let actual_end = if end < text_len {
+            find_break_point(text, end, chunk_size / 4)
+        } else {
+            end
+        };
+
+        let chunk_text = &text[start..actual_end];
+
+        // Get context from previous chunk
+        let context = if start > 0 {
+            let context_start = if start > overlap_size { start - overlap_size } else { 0 };
+            Some(text[context_start..start].to_string())
+        } else {
+            None
+        };
+
+        chunks.push(ChunkWithContext {
+            chunk_index,
+            total_chunks,
+            context,
+            text: chunk_text.to_string(),
+            is_first: chunk_index == 0,
+            is_last: actual_end >= text_len,
+        });
+
+        start = actual_end;
+        chunk_index += 1;
+    }
+
+    // Update total_chunks to actual count
+    let actual_total = chunks.len();
+    for chunk in &mut chunks {
+        chunk.total_chunks = actual_total;
+        chunk.is_last = chunk.chunk_index == actual_total - 1;
+    }
+
+    tracing::debug!("[split_into_chunks] Split {} chars into {} chunks", text_len, actual_total);
+    chunks
+}
+
+/// Find a good break point near the target position
+fn find_break_point(text: &str, target: usize, search_range: usize) -> usize {
+    let search_start = target.saturating_sub(search_range);
+    let search_end = (target + search_range).min(text.len());
+    let search_text = &text[search_start..search_end];
+
+    // Priority: double newline (paragraph break) > single newline > space
+    if let Some(pos) = search_text.rfind("\n\n") {
+        return search_start + pos + 2;
+    }
+    if let Some(pos) = search_text.rfind('\n') {
+        return search_start + pos + 1;
+    }
+    if let Some(pos) = search_text.rfind(' ') {
+        return search_start + pos + 1;
+    }
+
+    target
+}
+
+/// Save backup of current document state
+async fn save_format_backup(
+    pool: &sqlx::PgPool,
+    script_id: Uuid,
+) -> Result<String, AppError> {
+    use yrs::updates::decoder::Decode;
+
+    tracing::debug!("[save_format_backup] Saving backup for script {}", script_id);
+
+    // Load current document state
+    let base_state: Option<(Vec<u8>,)> = sqlx::query_as(
+        "SELECT base_state FROM yjs_base_states WHERE script_id = $1",
+    )
+    .bind(script_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::Internal(anyhow!("Database error: {}", e)))?;
+
+    let backup_state = base_state
+        .map(|(data,)| data)
+        .unwrap_or_default();
+
+    let backup_id = Uuid::new_v4().to_string();
+
+    // Store in memory
+    let session = FormatSession {
+        backup_state,
+        script_id,
+        cancelled: false,
+        created_at: std::time::Instant::now(),
+    };
+
+    FORMAT_SESSIONS.write().unwrap().insert(backup_id.clone(), session);
+
+    tracing::debug!("[save_format_backup] Backup saved with id {}", backup_id);
+    Ok(backup_id)
+}
+
+/// Restore document from backup
+async fn restore_format_backup(
+    pool: &sqlx::PgPool,
+    backup_id: &str,
+) -> Result<(), AppError> {
+    let session = FORMAT_SESSIONS.read().unwrap()
+        .get(backup_id)
+        .cloned()
+        .ok_or_else(|| AppError::NotFound("Backup not found".to_string()))?;
+
+    tracing::debug!("[restore_format_backup] Restoring backup {} for script {}",
+        backup_id, session.script_id);
+
+    // Restore the backup state
+    let doc = Doc::with_options(Options::default());
+    if !session.backup_state.is_empty() {
+        use yrs::updates::decoder::Decode;
+        if let Ok(update) = yrs::Update::decode_v1(&session.backup_state) {
+            let mut txn = doc.transact_mut();
+            let _ = txn.apply_update(update);
+        }
+    }
+
+    let base_state = doc.transact().encode_state_as_update_v1(&yrs::StateVector::default());
+    let state_vector = doc.transact().state_vector().encode_v1();
+
+    sqlx::query(
+        r#"
+        INSERT INTO yjs_base_states
+            (script_id, base_state, state_vector, compacted_at, last_compacted_update_id, update_count, document_size)
+        VALUES ($1, $2, $3, NOW(), 0, 0, $4)
+        ON CONFLICT (script_id) DO UPDATE SET
+            base_state = EXCLUDED.base_state,
+            state_vector = EXCLUDED.state_vector,
+            compacted_at = NOW(),
+            document_size = EXCLUDED.document_size
+        "#
+    )
+    .bind(session.script_id)
+    .bind(base_state.as_slice())
+    .bind(state_vector.as_slice())
+    .bind(base_state.len() as i32)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::Internal(anyhow!("Failed to restore backup: {}", e)))?;
+
+    tracing::info!("[restore_format_backup] Backup {} restored successfully", backup_id);
+    Ok(())
+}
+
+/// Check if a format session has been cancelled
+fn is_session_cancelled(backup_id: &str) -> bool {
+    FORMAT_SESSIONS.read().unwrap()
+        .get(backup_id)
+        .map(|s| s.cancelled)
+        .unwrap_or(false)
+}
+
+/// Mark a session as cancelled
+fn mark_session_cancelled(backup_id: &str) -> bool {
+    if let Some(session) = FORMAT_SESSIONS.write().unwrap().get_mut(backup_id) {
+        session.cancelled = true;
+        true
+    } else {
+        false
+    }
+}
+
+/// Clean up old sessions (call periodically)
+pub fn cleanup_old_format_sessions(max_age_secs: u64) {
+    let mut sessions = FORMAT_SESSIONS.write().unwrap();
+    let now = std::time::Instant::now();
+    sessions.retain(|_, session| {
+        now.duration_since(session.created_at).as_secs() < max_age_secs
+    });
+}
+
+/// Embed the chunk parser prompt
+const TEXT_PARSER_CHUNK_PROMPT: &str = include_str!("../services/prompt_text_parser_chunk.md");
+
+/// SSE streaming endpoint for AI formatting with chunked processing
+pub async fn ai_format_stream(
+    State(services): State<ExtendedScriptServices>,
+    auth_user: AuthUser,
+    AxumPath(script_id): AxumPath<Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    let pool = services.script_services.script_service.get_pool().clone();
+
+    // Verify user has access to this script
+    let script: (Uuid, Uuid, String) = sqlx::query_as(
+        "SELECT id, created_by, title FROM scripts WHERE id = $1",
+    )
+    .bind(script_id)
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| AppError::Internal(anyhow!("Database error: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Script not found".to_string()))?;
+
+    let (_, created_by, title) = script;
+    if created_by != auth_user.user_id {
+        return Err(AppError::Forbidden("You don't have access to this script".to_string()));
+    }
+
+    tracing::info!("[ai_format_stream] Starting for script {}: '{}'", script_id, title);
+
+    // Create channel for SSE events
+    let (tx, rx) = tokio::sync::mpsc::channel::<AIFormatEvent>(100);
+
+    // Clone pool for the spawned task
+    let pool_clone = pool.clone();
+    let user_id = auth_user.user_id;
+
+    // Spawn the processing task
+    tokio::spawn(async move {
+        if let Err(e) = process_format_stream(pool_clone, script_id, user_id, tx.clone()).await {
+            tracing::error!("[ai_format_stream] Processing error: {}", e);
+            let _ = tx.send(AIFormatEvent::Error {
+                message: e.to_string(),
+                chunk: None,
+            }).await;
+        }
+    });
+
+    // Create SSE stream
+    let sse_stream = stream::unfold(rx, |mut rx| async move {
+        match rx.recv().await {
+            Some(event) => {
+                let json = serde_json::to_string(&event).unwrap_or_default();
+                let sse_event = Event::default().data(json);
+                Some((Ok::<_, Infallible>(sse_event), rx))
+            }
+            None => None,
+        }
+    });
+
+    let sse = Sse::new(sse_stream).keep_alive(KeepAlive::default());
+    Ok(sse)
+}
+
+/// Process format stream - the actual chunked processing logic
+async fn process_format_stream(
+    pool: sqlx::PgPool,
+    script_id: Uuid,
+    user_id: Uuid,
+    tx: tokio::sync::mpsc::Sender<AIFormatEvent>,
+) -> Result<(), AppError> {
+    // Step 1: Extract text from document
+    let document_text = extract_text_from_yjs(&pool, script_id).await?;
+
+    if document_text.trim().is_empty() {
+        return Err(AppError::BadRequest("Document is empty, nothing to format".to_string()));
+    }
+
+    let total_chars = document_text.len();
+    tracing::info!("[process_format_stream] Extracted {} chars from script {}", total_chars, script_id);
+
+    // Step 2: Save backup before processing
+    let backup_id = save_format_backup(&pool, script_id).await?;
+    tracing::info!("[process_format_stream] Backup saved: {}", backup_id);
+
+    // Step 3: Split into chunks
+    let chunk_size = 8000;  // ~8k chars per chunk
+    let overlap_size = 1000; // ~1k overlap for context
+    let chunks = split_into_chunks(&document_text, chunk_size, overlap_size);
+
+    // Send started event
+    let _ = tx.send(AIFormatEvent::Started {
+        total_chunks: chunks.len(),
+        backup_id: backup_id.clone(),
+        total_chars,
+    }).await;
+
+    tracing::info!("[process_format_stream] Split into {} chunks", chunks.len());
+
+    // Step 4: Process chunks sequentially
+    let mut all_content: Vec<serde_json::Value> = Vec::new();
+    let mut last_scene_number = 0;
+    let mut last_speaker: Option<String> = None;
+
+    for chunk in &chunks {
+        // Check for cancellation
+        if is_session_cancelled(&backup_id) {
+            tracing::info!("[process_format_stream] Cancelled at chunk {}", chunk.chunk_index);
+            // Restore backup
+            restore_format_backup(&pool, &backup_id).await?;
+            let _ = tx.send(AIFormatEvent::Cancelled).await;
+            return Ok(());
+        }
+
+        // Send chunk started event
+        let _ = tx.send(AIFormatEvent::ChunkStarted {
+            chunk: chunk.chunk_index + 1,
+            total: chunk.total_chunks,
+        }).await;
+
+        tracing::info!("[process_format_stream] Processing chunk {}/{}", chunk.chunk_index + 1, chunk.total_chunks);
+
+        // Call Claude for this chunk
+        let chunk_result = call_claude_for_chunk(
+            chunk,
+            last_scene_number,
+            last_speaker.as_deref(),
+        ).await;
+
+        match chunk_result {
+            Ok((parsed_content, new_scene_number, new_speaker)) => {
+                let items_count = parsed_content.len();
+                all_content.extend(parsed_content);
+                last_scene_number = new_scene_number;
+                last_speaker = new_speaker;
+
+                // Send chunk complete event
+                let _ = tx.send(AIFormatEvent::ChunkComplete {
+                    chunk: chunk.chunk_index + 1,
+                    total: chunk.total_chunks,
+                    items_parsed: items_count,
+                }).await;
+
+                tracing::info!("[process_format_stream] Chunk {} complete: {} items", chunk.chunk_index + 1, items_count);
+            }
+            Err(e) => {
+                tracing::error!("[process_format_stream] Chunk {} failed: {}", chunk.chunk_index + 1, e);
+                // Restore backup on error
+                let _ = restore_format_backup(&pool, &backup_id).await;
+                let _ = tx.send(AIFormatEvent::Error {
+                    message: e.to_string(),
+                    chunk: Some(chunk.chunk_index + 1),
+                }).await;
+                return Err(e);
+            }
+        }
+    }
+
+    // Step 5: Rebuild document with all parsed content
+    tracing::info!("[process_format_stream] Rebuilding document with {} total items", all_content.len());
+
+    let full_json = serde_json::json!({
+        "metadata": {},
+        "content": all_content
+    });
+
+    rebuild_yjs_from_parsed_json(&pool, script_id, user_id, &full_json.to_string()).await?;
+
+    // Send complete event
+    let _ = tx.send(AIFormatEvent::Complete {
+        total_items: all_content.len(),
+        backup_id: backup_id.clone(),
+    }).await;
+
+    tracing::info!("[process_format_stream] Format complete for script {}", script_id);
+    Ok(())
+}
+
+/// Call Claude CLI to parse a single chunk with context
+async fn call_claude_for_chunk(
+    chunk: &ChunkWithContext,
+    previous_scene_number: usize,
+    previous_speaker: Option<&str>,
+) -> Result<(Vec<serde_json::Value>, usize, Option<String>), AppError> {
+    use tokio::io::AsyncWriteExt;
+    use tokio::process::Command;
+
+    tracing::debug!("[call_claude_for_chunk] Processing chunk {}/{}, {} chars",
+        chunk.chunk_index + 1, chunk.total_chunks, chunk.text.len());
+
+    // Build the prompt with chunk context
+    let has_context = chunk.context.is_some();
+    let context = chunk.context.as_deref().unwrap_or("");
+    let next_scene_number = previous_scene_number + 1;
+
+    // Build prompt from template by replacing placeholders
+    let mut prompt = TEXT_PARSER_CHUNK_PROMPT.to_string();
+    prompt = prompt.replace("{{#if has_context}}", if has_context { "" } else { "<!--" });
+    prompt = prompt.replace("{{/if}}", if has_context { "" } else { "-->" });
+    prompt = prompt.replace("{{context}}", context);
+    prompt = prompt.replace("{{previous_scene_number}}", &previous_scene_number.to_string());
+    prompt = prompt.replace("{{previous_speaker}}", previous_speaker.unwrap_or("UNKNOWN"));
+    prompt = prompt.replace("{{next_scene_number}}", &next_scene_number.to_string());
+    prompt = prompt.replace("{{text}}", &chunk.text);
+
+    // Detect Docker vs local
+    let is_docker = tokio::fs::metadata("/home/appuser").await.is_ok();
+
+    // Find Claude CLI
+    let home_env = std::env::var("HOME").unwrap_or_default();
+    let local_claude_path = format!("{}/.npm-global/bin/claude", home_env);
+
+    let search_paths: Vec<&str> = if is_docker {
+        vec![
+            "/home/appuser/.npm-global/bin/claude",
+            "/usr/local/bin/claude",
+            "/usr/bin/claude",
+        ]
+    } else {
+        vec![
+            local_claude_path.as_str(),
+            "/usr/local/bin/claude",
+            "/usr/bin/claude",
+        ]
+    };
+
+    let mut claude_path = "claude".to_string();
+    for path in search_paths {
+        if tokio::fs::metadata(path).await.is_ok() {
+            claude_path = path.to_string();
+            break;
+        }
+    }
+
+    // Configure environment
+    let (home_dir, xdg_config) = if is_docker {
+        ("/home/appuser".to_string(), "/home/appuser/.config".to_string())
+    } else {
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+        let xdg = std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{}/.config", home));
+        (home, xdg)
+    };
+
+    // Run Claude CLI
+    let mut cmd = Command::new(&claude_path);
+    cmd.arg("--print")
+        .arg("--output-format")
+        .arg("text")
+        .arg("--dangerously-skip-permissions")
+        .env("HOME", &home_dir)
+        .env("XDG_CONFIG_HOME", &xdg_config)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+
+    let mut child = cmd.spawn()
+        .map_err(|e| AppError::Internal(anyhow!("Failed to start Claude CLI: {}", e)))?;
+
+    // Send prompt to stdin
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(prompt.as_bytes()).await
+            .map_err(|e| AppError::Internal(anyhow!("Failed to write to Claude stdin: {}", e)))?;
+        stdin.shutdown().await
+            .map_err(|e| AppError::Internal(anyhow!("Failed to close Claude stdin: {}", e)))?;
+    }
+
+    // Wait for completion (3 minutes per chunk should be plenty)
+    let output = tokio::time::timeout(
+        std::time::Duration::from_secs(180),
+        child.wait_with_output()
+    )
+    .await
+    .map_err(|_| AppError::Internal(anyhow!("Claude CLI timed out for chunk")))?
+    .map_err(|e| AppError::Internal(anyhow!("Claude CLI error: {}", e)))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(AppError::Internal(anyhow!("Claude CLI failed: {}", stderr)));
+    }
+
+    let response = String::from_utf8_lossy(&output.stdout).to_string();
+
+    // Extract JSON from response
+    let json_str = extract_json_from_response(&response)?;
+
+    // Parse JSON
+    let parsed: serde_json::Value = serde_json::from_str(&json_str)
+        .map_err(|e| AppError::Internal(anyhow!("Invalid JSON from Claude: {}", e)))?;
+
+    // Extract content array
+    let content = parsed.get("content")
+        .and_then(|c| c.as_array())
+        .ok_or_else(|| AppError::Internal(anyhow!("Missing content array")))?
+        .clone();
+
+    // Extract chunk_info for next chunk
+    let chunk_info = parsed.get("chunk_info");
+    let new_scene_number = chunk_info
+        .and_then(|ci| ci.get("last_scene_number"))
+        .and_then(|n| n.as_str())
+        .and_then(|n| n.parse::<usize>().ok())
+        .unwrap_or(previous_scene_number);
+
+    let new_speaker = chunk_info
+        .and_then(|ci| ci.get("last_speaker"))
+        .and_then(|s| s.as_str())
+        .map(|s| s.to_string());
+
+    tracing::debug!("[call_claude_for_chunk] Chunk {} parsed: {} items, last_scene={}, last_speaker={:?}",
+        chunk.chunk_index + 1, content.len(), new_scene_number, new_speaker);
+
+    Ok((content, new_scene_number, new_speaker))
+}
+
+/// Cancel endpoint - stops processing and restores backup
+pub async fn ai_format_cancel(
+    State(services): State<ExtendedScriptServices>,
+    auth_user: AuthUser,
+    AxumPath(script_id): AxumPath<Uuid>,
+    axum::Json(req): axum::Json<FormatControlRequest>,
+) -> Result<axum::Json<serde_json::Value>, AppError> {
+    let pool = services.script_services.script_service.get_pool();
+
+    // Verify ownership
+    let script: (Uuid,) = sqlx::query_as(
+        "SELECT created_by FROM scripts WHERE id = $1",
+    )
+    .bind(script_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::Internal(anyhow!("Database error: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Script not found".to_string()))?;
+
+    if script.0 != auth_user.user_id {
+        return Err(AppError::Forbidden("You don't have access to this script".to_string()));
+    }
+
+    // Mark session as cancelled
+    if mark_session_cancelled(&req.backup_id) {
+        tracing::info!("[ai_format_cancel] Session {} marked as cancelled", req.backup_id);
+
+        // Restore backup
+        restore_format_backup(pool, &req.backup_id).await?;
+
+        Ok(axum::Json(serde_json::json!({
+            "success": true,
+            "message": "Format cancelled and document restored"
+        })))
+    } else {
+        Err(AppError::NotFound("Session not found".to_string()))
+    }
+}
+
+/// Undo endpoint - restores document to pre-format state
+pub async fn ai_format_undo(
+    State(services): State<ExtendedScriptServices>,
+    auth_user: AuthUser,
+    AxumPath(script_id): AxumPath<Uuid>,
+    axum::Json(req): axum::Json<FormatControlRequest>,
+) -> Result<axum::Json<serde_json::Value>, AppError> {
+    let pool = services.script_services.script_service.get_pool();
+
+    // Verify ownership
+    let script: (Uuid,) = sqlx::query_as(
+        "SELECT created_by FROM scripts WHERE id = $1",
+    )
+    .bind(script_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::Internal(anyhow!("Database error: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Script not found".to_string()))?;
+
+    if script.0 != auth_user.user_id {
+        return Err(AppError::Forbidden("You don't have access to this script".to_string()));
+    }
+
+    // Restore backup
+    tracing::info!("[ai_format_undo] Undoing format for script {} with backup {}", script_id, req.backup_id);
+    restore_format_backup(pool, &req.backup_id).await?;
+
+    // Remove session after undo
+    FORMAT_SESSIONS.write().unwrap().remove(&req.backup_id);
+
+    Ok(axum::Json(serde_json::json!({
+        "success": true,
+        "message": "Document restored to pre-format state"
+    })))
+}

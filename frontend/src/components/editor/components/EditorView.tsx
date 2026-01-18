@@ -87,6 +87,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
 
   // AI Format modal state
   const [aiFormatModalOpen, setAiFormatModalOpen] = useState(false);
+  const [isDocumentLocked, setIsDocumentLocked] = useState(false);
 
   // Listen for AI format button click event
   useEffect(() => {
@@ -98,6 +99,15 @@ export const EditorView: React.FC<EditorViewProps> = ({
       window.removeEventListener('fassandra:open-ai-format-modal', handleOpenAIFormatModal);
     };
   }, []);
+
+  // Handle document lock state changes
+  const handleLockChange = useCallback((locked: boolean) => {
+    setIsDocumentLocked(locked);
+    // Disable/enable editor based on lock state
+    if (editor) {
+      editor.setEditable(!locked);
+    }
+  }, [editor]);
 
   const handleCloseAIFormatModal = useCallback(() => {
     setAiFormatModalOpen(false);
@@ -362,6 +372,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
         isOpen={aiFormatModalOpen}
         onClose={handleCloseAIFormatModal}
         scriptId={scriptId}
+        onLockChange={handleLockChange}
       />
     </EditorShell>
   );

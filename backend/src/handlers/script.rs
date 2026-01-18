@@ -25,7 +25,8 @@ use crate::handlers::claude_session_handler::{
 };
 use crate::handlers::claude_websocket::claude_session_ws;
 use crate::handlers::script_upload_handler::{
-    ai_format_script, parse_existing_script, upload_and_parse_script, upload_pdf_simple,
+    ai_format_cancel, ai_format_script, ai_format_stream, ai_format_undo,
+    parse_existing_script, upload_and_parse_script, upload_pdf_simple,
     ExtendedScriptServices,
 };
 use crate::models::script_share::{ScriptShare, ShareScriptRequest};
@@ -63,6 +64,30 @@ pub fn script_routes(rate_limiter: Arc<RateLimiter>) -> Router<ExtendedScriptSer
         .route(
             "/:script_id/ai-format",
             post(ai_format_script).layer(middleware::from_fn_with_state(
+                rate_limiter.clone(),
+                rate_limit_middleware,
+            )),
+        )
+        // AI Format with SSE streaming (chunked processing for large documents)
+        .route(
+            "/:script_id/ai-format-stream",
+            get(ai_format_stream).layer(middleware::from_fn_with_state(
+                rate_limiter.clone(),
+                rate_limit_middleware,
+            )),
+        )
+        // Cancel AI Format processing
+        .route(
+            "/:script_id/ai-format-cancel",
+            post(ai_format_cancel).layer(middleware::from_fn_with_state(
+                rate_limiter.clone(),
+                rate_limit_middleware,
+            )),
+        )
+        // Undo AI Format (restore to pre-format state)
+        .route(
+            "/:script_id/ai-format-undo",
+            post(ai_format_undo).layer(middleware::from_fn_with_state(
                 rate_limiter.clone(),
                 rate_limit_middleware,
             )),
