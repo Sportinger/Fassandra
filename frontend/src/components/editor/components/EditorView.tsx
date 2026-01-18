@@ -52,6 +52,7 @@ interface EditorViewProps {
   debugLog: (...args: any[]) => void;
   savingStatus?: 'saved' | 'saving' | 'error';
   lastSaved?: Date | null;
+  scriptId?: string;
 }
 
 export const EditorView: React.FC<EditorViewProps> = ({
@@ -66,6 +67,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
   debugLog,
   savingStatus = 'saved',
   lastSaved = null,
+  scriptId,
 }) => {
   const {
     viewMode,
@@ -359,6 +361,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
         editor={editor}
         isOpen={aiFormatModalOpen}
         onClose={handleCloseAIFormatModal}
+        scriptId={scriptId}
       />
     </EditorShell>
   );

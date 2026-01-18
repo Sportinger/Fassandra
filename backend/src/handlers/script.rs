@@ -25,7 +25,8 @@ use crate::handlers::claude_session_handler::{
 };
 use crate::handlers::claude_websocket::claude_session_ws;
 use crate::handlers::script_upload_handler::{
-    parse_existing_script, upload_and_parse_script, upload_pdf_simple, ExtendedScriptServices,
+    ai_format_script, parse_existing_script, upload_and_parse_script, upload_pdf_simple,
+    ExtendedScriptServices,
 };
 use crate::models::script_share::{ScriptShare, ShareScriptRequest};
 use crate::services::claude_session_service::ClaudeSessionService;
@@ -54,6 +55,14 @@ pub fn script_routes(rate_limiter: Arc<RateLimiter>) -> Router<ExtendedScriptSer
         .route(
             "/upload-pdf-simple",
             post(upload_pdf_simple).layer(middleware::from_fn_with_state(
+                rate_limiter.clone(),
+                rate_limit_middleware,
+            )),
+        )
+        // AI Format - parses plain text into structured script using Claude
+        .route(
+            "/:script_id/ai-format",
+            post(ai_format_script).layer(middleware::from_fn_with_state(
                 rate_limiter.clone(),
                 rate_limit_middleware,
             )),
