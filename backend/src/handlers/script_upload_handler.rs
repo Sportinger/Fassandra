@@ -745,7 +745,7 @@ async fn call_anthropic_for_parsing(text: &str) -> Result<String, AppError> {
     let config = AnthropicConfig {
         api_key,
         model: std::env::var("ANTHROPIC_MODEL")
-            .unwrap_or_else(|_| "claude-sonnet-4-5-20250929".to_string()),
+            .unwrap_or_else(|_| "claude-haiku-4-5-20251001".to_string()),
         max_tokens: std::env::var("ANTHROPIC_MAX_TOKENS")
             .ok()
             .and_then(|s| s.parse().ok())
@@ -1373,7 +1373,7 @@ async fn process_format_stream(
     let config = AnthropicConfig {
         api_key,
         model: std::env::var("ANTHROPIC_MODEL")
-            .unwrap_or_else(|_| "claude-sonnet-4-5-20250929".to_string()),
+            .unwrap_or_else(|_| "claude-haiku-4-5-20251001".to_string()),
         max_tokens: std::env::var("ANTHROPIC_MAX_TOKENS")
             .ok()
             .and_then(|s| s.parse().ok())

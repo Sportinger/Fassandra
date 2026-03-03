@@ -76,7 +76,7 @@ impl Config {
             // Anthropic API defaults
             anthropic_api_key: env::var("ANTHROPIC_API_KEY").ok(),
             anthropic_model: env::var("ANTHROPIC_MODEL")
-                .unwrap_or_else(|_| "claude-sonnet-4-5-20250929".to_string()),
+                .unwrap_or_else(|_| "claude-haiku-4-5-20251001".to_string()),
             anthropic_max_tokens: env::var("ANTHROPIC_MAX_TOKENS")
                 .ok()
                 .and_then(|s| s.parse().ok())

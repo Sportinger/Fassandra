@@ -223,7 +223,7 @@ mod tests {
     fn test_config_validation() {
         let config = AnthropicConfig {
             api_key: "".to_string(),
-            model: "claude-sonnet-4-5-20250929".to_string(),
+            model: "claude-haiku-4-5-20251001".to_string(),
             max_tokens: 4096,
             rate_limit_delay_ms: 2000,
         };
