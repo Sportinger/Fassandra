@@ -171,6 +171,51 @@ impl AnthropicClient {
     }
 }
 
+/// Fix invalid JSON escape sequences produced by the model (e.g. \i, \p, \c).
+/// Iterates character by character; when inside a JSON string, any backslash
+/// not followed by a valid JSON escape char is doubled so the result is valid JSON.
+fn sanitize_json_escapes(json: &str) -> String {
+    let mut result = String::with_capacity(json.len() + 16);
+    let mut chars = json.chars().peekable();
+    let mut in_string = false;
+
+    while let Some(c) = chars.next() {
+        if c == '\\' && in_string {
+            match chars.next() {
+                // Valid single-char escapes — keep as-is
+                Some(next @ ('"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't')) => {
+                    result.push('\\');
+                    result.push(next);
+                }
+                // Unicode escape \uXXXX — keep and consume 4 hex digits
+                Some('u') => {
+                    result.push('\\');
+                    result.push('u');
+                    for _ in 0..4 {
+                        if let Some(h) = chars.next() {
+                            result.push(h);
+                        }
+                    }
+                }
+                // Invalid escape — double the backslash so it becomes \\x
+                Some(next) => {
+                    result.push('\\');
+                    result.push('\\');
+                    result.push(next);
+                }
+                None => result.push('\\'),
+            }
+        } else {
+            // Track string boundaries (backslash-quote pairs are consumed above)
+            if c == '"' {
+                in_string = !in_string;
+            }
+            result.push(c);
+        }
+    }
+    result
+}
+
 /// Extract JSON from Claude's response text
 /// Handles markdown code blocks and raw JSON
 fn extract_json_from_response(text: &str) -> Result<serde_json::Value, AnthropicError> {
@@ -178,7 +223,8 @@ fn extract_json_from_response(text: &str) -> Result<serde_json::Value, Anthropic
 
     // If it starts with {, it's already JSON
     if trimmed.starts_with('{') {
-        return Ok(serde_json::from_str(trimmed)?);
+        let sanitized = sanitize_json_escapes(trimmed);
+        return Ok(serde_json::from_str(&sanitized)?);
     }
 
     // Try to extract from markdown code block
@@ -186,7 +232,8 @@ fn extract_json_from_response(text: &str) -> Result<serde_json::Value, Anthropic
         let after_marker = &trimmed[start + 7..];
         if let Some(end) = after_marker.find("```") {
             let json_str = after_marker[..end].trim();
-            return Ok(serde_json::from_str(json_str)?);
+            let sanitized = sanitize_json_escapes(json_str);
+            return Ok(serde_json::from_str(&sanitized)?);
         }
     }
 
@@ -198,7 +245,8 @@ fn extract_json_from_response(text: &str) -> Result<serde_json::Value, Anthropic
         let content = &after_marker[content_start..];
         if let Some(end) = content.find("```") {
             let json_str = content[..end].trim();
-            return Ok(serde_json::from_str(json_str)?);
+            let sanitized = sanitize_json_escapes(json_str);
+            return Ok(serde_json::from_str(&sanitized)?);
         }
     }
 
@@ -206,7 +254,8 @@ fn extract_json_from_response(text: &str) -> Result<serde_json::Value, Anthropic
     if let Some(start) = trimmed.find('{') {
         if let Some(end) = trimmed.rfind('}') {
             let json_str = &trimmed[start..=end];
-            return Ok(serde_json::from_str(json_str)?);
+            let sanitized = sanitize_json_escapes(json_str);
+            return Ok(serde_json::from_str(&sanitized)?);
         }
     }
 

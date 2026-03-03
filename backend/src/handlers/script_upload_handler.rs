@@ -1098,11 +1098,14 @@ fn split_into_chunks(text: &str, chunk_size: usize, overlap_size: usize) -> Vec<
             end
         };
 
+        let actual_end = text.floor_char_boundary(actual_end);
         let chunk_text = &text[start..actual_end];
 
         // Get context from previous chunk
         let context = if start > 0 {
-            let context_start = if start > overlap_size { start - overlap_size } else { 0 };
+            let context_start = text.floor_char_boundary(
+                if start > overlap_size { start - overlap_size } else { 0 }
+            );
             Some(text[context_start..start].to_string())
         } else {
             None
@@ -1134,8 +1137,11 @@ fn split_into_chunks(text: &str, chunk_size: usize, overlap_size: usize) -> Vec<
 
 /// Find a good break point near the target position
 fn find_break_point(text: &str, target: usize, search_range: usize) -> usize {
-    let search_start = target.saturating_sub(search_range);
-    let search_end = (target + search_range).min(text.len());
+    let raw_start = target.saturating_sub(search_range);
+    let raw_end = (target + search_range).min(text.len());
+    // Snap to valid UTF-8 char boundaries to avoid panics on multi-byte chars (e.g. ñ, é)
+    let search_start = text.floor_char_boundary(raw_start);
+    let search_end = text.floor_char_boundary(raw_end);
     let search_text = &text[search_start..search_end];
 
     // Priority: double newline (paragraph break) > single newline > space
@@ -1351,8 +1357,8 @@ async fn process_format_stream(
     tracing::info!("[process_format_stream] Backup saved: {}", backup_id);
 
     // Step 3: Split into chunks
-    let chunk_size = 8000;  // ~8k chars per chunk
-    let overlap_size = 1000; // ~1k overlap for context
+    let chunk_size = 4000;  // ~4k chars per chunk (smaller = more frequent progress updates)
+    let overlap_size = 500; // ~0.5k overlap for context
     let chunks = split_into_chunks(&document_text, chunk_size, overlap_size);
 
     // Send started event
@@ -1377,7 +1383,7 @@ async fn process_format_stream(
         max_tokens: std::env::var("ANTHROPIC_MAX_TOKENS")
             .ok()
             .and_then(|s| s.parse().ok())
-            .unwrap_or(4096),
+            .unwrap_or(8192),
         rate_limit_delay_ms: std::env::var("ANTHROPIC_RATE_LIMIT_MS")
             .ok()
             .and_then(|s| s.parse().ok())
