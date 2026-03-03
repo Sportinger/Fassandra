@@ -487,12 +487,12 @@ pub struct AIFormatResponse {
     pub script_id: Uuid,
 }
 
-/// AI Format endpoint - parses plain text into structured script using Claude
+/// AI Format endpoint - parses plain text into structured script using Anthropic API
 ///
 /// Flow:
 /// 1. Load existing Yjs document
 /// 2. Extract plain text from it
-/// 3. Send to Claude CLI with parsing prompt
+/// 3. Send to Anthropic API with parsing prompt
 /// 4. Parse JSON response
 /// 5. Rebuild Yjs document with structured content
 pub async fn ai_format_script(
@@ -528,10 +528,10 @@ pub async fn ai_format_script(
 
     tracing::info!("Extracted {} characters from script {}", document_text.len(), script_id);
 
-    // Step 2: Call Claude CLI to parse the text
-    let parsed_json = call_claude_for_parsing(&document_text).await?;
+    // Step 2: Call Anthropic API to parse the text
+    let parsed_json = call_anthropic_for_parsing(&document_text).await?;
 
-    tracing::info!("Received parsed JSON from Claude for script {}", script_id);
+    tracing::info!("Received parsed JSON from Anthropic API for script {}", script_id);
 
     // Step 3: Parse the JSON and rebuild the Yjs document
     rebuild_yjs_from_parsed_json(pool, script_id, auth_user.user_id, &parsed_json).await?;
@@ -732,210 +732,51 @@ fn extract_text_from_xml_node<T: ReadTxn>(txn: &T, node: &yrs::XmlOut) -> String
     }
 }
 
-/// Call Claude CLI to parse the document text
-async fn call_claude_for_parsing(text: &str) -> Result<String, AppError> {
-    use tokio::io::AsyncWriteExt;
-    use tokio::process::Command;
+/// Call Anthropic API to parse the document text
+async fn call_anthropic_for_parsing(text: &str) -> Result<String, AppError> {
+    use crate::external::anthropic::{AnthropicClient, AnthropicConfig};
 
-    tracing::debug!("[call_claude_for_parsing] Starting with {} chars of input text", text.len());
+    tracing::debug!("[call_anthropic_for_parsing] Starting with {} chars of input text", text.len());
 
-    // Build the prompt with the text
-    let prompt = format!(
-        "{}\n\n---\n\nHere is the script text to parse:\n\n```\n{}\n```\n\nParse this script and return ONLY the JSON object, no explanations or markdown code blocks.",
-        TEXT_PARSER_PROMPT,
-        text
-    );
-    tracing::debug!("[call_claude_for_parsing] Built prompt: {} chars total", prompt.len());
+    // Load API configuration
+    let api_key = std::env::var("ANTHROPIC_API_KEY")
+        .map_err(|_| AppError::Internal(anyhow!("ANTHROPIC_API_KEY not set")))?;
 
-    // Detect if running in Docker or locally
-    let is_docker = tokio::fs::metadata("/home/appuser").await.is_ok();
-    tracing::debug!("[call_claude_for_parsing] Running in Docker: {}", is_docker);
-
-    // Find Claude CLI - different paths for Docker vs local
-    tracing::debug!("[call_claude_for_parsing] Searching for Claude CLI...");
-    let home_env = std::env::var("HOME").unwrap_or_default();
-    let local_claude_path = format!("{}/.npm-global/bin/claude", home_env);
-
-    let search_paths: Vec<&str> = if is_docker {
-        vec![
-            "/home/appuser/.npm-global/bin/claude",
-            "/usr/local/bin/claude",
-            "/usr/bin/claude",
-        ]
-    } else {
-        vec![
-            local_claude_path.as_str(),
-            "/usr/local/bin/claude",
-            "/usr/bin/claude",
-        ]
+    let config = AnthropicConfig {
+        api_key,
+        model: std::env::var("ANTHROPIC_MODEL")
+            .unwrap_or_else(|_| "claude-sonnet-4-5-20250929".to_string()),
+        max_tokens: std::env::var("ANTHROPIC_MAX_TOKENS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(4096),
+        rate_limit_delay_ms: 0, // No rate limiting for single-pass parsing
     };
 
-    let mut claude_path = "claude".to_string();
-    for path in search_paths {
-        if tokio::fs::metadata(path).await.is_ok() {
-            claude_path = path.to_string();
-            tracing::debug!("[call_claude_for_parsing] Found Claude CLI at: {}", path);
-            break;
-        } else {
-            tracing::debug!("[call_claude_for_parsing] Claude CLI not at: {}", path);
-        }
-    }
+    // Create client
+    let client = AnthropicClient::new(config)
+        .map_err(|e| AppError::from(e))?;
 
-    tracing::info!("[call_claude_for_parsing] Using Claude CLI at: {}", claude_path);
+    tracing::info!("[call_anthropic_for_parsing] Calling Anthropic API...");
 
-    // Configure Claude environment - use real HOME for local, /home/appuser for Docker
-    let (home_dir, xdg_config) = if is_docker {
-        ("/home/appuser".to_string(), "/home/appuser/.config".to_string())
-    } else {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-        let xdg = std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{}/.config", home));
-        (home, xdg)
-    };
-    tracing::debug!("[call_claude_for_parsing] Environment: HOME={}, XDG_CONFIG_HOME={}", home_dir, xdg_config);
-
-    // Run Claude CLI
-    tracing::debug!("[call_claude_for_parsing] Spawning Claude CLI process...");
-    let mut cmd = Command::new(&claude_path);
-    cmd.arg("--print")
-        .arg("--output-format")
-        .arg("text")  // Get plain text output
-        .arg("--dangerously-skip-permissions")
-        .env("HOME", &home_dir)
-        .env("XDG_CONFIG_HOME", &xdg_config)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped());
-
-    let mut child = cmd.spawn()
+    // Parse with API
+    let response = client.parse_text(TEXT_PARSER_PROMPT, text).await
         .map_err(|e| {
-            tracing::error!("[call_claude_for_parsing] Failed to spawn Claude CLI: {}", e);
-            AppError::Internal(anyhow!("Failed to start Claude CLI: {}", e))
+            tracing::error!("[call_anthropic_for_parsing] Anthropic API error: {}", e);
+            AppError::from(e)
         })?;
-    tracing::debug!("[call_claude_for_parsing] Claude CLI process spawned successfully");
 
-    // Send prompt to stdin
-    tracing::debug!("[call_claude_for_parsing] Writing prompt to stdin...");
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(prompt.as_bytes()).await
-            .map_err(|e| {
-                tracing::error!("[call_claude_for_parsing] Failed to write to stdin: {}", e);
-                AppError::Internal(anyhow!("Failed to write to Claude stdin: {}", e))
-            })?;
-        stdin.shutdown().await
-            .map_err(|e| {
-                tracing::error!("[call_claude_for_parsing] Failed to close stdin: {}", e);
-                AppError::Internal(anyhow!("Failed to close Claude stdin: {}", e))
-            })?;
-        tracing::debug!("[call_claude_for_parsing] Prompt written and stdin closed");
-    } else {
-        tracing::error!("[call_claude_for_parsing] Could not get stdin handle");
-    }
+    tracing::info!(
+        "[call_anthropic_for_parsing] Tokens used: input={}, output={}",
+        response.usage.input_tokens,
+        response.usage.output_tokens
+    );
 
-    // Wait for completion with timeout (5 minutes)
-    tracing::info!("[call_claude_for_parsing] Waiting for Claude CLI (timeout: 5 minutes)...");
-    let output = tokio::time::timeout(
-        std::time::Duration::from_secs(300),
-        child.wait_with_output()
-    )
-    .await
-    .map_err(|_| {
-        tracing::error!("[call_claude_for_parsing] Claude CLI timed out after 5 minutes");
-        AppError::Internal(anyhow!("Claude CLI timed out after 5 minutes"))
-    })?
-    .map_err(|e| {
-        tracing::error!("[call_claude_for_parsing] Claude CLI wait error: {}", e);
-        AppError::Internal(anyhow!("Claude CLI error: {}", e))
-    })?;
-
-    tracing::debug!("[call_claude_for_parsing] Claude CLI finished with status: {:?}", output.status);
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        tracing::error!("[call_claude_for_parsing] Claude CLI failed");
-        tracing::error!("[call_claude_for_parsing] STDERR: {}", stderr);
-        tracing::error!("[call_claude_for_parsing] STDOUT: {}", stdout);
-        return Err(AppError::Internal(anyhow!("Claude CLI failed: {}", stderr)));
-    }
-
-    let response = String::from_utf8_lossy(&output.stdout).to_string();
-    tracing::debug!("[call_claude_for_parsing] Got response: {} chars", response.len());
-
-    // Log a preview of the response (first 500 chars)
-    let preview = if response.len() > 500 {
-        format!("{}...[truncated]", &response[..500])
-    } else {
-        response.clone()
-    };
-    tracing::debug!("[call_claude_for_parsing] Response preview: {}", preview);
-
-    // Try to extract JSON from the response
-    // Claude might wrap it in markdown code blocks
-    tracing::debug!("[call_claude_for_parsing] Extracting JSON from response...");
-    let json_str = extract_json_from_response(&response)?;
-    tracing::debug!("[call_claude_for_parsing] Extracted JSON: {} chars", json_str.len());
+    // Convert to JSON string for compatibility with existing code
+    let json_str = response.json_content.to_string();
+    tracing::debug!("[call_anthropic_for_parsing] Response JSON: {} chars", json_str.len());
 
     Ok(json_str)
-}
-
-/// Extract JSON from Claude's response (handle markdown code blocks)
-fn extract_json_from_response(response: &str) -> Result<String, AppError> {
-    let trimmed = response.trim();
-    tracing::debug!("[extract_json_from_response] Processing response: {} chars", trimmed.len());
-
-    // If it starts with {, it's already JSON
-    if trimmed.starts_with('{') {
-        tracing::debug!("[extract_json_from_response] Response starts with '{{', treating as raw JSON");
-        return Ok(trimmed.to_string());
-    }
-
-    // Try to extract from markdown code block
-    if let Some(start) = trimmed.find("```json") {
-        tracing::debug!("[extract_json_from_response] Found ```json block at position {}", start);
-        let after_marker = &trimmed[start + 7..];
-        if let Some(end) = after_marker.find("```") {
-            let extracted = after_marker[..end].trim().to_string();
-            tracing::debug!("[extract_json_from_response] Extracted {} chars from ```json block", extracted.len());
-            return Ok(extracted);
-        } else {
-            tracing::debug!("[extract_json_from_response] No closing ``` found for json block");
-        }
-    }
-
-    // Try generic code block
-    if let Some(start) = trimmed.find("```") {
-        tracing::debug!("[extract_json_from_response] Found generic ``` block at position {}", start);
-        let after_marker = &trimmed[start + 3..];
-        // Skip language identifier if present
-        let content_start = after_marker.find('\n').unwrap_or(0) + 1;
-        let content = &after_marker[content_start..];
-        if let Some(end) = content.find("```") {
-            let extracted = content[..end].trim().to_string();
-            tracing::debug!("[extract_json_from_response] Extracted {} chars from generic code block", extracted.len());
-            return Ok(extracted);
-        } else {
-            tracing::debug!("[extract_json_from_response] No closing ``` found for generic block");
-        }
-    }
-
-    // Try to find JSON object in the response
-    tracing::debug!("[extract_json_from_response] Searching for JSON object braces...");
-    if let Some(start) = trimmed.find('{') {
-        if let Some(end) = trimmed.rfind('}') {
-            let extracted = trimmed[start..=end].to_string();
-            tracing::debug!("[extract_json_from_response] Found JSON object from pos {} to {}: {} chars",
-                start, end, extracted.len());
-            return Ok(extracted);
-        } else {
-            tracing::debug!("[extract_json_from_response] Found '{{' at {} but no closing '}}'", start);
-        }
-    } else {
-        tracing::debug!("[extract_json_from_response] No '{{' found in response");
-    }
-
-    // Log the full response on failure for debugging
-    tracing::error!("[extract_json_from_response] Could not extract JSON. Full response:\n{}", trimmed);
-    Err(AppError::Internal(anyhow!("Could not extract JSON from Claude response")))
 }
 
 /// Rebuild Yjs document from parsed JSON
@@ -955,14 +796,14 @@ async fn rebuild_yjs_from_parsed_json(
             tracing::error!("[rebuild_yjs_from_parsed_json] Invalid JSON: {}", e);
             tracing::error!("[rebuild_yjs_from_parsed_json] JSON content (first 1000 chars): {}",
                 &json_str[..json_str.len().min(1000)]);
-            AppError::Internal(anyhow!("Invalid JSON from Claude: {}", e))
+            AppError::Internal(anyhow!("Invalid JSON from API: {}", e))
         })?;
     tracing::debug!("[rebuild_yjs_from_parsed_json] JSON parsed successfully");
 
     // Check for error response
     if let Some(error) = parsed.get("error") {
-        tracing::error!("[rebuild_yjs_from_parsed_json] Claude returned error: {}", error);
-        return Err(AppError::Internal(anyhow!("Claude parsing error: {}", error)));
+        tracing::error!("[rebuild_yjs_from_parsed_json] API returned error: {}", error);
+        return Err(AppError::Internal(anyhow!("API parsing error: {}", error)));
     }
 
     // Extract content array
@@ -1523,7 +1364,30 @@ async fn process_format_stream(
 
     tracing::info!("[process_format_stream] Split into {} chunks", chunks.len());
 
-    // Step 4: Process chunks sequentially
+    // Step 4: Create Anthropic client for chunk processing
+    use crate::external::anthropic::{AnthropicClient, AnthropicConfig};
+
+    let api_key = std::env::var("ANTHROPIC_API_KEY")
+        .map_err(|_| AppError::Internal(anyhow!("ANTHROPIC_API_KEY not set")))?;
+
+    let config = AnthropicConfig {
+        api_key,
+        model: std::env::var("ANTHROPIC_MODEL")
+            .unwrap_or_else(|_| "claude-sonnet-4-5-20250929".to_string()),
+        max_tokens: std::env::var("ANTHROPIC_MAX_TOKENS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(4096),
+        rate_limit_delay_ms: std::env::var("ANTHROPIC_RATE_LIMIT_MS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(2000),
+    };
+
+    let client = AnthropicClient::new(config)
+        .map_err(|e| AppError::from(e))?;
+
+    // Step 5: Process chunks sequentially
     let mut all_content: Vec<serde_json::Value> = Vec::new();
     let mut last_scene_number = 0;
     let mut last_speaker: Option<String> = None;
@@ -1546,8 +1410,9 @@ async fn process_format_stream(
 
         tracing::info!("[process_format_stream] Processing chunk {}/{}", chunk.chunk_index + 1, chunk.total_chunks);
 
-        // Call Claude for this chunk
-        let chunk_result = call_claude_for_chunk(
+        // Call Anthropic API for this chunk
+        let chunk_result = call_anthropic_for_chunk(
+            &client,
             chunk,
             last_scene_number,
             last_speaker.as_deref(),
@@ -1568,6 +1433,9 @@ async fn process_format_stream(
                 }).await;
 
                 tracing::info!("[process_format_stream] Chunk {} complete: {} items", chunk.chunk_index + 1, items_count);
+
+                // Apply rate limiting between chunks
+                client.apply_rate_limit().await;
             }
             Err(e) => {
                 tracing::error!("[process_format_stream] Chunk {} failed: {}", chunk.chunk_index + 1, e);
@@ -1582,7 +1450,7 @@ async fn process_format_stream(
         }
     }
 
-    // Step 5: Rebuild document with all parsed content
+    // Step 6: Rebuild document with all parsed content
     tracing::info!("[process_format_stream] Rebuilding document with {} total items", all_content.len());
 
     let full_json = serde_json::json!({
@@ -1602,140 +1470,40 @@ async fn process_format_stream(
     Ok(())
 }
 
-/// Call Claude CLI to parse a single chunk with context
-async fn call_claude_for_chunk(
+/// Call Anthropic API to parse a single chunk with context
+async fn call_anthropic_for_chunk(
+    client: &crate::external::anthropic::AnthropicClient,
     chunk: &ChunkWithContext,
     previous_scene_number: usize,
     previous_speaker: Option<&str>,
 ) -> Result<(Vec<serde_json::Value>, usize, Option<String>), AppError> {
-    use tokio::io::AsyncWriteExt;
-    use tokio::process::Command;
-
-    tracing::debug!("[call_claude_for_chunk] Processing chunk {}/{}, {} chars",
+    tracing::debug!("[call_anthropic_for_chunk] Processing chunk {}/{}, {} chars",
         chunk.chunk_index + 1, chunk.total_chunks, chunk.text.len());
 
-    // Build the prompt with chunk context
-    let has_context = chunk.context.is_some();
-    let context = chunk.context.as_deref().unwrap_or("");
-    let next_scene_number = previous_scene_number + 1;
+    // Parse chunk via API
+    let response = client.parse_chunk(
+        &chunk.text,
+        TEXT_PARSER_CHUNK_PROMPT,
+        chunk.context.as_deref(),
+        previous_scene_number,
+        previous_speaker,
+    ).await.map_err(|e| {
+        tracing::error!("[call_anthropic_for_chunk] Anthropic API error: {}", e);
+        AppError::from(e)
+    })?;
 
-    // Build prompt from template by replacing placeholders
-    let mut prompt = TEXT_PARSER_CHUNK_PROMPT.to_string();
-    prompt = prompt.replace("{{#if has_context}}", if has_context { "" } else { "<!--" });
-    prompt = prompt.replace("{{/if}}", if has_context { "" } else { "-->" });
-    prompt = prompt.replace("{{context}}", context);
-    prompt = prompt.replace("{{previous_scene_number}}", &previous_scene_number.to_string());
-    prompt = prompt.replace("{{previous_speaker}}", previous_speaker.unwrap_or("UNKNOWN"));
-    prompt = prompt.replace("{{next_scene_number}}", &next_scene_number.to_string());
-    prompt = prompt.replace("{{text}}", &chunk.text);
+    tracing::info!(
+        "[call_anthropic_for_chunk] Chunk {}/{} - Tokens: input={}, output={}",
+        chunk.chunk_index + 1,
+        chunk.total_chunks,
+        response.usage.input_tokens,
+        response.usage.output_tokens
+    );
 
-    // Detect Docker vs local
-    let is_docker = tokio::fs::metadata("/home/appuser").await.is_ok();
+    tracing::debug!("[call_anthropic_for_chunk] Chunk {} parsed: {} items, last_scene={}, last_speaker={:?}",
+        chunk.chunk_index + 1, response.content.len(), response.last_scene_number, response.last_speaker);
 
-    // Find Claude CLI
-    let home_env = std::env::var("HOME").unwrap_or_default();
-    let local_claude_path = format!("{}/.npm-global/bin/claude", home_env);
-
-    let search_paths: Vec<&str> = if is_docker {
-        vec![
-            "/home/appuser/.npm-global/bin/claude",
-            "/usr/local/bin/claude",
-            "/usr/bin/claude",
-        ]
-    } else {
-        vec![
-            local_claude_path.as_str(),
-            "/usr/local/bin/claude",
-            "/usr/bin/claude",
-        ]
-    };
-
-    let mut claude_path = "claude".to_string();
-    for path in search_paths {
-        if tokio::fs::metadata(path).await.is_ok() {
-            claude_path = path.to_string();
-            break;
-        }
-    }
-
-    // Configure environment
-    let (home_dir, xdg_config) = if is_docker {
-        ("/home/appuser".to_string(), "/home/appuser/.config".to_string())
-    } else {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-        let xdg = std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{}/.config", home));
-        (home, xdg)
-    };
-
-    // Run Claude CLI
-    let mut cmd = Command::new(&claude_path);
-    cmd.arg("--print")
-        .arg("--output-format")
-        .arg("text")
-        .arg("--dangerously-skip-permissions")
-        .env("HOME", &home_dir)
-        .env("XDG_CONFIG_HOME", &xdg_config)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped());
-
-    let mut child = cmd.spawn()
-        .map_err(|e| AppError::Internal(anyhow!("Failed to start Claude CLI: {}", e)))?;
-
-    // Send prompt to stdin
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(prompt.as_bytes()).await
-            .map_err(|e| AppError::Internal(anyhow!("Failed to write to Claude stdin: {}", e)))?;
-        stdin.shutdown().await
-            .map_err(|e| AppError::Internal(anyhow!("Failed to close Claude stdin: {}", e)))?;
-    }
-
-    // Wait for completion (3 minutes per chunk should be plenty)
-    let output = tokio::time::timeout(
-        std::time::Duration::from_secs(180),
-        child.wait_with_output()
-    )
-    .await
-    .map_err(|_| AppError::Internal(anyhow!("Claude CLI timed out for chunk")))?
-    .map_err(|e| AppError::Internal(anyhow!("Claude CLI error: {}", e)))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(AppError::Internal(anyhow!("Claude CLI failed: {}", stderr)));
-    }
-
-    let response = String::from_utf8_lossy(&output.stdout).to_string();
-
-    // Extract JSON from response
-    let json_str = extract_json_from_response(&response)?;
-
-    // Parse JSON
-    let parsed: serde_json::Value = serde_json::from_str(&json_str)
-        .map_err(|e| AppError::Internal(anyhow!("Invalid JSON from Claude: {}", e)))?;
-
-    // Extract content array
-    let content = parsed.get("content")
-        .and_then(|c| c.as_array())
-        .ok_or_else(|| AppError::Internal(anyhow!("Missing content array")))?
-        .clone();
-
-    // Extract chunk_info for next chunk
-    let chunk_info = parsed.get("chunk_info");
-    let new_scene_number = chunk_info
-        .and_then(|ci| ci.get("last_scene_number"))
-        .and_then(|n| n.as_str())
-        .and_then(|n| n.parse::<usize>().ok())
-        .unwrap_or(previous_scene_number);
-
-    let new_speaker = chunk_info
-        .and_then(|ci| ci.get("last_speaker"))
-        .and_then(|s| s.as_str())
-        .map(|s| s.to_string());
-
-    tracing::debug!("[call_claude_for_chunk] Chunk {} parsed: {} items, last_scene={}, last_speaker={:?}",
-        chunk.chunk_index + 1, content.len(), new_scene_number, new_speaker);
-
-    Ok((content, new_scene_number, new_speaker))
+    Ok((response.content, response.last_scene_number, response.last_speaker))
 }
 
 /// Cancel endpoint - stops processing and restores backup
