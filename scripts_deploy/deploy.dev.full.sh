@@ -108,6 +108,9 @@ echo "[4/5] Syncing config..."
 if [ -f ".env.prod" ]; then
     rsync -az ./.env.prod "$USER@$SERVER:$APP_DIR/"
 fi
+if [ -f ".env.dev" ]; then
+    rsync -az ./.env.dev "$USER@$SERVER:$APP_DIR/"
+fi
 rsync -az ./docker-compose.dev.server.yml "$USER@$SERVER:$APP_DIR/"
 
 # BUILD AND DEPLOY ON SERVER
