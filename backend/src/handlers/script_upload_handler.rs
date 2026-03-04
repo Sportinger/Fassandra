@@ -1098,12 +1098,13 @@ fn split_into_chunks(text: &str, chunk_size: usize, overlap_size: usize) -> Vec<
             end
         };
 
-        let actual_end = text.floor_char_boundary(actual_end);
+        let actual_end = floor_char_boundary(text, actual_end);
         let chunk_text = &text[start..actual_end];
 
         // Get context from previous chunk
         let context = if start > 0 {
-            let context_start = text.floor_char_boundary(
+            let context_start = floor_char_boundary(
+                text,
                 if start > overlap_size { start - overlap_size } else { 0 }
             );
             Some(text[context_start..start].to_string())
@@ -1135,13 +1136,24 @@ fn split_into_chunks(text: &str, chunk_size: usize, overlap_size: usize) -> Vec<
     chunks
 }
 
+/// Stable replacement for the nightly-only `str::floor_char_boundary`
+fn floor_char_boundary(s: &str, mut i: usize) -> usize {
+    if i >= s.len() {
+        return s.len();
+    }
+    while i > 0 && !s.is_char_boundary(i) {
+        i -= 1;
+    }
+    i
+}
+
 /// Find a good break point near the target position
 fn find_break_point(text: &str, target: usize, search_range: usize) -> usize {
     let raw_start = target.saturating_sub(search_range);
     let raw_end = (target + search_range).min(text.len());
     // Snap to valid UTF-8 char boundaries to avoid panics on multi-byte chars (e.g. ñ, é)
-    let search_start = text.floor_char_boundary(raw_start);
-    let search_end = text.floor_char_boundary(raw_end);
+    let search_start = floor_char_boundary(text, raw_start);
+    let search_end = floor_char_boundary(text, raw_end);
     let search_text = &text[search_start..search_end];
 
     // Priority: double newline (paragraph break) > single newline > space
