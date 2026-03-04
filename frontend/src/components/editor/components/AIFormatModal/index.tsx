@@ -220,10 +220,6 @@ export const AIFormatModal: React.FC<AIFormatModalProps> = ({
         setStatusMessage(`Formatting complete! ${event.total_items} items parsed.`);
         setBackupId(event.backup_id || null);
         onLockChange?.(false);
-        // Reload after a short delay
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
         break;
 
       case 'error':
@@ -306,14 +302,10 @@ export const AIFormatModal: React.FC<AIFormatModalProps> = ({
         </div>
 
         <div className={styles.modalBody}>
-          {/* Document Text Section */}
+          {/* Document Stats Section */}
           <div className={styles.section}>
             <div className={styles.sectionHeader}>
               <span className={styles.sectionTitle}>Document Text</span>
-              <span className={`${styles.statusBadge} ${styles.ready}`}>Ready</span>
-            </div>
-            <div className={styles.textPreview}>
-              {documentText || '(No text in document)'}
             </div>
             <div className={styles.stats}>
               <div className={styles.stat}>
