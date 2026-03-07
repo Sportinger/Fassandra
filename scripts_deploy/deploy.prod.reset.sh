@@ -87,6 +87,16 @@ if ! ssh -o ConnectTimeout=5 "$USER@$SERVER" "echo 'Connected'" >/dev/null 2>&1;
     exit 1
 fi
 
+# Verify .env.prod exists on server — never pushed by this script
+echo "🔎 Checking server .env.prod..."
+if ! ssh "$USER@$SERVER" "[ -f $APP_DIR/.env.prod ]"; then
+    echo "❌ .env.prod not found on server."
+    echo "   Set it up manually once:"
+    echo "   ssh $USER@$SERVER"
+    echo "   nano $APP_DIR/.env.prod"
+    exit 1
+fi
+
 # CLEAN SERVER (but preserve volumes)
 echo "🧹 Cleaning server (removing Docker containers, keeping volumes)..."
 ssh "$USER@$SERVER" << 'EOF'
@@ -128,8 +138,7 @@ echo "   Frontend size: $(du -h frontend.tar.gz | cut -f1)"
 scp backend.tar.gz "$USER@$SERVER:$APP_DIR/backend.tar.gz" || { echo "❌ Failed to transfer backend image"; exit 1; }
 scp frontend.tar.gz "$USER@$SERVER:$APP_DIR/frontend.tar.gz" || { echo "❌ Failed to transfer frontend image"; exit 1; }
 
-echo "📡 Transferring config files..."
-scp "$PROJECT_ROOT/.env.prod" "$USER@$SERVER:$APP_DIR/.env.prod" || { echo "❌ Failed to transfer .env.prod"; exit 1; }
+echo "📡 Transferring config files (never syncing .env — managed manually on server)..."
 scp "$PROJECT_ROOT/docker-compose.prod.yml" "$USER@$SERVER:$APP_DIR/" || { echo "❌ Failed to transfer docker-compose.prod.yml"; exit 1; }
 scp "$PROJECT_ROOT/Caddyfile" "$USER@$SERVER:$APP_DIR/" || { echo "❌ Failed to transfer Caddyfile"; exit 1; }
 

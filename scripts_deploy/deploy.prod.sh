@@ -59,6 +59,16 @@ if ! ssh -o ConnectTimeout=5 "$USER@$SERVER" "echo 'Connected'" > /dev/null 2>&1
     exit 1
 fi
 
+# Verify .env.prod exists on server — never pushed by this script
+echo "🔎 Checking server .env.prod..."
+if ! ssh "$USER@$SERVER" "[ -f $APP_DIR/.env.prod ]"; then
+    echo "❌ .env.prod not found on server."
+    echo "   Set it up manually once:"
+    echo "   ssh $USER@$SERVER"
+    echo "   nano $APP_DIR/.env.prod"
+    exit 1
+fi
+
 if [ "$RESTART_ONLY" = true ]; then
     echo "🔄 Restarting containers only..."
     ssh "$USER@$SERVER" << 'EOF'
@@ -97,9 +107,8 @@ rsync -az --delete \
     --exclude '.env' \
     ./yjs-parser/ "$USER@$SERVER:$APP_DIR/yjs-parser/"
 
-# SYNC CONFIG FILES
+# SYNC CONFIG FILES (never sync .env files — managed manually on server)
 rsync -az \
-    ./.env.prod \
     ./docker-compose.prod.yml \
     ./Caddyfile \
     "$USER@$SERVER:$APP_DIR/"
