@@ -66,12 +66,84 @@ export const ScriptList = forwardRef<ScriptListRef, ScriptListProps>(({
   // Upload state
   const { uploads, addUpload, updateUpload, removeUpload, appendLog } = useUploadState();
 
+  // Simple upload function - extracts text only, no Claude processing
+  const performSimpleUpload = async (placeholder: PlaceholderScript) => {
+    if (!token || !placeholder.fileData) {
+      logger.error('ScriptList', 'Missing token or file data for upload');
+      updateUpload(placeholder.id, {
+        uploadStatus: 'error' as UploadStatus,
+        uploadError: 'Missing authentication or file data'
+      });
+      setTimeout(() => removeUpload(placeholder.id), 3000);
+      return;
+    }
+
+    try {
+      updateUpload(placeholder.id, {
+        uploadStatus: 'uploading' as UploadStatus,
+        uploadProgress: 10,
+        uploadSubStage: 'Uploading PDF...'
+      });
+
+      const formData = new FormData();
+      formData.append('file', placeholder.fileData);
+
+      const headers: Record<string, string> = {};
+      if (token && token !== 'authenticated') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      updateUpload(placeholder.id, {
+        uploadProgress: 30,
+        uploadSubStage: 'Extracting text...'
+      });
+
+      const response = await fetch('/api/s/upload-pdf-simple', {
+        method: 'POST',
+        body: formData,
+        headers,
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Upload failed: ${response.status} ${text}`);
+      }
+
+      const result = await response.json() as { script_id: string; title: string; message: string };
+
+      updateUpload(placeholder.id, {
+        uploadStatus: 'completed' as UploadStatus,
+        uploadProgress: 100,
+        uploadSubStage: 'Script created successfully!'
+      });
+
+      logger.info('ScriptList', `Simple upload completed: ${result.title} (${result.script_id})`);
+
+      // Refresh script list and remove placeholder after a short delay
+      setTimeout(() => {
+        refreshScripts();
+        removeUpload(placeholder.id);
+      }, 2000);
+
+    } catch (error: any) {
+      logger.error('ScriptList', 'Simple upload failed:', error);
+      updateUpload(placeholder.id, {
+        uploadStatus: 'error' as UploadStatus,
+        uploadError: error.message || 'Upload failed',
+        uploadSubStage: 'Upload failed'
+      });
+      setTimeout(() => removeUpload(placeholder.id), 5000);
+    }
+  };
+
   // Expose methods to parent
   useImperativeHandle(ref, () => ({
     addUploadPlaceholder: (placeholder: PlaceholderScript) => {
       logger.debug('ScriptList', '[ScriptList] Adding upload placeholder:', placeholder.title);
       addUpload(placeholder);
-      performRealBackgroundUpload(placeholder);
+      // Use simple upload (text extraction only, no Claude)
+      performSimpleUpload(placeholder);
     }
   }));
 

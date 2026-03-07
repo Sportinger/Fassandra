@@ -104,6 +104,7 @@ export const Editor: React.FC<EditorProps> = ({
         debugLog={debugLog}
         savingStatus={savingStatus}
         lastSaved={lastSaved}
+        scriptId={scriptId}
       />
     </EditorUiProvider>
   );

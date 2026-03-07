@@ -27,6 +27,11 @@ pub struct Config {
     pub asr_language: String, // e.g., de-DE
     pub asr_sample_rate: u32, // e.g., 16000 or 48000
     pub deepgram_api_key: Option<String>,
+    // Anthropic API config
+    pub anthropic_api_key: Option<String>,
+    pub anthropic_model: String,
+    pub anthropic_max_tokens: u32,
+    pub anthropic_rate_limit_ms: u64,
 }
 
 impl Config {
@@ -68,6 +73,18 @@ impl Config {
                 .unwrap_or(Ok(48000))
                 .context("Invalid ASR_SAMPLE_RATE value")?,
             deepgram_api_key: env::var("DEEPGRAM_API_KEY").ok(),
+            // Anthropic API defaults
+            anthropic_api_key: env::var("ANTHROPIC_API_KEY").ok(),
+            anthropic_model: env::var("ANTHROPIC_MODEL")
+                .unwrap_or_else(|_| "claude-haiku-4-5-20251001".to_string()),
+            anthropic_max_tokens: env::var("ANTHROPIC_MAX_TOKENS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(4096),
+            anthropic_rate_limit_ms: env::var("ANTHROPIC_RATE_LIMIT_MS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(2000),
         })
     }
 }

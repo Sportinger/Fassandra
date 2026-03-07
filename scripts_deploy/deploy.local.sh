@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # LOCAL DEVELOPMENT DEPLOYMENT - OPTIMIZED FOR DEV ENVIRONMENT
-# Usage: ./deploy.dev.sh [--no-cache]
+# Usage: ./deploy.local.sh [--no-cache]
 
 set -e
 set -o pipefail

@@ -2,6 +2,7 @@ import React from 'react';
 import type { Editor } from '@tiptap/react';
 
 import logger from '../../../../services/LoggingService';
+import { featureFlags } from '../../../../config/features';
 import type { ToolbarContext, ViewMode } from '../../types';
 import {
   BoldIcon,
@@ -62,6 +63,18 @@ export const buildToolbarButtons = ({
   onToggleRehearsalMode,
   requestDefaultContext,
 }: BuildToolbarButtonsArgs): ToolbarButton[] => [
+  // AI Format button - only shown when debug flag is enabled
+  ...(featureFlags.debug.showAIFormatModal ? [{
+    id: 'ai-format',
+    icon: '✨',
+    title: 'AI Format',
+    action: () => {
+      logger.debug('Toolbar', 'AI Format clicked - opening modal');
+      window.dispatchEvent(new CustomEvent('fassandra:open-ai-format-modal'));
+    },
+    contexts: ['default'] as ToolbarContext[],
+    order: -1,
+  }] : []),
   {
     id: 'auto-follow',
     icon: autoFollowActive ? '🎤⏹' : '🎤▶',

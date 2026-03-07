@@ -42,6 +42,16 @@ if ! ssh -o ConnectTimeout=5 "$USER@$SERVER" "echo 'Connected'" >/dev/null 2>&1;
 fi
 echo "Connected to $SERVER"
 
+# Verify .env.dev exists on server — never pushed by this script
+echo "Checking server .env.dev..."
+if ! ssh "$USER@$SERVER" "[ -f $APP_DIR/.env.dev ]"; then
+    echo "ERROR: .env.dev not found on server."
+    echo "   Set it up manually once:"
+    echo "   ssh $USER@$SERVER"
+    echo "   nano $APP_DIR/.env.dev"
+    exit 1
+fi
+
 # STOP AND CLEAN DEV CONTAINERS
 echo "[2/7] Stopping DEV containers and cleaning images..."
 ssh "$USER@$SERVER" "APP_DIR='$APP_DIR' bash -s" << 'EOF'
@@ -83,11 +93,8 @@ rsync -az --delete \
     --exclude '*.swp' \
     ./yjs-parser/ "$USER@$SERVER:$APP_DIR/yjs-parser/"
 
-# SYNC CONFIG
+# SYNC CONFIG (never sync .env files — managed manually on server)
 echo "[6/7] Syncing config files..."
-if [ -f ".env.prod" ]; then
-    rsync -az ./.env.prod "$USER@$SERVER:$APP_DIR/"
-fi
 
 # BUILD AND DEPLOY ON SERVER
 echo "[7/7] Building and deploying on server (this takes 2-5 minutes)..."

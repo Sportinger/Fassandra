@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import type { Editor as TipTapEditor } from '@tiptap/react';
 import type { WebsocketProvider } from 'y-websocket';
 import type * as Y from 'yjs';
@@ -16,6 +16,7 @@ import { EditorContextMenu } from './context-menu/EditorContextMenu';
 import { Toolbar } from './toolbar/Toolbar';
 import { RightSidebar } from './RightSidebar';
 import { SavingIndicator } from './ui/SavingIndicator';
+import { AIFormatModal } from './AIFormatModal';
 import {
   useEditorLayout,
   useEditorRehearsal,
@@ -51,6 +52,7 @@ interface EditorViewProps {
   debugLog: (...args: any[]) => void;
   savingStatus?: 'saved' | 'saving' | 'error';
   lastSaved?: Date | null;
+  scriptId?: string;
 }
 
 export const EditorView: React.FC<EditorViewProps> = ({
@@ -65,6 +67,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
   debugLog,
   savingStatus = 'saved',
   lastSaved = null,
+  scriptId,
 }) => {
   const {
     viewMode,
@@ -81,6 +84,34 @@ export const EditorView: React.FC<EditorViewProps> = ({
 
   const { windowWidth } = useToolbarKeyboard(editor);
   const isMobile = windowWidth <= 767;
+
+  // AI Format modal state
+  const [aiFormatModalOpen, setAiFormatModalOpen] = useState(false);
+  const [isDocumentLocked, setIsDocumentLocked] = useState(false);
+
+  // Listen for AI format button click event
+  useEffect(() => {
+    const handleOpenAIFormatModal = () => {
+      setAiFormatModalOpen(true);
+    };
+    window.addEventListener('fassandra:open-ai-format-modal', handleOpenAIFormatModal);
+    return () => {
+      window.removeEventListener('fassandra:open-ai-format-modal', handleOpenAIFormatModal);
+    };
+  }, []);
+
+  // Handle document lock state changes
+  const handleLockChange = useCallback((locked: boolean) => {
+    setIsDocumentLocked(locked);
+    // Disable/enable editor based on lock state
+    if (editor) {
+      editor.setEditable(!locked);
+    }
+  }, [editor]);
+
+  const handleCloseAIFormatModal = useCallback(() => {
+    setAiFormatModalOpen(false);
+  }, []);
 
   const { rehearsalMode, rehearsalLinePosition, rehearsalWordBox } = useEditorRehearsal();
 
@@ -334,6 +365,14 @@ export const EditorView: React.FC<EditorViewProps> = ({
         activeCommentId={activeSidebarCommentId}
         setActiveCommentId={setActiveSidebarCommentId}
         editor={editor}
+      />
+
+      <AIFormatModal
+        editor={editor}
+        isOpen={aiFormatModalOpen}
+        onClose={handleCloseAIFormatModal}
+        scriptId={scriptId}
+        onLockChange={handleLockChange}
       />
     </EditorShell>
   );

@@ -25,7 +25,9 @@ use crate::handlers::claude_session_handler::{
 };
 use crate::handlers::claude_websocket::claude_session_ws;
 use crate::handlers::script_upload_handler::{
-    parse_existing_script, upload_and_parse_script, ExtendedScriptServices,
+    ai_format_cancel, ai_format_script, ai_format_stream, ai_format_undo,
+    parse_existing_script, upload_and_parse_script, upload_pdf_simple,
+    ExtendedScriptServices,
 };
 use crate::models::script_share::{ScriptShare, ShareScriptRequest};
 use crate::services::claude_session_service::ClaudeSessionService;
@@ -50,7 +52,47 @@ pub struct ScriptServices {
 /// * `Router<ExtendedScriptServices>` - Configured router with script routes and security middleware
 pub fn script_routes(rate_limiter: Arc<RateLimiter>) -> Router<ExtendedScriptServices> {
     Router::new()
-        // PDF upload and parsing endpoints using Claude Code
+        // Simple PDF upload - extracts text without Claude processing
+        .route(
+            "/upload-pdf-simple",
+            post(upload_pdf_simple).layer(middleware::from_fn_with_state(
+                rate_limiter.clone(),
+                rate_limit_middleware,
+            )),
+        )
+        // AI Format - parses plain text into structured script using Claude
+        .route(
+            "/:script_id/ai-format",
+            post(ai_format_script).layer(middleware::from_fn_with_state(
+                rate_limiter.clone(),
+                rate_limit_middleware,
+            )),
+        )
+        // AI Format with SSE streaming (chunked processing for large documents)
+        .route(
+            "/:script_id/ai-format-stream",
+            get(ai_format_stream).layer(middleware::from_fn_with_state(
+                rate_limiter.clone(),
+                rate_limit_middleware,
+            )),
+        )
+        // Cancel AI Format processing
+        .route(
+            "/:script_id/ai-format-cancel",
+            post(ai_format_cancel).layer(middleware::from_fn_with_state(
+                rate_limiter.clone(),
+                rate_limit_middleware,
+            )),
+        )
+        // Undo AI Format (restore to pre-format state)
+        .route(
+            "/:script_id/ai-format-undo",
+            post(ai_format_undo).layer(middleware::from_fn_with_state(
+                rate_limiter.clone(),
+                rate_limit_middleware,
+            )),
+        )
+        // PDF upload and parsing endpoints using Claude Code (kept for future use)
         .route(
             "/upload-pdf",
             post(upload_and_parse_script).layer(middleware::from_fn_with_state(

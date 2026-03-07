@@ -68,6 +68,16 @@ if ! ssh -o ConnectTimeout=5 "$USER@$SERVER" "echo 'Connected'" >/dev/null 2>&1;
 fi
 echo "Connected to $SERVER"
 
+# Verify .env.dev exists on server — never pushed by this script
+echo "Checking server .env.dev..."
+if ! ssh "$USER@$SERVER" "[ -f $APP_DIR/.env.dev ]"; then
+    echo "ERROR: .env.dev not found on server."
+    echo "   Set it up manually once:"
+    echo "   ssh $USER@$SERVER"
+    echo "   nano $APP_DIR/.env.dev"
+    exit 1
+fi
+
 # SYNC FILES
 echo "[2/5] Syncing source files..."
 
@@ -103,11 +113,8 @@ rsync -az --delete \
     --exclude '*.swp' \
     ./yjs-parser/ "$USER@$SERVER:$APP_DIR/yjs-parser/"
 
-# SYNC CONFIG
+# SYNC CONFIG (never sync .env files — managed manually on server)
 echo "[4/5] Syncing config..."
-if [ -f ".env.prod" ]; then
-    rsync -az ./.env.prod "$USER@$SERVER:$APP_DIR/"
-fi
 rsync -az ./docker-compose.dev.server.yml "$USER@$SERVER:$APP_DIR/"
 
 # BUILD AND DEPLOY ON SERVER
