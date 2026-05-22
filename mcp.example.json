@@ -1,0 +1,74 @@
+{
+  "mcpServers": {
+    "playwright-vision": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp",
+        "--vision"
+      ]
+    },
+    "playwright-test": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp"
+      ]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-filesystem",
+        "/"
+      ]
+    },
+    "database": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@ahmetbarut/mcp-database-server"
+      ],
+      "env": {
+        "DATABASE_CONNECTIONS": "fassandra_db=postgresql://fassandra_user:dev_password_123@localhost:5432/fassandra_db"
+      }
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@hisma/server-puppeteer"
+      ],
+      "env": {
+        "PUPPETEER_HEADLESS": "false"
+      }
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "chrome-debug": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-debug-mcp-playwright"
+      ]
+    },
+    "browserstack": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@browserstack/mcp-server"
+      ]
+    },
+    "ElevenLabs": {
+      "command": "uvx",
+      "args": [
+        "elevenlabs-mcp"
+      ],
+      "env": {
+        "ELEVENLABS_API_KEY": "your_elevenlabs_api_key"
+      }
+    }
+  }
+}
